@@ -33,6 +33,12 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      # Public types of the published packages must match the reports in packages/*/api-report,
+      # so every API change shows up in review. `pnpm api:update` refreshes them.
+      - run: pnpm api:check
+      # Packs the published packages and builds the example addon against the tarballs in a
+      # directory outside the workspace, the way an addon in its own repository consumes them.
+      - run: pnpm pack:check
       # Separate from `pnpm build` so local builds stay fast; here it catches stories that
       # typecheck but fail to bundle (MDX, imports Vite cannot resolve).
       - run: pnpm --filter @oakestra/ui build-storybook

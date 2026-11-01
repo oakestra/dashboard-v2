@@ -128,6 +128,45 @@ describe('parseAddonDefinition', () => {
     expect(() => parseAddonDefinition(module, 'flops')).toThrow(/React component/);
   });
 
+  it('keeps the label, route roles and crumbs', () => {
+    const parsed = parseAddonDefinition(
+      {
+        default: {
+          id: 'flops',
+          label: 'FLOps',
+          routes: [
+            {
+              path: 'admin',
+              roles: ['Admin'],
+              crumb: 'Admin',
+              children: [{ path: 'jobs', crumb: 'Jobs', Component: Page }],
+            },
+          ],
+        },
+      },
+      'flops',
+    );
+    expect(parsed.label).toBe('FLOps');
+    expect(parsed.routes?.[0]).toMatchObject({ roles: ['Admin'], crumb: 'Admin' });
+    expect(parsed.routes?.[0]?.children?.[0]?.crumb).toBe('Jobs');
+  });
+
+  it.each([
+    ['an empty label', { label: '' }, /label/],
+    ['a label that is not a string', { label: 42 }, /label/],
+    ['roles that are not a list', { routes: [{ path: 'a', roles: 'Admin' }] }, /roles/],
+    ['an empty crumb', { routes: [{ path: 'a', crumb: '' }] }, /crumb/],
+    [
+      'a crumb function',
+      { routes: [{ path: 'a', children: [{ path: 'b', crumb: () => 'B' }] }] },
+      /crumb/,
+    ],
+  ])('rejects %s', (_case, fields, message) => {
+    expect(() => parseAddonDefinition({ default: { id: 'flops', ...fields } }, 'flops')).toThrow(
+      message,
+    );
+  });
+
   it('loads an addon that still contributes the removed settings.panels point', () => {
     // Addon settings moved to the addon's own page; old builds keep loading without the panel.
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});

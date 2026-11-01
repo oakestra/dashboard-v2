@@ -1,13 +1,14 @@
 import { createBrowserRouter, type RouteObject } from 'react-router';
 
+import { ADDON_PAGE_ROUTE_ID } from '../core/addons/addon-crumbs';
 import { AddonRouteHost } from '../core/addons/AddonRouteHost';
-import { requireAuth } from '../core/auth/guards';
+import { FORBIDDEN_MESSAGE, requireAuth } from '../core/auth/guards';
 import type { CoreModule } from '../core/modules';
 import { createRouterContext, type AppRouterContext } from '../core/router/app-context';
 import type { RouteHandle } from '../core/router/route-handle';
 import { NotFoundPage } from './errors/NotFoundPage';
 import { PageSkeleton } from './errors/PageSkeleton';
-import { RouteErrorPage } from './errors/RouteErrorPage';
+import { ForbiddenPage, RouteErrorPage } from './errors/RouteErrorPage';
 import { AppLayout } from './layouts/AppLayout';
 import { AuthLayout } from './layouts/AuthLayout';
 
@@ -38,9 +39,10 @@ export function createAppRoutes(modules: readonly CoreModule[]): RouteObject[] {
           children: [
             ...modules.flatMap((module) => module.routes),
             {
+              // Breadcrumbs expand this route into the addon's trail (useAddonCrumbs).
+              id: ADDON_PAGE_ROUTE_ID,
               path: 'addons/:addonId/*',
-              Component: AddonRouteHost,
-              handle: { crumb: (match) => match.params.addonId ?? 'Addon' } satisfies RouteHandle,
+              element: <AddonRouteHost forbidden={<ForbiddenPage message={FORBIDDEN_MESSAGE} />} />,
             },
             { path: '*', Component: NotFoundPage },
           ],

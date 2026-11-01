@@ -5,9 +5,9 @@ import { Link } from 'react-router';
 export function HelloWidget() {
   const basePath = useAddonBasePath();
   return (
-    <p className="text-sm" data-testid="example-hello-widget">
+    <p className="ex:text-sm" data-testid="example-hello-widget">
       The example addon is active.{' '}
-      <Link className="underline" to={basePath}>
+      <Link className="ex:underline" to={basePath}>
         Open it
       </Link>
       .
@@ -23,22 +23,22 @@ export function ThrowingWidget() {
     throw new Error('Example addon widget crashed on purpose');
   }
   return (
-    <p className="text-sm">Set localStorage "{THROW_FLAG}" to "1" to make this widget crash.</p>
+    <p className="ex:text-sm">Set localStorage "{THROW_FLAG}" to "1" to make this widget crash.</p>
   );
 }
 
 export function ApplicationTab({ applicationId }: ApplicationContext) {
-  return <p className="text-sm">Example tab for application {applicationId}</p>;
+  return <p className="ex:text-sm">Example tab for application {applicationId}</p>;
 }
 
 export function ServiceTab({ applicationId, serviceId }: ServiceContext) {
   return (
-    <p className="text-sm">
+    <p className="ex:text-sm">
       Example tab for service {serviceId} of application {applicationId}
     </p>
   );
 }
 
 export function ClusterWidget({ clusterId }: ClusterContext) {
-  return <p className="text-sm">Example widget for cluster {clusterId}</p>;
+  return <p className="ex:text-sm">Example widget for cluster {clusterId}</p>;
 }

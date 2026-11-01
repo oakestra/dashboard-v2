@@ -71,7 +71,8 @@ docker compose -f docker-compose.dev.yml down
    nested page** to see a second addon route. The entry expands into the sub-items **Overview**,
    **Settings** and **About**, which the addon declares as `children` of its nav item. The
    addon's settings live on its own page; **Settings** at the bottom of the sidebar is only for
-   the dashboard itself.
+   the dashboard itself. The breadcrumbs follow the addon's pages: **Home > Example > About** on
+   the About page, with the addon's label and the crumbs its routes declare.
 2. Go to **Overview**. The **Example addon** and **Crash test** cards are addon widgets.
 3. Open **Applications**, pick an application and select the **Example** tab. The addon receives
    the application id from the shell.
@@ -157,8 +158,9 @@ Contributions can be limited to roles. The example's **Settings** sub-item is fo
 Log out and log in as `alice` (password `alice`, an Application Provider): the **Settings**
 sub-item under **Example** is gone, and so is the Admin-only **Addons** entry in the sidebar. The
 **Example** entry and its other sub-items stay, because they have no role limit. Open
-`/addons/example/settings` by hand: the page refuses, because `roles` only hides links and the
-page checks the role itself.
+`/addons/example/settings` by hand: the shell shows its **Access denied** page, because the
+addon also put `roles: ['Admin']` on the settings route. `roles` on a nav item only hides the
+link.
 
 | User    | Password | Roles                                    |
 | ------- | -------- | ---------------------------------------- |

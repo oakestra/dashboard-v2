@@ -1,17 +1,17 @@
-import { useAddonBasePath } from '@oakestra/dashboard-sdk';
+import { useAddonPath } from '@oakestra/dashboard-sdk';
 import { Button } from '@oakestra/ui';
 import { Link, useParams } from 'react-router';
 
 export function DetailsPage() {
   const { itemId } = useParams();
-  const basePath = useAddonBasePath();
+  const addonPath = useAddonPath();
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold" data-testid="example-details">
+    <div className="ex:space-y-4">
+      <h1 className="ex:text-2xl ex:font-semibold" data-testid="example-details">
         Item {itemId}
       </h1>
       <Button asChild variant="outline">
-        <Link to={basePath}>Back</Link>
+        <Link to={addonPath()}>Back</Link>
       </Button>
     </div>
   );

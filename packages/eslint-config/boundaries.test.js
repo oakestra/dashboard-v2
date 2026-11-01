@@ -24,6 +24,10 @@ describe('import boundaries', () => {
   it.each([
     ['addons/example/src/x.ts', "import { defineAddon } from '@oakestra/dashboard-sdk';"],
     ['addons/example/src/x.ts', "import { Button } from '@oakestra/ui';"],
+    [
+      'addons/example/src/widgets/x.test.tsx',
+      "import { renderInHost } from '@oakestra/dashboard-sdk/testing';",
+    ],
     ['addons/example/src/x.ts', "import '@oakestra/ui/theme.css';"],
     ['addons/example/src/x.ts', "import { ExamplePage } from './pages/ExamplePage';"],
     ['addons/example/src/x.ts', "import type { Paths } from '@oakestra/api';"],
@@ -68,6 +72,26 @@ describe('import boundaries', () => {
       'addons/example/src/x.ts',
       "import { Slot } from '../../../apps/shell/src/core/extensions/Slot';",
       'boundaries/dependencies',
+    ],
+    [
+      'addons/example/src/x.ts',
+      "import { renderInHost } from '@oakestra/dashboard-sdk/testing';",
+      '@typescript-eslint/no-restricted-imports',
+    ],
+    [
+      'addons/example/src/x.tsx',
+      "import { renderInHost } from '@oakestra/dashboard-sdk/testing';",
+      '@typescript-eslint/no-restricted-imports',
+    ],
+    [
+      'apps/shell/src/features/overview/x.ts',
+      "import { renderInHost } from '@oakestra/dashboard-sdk/testing';",
+      'no-restricted-imports',
+    ],
+    [
+      'addons/example/src/x.test.ts',
+      "import { createConfig } from '@oakestra/eslint-config';",
+      '@typescript-eslint/no-restricted-imports',
     ],
     [
       'addons/example/src/x.ts',

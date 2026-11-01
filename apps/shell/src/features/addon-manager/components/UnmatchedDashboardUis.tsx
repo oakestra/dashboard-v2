@@ -12,7 +12,7 @@ import {
   TableRow,
 } from '@oakestra/ui';
 
-import type { AddonEntry } from '../../../core/addons/addon-registry';
+import { addonLabel, type AddonEntry } from '../../../core/addons/addon-registry';
 import { DashboardUiBadge, dashboardUiProblem } from './DashboardUiBadge';
 
 /**
@@ -45,7 +45,14 @@ export function UnmatchedDashboardUis({ entries }: { entries: readonly AddonEntr
           <TableBody>
             {entries.map((entry) => (
               <TableRow key={entry.name} data-testid={`unmatched-ui-${entry.name}`}>
-                <TableCell className="font-medium">{entry.name}</TableCell>
+                <TableCell>
+                  <span className="font-medium">{addonLabel(entry)}</span>
+                  {addonLabel(entry) !== entry.name ? (
+                    <span className="text-muted-foreground block font-mono text-xs">
+                      {entry.name}
+                    </span>
+                  ) : null}
+                </TableCell>
                 <TableCell>{entry.version}</TableCell>
                 <TableCell>
                   <DashboardUiBadge entry={entry} />

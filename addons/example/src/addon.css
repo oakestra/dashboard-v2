@@ -1,8 +1,14 @@
 /*
  * Addons generate utilities only. The shell already loaded Tailwind's reset and the token values;
  * a second preflight here would reset the shell's styles after the addon loads.
+ *
+ * `prefix(ex)` makes every class of this addon `ex:<utility>` (`ex:flex`, `ex:md:hidden`). This
+ * stylesheet loads after the shell's, so an unprefixed `.hidden` generated here would beat the
+ * shell's own responsive classes and could hide its sidebar. Tailwind also picks up class-like words
+ * in comments, so that happens easily. Prefixed classes never match shell markup, and the shell's
+ * classes never match ours.
  */
-@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/theme.css' layer(theme) prefix(ex);
 @import 'tailwindcss/utilities.css' layer(utilities);
 @import '@oakestra/ui/theme.css';
 

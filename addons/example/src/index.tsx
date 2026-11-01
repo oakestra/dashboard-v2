@@ -17,11 +17,13 @@ import {
 
 export default defineAddon({
   id: 'example',
+  label: 'Example',
   routes: [
     { index: true, Component: ExamplePage },
-    { path: 'details/:itemId', Component: DetailsPage },
-    { path: 'about', Component: AboutPage },
-    { path: 'settings', Component: SettingsPage },
+    { path: 'details/:itemId', crumb: 'Details', Component: DetailsPage },
+    { path: 'about', crumb: 'About', Component: AboutPage },
+    // `roles` on the nav sub-item below only hides the link; this keeps a typed URL out as well.
+    { path: 'settings', crumb: 'Settings', roles: ['Admin'], Component: SettingsPage },
   ],
   contributions: {
     'nav.items': [

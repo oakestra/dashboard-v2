@@ -5,7 +5,13 @@ export {
   type OakestraPaths,
   type Middleware,
 } from './client.ts';
-export { ApiError, isApiError, messageFromErrorBody, type ApiErrorKind } from './errors.ts';
+export {
+  ApiError,
+  describeError,
+  isApiError,
+  messageFromErrorBody,
+  type ApiErrorKind,
+} from './errors.ts';
 export * from './endpoints/index.ts';
 export * from './models/addon.ts';
 export * from './models/application.ts';

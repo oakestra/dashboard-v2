@@ -1,7 +1,7 @@
 import { StatusBadge, Tooltip, TooltipContent, TooltipTrigger } from '@oakestra/ui';
 import { LoaderCircleIcon } from 'lucide-react';
 
-import type { AddonEntry } from '../../../core/addons/addon-registry';
+import { addonLabel, type AddonEntry } from '../../../core/addons/addon-registry';
 
 /** Describes why a Dashboard UI is not working, or null when it is. */
 export function dashboardUiProblem(entry: AddonEntry | undefined): string | null {
@@ -18,7 +18,7 @@ export function DashboardUiBadge({ entry }: { entry: AddonEntry | undefined }) {
   switch (entry.state) {
     case 'loaded':
       return (
-        <StatusBadge tone="success" title={`Version ${entry.version}`}>
+        <StatusBadge tone="success" title={`${addonLabel(entry)}, version ${entry.version}`}>
           Loaded
           <span className="text-muted-foreground font-normal">{entry.version}</span>
         </StatusBadge>

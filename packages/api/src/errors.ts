@@ -46,6 +46,16 @@ export function isApiError(error: unknown): error is ApiError {
   );
 }
 
+/**
+ * A sentence for a toast or an inline error, whatever was thrown. `ApiError` messages are written
+ * for users already; other errors fall back to their own message.
+ */
+export function describeError(error: unknown): string {
+  if (isApiError(error)) return error.message;
+  if (error instanceof Error && error.message) return error.message;
+  return 'Something went wrong.';
+}
+
 const STATUS_MESSAGES: Readonly<Record<number, string>> = {
   400: 'The request was not accepted.',
   401: 'Your session has expired. Please log in again.',

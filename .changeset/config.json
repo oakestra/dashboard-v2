@@ -12,6 +12,7 @@
     "@oakestra/addon-example",
     "@oakestra/mock-addons-manager",
     "@oakestra/mock-system-manager",
+    "@oakestra/package-checks",
     "@oakestra/tsconfig",
     "@oakestra/eslint-config"
   ]

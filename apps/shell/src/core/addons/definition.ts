@@ -92,11 +92,14 @@ const routeSchema: z.ZodType<AddonRoute> = z.lazy(() =>
     index: z.boolean().optional(),
     Component: reactComponent.optional(),
     children: z.array(routeSchema).optional(),
+    roles: z.array(z.string()).optional(),
+    crumb: z.string().min(1).optional(),
   }),
 );
 
 const definitionSchema = z.object({
   id: z.string().min(1),
+  label: z.string().min(1).optional(),
   routes: z.array(routeSchema).optional(),
   contributions: contributionsSchema.optional(),
 });

@@ -13,17 +13,14 @@ interface Described {
   icon: ReactNode;
 }
 
+function forbidden(message: string): Described {
+  return { title: 'Access denied', message, retry: false, icon: <LockIcon /> };
+}
+
 function describe(error: unknown): Described {
   if (isRouteErrorResponse(error)) {
     const detail = typeof error.data === 'string' && error.data ? error.data : error.statusText;
-    if (error.status === 403) {
-      return {
-        title: 'Access denied',
-        message: detail || 'You cannot view this page.',
-        retry: false,
-        icon: <LockIcon />,
-      };
-    }
+    if (error.status === 403) return forbidden(detail || 'You cannot view this page.');
     if (error.status === 404) {
       return {
         title: 'Page not found',
@@ -48,8 +45,18 @@ function describe(error: unknown): Described {
 }
 
 export function RouteErrorPage() {
-  const { title, message, retry, icon } = describe(useRouteError());
+  return <ErrorView {...describe(useRouteError())} />;
+}
 
+/**
+ * The 403 page of `requireRole`, for places that deny access while rendering instead of in a
+ * loader: role-restricted addon routes, which the data router never sees.
+ */
+export function ForbiddenPage({ message }: { message: string }) {
+  return <ErrorView {...forbidden(message)} />;
+}
+
+function ErrorView({ title, message, retry, icon }: Described) {
   return (
     <ErrorState
       role="alert"

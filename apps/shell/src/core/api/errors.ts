@@ -1,11 +1,7 @@
 import { isApiError } from '@oakestra/api';
 
-/** A sentence for a toast or an inline error, whatever was thrown. */
-export function describeError(error: unknown): string {
-  if (isApiError(error)) return error.message;
-  if (error instanceof Error && error.message) return error.message;
-  return 'Something went wrong.';
-}
+// One implementation for the shell and addons, which get it from the SDK.
+export { describeError } from '@oakestra/api';
 
 /**
  * True for errors the auth layer already dealt with: a 401 that survived the refresh-and-retry

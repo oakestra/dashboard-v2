@@ -151,6 +151,8 @@ const policies = [
   { from: { element: { type: 'e2e' } }, allow: { to: { element: { type: 'e2e' } } } },
 ];
 
+const SDK_TESTING_ENTRY = '@oakestra/dashboard-sdk/testing';
+
 /** Workspace packages that addons may import by name. `@oakestra/api` only for types (M2). */
 const addonImportRestrictions = {
   patterns: [
@@ -159,6 +161,8 @@ const addonImportRestrictions = {
         '@oakestra/*',
         '!@oakestra/dashboard-sdk',
         '!@oakestra/dashboard-sdk/federation',
+        // Re-excluded explicitly: the negation above of the package would otherwise let it through.
+        SDK_TESTING_ENTRY,
         '!@oakestra/ui',
         '!@oakestra/ui/chart',
         '!@oakestra/ui/data-table',
@@ -182,6 +186,23 @@ const addonImportRestrictions = {
       message:
         'Addons get the API client from useOakestraApi(); import @oakestra/api for types only.',
     },
+  ],
+};
+
+/**
+ * Test files may additionally use the SDK's test helpers. They pull in @testing-library/react,
+ * so they must stay out of the code that ships in the addon bundle.
+ */
+const addonTestImportRestrictions = {
+  ...addonImportRestrictions,
+  patterns: [
+    {
+      ...addonImportRestrictions.patterns[0],
+      group: addonImportRestrictions.patterns[0].group.map((entry) =>
+        entry === SDK_TESTING_ENTRY ? `!${SDK_TESTING_ENTRY}` : entry,
+      ),
+    },
+    ...addonImportRestrictions.patterns.slice(1),
   ],
 };
 
@@ -230,6 +251,10 @@ export function importBoundaries({ rootDir }) {
       },
     },
     {
+      files: ['addons/**/*.test.{ts,tsx}'],
+      rules: { '@typescript-eslint/no-restricted-imports': ['error', addonTestImportRestrictions] },
+    },
+    {
       // Mock data and the mock login (password = username) must never reach a production bundle.
       // Tests, the test helpers and the dev:mock entry are the only shell code allowed to use them.
       files: ['apps/shell/src/**/*.{ts,tsx}'],
@@ -242,6 +267,10 @@ export function importBoundaries({ rootDir }) {
               {
                 group: ['@oakestra/*/src', '@oakestra/*/src/**'],
                 message: 'Import packages by their public entry points.',
+              },
+              {
+                group: ['@oakestra/dashboard-sdk/testing'],
+                message: 'The SDK test helpers are for tests only.',
               },
               {
                 group: ['@oakestra/mocks', '@oakestra/mocks/*'],

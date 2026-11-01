@@ -77,6 +77,36 @@ test.describe('addon runtime', () => {
     await expect(button).toHaveCSS('background-color', 'oklch(0.49 0.064 230)');
   });
 
+  test('addon utilities are prefixed and cannot override shell classes', async ({ page }) => {
+    await page.goto('/addons/example');
+    await expect(page.getByTestId('example-banner')).toBeVisible();
+
+    // The addon stylesheet loads after the shell's in the same layer. An unprefixed utility in it
+    // (say `.hidden`) would beat the shell's responsive classes, so every class selector it
+    // contains must carry the addon prefix.
+    const unprefixed = await page.evaluate(() => {
+      const selectors: string[] = [];
+      const collect = (rules: CSSRuleList) => {
+        for (const rule of rules) {
+          if (rule instanceof CSSStyleRule) selectors.push(rule.selectorText);
+          if ('cssRules' in rule) collect((rule as CSSGroupingRule).cssRules);
+        }
+      };
+      for (const sheet of document.styleSheets) {
+        if (sheet.href?.includes('/addon-assets/example/')) collect(sheet.cssRules);
+      }
+      if (selectors.length === 0) return 'no stylesheet from /addon-assets/example/ found';
+      // Any class selector not starting with the prefix counts, including `.dark\:hidden`, `.-mt-2`
+      // and `.\[mask-type\:alpha\]`. Only the bare `.dark` is allowed: it is the shell's theme
+      // class that the `dark:` variant refers to.
+      const unprefixedClass = /(^|[^\w\\-])\.(?!ex\\:)(?!dark(?![\w\\-]))/;
+      return selectors.filter((selector) => unprefixedClass.test(selector));
+    });
+    expect(unprefixed).toEqual([]);
+
+    await expect(page.getByTestId('nav-overview-overview')).toBeVisible();
+  });
+
   test('a contribution that throws only breaks its own slot', async ({ page }) => {
     await page.addInitScript(() => window.localStorage.setItem('oakestra.example.throw', '1'));
     await page.goto('/');
@@ -114,6 +144,36 @@ test.describe('addon runtime', () => {
     // The addon's settings live on its own page, not on the shell's Settings page.
     await page.getByTestId('nav-example-main-settings').click();
     await expect(page.getByTestId('example-settings')).toBeVisible();
+  });
+
+  test('breadcrumbs show the addon label and the crumbs of its routes', async ({ page }) => {
+    await page.goto('/addons/example/about');
+    await expect(page.getByTestId('example-about')).toBeVisible();
+    const breadcrumbs = page.getByTestId('breadcrumbs');
+    await expect(breadcrumbs).toHaveText('HomeExampleAbout');
+
+    await breadcrumbs.getByRole('link', { name: 'Example' }).click();
+    await expect(page).toHaveURL(/\/addons\/example$/);
+    await expect(page.getByTestId('example-banner')).toBeVisible();
+    await expect(breadcrumbs).toHaveText('HomeExample');
+
+    await page.getByRole('link', { name: 'Open a nested page' }).click();
+    await expect(page.getByTestId('example-details')).toHaveText('Item 42');
+    await expect(breadcrumbs).toHaveText('HomeExampleDetails');
+  });
+
+  test.describe('as a user without the Admin role', () => {
+    test.use({ loggedInAs: 'alice' });
+
+    test('the role-restricted settings route shows the shell 403 page', async ({ page }) => {
+      await page.goto('/addons/example/settings');
+      await expect(page.getByRole('heading', { name: 'Access denied' })).toBeVisible();
+      await expect(page.getByTestId('example-settings')).toHaveCount(0);
+      // Only the page is replaced: the addon's nav entry and the breadcrumbs stay.
+      await expect(page.getByTestId('nav-example-main')).toBeVisible();
+      await expect(page.getByTestId('nav-example-main-settings')).toHaveCount(0);
+      await expect(page.getByTestId('breadcrumbs')).toHaveText('HomeExampleSettings');
+    });
   });
 
   test('a hard refresh on a nested addon route is served by the shell', async ({ page }) => {

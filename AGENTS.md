@@ -9,17 +9,25 @@ architecture; read it before changing anything under `apps/shell/src/core/addons
 - `apps/shell`: the host. `src/core/*` is the platform (config, auth, API client, query client,
   theme, extension registry, addon runtime), `src/features/<name>` are built-in feature modules,
   `src/app` wires them together, `src/test` holds the test helpers.
-- `packages/dashboard-sdk`: the public, semver'd contract addons build against.
+- `packages/dashboard-sdk`: the public, semver'd contract addons build against. Entries: the root,
+  `./federation` (Node only, loaded from vite configs) and `./testing` (test only: `renderInHost`,
+  `createTestHost`, `TestHostProvider`, `createMockApi`, `createNotifyRecorder`; not in
+  `sharedDeps`, `@testing-library/react` is an optional peer; it must import the contexts from
+  `./context` so dist keeps one `createContext`).
 - `packages/ui`: shadcn components, composites (`DataTable`, `EmptyState`, `PageHeader`,
   `ConfirmDialog`) and Tailwind v4 theme, shared as a singleton.
 - `packages/api`: typed system-manager client: committed spec snapshot (`specs/`), generated
   `paths` (`src/generated/`, never edit), Zod models and endpoint groups (`createOakestraApi`).
 - `packages/mocks` (private): MSW handlers plus an in-memory backend seeded from sanitized real
   responses. Used by unit tests, `pnpm dev:mock` and `tools/mock-system-manager`.
-- `addons/example`: reference addon and e2e fixture.
+- `addons/example`: reference addon and e2e fixture, with its own vitest setup showing the testing
+  entry.
 - `tools/mock-addons-manager`: one server mocking the addons-manager, the marketplace-manager and
   `GET /api/v1/ui-addons` (see "Mock addons manager"), with a `/__test` control API.
 - `tools/mock-system-manager`: the `@oakestra/mocks` backend served over HTTP for the e2e stack.
+- `tools/package-checks`: `pnpm api:check` / `pnpm api:update` (API Extractor reports, one per
+  public entry, in `packages/*/api-report/`) and `pnpm pack:check` (packs the three public
+  packages and builds a copy of `addons/example` outside the workspace against the tarballs).
 - `e2e`: Playwright suite against `docker-compose.dev.yml`.
 - `docs`: documentation for people, linked from `README.md`: the demo walkthrough (`demo.md`) and
   the addon developer guide (`addons/`). Keep `docs/addons/` in sync with changes to the SDK,
@@ -36,15 +44,20 @@ docker compose -f docker-compose.dev.yml up --build -d
 pnpm e2e
 ```
 
-CI (`.github/workflows/ci.yml`) runs the same four commands and the Storybook build, then the e2e
-suite against the compose stack. Pushing a `v*.*.*` or `alpha-v*.*.*` tag publishes the shell image to `ghcr.io/oakestra/dashboard`
+When the public types of `@oakestra/dashboard-sdk`, `@oakestra/ui` or `@oakestra/api` change, run
+`pnpm api:update` and commit the reports: they make every public API change visible in review.
+
+CI (`.github/workflows/ci.yml`) runs the same four commands, `pnpm api:check`, `pnpm pack:check`
+and the Storybook build, then the e2e suite against the compose stack. Pushing a `v*.*.*` or `alpha-v*.*.*` tag publishes the shell image to `ghcr.io/oakestra/dashboard`
 (`release-image.yml`; alpha tags do not move `latest`).
 
 Changesets are set up (`.changeset/config.json` lists the private packages as ignored) but not used
 yet: nothing has been released, so whatever is in the repo at the first publish is the baseline. Do
 not add changesets until then. From the first publish on, add one (`pnpm changeset`) for any change
 to `@oakestra/dashboard-sdk`, `@oakestra/ui` or `@oakestra/api`; `pnpm version-packages` applies
-pending ones. Npm publishing is not wired up yet.
+pending ones. The three packages build to `dist/` with tsdown (`pnpm build`, and `prepack`);
+inside the repo `exports` stay on `src/`, and `publishConfig.exports` points them at `dist/` when
+packing. No publish workflow exists yet.
 
 Running the shell locally:
 
@@ -82,7 +95,17 @@ backends in the browser (installs settle after 3s; `/ui-addons` stays empty).
   sections are added to `GeneralSettingsPage` directly.
 - Addon routes are rendered by `AddonRouteHost` at `/addons/:addonId/*` with `useRoutes`, never
   patched into the data router. Addon routes therefore have no loaders; addons fetch with
-  TanStack Query and namespace keys with `addonQueryKey`.
+  TanStack Query and namespace keys with `addonQueryKey`, and build links with `useAddonPath()`
+  (each argument is one encoded segment), never by concatenating `basePath`.
+- `roles` on an addon route is enforced by a `RoleGate` (`core/addons/addon-routes.tsx`); a
+  parent's roles guard its children. A denied route renders the app's `ForbiddenPage`, passed to
+  `AddonRouteHost` as its `forbidden` prop because `core` cannot import `app`. `FORBIDDEN_MESSAGE`
+  in `core/auth/guards.ts` is the 403 text shared with `requireRole`.
+- Addon breadcrumbs: the `addons/:addonId/*` route has the id `ADDON_PAGE_ROUTE_ID`, and
+  `Breadcrumbs` expands it with `useAddonCrumbs` (the definition's `label`, or the id while it is
+  loading, failed or unlabeled, then the `crumb` of each matched addon route, from `matchRoutes` on
+  the same cached route objects the host renders). Do not give that route a `handle.crumb` or
+  publish crumbs from the host.
 - Every loaded addon definition is validated with Zod before registration. Anything the shell
   would later crash on must be rejected there, turning the addon into a `failed` entry.
 
@@ -119,7 +142,8 @@ features/<name>/
   matching path is highlighted, so a parent and its sub-item are never active together.
 - **Data:** components get the API with `useOakestraApi()` from the SDK, exactly like addons, and
   never build URLs. Responses are already parsed by `@oakestra/api` models; failures are
-  `ApiError`s with a readable `message` (use `describeError()` from `core/api/errors`).
+  `ApiError`s with a readable `message` (use `describeError()` from `core/api/errors`, a
+  re-export of the one in `@oakestra/api`, which the SDK also exports for addons).
 - **Query keys:** one factory per feature, rooted at the feature id, and `queryOptions` factories
   that pages, prefetches and tests share. Another feature's keys are imported through its
   `index.ts` only, with one exception: a dependency-free `features/<name>/keys.ts` holding the key
@@ -187,7 +211,9 @@ in `@oakestra/ui` instead.
 subpath export, not the root index. Every page loads the root module, because it is an eager
 Module Federation singleton. A subpath needs a `src/<name>.ts` entry, an `exports` entry in
 `packages/ui/package.json`, a `sharedDeps` entry in `packages/dashboard-sdk/src/federation.ts` and
-a `!@oakestra/ui/<name>` exception in the addon import restrictions of `packages/eslint-config`.
+a `!@oakestra/ui/<name>` exception in the addon import restrictions of `packages/eslint-config`,
+plus the entry in `packages/ui/tsdown.config.ts` and `publishConfig.exports`; `pnpm api:update`
+then creates its report.
 Each is then a separate lazily fetched chunk, shared with addons. Subpath chunks bundle their own
 copy of small stateless pieces (`cn`, `Button`, `Table`), which is harmless.
 
@@ -280,6 +306,9 @@ in `data-table.tsx`); the v8 `useReactTable` API does not exist there.
   own copy of the router contexts, which addons (sharing only `react-router`) would not see.
 - `federation.ts` is loaded by Node from `vite.config.ts`, so it imports nothing browser-only and
   uses explicit `.ts` extensions on relative imports.
+- The `@oakestra/ui` ranges in `sharedDeps` are `^` plus the ui version resolved from the
+  consuming project (`resolveUiVersion`), falling back to `UI_VERSION_FALLBACK` with a warning.
+  `federation.test.ts` keeps the fallback equal to `packages/ui/package.json`: bump both together.
 - The shell entry is `main.tsx` -> `import('./bootstrap')`. That async boundary is required; keep
   `main.tsx` free of other imports.
 - Dev-only code (the addon override) sits behind `import.meta.env.DEV` so it is compiled out.
@@ -293,6 +322,14 @@ The shell imports `@oakestra/ui/styles.css` once (preflight, token values, compo
 Addons import only `tailwindcss/theme.css`, `tailwindcss/utilities.css` and `@oakestra/ui/theme.css`
 (see `addons/example/src/addon.css`). `theme.css` holds only the `@theme inline` mapping, never
 values, so the shell stays the one owner of the variables.
+
+Addon utilities carry a per-addon Tailwind prefix (`prefix(ex)` on the theme import, classes like
+`ex:flex ex:md:hidden`, lowercase letters only). The addon stylesheet loads after the shell's in
+the same layer, so an unprefixed `.hidden` in it (Tailwind also scans comments) would beat the
+shell's responsive classes and hide the sidebar. A lower cascade layer for addons was rejected: the
+shell's base utilities would then beat the addon's own variants on addon elements. Every class in
+addon code and in doc samples gets the prefix, including `className` passed to `@oakestra/ui`
+components; an e2e test checks the example's CSS has no unprefixed class selector.
 
 To add a shadcn component: run `pnpm dlx shadcn@4 add <name>` in `packages/ui`, rewrite its
 `@oakestra/ui/...` and `cn` imports to relative paths, drop any `next-themes` usage, and export it
@@ -317,6 +354,8 @@ covered by `packages/eslint-config/boundaries.test.js`:
 
 - `addons/*` import only their own files, `@oakestra/dashboard-sdk`, `@oakestra/ui` and types from
   `@oakestra/api`. Addons ship as separate containers; anything else would not exist at runtime.
+  `@oakestra/dashboard-sdk/testing` is allowed in addon `*.test.ts(x)` only, never in addon
+  runtime code or shell production code.
 - `features/*` use `core`, the shared `src/components` and `src/lib`, the packages and their own files; another feature only via its
   `index.ts`. `core` never imports features.
 - `packages/ui` never imports the SDK, and the SDK never imports the shell or `ui` sources. The
@@ -371,6 +410,11 @@ covered by `packages/eslint-config/boundaries.test.js`:
   `onUnhandledRequest`), and `msw/vite` serves the worker script in `dev:mock` mode.
 - `packages/api`, `packages/mocks` and `tools/*` run under plain Node (type stripping): relative
   imports need explicit `.ts` extensions and only erasable TypeScript syntax is allowed.
+- tsdown 0.23 (rolldown, like Vite 8) builds the public packages unbundled, one file per source
+  file. API Extractor 7.60 bundles TS 6.0.3. The package tsconfigs set `stableTypeOrdering`,
+  otherwise TS 6 prints inferred unions in varying order and the API reports flap.
+- `@types/geojson` is a dependency (not a devDependency) of `@oakestra/ui` because `map.d.ts`
+  references it.
 
 ## Backend quirks (system-manager)
 
@@ -449,7 +493,7 @@ and `POST /__test/reset` (keeps the delays).
 
 `features/addon-manager` (Admin only, nav "Addons") has two real routes under `/addon-manager`:
 `installed` (DataTable, detail sheet, disable then remove, "Dashboard UI" column from the addon
-registry, plus a section for registry UIs without an installed record such as dev overrides) and
+registry showing `addonLabel(entry)`, the definition's `label` once loaded, plus a section for registry UIs without an installed record such as dev overrides) and
 `marketplace` (card grid, install, register, delete a definition). `/addon-manager` and the old
 `/settings/addons` redirect to `installed`; the prefix is not `/addons` because `/addons/:addonId/*`
 belongs to addon pages. The installed query polls every 2.5s while an addon is installing or

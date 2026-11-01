@@ -10,11 +10,19 @@ import {
 import { Fragment } from 'react';
 import { Link, useMatches } from 'react-router';
 
-import { crumbOf } from '../../core/router/route-handle';
+import { ADDON_PAGE_ROUTE_ID, useAddonCrumbs } from '../../core/addons/addon-crumbs';
+import { crumbOf, type Crumb } from '../../core/router/route-handle';
 
-/** One crumb per matched route that declares `handle.crumb`; the last one is the current page. */
+/**
+ * One crumb per matched route that declares `handle.crumb`, with the addon page route expanded
+ * into the addon's own trail. The last one is the current page.
+ */
 export function Breadcrumbs() {
-  const crumbs = useMatches().flatMap((match) => {
+  const matches = useMatches();
+  const addonMatch = matches.find((match) => match.id === ADDON_PAGE_ROUTE_ID);
+  const addonCrumbs = useAddonCrumbs(addonMatch);
+  const crumbs = matches.flatMap((match): Crumb[] => {
+    if (match === addonMatch) return addonCrumbs;
     const label = crumbOf(match);
     return label ? [{ id: match.id, label, to: match.pathname }] : [];
   });

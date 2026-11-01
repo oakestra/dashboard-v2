@@ -287,12 +287,14 @@ describe('<InstalledPage>', () => {
         name: 'local-dev',
         version: '0.0.1',
         state: 'loaded',
-        definition: { id: 'local-dev' },
+        definition: { id: 'local-dev', label: 'Local dev' },
       });
     });
 
     const row = await screen.findByTestId('unmatched-ui-local-dev');
     expect(row).toHaveTextContent('0.0.1');
+    // The UI's own label, with the addon name it was registered under.
+    expect(row).toHaveTextContent('Local devlocal-dev');
     expect(screen.queryByTestId('unmatched-ui-example')).not.toBeInTheDocument();
   });
 

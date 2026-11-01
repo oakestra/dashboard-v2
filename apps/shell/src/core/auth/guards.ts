@@ -23,6 +23,8 @@ export async function requireAuth({ context, request }: LoaderFunctionArgs): Pro
   throw redirect(loginPath(url.pathname + url.search));
 }
 
+export const FORBIDDEN_MESSAGE = 'You do not have permission to view this page.';
+
 /**
  * Loader for pages limited to some roles. Users without any of them get a 403 error page; the nav
  * should not have offered the link in the first place.
@@ -32,7 +34,7 @@ export function requireRole(...roles: Role[]): LoaderFunction {
     await requireAuth(args);
     const user = args.context.get(appRouterContext).auth.store.getState().user;
     if (!hasAnyRole(user, roles)) {
-      throw data('You do not have permission to view this page.', { status: 403 });
+      throw data(FORBIDDEN_MESSAGE, { status: 403 });
     }
     return null;
   };

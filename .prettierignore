@@ -9,3 +9,4 @@ e2e/playwright-report/
 README.md
 packages/api/specs/
 packages/api/src/generated/
+packages/*/api-report/

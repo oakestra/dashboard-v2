@@ -1,4 +1,4 @@
-import { useContext, useMemo } from 'react';
+import { useCallback, useContext, useMemo } from 'react';
 
 import {
   AddonContext,
@@ -62,6 +62,29 @@ export function useAddonContext(): AddonContextValue {
 
 export function useAddonBasePath(): string {
   return useAddonContext().basePath;
+}
+
+/**
+ * Returns a function that builds absolute paths below the addon's base path:
+ * `addonPath('details', id)` is `/addons/<id>/details/<encoded id>`, `addonPath()` the base path.
+ *
+ * Every argument is one path segment and gets URI-encoded, so ids containing `/`, `?` or spaces
+ * stay a single segment and `useParams()` returns them unchanged. Pass `'a', 'b'`, not `'a/b'`.
+ * Empty segments are skipped.
+ */
+export function useAddonPath(): (...segments: readonly (string | number)[]) => string {
+  const basePath = useAddonBasePath();
+  return useCallback(
+    (...segments) =>
+      [
+        basePath,
+        ...segments
+          .map(String)
+          .filter((segment) => segment !== '')
+          .map(encodeURIComponent),
+      ].join('/'),
+    [basePath],
+  );
 }
 
 /**

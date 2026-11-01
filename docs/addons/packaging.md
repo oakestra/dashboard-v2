@@ -88,8 +88,13 @@ on the page.
 | `react-router`                                                                              | `^8.0.0`                       |
 | `@tanstack/react-query`                                                                     | `^5.0.0`                       |
 | `@oakestra/dashboard-sdk`                                                                   | `^0.1.0` (`^` + `SDK_VERSION`) |
-| `@oakestra/ui`                                                                              | `^0.1.0`                       |
+| `@oakestra/ui`                                                                              | `^0.1.0` (`^` + ui version)    |
 | `@oakestra/ui/chart`, `@oakestra/ui/data-table`, `@oakestra/ui/command`, `@oakestra/ui/map` | `^0.1.0`                       |
+
+The `@oakestra/ui` range is `^` plus the version of the `@oakestra/ui` your addon resolves at
+build time (from the project that runs `vite`), so it follows the ui copy you compile against. If
+that package cannot be resolved, a built-in constant is used. Below 1.0.0 a caret allows patch
+releases only: `^0.1.0` does not include `0.2.0`.
 
 Subpath imports such as `react/jsx-runtime` and `react-dom/client` are shared automatically with
 the settings of their package.
@@ -109,11 +114,7 @@ Addons use Tailwind CSS v4 and the dashboard's design tokens. This is
 `addons/example/src/addon.css`:
 
 ```css
-/*
- * Addons generate utilities only. The shell already loaded Tailwind's reset and the token values;
- * a second preflight here would reset the shell's styles after the addon loads.
- */
-@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/theme.css' layer(theme) prefix(ex);
 @import 'tailwindcss/utilities.css' layer(utilities);
 @import '@oakestra/ui/theme.css';
 
@@ -124,13 +125,28 @@ Line by line:
 
 | Line                        | Why                                                                                                                                                                                                       |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tailwindcss/theme.css`     | Tailwind's default theme (spacing, colors such as `fuchsia-600`), so utilities resolve.                                                                                                                   |
+| `tailwindcss/theme.css`     | Tailwind's default theme (spacing, colors such as `fuchsia-600`), so utilities resolve. `prefix(ex)` puts your addon's prefix on every class, see below.                                                  |
 | `tailwindcss/utilities.css` | Generates the utility classes your files use.                                                                                                                                                             |
 | `@oakestra/ui/theme.css`    | Maps the dashboard tokens (`bg-primary`, `text-muted-foreground`, `border`, chart colors, ...) to the shell's CSS variables, and defines the `dark:` variant. It contains no values; the shell owns them. |
 | `@source './'`              | Tells Tailwind to scan the folder of `addon.css` (your `src/`) for class names.                                                                                                                           |
 
 Rules:
 
+- **Prefix every class.** Write `ex:flex ex:gap-2 ex:md:hidden`, not `flex gap-2 md:hidden`. The
+  prefix comes first, before variants. Your stylesheet loads after the shell's, in the same
+  cascade layer, so an unprefixed utility it generates (say `.hidden`, picked up from a comment)
+  would win over the shell's own responsive classes and could hide the sidebar. With a prefix,
+  your classes never match shell markup and the shell's never match yours. Unprefixed classes in
+  your code are not generated at all, so a missing prefix shows up right away as missing styles.
+- **Pick a prefix of your own.** Tailwind accepts lowercase letters only (`a-z`, no digits or
+  hyphens). Two addons with the same prefix can override each other's responsive classes, so use
+  something unique: your addon name without the other characters is a safe choice (`ex` is the
+  example's).
+- **Prefix classes you pass to `@oakestra/ui` components too** (`<Button className="ex:w-full">`).
+  `cn()` keeps both your class and the component's conflicting one (it does not know your
+  prefix); yours usually wins because your stylesheet loads after the shell's. It still loses to
+  more specific component classes such as `has-[>svg]:px-3`. An unprefixed class there only works
+  if the shell happens to generate it.
 - **No preflight.** Do not `@import 'tailwindcss'` (it includes the preflight reset) and do not
   import `@oakestra/ui/styles.css`. The shell already loaded both. A second reset, loaded later,
   overrides the shell's styles on the whole page.
@@ -139,9 +155,8 @@ Rules:
 - **Use tokens for colors** (`bg-card`, `text-muted-foreground`, `border-border`, ...). They
   follow light and dark mode automatically. Dark mode is the `.dark` class on the page; use the
   `dark:` variant for anything extra.
-- **Your CSS is global.** Tailwind utilities are harmless, because the shell generates the same
-  ones. Any custom CSS you write applies to the whole dashboard, so keep it rare and scope it to
-  your own class names.
+- **Your CSS is global.** Prefixed utilities are safe, but any custom CSS you write applies to the
+  whole dashboard, so keep it rare and scope it to your own class names.
 - Classes used inside `@oakestra/ui` components are generated by the shell, not by your build.
 - If you keep class names outside `src/`, add another `@source` line for them.
 
@@ -413,7 +428,8 @@ are `no-cache`).
 
 ## Current limitation: addons live in this repository
 
-`@oakestra/dashboard-sdk` and `@oakestra/ui` are **not published to npm yet**. Addons therefore
+`@oakestra/dashboard-sdk`, `@oakestra/ui` and `@oakestra/api` are **not published to npm yet**.
+Addons therefore
 live in this monorepo under `addons/`, depend on them with `workspace:*`, and build from the
 repository root (see the Dockerfile above). `pnpm-workspace.yaml` already includes `addons/*`,
 so a new folder there becomes a workspace package after `pnpm install`.
@@ -421,5 +437,22 @@ so a new folder there becomes a workspace package after `pnpm install`.
 Running `pnpm lint`, `pnpm typecheck` and `pnpm build` at the root also checks and builds every
 addon.
 
-Once the packages are published, an addon can live in its own repository and depend on fixed
-versions instead.
+The packages are ready for that: each one builds to `dist/` (ES modules and type declarations),
+and CI copies `addons/example` out of the repository, installs the packed packages into it and
+runs its typecheck, tests and build (`pnpm pack:check`). Once they are on npm, an addon can live
+in its own repository:
+
+- Install `@oakestra/dashboard-sdk` and `@oakestra/ui` from npm, in the versions of the dashboard
+  you target. `@oakestra/api` comes with the SDK; add it yourself only if you import its types.
+- Install the peer dependencies as well: `react`, `react-dom`, `react-router`,
+  `@tanstack/react-query` and `tailwindcss`, plus `@testing-library/react` if your tests use
+  `@oakestra/dashboard-sdk/testing`.
+- `@oakestra/tsconfig` is internal to this repository and not published. Replace the `extends`
+  in `tsconfig.json` with the compiler options of `packages/tsconfig/base.json` and
+  `packages/tsconfig/react.json`.
+- The Dockerfile builds the addon from its own directory (`pnpm install --frozen-lockfile`, then
+  `pnpm build`) instead of filtering the workspace.
+
+`vite.config.ts`, `src/addon.css` and the code stay as they are: they import the same
+specifiers. To try this before the first release, `pnpm pack:check --dir <dir>` (an empty
+directory outside the repository) keeps such a copy, installed from the packed tarballs.

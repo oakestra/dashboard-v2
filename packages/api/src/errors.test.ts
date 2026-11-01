@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ApiError, isApiError, messageFromErrorBody } from './errors.ts';
+import { ApiError, describeError, isApiError, messageFromErrorBody } from './errors.ts';
 
 describe('messageFromErrorBody', () => {
   it.each([
@@ -57,5 +57,27 @@ describe('isApiError', () => {
     expect(isApiError(error)).toBe(true);
     expect(isApiError({ name: 'ApiError', status: 500 })).toBe(true);
     expect(isApiError(new Error('x'))).toBe(false);
+  });
+});
+
+describe('describeError', () => {
+  it('prefers the readable message of an ApiError, also from another module instance', () => {
+    const error = new ApiError('Not allowed.', {
+      kind: 'http',
+      status: 403,
+      method: 'GET',
+      path: '/a',
+    });
+    expect(describeError(error)).toBe('Not allowed.');
+    expect(describeError({ name: 'ApiError', status: 500, message: 'Backend down.' })).toBe(
+      'Backend down.',
+    );
+  });
+
+  it('falls back to the error message, then to a generic sentence', () => {
+    expect(describeError(new Error('Boom'))).toBe('Boom');
+    expect(describeError(new Error(''))).toBe('Something went wrong.');
+    expect(describeError('a string')).toBe('Something went wrong.');
+    expect(describeError(undefined)).toBe('Something went wrong.');
   });
 });

@@ -27,10 +27,14 @@ export {
   type HostContextValue,
 } from './context';
 export { hasAnyRole } from './permissions';
+// A runtime re-export, unlike the type-only uses of @oakestra/api elsewhere in the SDK. Addons
+// still never bundle it: they get the SDK, and with it this function, from the shell's singleton.
+export { describeError } from '@oakestra/api';
 export {
   addonQueryKey,
   useAddonBasePath,
   useAddonContext,
+  useAddonPath,
   useCurrentUser,
   useHostContext,
   useNotify,

@@ -1,6 +1,7 @@
 import {
   addonQueryKey,
   useAddonBasePath,
+  useAddonPath,
   useCurrentUser,
   useNotify,
 } from '@oakestra/dashboard-sdk';
@@ -15,18 +16,19 @@ export function ExamplePage() {
   const user = useCurrentUser();
   const notify = useNotify();
   const basePath = useAddonBasePath();
+  const addonPath = useAddonPath();
   const greeting = useQuery({
     queryKey: addonQueryKey('example', 'greeting'),
     queryFn: () => Promise.resolve(`Hello ${user?.username ?? 'stranger'}`),
   });
 
   return (
-    <div className="space-y-6">
+    <div className="ex:space-y-6">
       {/* The fuchsia banner is what the e2e suite checks computed styles on: the shell never uses
           this color, so it only renders correctly if the addon's own CSS was loaded. */}
       <div
         data-testid="example-banner"
-        className="rounded-lg border-l-4 border-fuchsia-600 bg-fuchsia-50 px-4 py-3 text-fuchsia-900"
+        className="ex:rounded-lg ex:border-l-4 ex:border-fuchsia-600 ex:bg-fuchsia-50 ex:px-4 ex:py-3 ex:text-fuchsia-900"
       >
         Example addon page, rendered by a remote loaded at runtime.
       </div>
@@ -35,10 +37,10 @@ export function ExamplePage() {
           <CardTitle data-testid="example-greeting">{greeting.data ?? '...'}</CardTitle>
           <CardDescription>Mounted at {basePath}</CardDescription>
         </CardHeader>
-        <CardContent className="flex gap-2">
+        <CardContent className="ex:flex ex:gap-2">
           <Button onClick={() => notify.success('Hello from the example addon')}>Notify</Button>
           <Button asChild variant="outline">
-            <Link to={`${basePath}/details/42`}>Open a nested page</Link>
+            <Link to={addonPath('details', 42)}>Open a nested page</Link>
           </Button>
         </CardContent>
       </Card>

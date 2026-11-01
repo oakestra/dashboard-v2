@@ -1,7 +1,18 @@
 {
   "extends": "@oakestra/tsconfig/react.json",
-  "include": ["src", "stories", ".storybook/*.ts", ".storybook/*.tsx", "vitest.config.ts"],
+  "include": [
+    "src",
+    "stories",
+    ".storybook/*.ts",
+    ".storybook/*.tsx",
+    "vitest.config.ts",
+    "tsdown.config.ts"
+  ],
   "compilerOptions": {
+    // The published declarations are emitted with this config (tsdown). Without it TypeScript 6
+    // prints inferred unions in the order it happened to create their members, which differs
+    // between runs and would make the committed API reports flap.
+    "stableTypeOrdering": true,
     "types": ["vite/client", "@testing-library/jest-dom/vitest"]
   }
 }

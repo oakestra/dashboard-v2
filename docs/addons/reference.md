@@ -4,6 +4,9 @@ This page describes `@oakestra/dashboard-sdk` (version `0.1.0`) as an addon auth
 source is in `packages/dashboard-sdk/src`. For a guided introduction, start with the
 [tutorial](README.md#tutorial-build-your-first-addon-ui).
 
+Class names in the examples carry the example addon's Tailwind prefix (`ex:text-sm`). Use your
+addon's own prefix, see [styling](packaging.md#styling).
+
 Contents:
 
 - [The addon definition](#the-addon-definition)
@@ -30,20 +33,23 @@ completion. The object must be the **default export** of the module your build e
 
 ### `AddonDefinition`
 
-| Field           | Type                    | Description                                                                                      |
-| --------------- | ----------------------- | ------------------------------------------------------------------------------------------------ |
-| `id`            | `string`                | Required. Must equal the addon name in `/ui-addons`, which is also the Module Federation `name`. |
-| `routes`        | `readonly AddonRoute[]` | Optional. Pages below `/addons/<id>/`.                                                           |
-| `contributions` | `Contributions`         | Optional. Items per extension point, see [Extension points](#extension-points).                  |
+| Field           | Type                    | Description                                                                                                                             |
+| --------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`            | `string`                | Required. Must equal the addon name in `/ui-addons`, which is also the Module Federation `name`.                                        |
+| `label`         | `string`                | Optional. Human-readable name of the addon's UI, shown as the first breadcrumb of its pages and in the addon manager. Defaults to `id`. |
+| `routes`        | `readonly AddonRoute[]` | Optional. Pages below `/addons/<id>/`.                                                                                                  |
+| `contributions` | `Contributions`         | Optional. Items per extension point, see [Extension points](#extension-points).                                                         |
 
 ### `AddonRoute`
 
-| Field       | Type                    | Description                                                                             |
-| ----------- | ----------------------- | --------------------------------------------------------------------------------------- |
-| `path`      | `string`                | Relative to the addon base path. Must not start with `/`. Omit it for an index route.   |
-| `index`     | `boolean`               | `true` for the index route (the page at `/addons/<id>`).                                |
-| `Component` | `ComponentType`         | The page component.                                                                     |
-| `children`  | `readonly AddonRoute[]` | Nested routes. The parent component renders them with `<Outlet />` from `react-router`. |
+| Field       | Type                    | Description                                                                                                                                                         |
+| ----------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`      | `string`                | Relative to the addon base path. Must not start with `/`. Omit it for an index route.                                                                               |
+| `index`     | `boolean`               | `true` for the index route (the page at `/addons/<id>`).                                                                                                            |
+| `Component` | `ComponentType`         | The page component. Without one, the route renders its children.                                                                                                    |
+| `children`  | `readonly AddonRoute[]` | Nested routes. The parent component renders them with `<Outlet />` from `react-router`.                                                                             |
+| `roles`     | `readonly Role[]`       | Optional. Only users with at least one of these roles may open the route and its children; others get the shell's "Access denied" page. Empty or missing: everyone. |
+| `crumb`     | `string`                | Optional. Breadcrumb label of the route, linking to its matched path. Routes without one add no breadcrumb.                                                         |
 
 How addon routes behave:
 
@@ -56,8 +62,13 @@ How addon routes behave:
   from the shell.
 - `React.lazy()` components work as `Component`: the shell wraps addon pages in a `Suspense`
   boundary (it shows a skeleton while loading).
-- The breadcrumb shows only the addon id. Nested addon pages do not add breadcrumb entries.
-- Routes have no role check. See [Users and roles](#users-and-roles).
+- The breadcrumb trail is `Home`, then the addon's `label` (its `id` while the addon is loading,
+  failed or has no label), then the `crumb` of every matched route that has one, outermost first.
+  On `/addons/flops/jobs/7` with the routes below, that is `Home > FLOps > Jobs > Job`.
+- `roles` on a route is checked by the shell against the current user. It also guards every child
+  route, and a child can restrict further. A denied page shows the same "Access denied" page as
+  core pages; the sidebar and breadcrumbs stay. For a denied child, it appears in the parent's
+  `<Outlet />`. See [Users and roles](#users-and-roles).
 
 Nested routes and a lazy page:
 
@@ -68,8 +79,8 @@ import { Outlet, useParams } from 'react-router';
 
 function JobsLayout() {
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Jobs</h1>
+    <div className="ex:space-y-4">
+      <h1 className="ex:text-2xl ex:font-semibold">Jobs</h1>
       <Outlet />
     </div>
   );
@@ -89,17 +100,20 @@ const ReportsPage = lazy(() => import('./ReportsPage'));
 
 export default defineAddon({
   id: 'flops',
+  label: 'FLOps',
   routes: [
     { index: true, Component: JobList },
     {
       path: 'jobs',
+      crumb: 'Jobs',
       Component: JobsLayout,
       children: [
         { index: true, Component: JobList },
-        { path: ':jobId', Component: JobDetail },
+        { path: ':jobId', crumb: 'Job', Component: JobDetail },
       ],
     },
-    { path: 'reports', Component: ReportsPage },
+    // Administrators only, including a URL typed by hand.
+    { path: 'reports', crumb: 'Reports', roles: ['Admin'], Component: ReportsPage },
   ],
 });
 ```
@@ -110,9 +124,10 @@ The shell validates every loaded definition with Zod before it registers anythin
 fails, the addon gets the state `failed` and nothing of it is shown. It is rejected when:
 
 - the module has no default export object,
-- `id` is missing, empty or differs from the name in `/ui-addons`,
+- `id` is missing, empty or differs from the name in `/ui-addons`, or `label` is set but empty,
 - a route `path` starts with `/`, or `Component` is not a React component (a function or a
   `memo`/`lazy`/`forwardRef` object; a JSX element is not caught here and fails when it renders),
+- a route's `roles` is not a list of strings, or its `crumb` is not a non-empty string,
 - a contribution misses a required field (`id`, `label`/`title`, `component`, `path`), or a field
   has the wrong type (for example `order` that is not a finite number),
 - two contributions **to the same extension point** have the same `id`,
@@ -234,7 +249,7 @@ give it its own page and link it as a sub-item:
 ```tsx
 routes: [
   { index: true, Component: OverviewPage },
-  { path: 'settings', Component: SettingsPage },
+  { path: 'settings', crumb: 'Settings', roles: ['Admin'], Component: SettingsPage },
 ],
 contributions: {
   'nav.items': [
@@ -252,9 +267,9 @@ contributions: {
 },
 ```
 
-`roles` only hides the link. If the settings are for administrators, the page has to check
-`usePermissions()` itself (see [Users and roles](#users-and-roles)). The example addon's
-`src/pages/SettingsPage.tsx` shows the pattern.
+`roles` on the sub-item only hides the link; `roles` on the route is what keeps everyone else off
+the page, including a URL typed by hand (see [Users and roles](#users-and-roles)). The example
+addon's settings page is set up this way.
 
 Earlier development builds had a `settings.panels` point for cards on the shell's Settings page.
 It no longer exists. An addon that still declares it loads; the shell logs `ignoring unknown
@@ -314,12 +329,12 @@ import {
 import { ServerIcon } from 'lucide-react';
 
 function ClusterLoad({ clusterId }: ClusterContext) {
-  return <p className="text-sm">Load of cluster {clusterId}</p>;
+  return <p className="ex:text-sm">Load of cluster {clusterId}</p>;
 }
 
 function ServiceLogs({ applicationId, serviceId }: ServiceContext) {
   return (
-    <p className="text-sm">
+    <p className="ex:text-sm">
       Logs of service {serviceId} in application {applicationId}
     </p>
   );
@@ -365,9 +380,11 @@ All hooks read React context that the shell provides. They only work inside the 
 | `useNotify()`                      | `Notify`                       | anywhere in the shell               | Toasts: `success`, `info`, `warning`, `error`.                                                                    |
 | `useAddonContext()`                | `AddonContextValue`            | addon pages and addon contributions | `{ addonId, version, basePath }` of the addon the component belongs to.                                           |
 | `useAddonBasePath()`               | `string`                       | addon pages and addon contributions | `basePath` from `useAddonContext()`, for example `/addons/insights`.                                              |
+| `useAddonPath()`                   | `(...segments) => string`      | addon pages and addon contributions | Builds links below the base path, see below.                                                                      |
 | `useHostContext()`                 | `HostContextValue`             | anywhere in the shell               | Everything at once: `{ sdkVersion, user, api, notify }`. `sdkVersion` is the shell's SDK version.                 |
 | `addonQueryKey(addonId, ...parts)` | `['addon', addonId, ...parts]` | anywhere (plain function)           | Query key prefix, see [Data fetching rules](#data-fetching-rules).                                                |
 | `hasAnyRole(user, roles)`          | `boolean`                      | anywhere (plain function)           | `true` if `roles` is empty or missing, or the user has one of them. `false` for `null` user and a non-empty list. |
+| `describeError(error)`             | `string`                       | anywhere (plain function)           | A sentence for a toast or an inline error, see [The API client](#the-api-client).                                 |
 
 Errors:
 
@@ -377,6 +394,21 @@ the Oakestra dashboard shell...` when it finds no shell. Inside the shell this m
 - `useAddonContext()` throws `useAddonContext() can only be used inside UI contributed by an
 addon.` outside addon pages and contributions. Nav item icons are rendered outside this
   context, so do not call it in an icon.
+
+`useAddonPath()` returns `addonPath(...segments: (string | number)[]): string`. Every argument is
+one path segment and is URI-encoded, so ids with `/`, `?` or spaces stay one segment and
+`useParams()` returns them unchanged. Empty segments are skipped, and `addonPath()` is the base
+path itself:
+
+```tsx
+const addonPath = useAddonPath();
+addonPath(); // '/addons/insights'
+addonPath('clusters', cluster._id); // '/addons/insights/clusters/<id>'
+addonPath('jobs', 'a/b'); // '/addons/insights/jobs/a%2Fb'
+```
+
+Pass segments separately (`addonPath('a', 'b')`): `addonPath('a/b')` is a single segment
+`a%2Fb`.
 
 `Notify` methods take `(message: string, options?: { description?: string; id?: string })`. A
 toast with the same `id` replaces the previous one instead of adding a new one.
@@ -403,7 +435,7 @@ export function AboutPage() {
   const permissions = usePermissions();
 
   return (
-    <dl className="grid grid-cols-2 gap-1 text-sm">
+    <dl className="ex:grid ex:grid-cols-2 ex:gap-1 ex:text-sm">
       <dt>Addon</dt>
       <dd>
         {addonId} {version} at {basePath}
@@ -461,6 +493,15 @@ Read methods accept `{ signal }` as their last argument. Pass the `signal` from 
 The backend checks permissions. A call the user may not make fails with `ApiError` (status 401 or
 403), so handle errors in the UI.
 
+`describeError(error: unknown): string` from the SDK turns whatever a query or mutation threw into
+a sentence to show: the readable message of an `ApiError`, the `message` of any other `Error`, or
+`Something went wrong.`. The shell's own pages use the same function.
+
+```tsx
+const clusters = useQuery({ ... });
+if (clusters.isError) return <p role="alert">{describeError(clusters.error)}</p>;
+```
+
 Types: the example addon does not depend on `@oakestra/api`. You can derive the data types from
 the client:
 
@@ -516,25 +557,30 @@ may add later.
 | Mechanism                          | Scope                                        |
 | ---------------------------------- | -------------------------------------------- |
 | `roles` on a contribution          | Hides nav items and sub-items, widgets, tabs |
+| `roles` on a route                 | Shows "Access denied" instead of the page    |
 | `visible(context, user)`           | Hides widgets and tabs (not nav items)       |
 | `usePermissions()`, `hasAnyRole()` | Your own checks in components                |
 
-Addon **routes have no role check**. Hiding a nav item does not protect its page. Check
-`usePermissions()` in the page:
+Hiding a nav item does not protect its page: the URL still works. Put the same `roles` on the
+route, and the shell shows its "Access denied" page (the one core pages use) to everyone else.
+A route's `roles` also cover its children:
 
 ```tsx
-import { usePermissions } from '@oakestra/dashboard-sdk';
-import { EmptyState } from '@oakestra/ui';
-
-export function AdminOnlyPage() {
-  const permissions = usePermissions();
-  // Nav item `roles` only hides the link. The URL still works, so the page checks as well.
-  if (!permissions.hasRole('Admin')) {
-    return <EmptyState title="Not allowed" description="This page is for administrators." />;
-  }
-  return <p>Admin tools</p>;
-}
+routes: [
+  { index: true, Component: OverviewPage },
+  // Both `admin/users` and `admin/audit` are for administrators only.
+  {
+    path: 'admin',
+    roles: ['Admin'],
+    children: [
+      { path: 'users', Component: UsersPage },
+      { path: 'audit', Component: AuditPage },
+    ],
+  },
+],
 ```
+
+For finer checks inside a page (a button only admins see), use `usePermissions()`.
 
 UI checks are for a good user experience. The real permission check happens in the backend.
 
@@ -645,7 +691,7 @@ const config = { jobs: { label: 'Jobs', color: 'var(--chart-1)' } } satisfies Ch
 
 export function JobsChart({ data }: { data: { day: string; jobs: number }[] }) {
   return (
-    <ChartContainer config={config} className="h-48 w-full">
+    <ChartContainer config={config} className="ex:h-48 ex:w-full">
       <LineChart data={data}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="day" />
@@ -664,6 +710,53 @@ loading, `isLoading` shows skeleton rows, `onRowClick` makes rows clickable, col
 Never import a deep path such as `@oakestra/ui/src/components/button`. It would bypass the
 shared singleton and give your addon a second copy of the component and its React context.
 
+## Testing
+
+`@oakestra/dashboard-sdk/testing` renders a component with everything the shell provides, so
+components that use the SDK hooks can be tested without the shell. It is for test files only: lint
+rejects it in addon runtime code, and it is not a shared dependency. It needs
+`@testing-library/react` (an optional peer dependency of the SDK) and `@testing-library/dom`
+(its peer), `vitest` or any other runner,
+and a DOM environment such as jsdom.
+
+```tsx
+import { renderInHost } from '@oakestra/dashboard-sdk/testing';
+import { screen } from '@testing-library/react';
+
+it('shows the cluster names', async () => {
+  const { notify } = renderInHost(<ClusterList />, {
+    user: { username: 'alice', roles: ['Application_Provider'] }, // null renders logged out
+    api: { clusters: { list: async () => [{ cluster_name: 'edge-1' }] as Cluster[] } },
+    addon: { addonId: 'example' }, // basePath becomes /addons/example
+    route: '/addons/example/details/1', // optional, defaults to the base path
+    path: '/addons/example/details/:itemId', // optional route pattern, makes useParams() work
+  });
+  expect(await screen.findByText('edge-1')).toBeTruthy();
+  expect(notify.calls).toEqual([]);
+});
+```
+
+`renderInHost` wraps the element in a fresh `QueryClient` (retries off), a memory data router
+(so `useMatches`, `useBlocker` and friends work like in the shell),
+`HostContext` and `AddonContext`, and returns the Testing Library result plus `user`, `api`,
+`notify`, `queryClient`, `host` and `addon`.
+
+- `path` is the route pattern the element is rendered under. Without it the element matches `*`
+  and `useParams()` is empty. `route` and `path` are read once; navigate with links or `useNavigate`
+  afterwards.
+- `api` is a partial `OakestraApi`: give only the endpoints the component calls. Calling anything
+  else throws `api.<group>.<method>() was called, but this test did not mock it`.
+- `notify` records its calls (`notify.calls`, `{ level, message, options? }`; `notify.clear()`),
+  independent of the test runner.
+
+For your own render function there are smaller pieces: `createTestHost(options)` returns the
+context values (`host`, `addon`, `user`, `api`, `notify`, `route`), `TestHostProvider` renders them
+(`<TestHostProvider testHost={...} queryClient={...}>`), and `createMockApi(partial)`,
+`createNotifyRecorder()` and `createTestQueryClient()` build the parts.
+
+The example addon has a working setup: `addons/example/vitest.config.ts` (jsdom, `css: false` so
+the Tailwind entry is not processed) and `src/widgets/widgets.test.tsx`.
+
 ## What an addon may import
 
 Addons are built and deployed separately from the shell, so they can only use what exists at
@@ -674,6 +767,7 @@ runtime. The ESLint config (`packages/eslint-config/index.js`) enforces this for
 | ----------------------------------------------------------------------- | --------------------------------------- |
 | Your own files (inside `addons/<your-addon>/`)                          | Yes                                     |
 | `@oakestra/dashboard-sdk`, `@oakestra/dashboard-sdk/federation`         | Yes (`/federation` in `vite.config.ts`) |
+| `@oakestra/dashboard-sdk/testing`                                       | Test files only (`*.test.ts(x)`)        |
 | `@oakestra/ui`, `@oakestra/ui/chart`, `/data-table`, `/command`, `/map` | Yes                                     |
 | `@oakestra/ui/theme.css` (and other `@oakestra/ui/*.css`)               | Yes                                     |
 | `@oakestra/api`                                                         | **Types only** (`import type`)          |

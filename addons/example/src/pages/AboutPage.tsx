@@ -12,12 +12,12 @@ export function AboutPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-          <dt className="text-muted-foreground">Addon</dt>
+        <dl className="ex:grid ex:grid-cols-[auto_1fr] ex:gap-x-4 ex:gap-y-1 ex:text-sm">
+          <dt className="ex:text-muted-foreground">Addon</dt>
           <dd>{addonId}</dd>
-          <dt className="text-muted-foreground">Version</dt>
+          <dt className="ex:text-muted-foreground">Version</dt>
           <dd>{version}</dd>
-          <dt className="text-muted-foreground">Base path</dt>
+          <dt className="ex:text-muted-foreground">Base path</dt>
           <dd>{basePath}</dd>
         </dl>
       </CardContent>

@@ -139,7 +139,8 @@ All code in this tutorial type-checks against the SDK in this repository.
 - A clone of this repository. Run `pnpm install` once at the root.
 
 Addons currently live inside this monorepo, under `addons/`. The SDK and `@oakestra/ui` are not
-published to npm yet (see [packaging](packaging.md#current-limitation-addons-live-in-this-repository)).
+published to npm yet. Once they are, an addon can live in its own repository instead (see
+[packaging](packaging.md#current-limitation-addons-live-in-this-repository)).
 
 ### Step 1: copy the example addon
 
@@ -184,6 +185,10 @@ Also change these, so the new addon can run next to the example:
 - `vite.config.ts`: `const port = 5175;` (the example uses 5174).
 - `index.html`: the override hint text (`?addon-override=insights=http://localhost:5175/mf-manifest.json`).
 - The comment in `vite.config.ts` that mentions `/addon-assets/example/`.
+- `src/addon.css`: `prefix(ex)` becomes `prefix(ins)`, and every `ex:` in the class names under
+  `src/` becomes `ins:` (classes with the old prefix are no longer generated). Every class in your
+  addon starts with this prefix (`ins:text-sm`), so the shell's styles and yours never collide.
+  Lowercase letters only; see [styling](packaging.md#styling).
 
 Then run `pnpm install` at the repository root, so pnpm links the new workspace package and adds
 it to `pnpm-lock.yaml`. The Docker build uses `--frozen-lockfile`, so commit the updated lockfile.
@@ -218,10 +223,13 @@ import { SettingsPage } from './pages/SettingsPage';
 
 export default defineAddon({
   id: ADDON_ID,
+  // Shown as the first breadcrumb of the addon's pages, e.g. "Home > Insights > Cluster".
+  label: 'Insights',
   routes: [
     { index: true, Component: ClustersPage },
-    { path: 'clusters/:clusterId', Component: ClusterPage },
-    { path: 'settings', Component: SettingsPage },
+    { path: 'clusters/:clusterId', crumb: 'Cluster', Component: ClusterPage },
+    // Administrators only, see step 6.
+    { path: 'settings', crumb: 'Settings', roles: ['Admin'], Component: SettingsPage },
   ],
   contributions: {
     'nav.items': [
@@ -292,15 +300,19 @@ Pass `signal` to the API call. TanStack Query then cancels requests that are no 
 
 Routes are relative to the addon's base path `/addons/insights`. The index route
 (`{ index: true }`) is `/addons/insights`, `clusters/:clusterId` is
-`/addons/insights/clusters/<id>`. Use `useAddonBasePath()` to build links, never hard-code
-`/addons/insights`.
+`/addons/insights/clusters/<id>`. Build links with `useAddonPath()`, never hard-code
+`/addons/insights`: `addonPath('clusters', id)` returns `/addons/insights/clusters/<id>` with the id
+URI-encoded, `addonPath()` the base path.
+
+The breadcrumbs above the page show the addon's `label` followed by the `crumb` of the matched
+route: `Home > Insights` here, `Home > Insights > Cluster` on the detail page.
 
 `useNotify()` shows a toast. This page lists the clusters in a `DataTable` and shows a toast after
 a manual refresh:
 
 ```tsx
 // src/pages/ClustersPage.tsx
-import { useAddonBasePath, useNotify, useOakestraApi } from '@oakestra/dashboard-sdk';
+import { useAddonPath, useNotify, useOakestraApi } from '@oakestra/dashboard-sdk';
 import { Button, EmptyState, PageHeader, StatusBadge } from '@oakestra/ui';
 import { createDataTableColumnHelper, DataTable } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
@@ -332,7 +344,7 @@ const columns = column.columns([
 export function ClustersPage() {
   const api = useOakestraApi();
   const notify = useNotify();
-  const basePath = useAddonBasePath();
+  const addonPath = useAddonPath();
   const navigate = useNavigate();
   const clusters = useQuery(clustersQuery(api));
 
@@ -352,7 +364,7 @@ export function ClustersPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="ins:space-y-6">
       <PageHeader
         title="Insights"
         description="Clusters known to this Oakestra root orchestrator."
@@ -368,7 +380,7 @@ export function ClustersPage() {
         data={clusters.data}
         isLoading={clusters.isPending}
         getRowId={(cluster) => cluster._id}
-        onRowClick={(cluster) => void navigate(`${basePath}/clusters/${cluster._id}`)}
+        onRowClick={(cluster) => void navigate(addonPath('clusters', cluster._id))}
       />
     </div>
   );
@@ -379,7 +391,8 @@ export function ClustersPage() {
 components live in subpaths so that pages which do not use them do not download them (see the
 [reference](reference.md#oakestraui)).
 
-API errors have a readable `message`, so `error.message` can go straight into the UI.
+API errors have a readable `message`, so `error.message` can go straight into the UI. For errors
+of unknown origin, `describeError(error)` from the SDK returns a sentence in every case.
 
 ### Step 6: add a nested page and restrict by role
 
@@ -388,7 +401,7 @@ to the shell's own cluster page, but only to users who are allowed to open that 
 
 ```tsx
 // src/pages/ClusterPage.tsx
-import { useAddonBasePath, useOakestraApi, usePermissions } from '@oakestra/dashboard-sdk';
+import { useAddonPath, useOakestraApi, usePermissions } from '@oakestra/dashboard-sdk';
 import { Button, PageHeader, SectionCard, Skeleton } from '@oakestra/ui';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
@@ -398,31 +411,31 @@ import { clustersQuery } from '../queries';
 export function ClusterPage() {
   const { clusterId } = useParams();
   const api = useOakestraApi();
-  const basePath = useAddonBasePath();
+  const addonPath = useAddonPath();
   const permissions = usePermissions();
   // Same query as the list page, so this usually renders from the cache.
   const clusters = useQuery(clustersQuery(api));
   const cluster = clusters.data?.find((item) => item._id === clusterId);
 
-  if (clusters.isPending) return <Skeleton className="h-40 w-full" />;
-  if (clusters.isError) return <p className="text-destructive">{clusters.error.message}</p>;
+  if (clusters.isPending) return <Skeleton className="ins:h-40 ins:w-full" />;
+  if (clusters.isError) return <p className="ins:text-destructive">{clusters.error.message}</p>;
   if (!cluster) return <p>Cluster {clusterId} was not found.</p>;
 
   return (
-    <div className="space-y-6">
+    <div className="ins:space-y-6">
       <PageHeader
         title={cluster.cluster_name}
         actions={
           <Button asChild variant="outline">
-            <Link to={basePath}>Back</Link>
+            <Link to={addonPath()}>Back</Link>
           </Button>
         }
       />
       <SectionCard title="Details">
-        <p className="text-sm">Active nodes: {cluster.active_nodes ?? 0}</p>
+        <p className="ins:text-sm">Active nodes: {cluster.active_nodes ?? 0}</p>
         {/* The shell's cluster page is only open to these roles. */}
         {permissions.hasAnyRole(['Admin', 'Infrastructure_Provider']) ? (
-          <Link className="text-sm underline" to={`/infrastructure/clusters/${cluster._id}`}>
+          <Link className="ins:text-sm ins:underline" to={`/infrastructure/clusters/${cluster._id}`}>
             Open in Infrastructure
           </Link>
         ) : null}
@@ -432,38 +445,33 @@ export function ClusterPage() {
 }
 ```
 
-There are three ways to restrict by role:
+There are four ways to restrict by role:
 
-| Tool                                      | Effect                                                                         |
-| ----------------------------------------- | ------------------------------------------------------------------------------ |
-| `roles: [...]` on a contribution          | The shell hides the nav item, sub-item, widget or tab from users without a role in the list |
-| `visible: (context, user) => boolean`     | Extra check for widgets and tabs, with the slot context and the user           |
-| `usePermissions()` inside a component     | Your own checks, for example inside a page                                     |
+| Tool                                  | Effect                                                                                      |
+| ------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `roles: [...]` on a contribution      | The shell hides the nav item, sub-item, widget or tab from users without a role in the list |
+| `roles: [...]` on a route             | The shell shows its "Access denied" page instead of the route and its children              |
+| `visible: (context, user) => boolean` | Extra check for widgets and tabs, with the slot context and the user                        |
+| `usePermissions()` inside a component | Your own checks, for example inside a page                                                  |
 
-Important: `roles` on a nav item only hides the link. **Addon routes have no role check.** Any
-logged-in user who types the URL sees the page. If a page is for administrators only, check
-`usePermissions()` in the page. Real security comes from the backend: the API answers with the
-user's own permissions anyway.
+Important: `roles` on a nav item only hides the link. Any logged-in user who types the URL still
+reaches the page, unless the route has `roles` too. Real security comes from the backend: the API
+answers with the user's own permissions anyway.
 
-The "Settings" sub-item from step 3 has `roles: ['Admin']`, so other users do not see the link.
-The page checks the role as well, because the URL still works for them:
+The "Settings" sub-item from step 3 has `roles: ['Admin']`, so other users do not see the link,
+and its route has the same `roles`, so they cannot open the page either. The page itself needs no
+check:
 
 ```tsx
 // src/pages/SettingsPage.tsx
-import { usePermissions } from '@oakestra/dashboard-sdk';
-import { EmptyState, PageHeader, SectionCard } from '@oakestra/ui';
-import { LockIcon } from 'lucide-react';
+import { PageHeader, SectionCard } from '@oakestra/ui';
 
 export function SettingsPage() {
-  const permissions = usePermissions();
-  if (!permissions.hasRole('Admin')) {
-    return <EmptyState icon={<LockIcon />} title="Administrators only" />;
-  }
   return (
-    <div className="space-y-6">
+    <div className="ins:space-y-6">
       <PageHeader title="Insights settings" />
       <SectionCard title="General">
-        <p className="text-sm">The insights addon has no settings yet.</p>
+        <p className="ins:text-sm">The insights addon has no settings yet.</p>
       </SectionCard>
     </div>
   );
@@ -494,13 +502,13 @@ export function ActiveClustersWidget() {
     queryFn: ({ signal }) => api.clusters.listActive({ signal }),
   });
 
-  if (active.isPending) return <p className="text-muted-foreground text-sm">Loading...</p>;
-  if (active.isError) return <p className="text-destructive text-sm">{active.error.message}</p>;
+  if (active.isPending) return <p className="ins:text-muted-foreground ins:text-sm">Loading...</p>;
+  if (active.isError) return <p className="ins:text-destructive ins:text-sm">{active.error.message}</p>;
   return (
-    <p className="text-sm">
-      <span className="text-2xl font-semibold tabular-nums">{active.data.length}</span> clusters
+    <p className="ins:text-sm">
+      <span className="ins:text-2xl ins:font-semibold ins:tabular-nums">{active.data.length}</span> clusters
       reported in recently.{' '}
-      <Link className="underline" to={basePath}>
+      <Link className="ins:underline" to={basePath}>
         Details
       </Link>
     </p>
@@ -530,10 +538,10 @@ export function ApplicationInsightsTab({ applicationId }: ApplicationContext) {
     queryFn: ({ signal }) => api.services.listForApplication(applicationId, { signal }),
   });
 
-  if (services.isPending) return <p className="text-sm">Loading...</p>;
-  if (services.isError) return <p className="text-destructive text-sm">{services.error.message}</p>;
+  if (services.isPending) return <p className="ins:text-sm">Loading...</p>;
+  if (services.isError) return <p className="ins:text-destructive ins:text-sm">{services.error.message}</p>;
   return (
-    <ul className="list-inside list-disc text-sm">
+    <ul className="ins:list-inside ins:list-disc ins:text-sm">
       {services.data.map((service) => (
         <li key={service._id}>
           {service.microservice_name}: {service.instance_list.length} instance(s)
@@ -608,8 +616,11 @@ contract, the marketplace definition and how to test the production build locall
 - Never bundle your own React, React Router, TanStack Query or SDK. The build config already
   takes them from the shell.
 - Prefix every query key with `addonQueryKey(ADDON_ID, ...)`.
-- Build links from `useAddonBasePath()`.
+- Build links with `useAddonPath()` (or from `useAddonBasePath()`), never hard-code
+  `/addons/<id>`.
+- Put `roles` on the route, not only on its nav item, for pages limited to some roles.
 - Do not import full Tailwind or `@oakestra/ui/styles.css` in your addon. Use the `addon.css` from
-  the example.
+  the example with your own prefix, and prefix every class (`ex:flex`), see
+  [styling](packaging.md#styling).
 - Addon code is public: anyone who can reach the dashboard can download it from
   `/addon-assets/<name>/`, even before logging in. Never put secrets in it.

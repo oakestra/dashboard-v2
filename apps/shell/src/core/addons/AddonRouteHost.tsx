@@ -1,14 +1,13 @@
-import type { AddonRoute } from '@oakestra/dashboard-sdk';
 import { Button, EmptyState, Skeleton } from '@oakestra/ui';
 import { CloudOffIcon, PowerOffIcon, PuzzleIcon, TriangleAlertIcon } from 'lucide-react';
-import { useContext, useMemo, useSyncExternalStore, type ReactNode } from 'react';
-import { Link, useParams, useRoutes, type RouteObject } from 'react-router';
+import { useMemo, type ReactNode } from 'react';
+import { Link, useParams, useRoutes } from 'react-router';
 import { useStore } from 'zustand';
 
-import { AuthSessionContext } from '../auth/auth-context';
 import { ContributionBoundary } from '../extensions/ContributionBoundary';
-import type { AddonEntry } from './addon-registry';
+import { addonLabel, type AddonEntry } from './addon-registry';
 import { useAddonRegistry } from './addon-registry-context';
+import { AddonForbiddenContext, addonRouteObjects, useSessionUser } from './addon-routes';
 import { addonBasePath } from './ui-addons';
 
 /**
@@ -16,7 +15,7 @@ import { addonBasePath } from './ui-addons';
  * patched into the data router, so addons can come and go at runtime and every state (still
  * loading, failed, removed) gets a proper page instead of a router 404.
  */
-export function AddonRouteHost() {
+export function AddonRouteHost({ forbidden }: { forbidden: ReactNode }) {
   const { addonId = '' } = useParams();
   const registry = useAddonRegistry();
   const entry = useStore(registry, (state) => state.entries[addonId]);
@@ -80,17 +79,21 @@ export function AddonRouteHost() {
         </AddonMessage>
       );
     case 'loaded':
-      return <LoadedAddonRoutes key={`${entry.name}@${entry.version}`} entry={entry} />;
+      return (
+        <AddonForbiddenContext.Provider value={forbidden}>
+          <LoadedAddonRoutes key={`${entry.name}@${entry.version}`} entry={entry} />
+        </AddonForbiddenContext.Provider>
+      );
   }
 }
 
 function LoadedAddonRoutes({ entry }: { entry: Extract<AddonEntry, { state: 'loaded' }> }) {
   const routes = useMemo(
     () => [
-      ...(entry.definition.routes ?? []).map(toRouteObject),
-      { path: '*', Component: AddonPageNotFound },
+      ...addonRouteObjects(entry.definition.routes ?? []),
+      { path: '*', element: <AddonPageNotFound label={addonLabel(entry)} /> },
     ],
-    [entry.definition],
+    [entry],
   );
   const element = useRoutes(routes);
 
@@ -110,20 +113,10 @@ function LoadedAddonRoutes({ entry }: { entry: Extract<AddonEntry, { state: 'loa
   );
 }
 
-function toRouteObject(route: AddonRoute): RouteObject {
-  const children = route.children?.map(toRouteObject);
-  if (route.index) return { index: true, Component: route.Component ?? null };
-  return {
-    ...(route.path !== undefined ? { path: route.path } : {}),
-    Component: route.Component ?? null,
-    ...(children ? { children } : {}),
-  };
-}
-
-function AddonPageNotFound() {
+function AddonPageNotFound({ label }: { label: string }) {
   return (
     <AddonMessage title="Page not found" testId="addon-page-not-found" icon={<PuzzleIcon />}>
-      This addon has no page at this address.
+      {label} has no page at this address.
     </AddonMessage>
   );
 }
@@ -134,17 +127,6 @@ function AddonPageSkeleton() {
       <Skeleton className="h-8 w-64" />
       <Skeleton className="h-40 w-full" />
     </div>
-  );
-}
-
-const noSubscription = () => () => {};
-
-/** Reads the session straight from its store, so the host also renders without an auth provider. */
-function useIsAdmin(): boolean {
-  const session = useContext(AuthSessionContext);
-  return useSyncExternalStore(
-    session ? session.store.subscribe : noSubscription,
-    () => session?.store.getState().user?.roles.includes('Admin') ?? false,
   );
 }
 
@@ -162,7 +144,7 @@ function AddonMessage({
   detail?: string;
   children?: ReactNode;
 }) {
-  const isAdmin = useIsAdmin();
+  const isAdmin = useSessionUser()?.roles.includes('Admin') ?? false;
   return (
     <EmptyState
       data-testid={testId}

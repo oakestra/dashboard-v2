@@ -1,6 +1,7 @@
-import { screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { setEntry, type AddonRegistry } from '../../core/addons/addon-registry';
 import type { CoreModule } from '../../core/modules';
 import { renderApp } from '../../test/render';
 
@@ -159,6 +160,95 @@ describe('<AppLayout>', () => {
       expect(parent).not.toBeNull();
       const links = within(parent as HTMLElement).getAllByRole('link');
       expect(links.map((link) => link.textContent)).toEqual(['Tools', 'Overview', 'Logs', 'Audit']);
+    });
+  });
+
+  describe('addon pages', () => {
+    const Page = ({ name }: { name: string }) => <h1>{name}</h1>;
+
+    function loadFlops(registry: AddonRegistry) {
+      act(() =>
+        setEntry(registry, {
+          name: 'flops',
+          version: '1.0.0',
+          sdk: '^0.1.0',
+          entry: 'http://x/mf-manifest.json',
+          state: 'loaded',
+          definition: {
+            id: 'flops',
+            label: 'FLOps',
+            routes: [
+              { index: true, Component: () => <Page name="FLOps home" /> },
+              {
+                path: 'jobs',
+                crumb: 'Jobs',
+                children: [
+                  { index: true, Component: () => <Page name="All jobs" /> },
+                  { path: ':jobId', crumb: 'Job', Component: () => <Page name="One job" /> },
+                ],
+              },
+              {
+                path: 'settings',
+                crumb: 'Settings',
+                roles: ['Admin'],
+                Component: () => <Page name="FLOps settings" />,
+              },
+            ],
+          },
+        }),
+      );
+    }
+
+    it('shows the addon id until the addon is loaded, then its label and route crumbs', async () => {
+      const { services, user } = renderApp({ modules, route: '/addons/flops/jobs/7' });
+
+      const breadcrumbs = await screen.findByTestId('breadcrumbs');
+      expect(breadcrumbs).toHaveTextContent(/^Homeflops$/);
+
+      loadFlops(services.addons);
+      expect(await screen.findByRole('heading', { name: 'One job' })).toBeVisible();
+      expect(breadcrumbs).toHaveTextContent(/^HomeFLOpsJobsJob$/);
+      expect(within(breadcrumbs).getByRole('link', { name: 'FLOps' })).toHaveAttribute(
+        'href',
+        '/addons/flops',
+      );
+      expect(within(breadcrumbs).getByRole('link', { name: 'Jobs' })).toHaveAttribute(
+        'href',
+        '/addons/flops/jobs',
+      );
+
+      await user.click(within(breadcrumbs).getByRole('link', { name: 'Jobs' }));
+      expect(await screen.findByRole('heading', { name: 'All jobs' })).toBeVisible();
+      expect(screen.getByTestId('breadcrumbs')).toHaveTextContent(/^HomeFLOpsJobs$/);
+
+      await user.click(
+        within(screen.getByTestId('breadcrumbs')).getByRole('link', { name: 'FLOps' }),
+      );
+      expect(await screen.findByRole('heading', { name: 'FLOps home' })).toBeVisible();
+      expect(screen.getByTestId('breadcrumbs')).toHaveTextContent(/^HomeFLOps$/);
+    });
+
+    it('denies a role-restricted addon route with the shell 403 page', async () => {
+      const { services } = renderApp({
+        modules,
+        route: '/addons/flops/settings',
+        user: { username: 'alice' },
+      });
+      loadFlops(services.addons);
+
+      expect(await screen.findByRole('heading', { name: 'Access denied' })).toBeVisible();
+      expect(screen.getByTestId('route-error')).toHaveTextContent(
+        'You do not have permission to view this page.',
+      );
+      expect(screen.queryByRole('heading', { name: 'FLOps settings' })).not.toBeInTheDocument();
+      // The 403 replaces only the addon page: the layout and its breadcrumb trail stay.
+      expect(screen.getByTestId('breadcrumbs')).toHaveTextContent(/^HomeFLOpsSettings$/);
+    });
+
+    it('opens a role-restricted addon route for users holding the role', async () => {
+      const { services } = renderApp({ modules, route: '/addons/flops/settings' });
+      loadFlops(services.addons);
+      expect(await screen.findByRole('heading', { name: 'FLOps settings' })).toBeVisible();
     });
   });
 });

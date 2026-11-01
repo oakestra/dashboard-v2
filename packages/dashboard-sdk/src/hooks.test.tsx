@@ -6,6 +6,7 @@ import { AddonContext, HostContext, type HostContextValue } from './context';
 import {
   addonQueryKey,
   useAddonBasePath,
+  useAddonPath,
   useCurrentUser,
   useHostContext,
   usePermissions,
@@ -66,18 +67,36 @@ describe('host hooks', () => {
   });
 });
 
+function withAddon({ children }: { children: ReactNode }) {
+  return (
+    <AddonContext.Provider
+      value={{ addonId: 'flops', version: '1.0.0', basePath: '/addons/flops' }}
+    >
+      {children}
+    </AddonContext.Provider>
+  );
+}
+
 describe('addon hooks', () => {
   it('read the base path from the addon context', () => {
-    const { result } = renderHook(() => useAddonBasePath(), {
-      wrapper: ({ children }) => (
-        <AddonContext.Provider
-          value={{ addonId: 'flops', version: '1.0.0', basePath: '/addons/flops' }}
-        >
-          {children}
-        </AddonContext.Provider>
-      ),
-    });
+    const { result } = renderHook(() => useAddonBasePath(), { wrapper: withAddon });
     expect(result.current).toBe('/addons/flops');
+  });
+
+  it('build paths below the base path with one encoded segment per argument', () => {
+    const { result } = renderHook(() => useAddonPath(), { wrapper: withAddon });
+    const addonPath = result.current;
+    expect(addonPath()).toBe('/addons/flops');
+    expect(addonPath('')).toBe('/addons/flops');
+    expect(addonPath('details', 42)).toBe('/addons/flops/details/42');
+    expect(addonPath('details', 'a/b c?d#e')).toBe('/addons/flops/details/a%2Fb%20c%3Fd%23e');
+  });
+
+  it('keep the path builder stable across renders', () => {
+    const { result, rerender } = renderHook(() => useAddonPath(), { wrapper: withAddon });
+    const first = result.current;
+    rerender();
+    expect(result.current).toBe(first);
   });
 
   it('namespace query keys by addon', () => {
