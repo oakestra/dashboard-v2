@@ -11,6 +11,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from '@oakestra/ui';
 import { LogOutIcon, MonitorIcon, MoonIcon, SunIcon, UserIcon } from 'lucide-react';
 import { Link } from 'react-router';
@@ -77,23 +80,27 @@ export function UserMenu() {
             {THEME_OPTIONS.map(({ value, label, icon: Icon }) => {
               const selected = theme.preference === value;
               return (
-                <DropdownMenuItem
-                  key={value}
-                  role="menuitemradio"
-                  aria-checked={selected}
-                  onSelect={(event) => {
-                    event.preventDefault();
-                    theme.setPreference(value);
-                  }}
-                  className={cn(
-                    'text-muted-foreground justify-center gap-1.5 px-1.5 py-1 text-xs',
-                    selected &&
-                      'bg-background text-foreground focus:bg-background focus:text-foreground shadow-sm',
-                  )}
-                >
-                  <Icon aria-hidden />
-                  {label}
-                </DropdownMenuItem>
+                <Tooltip key={value}>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuItem
+                      role="menuitemradio"
+                      aria-label={label}
+                      aria-checked={selected}
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        theme.setPreference(value);
+                      }}
+                      className={cn(
+                        'text-muted-foreground justify-center px-1.5 py-1.5',
+                        selected &&
+                          'bg-background text-foreground focus:bg-background focus:text-foreground shadow-sm',
+                      )}
+                    >
+                      <Icon aria-hidden />
+                    </DropdownMenuItem>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{label}</TooltipContent>
+                </Tooltip>
               );
             })}
           </div>
