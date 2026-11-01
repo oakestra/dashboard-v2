@@ -36,9 +36,11 @@ CI (`.github/workflows/ci.yml`) runs the same four commands and the Storybook bu
 suite against the compose stack. Pushing a `v*.*.*` or `alpha-v*.*.*` tag publishes the shell image to `ghcr.io/oakestra/dashboard`
 (`release-image.yml`; alpha tags do not move `latest`).
 
-Add a changeset (`pnpm changeset`) for any change to `@oakestra/dashboard-sdk`, `@oakestra/ui` or
-`@oakestra/api`; the private packages are ignored in `.changeset/config.json`. `pnpm version-packages`
-applies pending changesets. Npm publishing is not wired up yet.
+Changesets are set up (`.changeset/config.json` lists the private packages as ignored) but not used
+yet: nothing has been released, so whatever is in the repo at the first publish is the baseline. Do
+not add changesets until then. From the first publish on, add one (`pnpm changeset`) for any change
+to `@oakestra/dashboard-sdk`, `@oakestra/ui` or `@oakestra/api`; `pnpm version-packages` applies
+pending ones. Npm publishing is not wired up yet.
 
 Running the shell locally:
 
