@@ -54,6 +54,22 @@ function jsonErrorLocation(text: string, error: unknown): string | undefined {
   return `line ${lines.length}, column ${lines[lines.length - 1]!.length + 1}`;
 }
 
+/**
+ * Zod words a missing field as "expected string, received undefined", which reads like a bug
+ * report to someone writing JSON by hand.
+ */
+export function formatIssue(issue: {
+  code: string;
+  message: string;
+  path: readonly PropertyKey[];
+}): string {
+  const path = formatPath(issue.path);
+  if (issue.code === 'invalid_type' && /received undefined$/.test(issue.message)) {
+    return path ? `${path} is required` : 'The definition is required';
+  }
+  return path ? `${path}: ${issue.message}` : issue.message;
+}
+
 type Parsed = { ok: true; input: RegisterAddonInput } | { ok: false; errors: string[] };
 
 function parseDefinition(text: string): Parsed {
@@ -71,10 +87,7 @@ function parseDefinition(text: string): Parsed {
   if (result.success) return { ok: true, input: json as RegisterAddonInput };
   return {
     ok: false,
-    errors: result.error.issues.map((issue) => {
-      const path = formatPath(issue.path);
-      return path ? `${path}: ${issue.message}` : issue.message;
-    }),
+    errors: result.error.issues.map(formatIssue),
   };
 }
 
@@ -122,9 +135,8 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
       <DialogHeader>
         <DialogTitle>Register an addon</DialogTitle>
         <DialogDescription>
-          Paste the addon definition as JSON or import a file. New definitions go through a review
-          first and show up in the marketplace once they are approved (until then they are
-          &quot;under review&quot;).
+          Paste an addon definition or import a JSON file. New definitions are reviewed before they
+          appear in the marketplace.
         </DialogDescription>
       </DialogHeader>
 
@@ -136,7 +148,33 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
         }}
       >
         <Field data-invalid={errors.length > 0 || undefined}>
-          <FieldLabel htmlFor="addon-definition">Definition (JSON)</FieldLabel>
+          <div className="flex items-center justify-between gap-2">
+            <FieldLabel htmlFor="addon-definition">Definition (JSON)</FieldLabel>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="application/json,.json"
+              className="sr-only"
+              aria-label="Import a definition file"
+              tabIndex={-1}
+              onChange={(event) => {
+                void importFile(event.target.files?.[0]);
+                // The same file can then be picked again after an edit.
+                event.target.value = '';
+              }}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              // The invalid Field turns all its text red; the import action is not part of the error.
+              className="text-foreground"
+              onClick={() => fileInput.current?.click()}
+            >
+              <UploadIcon aria-hidden />
+              Import JSON file
+            </Button>
+          </div>
           <Textarea
             id="addon-definition"
             value={text}
@@ -144,50 +182,37 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
             placeholder={PLACEHOLDER}
             rows={12}
             spellCheck={false}
-            className="font-mono text-xs"
+            // Fixed height: the shared Textarea grows with its content, which collapses to two
+            // lines when the placeholder goes away. Only the border signals invalid input, the
+            // JSON itself stays readable.
+            className="text-foreground field-sizing-fixed min-h-64 font-mono text-xs"
             aria-invalid={errors.length > 0 || undefined}
             aria-describedby="addon-definition-help"
           />
           <FieldDescription id="addon-definition-help">
-            Environment values are sent to the marketplace as entered. Use the <code>ui</code> block
-            (<code>{'{ "service", "sdk" }'}</code>) to ship a dashboard UI: the current backend does
-            not accept it yet and rejects such definitions until that change lands.
+            Environment values are stored in the marketplace as entered.
           </FieldDescription>
+          <details className="text-muted-foreground text-sm">
+            <summary className="cursor-pointer">Dashboard UI</summary>
+            <p className="mt-1">
+              Add a <code>ui</code> block (<code>{'{ "service", "sdk" }'}</code>) to ship a
+              dashboard UI. Marketplaces that do not support it yet reject such definitions.
+            </p>
+          </details>
           {errors.length > 0 ? (
             <FieldError data-testid="register-errors">
-              <ul className="list-inside list-disc">
-                {errors.map((error) => (
-                  <li key={error}>{error}</li>
-                ))}
-              </ul>
+              {errors.length === 1 ? (
+                errors[0]
+              ) : (
+                <ul className="list-inside list-disc">
+                  {errors.map((error) => (
+                    <li key={error}>{error}</li>
+                  ))}
+                </ul>
+              )}
             </FieldError>
           ) : null}
         </Field>
-
-        <div>
-          <input
-            ref={fileInput}
-            type="file"
-            accept="application/json,.json"
-            className="sr-only"
-            aria-label="Import a definition file"
-            tabIndex={-1}
-            onChange={(event) => {
-              void importFile(event.target.files?.[0]);
-              // The same file can then be picked again after an edit.
-              event.target.value = '';
-            }}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => fileInput.current?.click()}
-          >
-            <UploadIcon aria-hidden />
-            Import JSON file
-          </Button>
-        </div>
 
         {register.isError ? (
           <Alert variant="destructive" data-testid="register-error">

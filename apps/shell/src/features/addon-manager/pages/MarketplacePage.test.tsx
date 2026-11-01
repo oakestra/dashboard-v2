@@ -29,11 +29,14 @@ describe('<MarketplacePage>', () => {
 
     const example = await card('example');
     expect(within(example).getByText('Dashboard UI')).toBeVisible();
-    expect(
-      within(example).getByText('ghcr.io/oakestra/dashboard-addon-example:0.1.0'),
-    ).toBeVisible();
+    expect(within(example).getByText(/\d services?/)).toBeVisible();
     await waitFor(() => expect(within(example).getByText('Active')).toBeVisible());
-    expect(within(example).getByRole('button', { name: 'Install example' })).toBeDisabled();
+    // Installed addons offer Manage instead of a disabled Install button.
+    expect(within(example).queryByRole('button', { name: 'Install example' })).toBeNull();
+    expect(within(example).getByRole('link', { name: 'Manage example' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('/addon-manager/installed?addon='),
+    );
 
     const flops = await card('flops');
     expect(within(flops).queryByText('Dashboard UI')).not.toBeInTheDocument();
@@ -55,6 +58,8 @@ describe('<MarketplacePage>', () => {
     await user.clear(screen.getByRole('searchbox'));
     await user.type(screen.getByRole('searchbox'), 'zzz');
     expect(await screen.findByText('No addons match your search')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Clear search' }));
+    expect(await card('flops')).toBeVisible();
   });
 
   it('installs an addon, follows it to the installed tab and refreshes the addon UIs when active', async () => {
@@ -75,10 +80,13 @@ describe('<MarketplacePage>', () => {
 
   it('cannot install an addon twice', async () => {
     const { user } = renderMarketplace();
-    const button = await screen.findByRole('button', { name: 'Install example' });
-    await waitFor(() => expect(button).toBeDisabled());
-
-    await user.click(button);
+    await screen.findByRole('link', { name: 'Manage example' });
+    expect(screen.queryByRole('button', { name: 'Install example' })).toBeNull();
+    // A stale card could still be clicked on in the details dialog; the backend refuses it too.
+    await user.click(await screen.findByRole('button', { name: 'Details of example' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).queryByRole('button', { name: 'Install' })).toBeNull();
+    expect(within(dialog).getByRole('link', { name: 'Manage' })).toBeVisible();
 
     expect(mockAddons.state.installed.filter((a) => a.name === 'example')).toHaveLength(1);
   });
@@ -114,8 +122,7 @@ describe('<MarketplacePage>', () => {
     const { user } = renderMarketplace();
     await user.click(await screen.findByRole('button', { name: 'Register addon' }));
     const dialog = await screen.findByRole('dialog');
-    expect(dialog).toHaveTextContent('under review');
-    expect(dialog).toHaveTextContent('does not accept it yet');
+    expect(dialog).toHaveTextContent('reviewed before they appear');
 
     const input = within(dialog).getByLabelText('Definition (JSON)');
     await user.click(input);
@@ -257,9 +264,8 @@ describe('<MarketplacePage>', () => {
 
   it('deletes a definition after a warning that it is installed', async () => {
     const { user } = renderMarketplace();
-    await user.click(
-      await screen.findByRole('button', { name: 'Delete example from the marketplace' }),
-    );
+    await user.click(await screen.findByRole('button', { name: 'More actions for example' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Delete from marketplace' }));
     // The warning needs the installed list.
     const dialog = await screen.findByRole('alertdialog');
     await waitFor(() => expect(dialog).toHaveTextContent('It keeps running'));

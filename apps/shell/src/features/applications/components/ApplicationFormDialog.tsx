@@ -40,7 +40,8 @@ interface ApplicationFormDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Edits this application; creates a new one when omitted. */
   application?: Application;
-  onSaved?: () => void;
+  /** Gets the created application when creating (undefined when the response did not include it). */
+  onSaved?: (application?: Application) => void;
 }
 
 export function ApplicationFormDialog({
@@ -72,12 +73,21 @@ export function ApplicationFormDialog({
   }, [open, application, reset, resetMutation]);
 
   const onValid = (values: ApplicationFormValues) => {
-    const done = () => {
-      onOpenChange(false);
-      onSaved?.();
-    };
-    if (application) update.mutate(values, { onSuccess: done });
-    else create.mutate(values, { onSuccess: done });
+    if (application) {
+      update.mutate(values, {
+        onSuccess: () => {
+          onOpenChange(false);
+          onSaved?.();
+        },
+      });
+    } else {
+      create.mutate(values, {
+        onSuccess: (created) => {
+          onOpenChange(false);
+          onSaved?.(created);
+        },
+      });
+    }
   };
 
   const errors = form.formState.errors;
@@ -109,6 +119,7 @@ export function ApplicationFormDialog({
                 aria-invalid={!!errors.application_name}
                 {...form.register('application_name')}
               />
+              <FieldDescription>Letters and digits, up to 32 characters.</FieldDescription>
               <FieldError errors={[errors.application_name]} />
             </Field>
             <Field data-invalid={!!errors.application_namespace}>

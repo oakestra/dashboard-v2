@@ -2,6 +2,7 @@ import { http, HttpResponse } from '@oakestra/mocks';
 import type { SlaV2 } from '@oakestra/api';
 import type { Contributions } from '@oakestra/dashboard-sdk';
 import { screen, waitFor, within } from '@testing-library/react';
+import type { UserEvent } from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { mockServer, mockStore, TEST_API_URL } from '../../../test/msw';
@@ -10,6 +11,11 @@ import { applicationsModule } from '../../applications';
 
 const frontend = () => mockStore.data.services.find((s) => s.microservice_name === 'frontend')!;
 const base = () => `/applications/${frontend().applicationID}/services/${frontend()._id}`;
+
+async function chooseFromMenu(user: UserEvent, item: RegExp) {
+  await user.click(await screen.findByRole('button', { name: 'More actions' }));
+  await user.click(await screen.findByRole('menuitem', { name: item }));
+}
 
 function renderService(route = base(), extra: Contributions = {}) {
   return renderApp({
@@ -23,8 +29,9 @@ describe('<ServiceDetailPage>', () => {
     renderService();
 
     expect(await screen.findByRole('heading', { name: /frontend/ })).toBeVisible();
-    expect(screen.getAllByTestId('status-badge')[0]).toHaveTextContent('RUNNING');
+    expect(screen.getAllByTestId('status-badge')[0]).toHaveTextContent('Running');
     expect(screen.getByText('Requirements')).toBeVisible();
+    expect(screen.getAllByTestId('status-badge')[0]).toHaveAttribute('data-status', 'RUNNING');
     expect(screen.getByRole('link', { name: /Duplicate/ })).toHaveAttribute(
       'href',
       `${base()}/duplicate`,
@@ -47,7 +54,8 @@ describe('<ServiceDetailPage>', () => {
     await waitFor(() => expect(frontend().instance_list).toHaveLength(3));
     expect(await screen.findByRole('link', { name: 'Open instance 2' })).toBeVisible();
 
-    await user.click(screen.getByRole('button', { name: 'Undeploy instance 1' }));
+    await user.click(screen.getByRole('button', { name: 'Actions for instance 1' }));
+    await user.click(await screen.findByRole('menuitem', { name: /Undeploy/ }));
     const dialog = await screen.findByRole('alertdialog');
     await user.click(within(dialog).getByRole('button', { name: 'Undeploy' }));
 
@@ -59,10 +67,31 @@ describe('<ServiceDetailPage>', () => {
     );
   });
 
-  it('shows the raw service on the SLA tab', async () => {
+  it('shows the SLA on the JSON tab with environment values masked', async () => {
+    mockStore.data.services.find((s) => s.microservice_name === 'frontend')!.environment = [
+      'API_TOKEN=hunter2',
+    ];
     const { user } = renderService();
-    await user.click(await screen.findByRole('tab', { name: 'SLA' }));
+    await user.click(await screen.findByRole('tab', { name: 'JSON' }));
     expect(await screen.findByText(/"microservice_name": "frontend"/)).toBeVisible();
+    expect(document.body).toHaveTextContent('API_TOKEN=********');
+    expect(document.body).not.toHaveTextContent('hunter2');
+  });
+
+  it('shows environment keys but never their values on the overview', async () => {
+    frontend().environment = ['API_TOKEN=hunter2'];
+    renderService();
+    expect(await screen.findByTestId('environment-keys')).toHaveTextContent('API_TOKEN');
+    expect(document.body).not.toHaveTextContent('hunter2');
+  });
+
+  it('does not invite a second deploy while the scheduler works', async () => {
+    frontend().instance_list = [];
+    frontend().status = 'REQUESTED';
+    const { user } = renderService();
+    await user.click(await screen.findByRole('tab', { name: /Instances/ }));
+    expect(await screen.findByText('Waiting for the scheduler')).toBeVisible();
+    expect(screen.getByRole('button', { name: /Deploy instance/ })).toBeDisabled();
   });
 
   it('exports the SLA as a download', async () => {
@@ -75,7 +104,7 @@ describe('<ServiceDetailPage>', () => {
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     const { user } = renderService();
 
-    await user.click(await screen.findByRole('button', { name: /Export SLA/ }));
+    await chooseFromMenu(user, /Download SLA/);
 
     expect(click).toHaveBeenCalled();
     const sla = JSON.parse(await created[0]!.text()) as SlaV2;
@@ -113,7 +142,7 @@ describe('<ServiceDetailPage>', () => {
       ),
     );
     const { user, router } = renderService();
-    await user.click(await screen.findByRole('button', { name: /Delete/ }));
+    await chooseFromMenu(user, /Delete/);
     await user.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Delete' }),
     );
@@ -125,7 +154,7 @@ describe('<ServiceDetailPage>', () => {
   it('deletes the service and returns to the application', async () => {
     const applicationId = frontend().applicationID;
     const { user, router } = renderService();
-    await user.click(await screen.findByRole('button', { name: /Delete/ }));
+    await chooseFromMenu(user, /Delete/);
     await user.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Delete' }),
     );
@@ -142,7 +171,7 @@ describe('<InstanceDetailPage>', () => {
     renderService(`${base()}/instances/0`);
 
     expect(await screen.findByRole('heading', { name: /frontend #0/ })).toBeVisible();
-    expect(screen.getByTestId('status-badge')).toHaveTextContent('RUNNING');
+    expect(screen.getByTestId('status-badge')).toHaveTextContent('Running');
     expect((await screen.findAllByText('test-cluster'))[0]).toBeVisible();
     expect(screen.getByRole('img', { name: /CPU usage/ })).toBeVisible();
     expect(screen.getByRole('img', { name: /Memory usage/ })).toBeVisible();

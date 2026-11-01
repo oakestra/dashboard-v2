@@ -7,17 +7,28 @@ export function ClusterMap({
   clusters,
   className,
   ariaLabel = 'Cluster locations',
+  linkToDetail = false,
 }: {
   clusters: readonly Cluster[];
   className?: string;
   ariaLabel?: string;
+  /** Markers open the cluster's page; off on that page itself. */
+  linkToDetail?: boolean;
 }) {
   const locations = clusters.flatMap((cluster) => {
     const location = toMapLocation(
-      cluster.cluster_name,
+      cluster.active ? cluster.cluster_name : `${cluster.cluster_name} (inactive)`,
       parseClusterLocation(cluster.cluster_location),
     );
-    return location ? [location] : [];
+    if (!location) return [];
+    return [
+      {
+        ...location,
+        // Same meaning as the amber Inactive badge in the table next to the map.
+        tone: cluster.active ? ('default' as const) : ('warning' as const),
+        ...(linkToDetail ? { href: `/infrastructure/clusters/${cluster._id}` } : {}),
+      },
+    ];
   });
   const skipped = clusters.length - locations.length;
 

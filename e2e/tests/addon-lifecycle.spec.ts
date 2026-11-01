@@ -10,7 +10,8 @@ test.describe('addon lifecycle', () => {
   }) => {
     await addonsManager.set('example', { enabled: false });
     await page.goto('/');
-    await expect(page.getByText('No widgets installed.')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+    await expect(page.getByTestId('example-hello-widget')).toHaveCount(0);
     await expect(exampleNav(page)).toHaveCount(0);
     const notReloaded = await markPage(page);
 

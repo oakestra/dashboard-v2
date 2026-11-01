@@ -20,9 +20,18 @@ describe('<InfrastructurePage>', () => {
     expect(within(table).getByRole('link', { name: 'test-cluster' })).toBeVisible();
     expect(within(table).getByText('Active')).toBeVisible();
     expect(within(table).getByText('Inactive')).toBeVisible();
-    expect(within(screen.getByTestId('summary')).getByText('Active clusters')).toBeVisible();
+    expect(within(screen.getByTestId('summary')).getByText('Clusters')).toBeVisible();
     expect(await screen.findByLabelText('Cluster locations')).toBeInTheDocument();
     expect(screen.getByTestId('breadcrumbs')).toHaveTextContent('Infrastructure');
+  });
+
+  it('shows dashes instead of zero usage for inactive clusters', async () => {
+    renderInfrastructure();
+    const table = await screen.findByRole('table', { name: 'Clusters' });
+    const row = within(table).getByRole('link', { name: 'edge-munich' }).closest('tr')!;
+
+    expect(within(row).queryByText(/0%/)).not.toBeInTheDocument();
+    expect(within(row).getAllByText('-').length).toBeGreaterThanOrEqual(2);
   });
 
   it('filters the table with the search box', async () => {

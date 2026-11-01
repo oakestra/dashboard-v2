@@ -1,4 +1,4 @@
-import { Badge, Tooltip, TooltipContent, TooltipTrigger } from '@oakestra/ui';
+import { StatusBadge, Tooltip, TooltipContent, TooltipTrigger } from '@oakestra/ui';
 import { LoaderCircleIcon } from 'lucide-react';
 
 import type { AddonEntry } from '../../../core/addons/addon-registry';
@@ -13,22 +13,21 @@ export function dashboardUiProblem(entry: AddonEntry | undefined): string | null
  * means the addon ships no UI (or is not active), which is the normal case.
  */
 export function DashboardUiBadge({ entry }: { entry: AddonEntry | undefined }) {
-  if (!entry) return <span className="text-muted-foreground">-</span>;
+  if (!entry) return <span className="text-muted-foreground">None</span>;
 
   switch (entry.state) {
     case 'loaded':
       return (
-        <Badge variant="outline" title={`Version ${entry.version}`}>
+        <StatusBadge tone="success" title={`Version ${entry.version}`}>
           Loaded
           <span className="text-muted-foreground font-normal">{entry.version}</span>
-        </Badge>
+        </StatusBadge>
       );
     case 'loading':
       return (
-        <Badge variant="secondary">
-          <LoaderCircleIcon className="animate-spin" aria-hidden />
+        <StatusBadge tone="info" icon={<LoaderCircleIcon className="animate-spin" aria-hidden />}>
           Loading
-        </Badge>
+        </StatusBadge>
       );
     case 'failed':
     case 'incompatible': {
@@ -38,9 +37,9 @@ export function DashboardUiBadge({ entry }: { entry: AddonEntry | undefined }) {
           <TooltipTrigger asChild>
             {/* Focusable so keyboard users reach the reason as well. */}
             <button type="button" className="rounded-full focus-visible:outline-2">
-              <Badge variant={failed ? 'destructive' : 'outline'}>
+              <StatusBadge tone={failed ? 'destructive' : 'warning'}>
                 {failed ? 'Failed' : 'Incompatible'}
-              </Badge>
+              </StatusBadge>
             </button>
           </TooltipTrigger>
           <TooltipContent className="max-w-xs break-words">{entry.error}</TooltipContent>

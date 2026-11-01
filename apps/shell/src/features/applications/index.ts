@@ -8,6 +8,9 @@ import { applicationCrumb, applicationCrumbLoader } from './crumbs';
 
 // Other features (services, overview, SLA form) share these instead of fetching under their own keys.
 export { applicationKeys, applicationQuery, applicationsQuery } from './api/queries';
+export { ApplicationFormDialog } from './components/ApplicationFormDialog';
+export { applicationHealth, describeServiceCounts } from './health';
+export type { ApplicationHealth } from './health';
 
 /**
  * Owns the whole `applications/:appId` tree. React Router needs a single route object per path,

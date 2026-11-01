@@ -23,10 +23,23 @@ describe('<ClusterDetailPage>', () => {
     expect(within(stats).getByText('Memory usage')).toBeVisible();
     expect(screen.getByRole('img', { name: /^CPU usage, latest value/ })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: /^Memory usage, latest value/ })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Virtualization' })).toBeVisible();
+    expect(screen.getByText('Virtualization')).toBeVisible();
     expect(screen.getByText('runc')).toBeVisible();
     expect(await screen.findByLabelText('Cluster location')).toBeInTheDocument();
     expect(screen.getByTestId('breadcrumbs')).toHaveTextContent('Infrastructure');
+  });
+
+  it('does not show fake zeros for an inactive cluster', async () => {
+    const inactive = mockStore.data.clusters.find((cluster) => !cluster.active)!;
+    renderApp({
+      modules: [infrastructureModule],
+      route: `/infrastructure/clusters/${inactive._id}`,
+    });
+
+    expect(await screen.findByText('This cluster is not reporting')).toBeVisible();
+    const stats = screen.getByTestId('cluster-stats');
+    expect(within(stats).getAllByText('-').length).toBeGreaterThanOrEqual(3);
+    expect(within(stats).queryByText('0%')).not.toBeInTheDocument();
   });
 
   it('renders widgets contributed to cluster.widgets with the cluster id', async () => {

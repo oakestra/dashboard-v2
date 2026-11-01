@@ -4,11 +4,8 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+  PageHeader,
+  SectionCard,
   Skeleton,
 } from '@oakestra/ui';
 import { useQuery } from '@tanstack/react-query';
@@ -17,7 +14,6 @@ import { describeError } from '../../../core/api/errors';
 import { profileQuery } from '../api/queries';
 import { AccountCard } from '../components/AccountCard';
 import { ChangePasswordDialog } from '../components/ChangePasswordDialog';
-import { EmailCard } from '../components/EmailCard';
 import { RolesCard } from '../components/RolesCard';
 
 export function ProfilePage() {
@@ -27,16 +23,13 @@ export function ProfilePage() {
   const profile = useQuery(profileQuery(api, user.username));
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
-        <p className="text-muted-foreground text-sm">Your account and what you can do with it.</p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="Profile" description="Your account and what you can do with it." />
 
       {profile.isPending ? (
-        <div className="space-y-4" data-testid="profile-loading">
-          <Skeleton className="h-40 w-full" />
-          <Skeleton className="h-28 w-full" />
+        <div className="grid gap-4 lg:grid-cols-2" data-testid="profile-loading">
+          <Skeleton className="h-56 w-full" />
+          <Skeleton className="h-56 w-full" />
         </div>
       ) : profile.isError ? (
         <Alert variant="destructive">
@@ -55,19 +48,20 @@ export function ProfilePage() {
         </Alert>
       ) : (
         <>
-          <AccountCard profile={profile.data} user={user} />
-          <EmailCard username={user.username} email={profile.data.email} />
+          <div className="grid items-start gap-4 lg:grid-cols-2">
+            <AccountCard profile={profile.data} user={user} />
+            <SectionCard title="Security" description="Protect access to your account.">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="text-sm">
+                  <div className="font-medium">Password</div>
+                  <div className="text-muted-foreground">Change the password you log in with.</div>
+                </div>
+                <ChangePasswordDialog username={user.username} />
+              </div>
+            </SectionCard>
+          </div>
           {/* Roles from the profile are fresher than the token's, which only change on refresh. */}
           <RolesCard roles={profile.data.roles ?? user.roles} />
-          <Card>
-            <CardHeader>
-              <CardTitle>Password</CardTitle>
-              <CardDescription>Change the password you log in with.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ChangePasswordDialog username={user.username} />
-            </CardContent>
-          </Card>
         </>
       )}
     </div>

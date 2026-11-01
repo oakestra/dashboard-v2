@@ -11,9 +11,9 @@ export function AuthCard({
   children: ReactNode;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-xl">
+    <Card className="shadow-sm">
+      <CardHeader className="gap-1.5">
+        <CardTitle className="text-xl tracking-tight">
           <h1>{title}</h1>
         </CardTitle>
         {description ? <CardDescription>{description}</CardDescription> : null}

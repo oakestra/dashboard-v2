@@ -12,13 +12,21 @@ export function useCreateApplication() {
   const queryClient = useQueryClient();
   const notify = useNotify();
   return useMutation({
-    mutationFn: (values: ApplicationFormValues) =>
-      api.applications.create({
+    mutationFn: async (values: ApplicationFormValues) => {
+      const all = await api.applications.create({
         sla_version: 'v2.0',
         // The token's organization claim is the SLA's customerID (see AGENTS.md).
         customerID: user?.organization ?? '',
         applications: [{ ...values, microservices: [] }],
-      }),
+      });
+      // The backend answers with all of the user's applications; the new one is found by name
+      // so the caller can open it. Undefined when the response is not as expected.
+      return all.find(
+        (app) =>
+          app.application_name === values.application_name &&
+          app.application_namespace === values.application_namespace,
+      );
+    },
     // The dialog shows the backend's reason (e.g. duplicate name) next to the form.
     meta: { silent: true },
     onSuccess: async () => {

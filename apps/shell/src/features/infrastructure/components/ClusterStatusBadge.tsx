@@ -1,5 +1,11 @@
-import { Badge } from '@oakestra/ui';
+import { StatusBadge } from '@oakestra/ui';
+
+import { clusterTone } from '../lib';
 
 export function ClusterStatusBadge({ active }: { active: boolean }) {
-  return active ? <Badge>Active</Badge> : <Badge variant="outline">Inactive</Badge>;
+  return (
+    <StatusBadge tone={clusterTone(active)} data-status={active ? 'active' : 'inactive'}>
+      {active ? 'Active' : 'Inactive'}
+    </StatusBadge>
+  );
 }

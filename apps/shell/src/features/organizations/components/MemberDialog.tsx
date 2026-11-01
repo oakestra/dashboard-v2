@@ -6,6 +6,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  EmptyState,
   Field,
   FieldLabel,
   Select,
@@ -14,7 +15,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@oakestra/ui';
+import { UsersIcon } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router';
 
 import { RoleSelect } from '../../users';
 
@@ -61,7 +64,20 @@ export function MemberDialog({
           <DialogTitle>{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
-        {needsUser ? (
+        {candidates?.length === 0 ? (
+          <EmptyState
+            icon={<UsersIcon />}
+            title="All users are members"
+            description="Every user already belongs to this organization. Create a new user to add more."
+            className="py-6"
+            action={
+              <Button asChild variant="outline" onClick={onClose}>
+                <Link to="/users">Create a user</Link>
+              </Button>
+            }
+          />
+        ) : null}
+        {needsUser && candidates.length > 0 ? (
           <Field>
             <FieldLabel htmlFor="member-user">User</FieldLabel>
             <Select value={userId ?? undefined} onValueChange={setUserId}>
@@ -78,7 +94,9 @@ export function MemberDialog({
             </Select>
           </Field>
         ) : null}
-        <RoleSelect value={roles} onChange={setRoles} disabled={pending} />
+        {candidates?.length === 0 ? null : (
+          <RoleSelect value={roles} onChange={setRoles} disabled={pending} />
+        )}
         {blocked ? (
           <p role="alert" className="text-destructive text-sm">
             {blocked}

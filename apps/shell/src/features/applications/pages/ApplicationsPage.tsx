@@ -1,19 +1,56 @@
 import type { Application } from '@oakestra/api';
 import { useCurrentUser, useOakestraApi } from '@oakestra/dashboard-sdk';
-import { Alert, AlertDescription, AlertTitle, Button, EmptyState, PageHeader } from '@oakestra/ui';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  EmptyState,
+  PageHeader,
+  Skeleton,
+  StatusBadge,
+} from '@oakestra/ui';
 import { createDataTableColumnHelper, DataTable } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
 import { BoxesIcon, PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { describeError } from '../../../core/api/errors';
 import { profileQuery } from '../../profile';
+import { servicesByApplicationQuery } from '../../services';
 import { applicationsQuery } from '../api/queries';
 import { ApplicationFormDialog } from '../components/ApplicationFormDialog';
+import { applicationHealth, describeServiceCounts } from '../health';
+import { RowMenu } from '../components/RowMenu';
 import { DeleteApplicationDialog } from '../components/DeleteApplicationDialog';
 
 const column = createDataTableColumnHelper<Application>();
+
+/**
+ * Cells read the cached services themselves instead of getting them through the columns, so a
+ * finished fetch or poll does not rebuild the columns (which would remount the row menus and
+ * close an open one).
+ */
+function HealthCell({ application, part }: { application: Application; part: 'badge' | 'counts' }) {
+  const api = useOakestraApi();
+  const { data: health } = useQuery({
+    ...servicesByApplicationQuery(api, application._id),
+    select: applicationHealth,
+  });
+  if (part === 'badge') {
+    return health ? (
+      <StatusBadge tone={health.tone}>{health.label}</StatusBadge>
+    ) : (
+      <Skeleton className="h-5 w-20" />
+    );
+  }
+  if (health) return <>{describeServiceCounts(health)}</>;
+  const count = application.microservices.length;
+  return <>{`${count} ${count === 1 ? 'service' : 'services'}`}</>;
+}
 
 export function ApplicationsPage() {
   const user = useCurrentUser()!;
@@ -31,16 +68,39 @@ export function ApplicationsPage() {
     enabled: userId !== undefined,
   });
 
+  // Newest first (ObjectIds start with their creation time), so a new application is on top.
+  const rows = useMemo(
+    () => [...(applications.data ?? [])].sort((a, b) => b._id.localeCompare(a._id)),
+    [applications.data],
+  );
+
   const columns = useMemo(
     () =>
       column.columns([
         column.accessor('application_name', {
           header: 'Name',
-          cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+          cell: ({ row }) => (
+            <div className="min-w-0">
+              <Link
+                to={`/applications/${row.original._id}`}
+                className="font-medium hover:underline"
+              >
+                {row.original.application_name}
+              </Link>
+              <div className="font-mono text-xs text-muted-foreground">
+                {row.original.application_namespace}
+              </div>
+            </div>
+          ),
         }),
-        column.accessor('application_namespace', { header: 'Namespace' }),
+        column.display({
+          id: 'status',
+          header: 'Status',
+          cell: ({ row }) => <HealthCell application={row.original} part="badge" />,
+        }),
         column.accessor('application_desc', {
           header: 'Description',
+          meta: { className: 'hidden lg:table-cell', headerClassName: 'hidden lg:table-cell' },
           cell: (info) => (
             <span className="block max-w-xs truncate text-muted-foreground">
               {info.getValue() || '-'}
@@ -50,29 +110,23 @@ export function ApplicationsPage() {
         column.accessor((row) => row.microservices.length, {
           id: 'services',
           header: 'Services',
+          meta: { numeric: true },
+          cell: ({ row }) => <HealthCell application={row.original} part="counts" />,
         }),
         column.display({
           id: 'actions',
           header: () => <span className="sr-only">Actions</span>,
+          meta: { align: 'right' },
           cell: ({ row }) => (
-            <div className="flex justify-end gap-1">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Edit ${row.original.application_name}`}
-                onClick={() => setEditing(row.original)}
-              >
-                <PencilIcon aria-hidden />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Delete ${row.original.application_name}`}
-                onClick={() => setDeleting(row.original)}
-              >
-                <Trash2Icon aria-hidden />
-              </Button>
-            </div>
+            <RowMenu label={`Actions for ${row.original.application_name}`}>
+              <DropdownMenuItem onSelect={() => setEditing(row.original)}>
+                <PencilIcon aria-hidden /> Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(row.original)}>
+                <Trash2Icon aria-hidden /> Delete
+              </DropdownMenuItem>
+            </RowMenu>
           ),
         }),
       ]),
@@ -111,10 +165,10 @@ export function ApplicationsPage() {
         <DataTable
           label="Applications"
           columns={columns}
-          data={applications.data}
+          data={rows}
           isLoading={applications.isPending}
           getRowId={(row) => row._id}
-          searchPlaceholder="Search applications..."
+          searchPlaceholder="Search applications"
           globalFilter={params.get('q') ?? ''}
           onGlobalFilterChange={(value) =>
             setParams(
@@ -139,7 +193,13 @@ export function ApplicationsPage() {
         />
       )}
 
-      <ApplicationFormDialog open={creating} onOpenChange={setCreating} />
+      <ApplicationFormDialog
+        open={creating}
+        onOpenChange={setCreating}
+        onSaved={(created) => {
+          if (created) void navigate(`/applications/${created._id}`);
+        }}
+      />
       <ApplicationFormDialog
         open={editing !== null}
         onOpenChange={(open) => !open && setEditing(null)}

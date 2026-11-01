@@ -7,12 +7,15 @@ import { addonManagerModule } from '../addon-manager';
 import { settingsModule } from './index';
 
 describe('settings', () => {
-  it('has no theme picker of its own and explains the empty page', async () => {
-    renderApp({ modules: [settingsModule], route: '/settings' });
+  it('offers the appearance panel and shares the theme with the rest of the shell', async () => {
+    const { user } = renderApp({ modules: [settingsModule], route: '/settings' });
 
-    expect(await screen.findByText('No settings yet')).toBeVisible();
-    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+    expect(await screen.findByText('Appearance')).toBeVisible();
     expect(screen.getByTestId('breadcrumbs')).toHaveTextContent('Settings');
+
+    await user.click(screen.getByRole('radio', { name: 'Dark' }));
+    expect(document.documentElement).toHaveClass('dark');
+    expect(screen.getByRole('radio', { name: 'Dark' })).toBeChecked();
   });
 
   it('renders settings panels contributed to the slot, filtered by role', async () => {

@@ -1,8 +1,10 @@
 import type { AddonNetwork, AddonService, AddonVolume } from '@oakestra/api';
-import { Badge } from '@oakestra/ui';
+import { Badge, StatusBadge, cn } from '@oakestra/ui';
 import type { ReactNode } from 'react';
 
 interface DefinitionLike {
+  /** Services known to be failing (installed addons only), marked on their card. */
+  failingServices?: readonly string[];
   services: readonly AddonService[];
   volumes: readonly AddonVolume[];
   networks: readonly AddonNetwork[];
@@ -45,7 +47,12 @@ function List({ items }: { items: readonly string[] }) {
  * Services, volumes and networks of an addon definition or installed addon. Environment
  * variables are listed by name only: their values may be secrets and are never rendered.
  */
-export function DefinitionDetails({ services, volumes, networks }: DefinitionLike) {
+export function DefinitionDetails({
+  services,
+  volumes,
+  networks,
+  failingServices = [],
+}: DefinitionLike) {
   return (
     <div className="space-y-6">
       <Section title={`Services (${services.length})`}>
@@ -53,43 +60,58 @@ export function DefinitionDetails({ services, volumes, networks }: DefinitionLik
           <p className="text-muted-foreground text-sm">No services.</p>
         ) : (
           <ul className="space-y-3">
-            {services.map((service) => (
-              <li
-                key={service.service_name}
-                className="space-y-2 rounded-lg border p-3"
-                data-testid={`service-${service.service_name}`}
-              >
-                <p className="font-medium">{service.service_name}</p>
-                <dl className="space-y-1.5">
-                  <Row label="Image">
-                    <Mono>{service.image}</Mono>
-                  </Row>
-                  <Row label="Ports">
-                    <List
-                      items={Object.entries(service.ports).map(
-                        ([host, container]) => `${host}:${container}`,
-                      )}
-                    />
-                  </Row>
-                  <Row label="Networks">
-                    <List items={service.networks} />
-                  </Row>
-                  <Row label="Volumes">
-                    <List items={service.volumes} />
-                  </Row>
-                  <Row label="Environment">
-                    <span className="space-y-1">
-                      <List items={Object.keys(service.environment)} />
-                      {Object.keys(service.environment).length > 0 ? (
-                        <span className="text-muted-foreground block text-xs">
-                          Variable names only, values are hidden.
+            {services.map((service) => {
+              const failing = failingServices.includes(service.service_name);
+              const ports = Object.entries(service.ports).map(
+                ([host, container]) => `${host}:${container}`,
+              );
+              const environment = Object.keys(service.environment);
+              return (
+                <li
+                  key={service.service_name}
+                  className={cn(
+                    'space-y-2 rounded-lg border p-3',
+                    failing && 'border-l-destructive border-l-4',
+                  )}
+                  data-testid={`service-${service.service_name}`}
+                >
+                  <p className="flex flex-wrap items-center gap-2 font-medium">
+                    {service.service_name}
+                    {failing ? <StatusBadge tone="destructive">Failing</StatusBadge> : null}
+                  </p>
+                  <dl className="space-y-1.5">
+                    <Row label="Image">
+                      <Mono>{service.image}</Mono>
+                    </Row>
+                    {ports.length > 0 ? (
+                      <Row label="Ports">
+                        <List items={ports} />
+                      </Row>
+                    ) : null}
+                    {service.networks.length > 0 ? (
+                      <Row label="Networks">
+                        <List items={service.networks} />
+                      </Row>
+                    ) : null}
+                    {service.volumes.length > 0 ? (
+                      <Row label="Volumes">
+                        <List items={service.volumes} />
+                      </Row>
+                    ) : null}
+                    {environment.length > 0 ? (
+                      <Row label="Environment">
+                        <span className="space-y-1">
+                          <List items={environment} />
+                          <span className="text-muted-foreground block text-xs">
+                            Variable names only, values are hidden.
+                          </span>
                         </span>
-                      ) : null}
-                    </span>
-                  </Row>
-                </dl>
-              </li>
-            ))}
+                      </Row>
+                    ) : null}
+                  </dl>
+                </li>
+              );
+            })}
           </ul>
         )}
       </Section>

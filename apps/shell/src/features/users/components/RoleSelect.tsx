@@ -1,4 +1,4 @@
-import { Checkbox, Label } from '@oakestra/ui';
+import { Checkbox, FieldLegend, FieldSet, Label } from '@oakestra/ui';
 import { useId } from 'react';
 
 import { ROLE_OPTIONS } from '../roles';
@@ -21,25 +21,29 @@ export function RoleSelect({ value, onChange, disabled }: RoleSelectProps) {
     );
 
   return (
-    <div role="group" aria-label="Roles" className="grid gap-3">
-      {ROLE_OPTIONS.map((option) => {
-        const id = `${prefix}-${option.value}`;
-        return (
-          <div key={option.value} className="flex items-start gap-3">
-            <Checkbox
-              id={id}
-              className="mt-0.5"
-              disabled={disabled}
-              checked={value.includes(option.value)}
-              onCheckedChange={(checked) => toggle(option.value, checked === true)}
-            />
-            <Label htmlFor={id} className="grid gap-0.5 font-normal">
-              <span className="font-medium">{option.label}</span>
-              <span className="text-muted-foreground text-sm">{option.description}</span>
-            </Label>
-          </div>
-        );
-      })}
-    </div>
+    // A fieldset, not a Field: an invalid Field would turn every checkbox label red.
+    <FieldSet className="gap-0">
+      <FieldLegend variant="label">Roles</FieldLegend>
+      <div className="grid gap-3">
+        {ROLE_OPTIONS.map((option) => {
+          const id = `${prefix}-${option.value}`;
+          return (
+            <div key={option.value} className="flex items-start gap-3">
+              <Checkbox
+                id={id}
+                className="mt-0.5"
+                disabled={disabled}
+                checked={value.includes(option.value)}
+                onCheckedChange={(checked) => toggle(option.value, checked === true)}
+              />
+              <Label htmlFor={id} className="grid gap-0.5 font-normal">
+                <span className="font-medium">{option.label}</span>
+                <span className="text-muted-foreground text-sm">{option.description}</span>
+              </Label>
+            </div>
+          );
+        })}
+      </div>
+    </FieldSet>
   );
 }

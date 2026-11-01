@@ -52,7 +52,9 @@ describe('organizations list', () => {
 
   it('does not offer deleting the root organization', async () => {
     renderOrgs();
-    expect(await screen.findByRole('button', { name: 'Delete root' })).toBeDisabled();
+    await screen.findByRole('row', { name: /^root/ });
+    expect(screen.queryByRole('button', { name: 'Delete root' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete edge-lab' })).toBeEnabled();
   });
 
   it('refuses users without the Admin role', async () => {
@@ -144,7 +146,40 @@ describe('organization detail', () => {
 
   it('does not offer renaming the root organization', async () => {
     renderOrgs(`/organizations/${orgByName('root')._id}`);
-    expect(await screen.findByRole('button', { name: 'Rename' })).toBeDisabled();
+    expect(await screen.findByText(/cannot be renamed or deleted/)).toBeVisible();
+    expect(screen.getByText('Default')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Rename' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'More actions' })).not.toBeInTheDocument();
+  });
+
+  it('summarizes the members and deletes a non-root organization from the header menu', async () => {
+    const org = orgByName('edge-lab');
+    const { user, router } = renderOrgs(`/organizations/${org._id}`);
+
+    expect(await screen.findByTestId('member-summary')).toHaveTextContent(
+      /\d+ members?, \d+ admins?/,
+    );
+    await user.click(screen.getByRole('button', { name: 'More actions' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Delete organization' }));
+    await user.click(await screen.findByRole('button', { name: 'Delete organization' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/organizations'));
+    expect(mockStore.data.organizations.some((o) => o.name === 'edge-lab')).toBe(false);
+  });
+
+  it('explains when every user is already a member', async () => {
+    const org = orgByName('edge-lab');
+    org.member = mockStore.data.users.map((u) => ({ user_id: u._id, roles: ['Admin'] }));
+    const { user } = renderOrgs(`/organizations/${org._id}`);
+
+    await user.click(await screen.findByRole('button', { name: 'Add member' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('All users are members')).toBeVisible();
+    expect(within(dialog).queryByRole('combobox', { name: 'User' })).not.toBeInTheDocument();
+    expect(within(dialog).getByRole('link', { name: 'Create a user' })).toHaveAttribute(
+      'href',
+      '/users',
+    );
   });
 
   it('does not let you remove yourself', async () => {

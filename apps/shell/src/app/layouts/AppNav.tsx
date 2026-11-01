@@ -6,6 +6,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '@oakestra/ui';
 import { ActivityIcon, ExternalLinkIcon, type LucideIcon } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router';
@@ -102,10 +103,20 @@ function NavEntry({
 }) {
   const { item, source } = entry;
   const active = isActive(item, pathname);
+  // On phones the navigation is a sheet over the page; it has to get out of the way once a page
+  // was picked, otherwise the user lands on the new page still looking at the menu.
+  const { isMobile, setOpenMobile } = useSidebar();
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
-        <NavLink to={item.path} end={item.path === '/'} data-testid={`nav-${source.id}-${item.id}`}>
+        <NavLink
+          to={item.path}
+          end={item.path === '/'}
+          data-testid={`nav-${source.id}-${item.id}`}
+          onClick={() => {
+            if (isMobile) setOpenMobile(false);
+          }}
+        >
           {item.icon ? (
             // An addon icon that throws must not take the whole navigation down with it.
             <ErrorBoundary fallback={() => null}>

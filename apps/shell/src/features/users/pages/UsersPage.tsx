@@ -6,6 +6,11 @@ import {
   Badge,
   Button,
   ConfirmDialog,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   EmptyState,
   PageHeader,
   Select,
@@ -13,14 +18,16 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  useIsMobile,
 } from '@oakestra/ui';
 import { createDataTableColumnHelper, DataTable } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
-import { PencilIcon, PlusIcon, Trash2Icon, UsersIcon } from 'lucide-react';
+import { EllipsisIcon, PencilIcon, PlusIcon, Trash2Icon, UsersIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { describeError } from '../../../core/api/errors';
+import { formatDate, formatDateTime, parseLegacyDate } from '../../../lib/format';
 import { useDeleteUser } from '../api/mutations';
 import { allUsersQuery, organizationUsersQuery } from '../api/queries';
 import { CreateUserDialog } from '../components/CreateUserDialog';
@@ -33,8 +40,13 @@ interface UserRow {
   email: string;
   /** Undefined when the backend does not tell the roles of this user in the session's organization. */
   roles: readonly string[] | undefined;
-  createdAt: string;
+  /** Raw backend string, shown as is when it cannot be parsed. */
+  createdRaw: string;
+  created: Date | undefined;
 }
+
+/** Compact rows show at most this many role badges; the rest is a "+N" with the names in a title. */
+const COMPACT_ROLE_LIMIT = 2;
 
 const ALL_ROLES = 'all';
 const column = createDataTableColumnHelper<UserRow>();
@@ -74,6 +86,8 @@ export function UsersPage() {
   const [deleting, setDeleting] = useState<UserRow | null>(null);
   const remove = useDeleteUser();
 
+  const compact = useIsMobile();
+
   const rows = useMemo<UserRow[]>(() => {
     const rolesById = new Map(members.data?.map((user) => [user._id, user.roles]));
     return (primary.data ?? []).map((user) => ({
@@ -81,7 +95,8 @@ export function UsersPage() {
       name: user.name,
       email: user.email,
       roles: rolesById.get(user._id),
-      createdAt: user.created_at ?? '',
+      createdRaw: user.created_at ?? '',
+      created: parseLegacyDate(user.created_at),
     }));
   }, [primary.data, members.data]);
 
@@ -93,63 +108,127 @@ export function UsersPage() {
   const columns = useMemo(
     () =>
       column.columns([
-        column.accessor('name', { header: 'Name' }),
-        column.accessor('email', { header: 'Email', cell: (info) => info.getValue() || '-' }),
+        column.accessor('name', {
+          header: 'Name',
+          cell: ({ row }) => (
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{row.original.name}</span>
+                {row.original.name === me.username ? <Badge variant="neutral">You</Badge> : null}
+              </div>
+              {compact && row.original.email ? (
+                <div className="text-muted-foreground truncate text-xs">{row.original.email}</div>
+              ) : null}
+            </div>
+          ),
+        }),
+        ...(compact
+          ? []
+          : [
+              column.accessor('email', {
+                header: 'Email',
+                cell: (info) => (
+                  <span className="text-muted-foreground">{info.getValue() || '-'}</span>
+                ),
+              }),
+            ]),
         column.accessor((row) => row.roles?.join(', ') ?? '', {
           id: 'roles',
           header: 'Roles',
           enableSorting: false,
-          cell: ({ row }) =>
-            row.original.roles === undefined ? (
-              <span className="text-muted-foreground" title="Roles are not known for this user">
-                -
-              </span>
-            ) : row.original.roles.length === 0 ? (
-              <span className="text-muted-foreground">No roles</span>
-            ) : (
+          cell: ({ row }) => {
+            const roles = row.original.roles;
+            if (roles === undefined) {
+              return (
+                <span className="text-muted-foreground" title="Roles are not known for this user">
+                  -
+                </span>
+              );
+            }
+            if (roles.length === 0) return <span className="text-muted-foreground">No roles</span>;
+            const shown = compact ? roles.slice(0, COMPACT_ROLE_LIMIT) : roles;
+            const hidden = roles.slice(shown.length);
+            return (
               <div className="flex flex-wrap gap-1">
-                {row.original.roles.map((role) => (
+                {shown.map((role) => (
                   <Badge key={role} variant="secondary">
                     {roleLabel(role)}
                   </Badge>
                 ))}
-              </div>
-            ),
-        }),
-        column.accessor('createdAt', { header: 'Created', cell: (info) => info.getValue() || '-' }),
-        column.display({
-          id: 'actions',
-          header: () => <span className="sr-only">Actions</span>,
-          cell: ({ row }) => {
-            const isSelf = row.original.name === me.username;
-            return (
-              <div className="flex justify-end gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Edit roles of ${row.original.name}`}
-                  disabled={!rolesKnown}
-                  title={rolesKnown ? undefined : 'Roles are not loaded'}
-                  onClick={() => setEditing(row.original)}
-                >
-                  <PencilIcon aria-hidden />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Delete ${row.original.name}`}
-                  disabled={isSelf}
-                  title={isSelf ? 'You cannot delete your own account' : undefined}
-                  onClick={() => setDeleting(row.original)}
-                >
-                  <Trash2Icon aria-hidden />
-                </Button>
+                {hidden.length > 0 ? (
+                  <Badge variant="secondary" title={hidden.map(roleLabel).join(', ')}>
+                    +{hidden.length}
+                  </Badge>
+                ) : null}
               </div>
             );
           },
         }),
+        ...(compact
+          ? []
+          : [
+              column.accessor((row) => row.created?.getTime() ?? 0, {
+                id: 'created',
+                header: 'Created',
+                cell: ({ row }) =>
+                  row.original.created ? (
+                    <time
+                      className="text-muted-foreground whitespace-nowrap"
+                      dateTime={row.original.created.toISOString()}
+                      title={formatDateTime(row.original.created)}
+                    >
+                      {formatDate(row.original.created)}
+                    </time>
+                  ) : (
+                    <span className="text-muted-foreground">{row.original.createdRaw || '-'}</span>
+                  ),
+              }),
+            ]),
+        column.display({
+          id: 'actions',
+          header: () => <span className="sr-only">Actions</span>,
+          meta: { align: 'right' },
+          cell: ({ row }) => {
+            const isSelf = row.original.name === me.username;
+            return (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Actions for ${row.original.name}`}
+                  >
+                    <EllipsisIcon aria-hidden />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    disabled={!rolesKnown}
+                    onSelect={() => setEditing(row.original)}
+                  >
+                    <PencilIcon aria-hidden />
+                    Edit roles
+                  </DropdownMenuItem>
+                  {/* Hidden, not disabled: deleting yourself is never an option worth explaining. */}
+                  {isSelf ? null : (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onSelect={() => setDeleting(row.original)}
+                      >
+                        <Trash2Icon aria-hidden />
+                        Delete user
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            );
+          },
+        }),
       ]),
-    [me.username, rolesKnown],
+    [compact, me.username, rolesKnown],
   );
 
   return (
@@ -208,18 +287,34 @@ export function UsersPage() {
           globalFilter={search}
           onGlobalFilterChange={(value) => updateParam('q', value, '')}
           emptyState={
-            <EmptyState
-              icon={<UsersIcon />}
-              title="No users yet"
-              description="Create the first account for your organization."
-            />
+            rows.length > 0 ? (
+              <EmptyState
+                icon={<UsersIcon />}
+                title="No users with this role"
+                description="Nobody in your organization has this role yet."
+                action={
+                  <Button
+                    variant="outline"
+                    onClick={() => updateParam('role', ALL_ROLES, ALL_ROLES)}
+                  >
+                    Clear filter
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyState
+                icon={<UsersIcon />}
+                title="No users yet"
+                description="Create the first account for your organization."
+              />
+            )
           }
           toolbar={
             <Select
               value={roleFilter}
               onValueChange={(value) => updateParam('role', value, ALL_ROLES)}
             >
-              <SelectTrigger aria-label="Filter by role" className="w-52">
+              <SelectTrigger aria-label="Filter by role" className="w-full sm:w-52">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

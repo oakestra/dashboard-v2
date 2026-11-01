@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatBytes, formatPercent, formatRelativeTime } from './format';
+import { formatBytes, formatPercent, formatRelativeTime, parseLegacyDate } from './format';
 
 describe('formatBytes', () => {
   it.each([
@@ -67,4 +67,29 @@ describe('formatRelativeTime', () => {
     expect(formatRelativeTime(null)).toBe('-');
     expect(formatRelativeTime('not a date')).toBe('-');
   });
+});
+
+describe('parseLegacyDate', () => {
+  it.each([
+    ['01/11/2026, 16:34', new Date(2026, 10, 1, 16, 34)],
+    ['01/11/2026 20:46', new Date(2026, 10, 1, 20, 46)],
+    ['31/07/2026 22:49', new Date(2026, 6, 31, 22, 49)],
+    ['31/07/2026', new Date(2026, 6, 31)],
+    ['2026-07-31T22:49:00Z', new Date('2026-07-31T22:49:00Z')],
+  ])('parses %s', (input, expected) => {
+    expect(parseLegacyDate(input)?.getTime()).toBe(expected.getTime());
+  });
+
+  it('reads day first, so dates sort by calendar and not as strings', () => {
+    const july = parseLegacyDate('31/07/2026 22:49')!;
+    const november = parseLegacyDate('01/11/2026 16:34')!;
+    expect(july.getTime()).toBeLessThan(november.getTime());
+  });
+
+  it.each([[''], [undefined], [null], ['yesterday'], ['31/02/2026 10:00'], ['13/13/2026']])(
+    'returns undefined for %s',
+    (input) => {
+      expect(parseLegacyDate(input)).toBeUndefined();
+    },
+  );
 });

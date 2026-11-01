@@ -27,6 +27,15 @@ import { UnmatchedDashboardUis } from '../components/UnmatchedDashboardUis';
 
 const column = createDataTableColumnHelper<InstalledAddon>();
 
+/** "1 of 2 services failing" under the badge, so a broken addon explains itself in the list. */
+function failingServicesHint(addon: InstalledAddon): string | null {
+  if (addon.status !== 'failed' && addon.status !== 'partially_active') return null;
+  const failing = addon.status_details?.failed_services.length ?? 0;
+  if (failing === 0) return null;
+  const total = addon.services.length;
+  return `${failing} of ${total} ${total === 1 ? 'service' : 'services'} failing`;
+}
+
 type Pending = { kind: 'disable' | 'force-disable' | 'remove'; addon: InstalledAddon };
 
 export function InstalledPage() {
@@ -90,9 +99,17 @@ export function InstalledPage() {
         column.accessor((addon) => addonStatusLabel(addon.status), {
           id: 'status',
           header: 'Status',
-          cell: ({ row }) => <AddonStatusBadge status={row.original.status} />,
+          cell: ({ row }) => {
+            const hint = failingServicesHint(row.original);
+            return (
+              <div className="flex flex-col items-start gap-1">
+                <AddonStatusBadge status={row.original.status} />
+                {hint ? <span className="text-muted-foreground text-xs">{hint}</span> : null}
+              </div>
+            );
+          },
         }),
-        // Phones keep name, status and UI visible; the sheet has everything else.
+        // Phones keep name, status and the actions; the sheet has everything else.
         ...(compact
           ? []
           : [
@@ -101,11 +118,15 @@ export function InstalledPage() {
                 header: 'Services',
               }),
             ]),
-        column.display({
-          id: 'ui',
-          header: 'Dashboard UI',
-          cell: ({ row }) => <DashboardUiBadge entry={uiEntries[row.original.name]} />,
-        }),
+        ...(compact
+          ? []
+          : [
+              column.display({
+                id: 'ui',
+                header: 'Dashboard UI',
+                cell: ({ row }) => <DashboardUiBadge entry={uiEntries[row.original.name]} />,
+              }),
+            ]),
         column.display({
           id: 'actions',
           header: () => <span className="sr-only">Actions</span>,
@@ -128,22 +149,25 @@ export function InstalledPage() {
                 ) : addon.status === 'disabled' ? (
                   <Button
                     variant="ghost"
-                    size="icon-sm"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
                     aria-label={`Remove ${addon.name}`}
                     onClick={() => setPending({ kind: 'remove', addon })}
                   >
                     <Trash2Icon aria-hidden />
+                    Remove
                   </Button>
                 ) : (
                   <Button
-                    variant="ghost"
-                    size="icon-sm"
+                    variant="outline"
+                    size="sm"
                     aria-label={`Disable ${addon.name}`}
                     disabled={transitional}
                     title={transitional ? 'Wait until the current change has finished' : undefined}
                     onClick={() => setPending({ kind: 'disable', addon })}
                   >
                     <PowerOffIcon aria-hidden />
+                    Disable
                   </Button>
                 )}
               </div>

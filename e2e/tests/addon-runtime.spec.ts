@@ -46,7 +46,8 @@ test.describe('addon runtime', () => {
   test('addon CSS is loaded together with the remote module', async ({ page }) => {
     await addonsManager.set('example', { enabled: false });
     await page.goto('/');
-    await expect(page.getByText('No widgets installed.')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+    await expect(page.getByTestId('example-hello-widget')).toHaveCount(0);
     // The shell never generates fuchsia utilities, so they can only arrive with the addon.
     expect(await allCss(page)).not.toContain('fuchsia');
 
@@ -72,7 +73,8 @@ test.describe('addon runtime', () => {
 
     // Shell components used inside the addon keep the shared theme tokens.
     const button = page.getByRole('button', { name: 'Notify' });
-    await expect(button).toHaveCSS('background-color', 'oklch(0.205 0 0)');
+    // The light theme's --primary in packages/ui/src/styles/styles.css.
+    await expect(button).toHaveCSS('background-color', 'oklch(0.49 0.064 230)');
   });
 
   test('a contribution that throws only breaks its own slot', async ({ page }) => {
@@ -85,7 +87,7 @@ test.describe('addon runtime', () => {
     await expect(error).toHaveAttribute('data-source', 'addon:example');
     // Sibling contributions from the same addon, the nav and the page itself keep working.
     await expect(page.getByTestId('example-hello-widget')).toBeVisible();
-    await expect(page.getByRole('heading', { name: /^Welcome, / })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
     await page.getByTestId('nav-example-main').click();
     await expect(page.getByTestId('example-banner')).toBeVisible();
   });

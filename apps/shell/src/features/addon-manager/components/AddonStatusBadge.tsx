@@ -1,5 +1,5 @@
 import { isTransitionalAddonStatus, type AddonStatus } from '@oakestra/api';
-import { Badge, cn } from '@oakestra/ui';
+import { StatusBadge, type StatusTone } from '@oakestra/ui';
 import { LoaderCircleIcon, TriangleAlertIcon } from 'lucide-react';
 
 const LABELS: Readonly<Record<AddonStatus, string>> = {
@@ -11,37 +11,38 @@ const LABELS: Readonly<Record<AddonStatus, string>> = {
   disabled: 'Disabled',
 };
 
-const STYLES: Readonly<Record<AddonStatus, string>> = {
-  installing: '',
-  disabling: '',
-  active: 'bg-emerald-600 text-white dark:bg-emerald-700',
-  partially_active: 'bg-amber-500 text-black dark:bg-amber-400',
-  failed: '',
-  disabled: 'text-muted-foreground',
-};
-
-const VARIANTS = {
-  installing: 'secondary',
-  disabling: 'secondary',
-  active: 'default',
-  partially_active: 'default',
+/** The one place that decides which color an addon status gets. */
+export const ADDON_STATUS_TONES: Readonly<Record<AddonStatus, StatusTone>> = {
+  installing: 'info',
+  disabling: 'info',
+  active: 'success',
+  partially_active: 'warning',
   failed: 'destructive',
-  disabled: 'outline',
-} as const satisfies Record<AddonStatus, 'default' | 'secondary' | 'destructive' | 'outline'>;
+  disabled: 'neutral',
+};
 
 export function addonStatusLabel(status: AddonStatus): string {
   return LABELS[status];
 }
 
+export function addonStatusTone(status: AddonStatus): StatusTone {
+  return ADDON_STATUS_TONES[status];
+}
+
 export function AddonStatusBadge({ status }: { status: AddonStatus }) {
   return (
-    <Badge variant={VARIANTS[status]} className={cn(STYLES[status])} data-status={status}>
-      {isTransitionalAddonStatus(status) ? (
-        <LoaderCircleIcon className="animate-spin" aria-hidden />
-      ) : status === 'partially_active' ? (
-        <TriangleAlertIcon aria-hidden />
-      ) : null}
+    <StatusBadge
+      tone={ADDON_STATUS_TONES[status]}
+      data-status={status}
+      icon={
+        isTransitionalAddonStatus(status) ? (
+          <LoaderCircleIcon className="animate-spin" aria-hidden />
+        ) : status === 'partially_active' ? (
+          <TriangleAlertIcon aria-hidden />
+        ) : undefined
+      }
+    >
       {LABELS[status]}
-    </Badge>
+    </StatusBadge>
   );
 }

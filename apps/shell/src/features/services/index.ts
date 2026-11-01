@@ -5,4 +5,11 @@ export { useDeleteService, useDeployAll, useDeployInstance } from './api/mutatio
 export { createServiceRoutes } from './routes';
 export { InstanceSummary } from './components/InstanceSummary';
 export { StatusBadge } from './components/StatusBadge';
-export { isTransitionalStatus, usePollWhileTransitional } from './status';
+export {
+  describeStatus,
+  formatVirtualization,
+  isTransitionalStatus,
+  summarizeStatuses,
+  usePollWhileTransitional,
+} from './status';
+export type { StatusDescription, StatusSummary, StatusTone } from './status';

@@ -6,6 +6,7 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
+  ConfirmDialog,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -14,12 +15,13 @@ import {
   DialogTitle,
 } from '@oakestra/ui';
 import { Download } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { useNavigate } from 'react-router';
 
 import { describeError } from '../../../core/api/errors';
 import { downloadJson } from '../../../lib/download';
+import { useDeleteService } from '../../services';
 import { useCreateServices } from '../api/mutations';
 import { buildSla, importSla, type SlaContext } from '../model/document';
 import { fromSlaMicroservice, toSlaMicroservice } from '../model/convert';
@@ -32,15 +34,19 @@ import { ConnectivitySection } from './ConnectivitySection';
 import { ConstraintsSection } from './ConstraintsSection';
 import { ImportPanel } from './ImportPanel';
 import { ResourcesSection } from './ResourcesSection';
+import { countErrors, SectionNav } from './SectionNav';
 
 export function ServiceForm({
   application,
   customerId,
   initialValues,
+  source,
 }: {
   application: Application;
   customerId: string;
   initialValues: ServiceFormValues;
+  /** The service this form copies; offers to delete it once the copy exists. */
+  source?: { id: string; name: string };
 }) {
   const navigate = useNavigate();
   const notify = useNotify();
@@ -49,7 +55,9 @@ export function ServiceForm({
     resolver: zodResolver(serviceFormSchema),
     defaultValues: initialValues,
   });
-  const { errors } = form.formState;
+  const { errors, submitCount } = form.formState;
+  const errorCount = countErrors(errors);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const context: SlaContext = { customerId, application };
   const [importError, setImportError] = useState<string | null>(null);
@@ -57,6 +65,8 @@ export function ServiceForm({
   const [pending, setPending] = useState<SlaMicroservice[] | null>(null);
 
   const appPath = `/applications/${application._id}`;
+  const removeSource = useDeleteService();
+  const [landing, setLanding] = useState<string | null>(null);
 
   function finish(result: {
     job_id?: string | undefined;
@@ -67,7 +77,9 @@ export function ServiceForm({
     // rolled back, and with several services there is no single page to land on.
     const single = result.deployed_services.length === 1 && result.failed_services.length === 0;
     const id = single ? result.job_id : undefined;
-    void navigate(typeof id === 'string' && id ? `${appPath}/services/${id}` : appPath);
+    const target = typeof id === 'string' && id ? `${appPath}/services/${id}` : appPath;
+    if (source) setLanding(target);
+    else void navigate(target);
   }
 
   function onValid(values: ServiceFormValues) {
@@ -109,57 +121,100 @@ export function ServiceForm({
 
   return (
     <FormProvider {...form}>
-      <form
-        className="space-y-6 pb-4"
-        noValidate
-        onSubmit={(event) => void form.handleSubmit(onValid)(event)}
-      >
-        <ImportPanel onText={onImport} error={importError} warnings={warnings} />
+      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_13rem]">
+        <form
+          ref={formRef}
+          className="max-w-4xl min-w-0 space-y-6 pb-4"
+          noValidate
+          onSubmit={(event) => void form.handleSubmit(onValid)(event)}
+        >
+          <ImportPanel onText={onImport} error={importError} warnings={warnings} />
 
-        <BasicsSection />
-        <ResourcesSection />
-        <CommandSection />
-        <ConstraintsSection hasError={!!errors.constraints} />
-        <ConnectivitySection applicationId={application._id} hasError={!!errors.connectivity} />
-        <AddressesSection hasError={!!errors.addresses} />
-        <AdvancedSection
-          hasError={
-            !!(
-              errors.state ||
-              errors.target_node ||
-              errors.sla_violation_strategy ||
-              errors.added_files
-            )
+          <BasicsSection />
+          <ResourcesSection />
+          <CommandSection />
+          <ConstraintsSection hasError={!!errors.constraints} />
+          <ConnectivitySection applicationId={application._id} hasError={!!errors.connectivity} />
+          <AddressesSection hasError={!!errors.addresses} />
+          <AdvancedSection
+            hasError={
+              !!(
+                errors.state ||
+                errors.target_node ||
+                errors.sla_violation_strategy ||
+                errors.added_files
+              )
+            }
+          />
+
+          {create.isError ? (
+            <Alert variant="destructive">
+              <AlertTitle>Could not create the service</AlertTitle>
+              <AlertDescription>{describeError(create.error)}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          <div className="bg-background/95 sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-3 border-t px-1 py-3 backdrop-blur">
+            {submitCount > 0 && errorCount > 0 ? (
+              <button
+                type="button"
+                aria-live="polite"
+                className="text-destructive cursor-pointer text-sm font-medium hover:underline"
+                onClick={() =>
+                  formRef.current
+                    ?.querySelector<HTMLElement>('[aria-invalid="true"]')
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                }
+              >
+                {errorCount === 1
+                  ? '1 field needs attention'
+                  : `${errorCount} fields need attention`}
+              </button>
+            ) : (
+              <p className="text-muted-foreground truncate text-sm">
+                {application.application_name} /{' '}
+                <span className="text-foreground font-medium">
+                  {watchedName ? `${watchedName}.${watchedNamespace}` : 'New service'}
+                </span>
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="ghost" onClick={() => void navigate(appPath)}>
+                Cancel
+              </Button>
+              <Button type="button" variant="outline" onClick={() => void onExport()}>
+                <Download /> Download SLA
+              </Button>
+              <Button type="submit" disabled={create.isPending}>
+                {create.isPending ? 'Creating...' : 'Create service'}
+              </Button>
+            </div>
+          </div>
+        </form>
+        <SectionNav errors={errors} />
+      </div>
+
+      {source ? (
+        <ConfirmDialog
+          open={landing !== null}
+          onOpenChange={(open) => {
+            if (!open && landing) void navigate(landing);
+          }}
+          title={`Delete the original ${source.name}?`}
+          description="The copy was created. Services cannot be edited yet, so the original is only needed if you want to keep both."
+          confirmLabel="Delete original"
+          cancelLabel="Keep original"
+          destructive
+          pending={removeSource.isPending}
+          onConfirm={() =>
+            removeSource.mutate(source.id, {
+              onSettled: () => {
+                if (landing) void navigate(landing);
+              },
+            })
           }
         />
-
-        {create.isError ? (
-          <Alert variant="destructive">
-            <AlertTitle>Could not create the service</AlertTitle>
-            <AlertDescription>{describeError(create.error)}</AlertDescription>
-          </Alert>
-        ) : null}
-
-        <div className="bg-background/95 sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-3 border-t px-1 py-3 backdrop-blur">
-          <p className="text-muted-foreground truncate text-sm">
-            {application.application_name} /{' '}
-            <span className="text-foreground font-medium">
-              {watchedName ? `${watchedName}.${watchedNamespace}` : 'New service'}
-            </span>
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="ghost" onClick={() => void navigate(appPath)}>
-              Cancel
-            </Button>
-            <Button type="button" variant="outline" onClick={() => void onExport()}>
-              <Download /> Export JSON
-            </Button>
-            <Button type="submit" disabled={create.isPending}>
-              {create.isPending ? 'Creating...' : 'Create service'}
-            </Button>
-          </div>
-        </div>
-      </form>
+      ) : null}
 
       <Dialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
         <DialogContent>

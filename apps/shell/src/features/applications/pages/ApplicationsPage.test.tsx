@@ -17,9 +17,10 @@ describe('<ApplicationsPage>', () => {
   it("lists only the signed-in user's applications with their service counts", async () => {
     renderApplications();
 
-    const row = (await screen.findByRole('cell', { name: 'analytics' })).closest('tr')!;
-    expect(within(row).getByText('2')).toBeVisible();
-    expect(screen.queryByRole('cell', { name: 'webshop' })).not.toBeInTheDocument();
+    const row = (await screen.findByRole('cell', { name: /^analytics/ })).closest('tr')!;
+    expect(within(row).getByText('2 services')).toBeVisible();
+    expect(await within(row).findByText('Not deployed')).toBeVisible();
+    expect(screen.queryByRole('cell', { name: /^webshop/ })).not.toBeInTheDocument();
     expect(screen.getByTestId('breadcrumbs')).toHaveTextContent('Applications');
   });
 
@@ -34,12 +35,12 @@ describe('<ApplicationsPage>', () => {
     await user.clear(screen.getByRole('searchbox', { name: 'Search Applications' }));
     await user.type(screen.getByRole('searchbox', { name: 'Search Applications' }), 'web');
     await waitFor(() => expect(router.state.location.search).toBe('?q=web'));
-    expect(screen.getByRole('cell', { name: 'webshop' })).toBeVisible();
-    expect(screen.queryByRole('cell', { name: 'iotpipe' })).not.toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: /^webshop/ })).toBeVisible();
+    expect(screen.queryByRole('cell', { name: /^iotpipe/ })).not.toBeInTheDocument();
   });
 
   it('creates an application and shows it', async () => {
-    const { user } = renderApplications();
+    const { user, router } = renderApplications();
     await user.click(await screen.findByRole('button', { name: 'New application' }));
     const dialog = await screen.findByRole('dialog');
 
@@ -49,10 +50,11 @@ describe('<ApplicationsPage>', () => {
     await user.type(within(dialog).getByLabelText('Description'), 'Sensor data');
     await user.click(within(dialog).getByRole('button', { name: 'Create' }));
 
-    expect(await screen.findByRole('cell', { name: 'telemetry' })).toBeVisible();
-    expect(
-      mockStore.data.applications.find((app) => app.application_name === 'telemetry'),
-    ).toMatchObject({
+    // The new application opens right away instead of leaving the user to find its row.
+    expect(await screen.findByRole('heading', { name: 'telemetry' })).toBeVisible();
+    const created = mockStore.data.applications.find((app) => app.application_name === 'telemetry');
+    expect(router.state.location.pathname).toBe(`/applications/${created!._id}`);
+    expect(created).toMatchObject({
       application_namespace: 'prod',
       application_desc: 'Sensor data',
       userId: 'alice',
@@ -89,7 +91,8 @@ describe('<ApplicationsPage>', () => {
 
   it('edits an application', async () => {
     const { user } = renderApplications();
-    await user.click(await screen.findByRole('button', { name: 'Edit analytics' }));
+    await user.click(await screen.findByRole('button', { name: 'Actions for analytics' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Edit' }));
     const dialog = await screen.findByRole('dialog');
 
     const description = within(dialog).getByLabelText('Description');
@@ -106,14 +109,15 @@ describe('<ApplicationsPage>', () => {
 
   it('warns that services are deleted along with the application', async () => {
     const { user } = renderApplications();
-    await user.click(await screen.findByRole('button', { name: 'Delete analytics' }));
+    await user.click(await screen.findByRole('button', { name: 'Actions for analytics' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Delete' }));
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog).toHaveTextContent('also deletes its 2 services');
 
     await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
 
     await waitFor(() =>
-      expect(screen.queryByRole('cell', { name: 'analytics' })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('cell', { name: /^analytics/ })).not.toBeInTheDocument(),
     );
     expect(mockStore.data.applications.some((app) => app.application_name === 'analytics')).toBe(
       false,
@@ -122,9 +126,9 @@ describe('<ApplicationsPage>', () => {
 
   it('opens the detail page on row click', async () => {
     const { user, router } = renderApplications();
-    await user.click(await screen.findByRole('cell', { name: 'analytics' }));
+    await user.click(await screen.findByRole('cell', { name: /^analytics/ }));
 
     await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/applications\/\w+$/));
-    expect(await screen.findByRole('heading', { name: 'analytics' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: /^analytics/ })).toBeVisible();
   });
 });

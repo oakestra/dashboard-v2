@@ -7,19 +7,30 @@ import {
   Badge,
   Button,
   ConfirmDialog,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyState,
   PageHeader,
   Skeleton,
 } from '@oakestra/ui';
 import { createDataTableColumnHelper, DataTable } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
-import { PencilIcon, PlusIcon, Trash2Icon, UsersIcon } from 'lucide-react';
+import {
+  BuildingIcon,
+  EllipsisIcon,
+  PencilIcon,
+  PlusIcon,
+  Trash2Icon,
+  UsersIcon,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 
 import { describeError } from '../../../core/api/errors';
 import { allUsersQuery, roleLabel } from '../../users';
-import { useSetOrganizationMembers } from '../api/mutations';
+import { useDeleteOrganization, useSetOrganizationMembers } from '../api/mutations';
 import { organizationsQuery } from '../api/queries';
 import { MemberDialog } from '../components/MemberDialog';
 import { RenameOrganizationDialog } from '../components/RenameOrganizationDialog';
@@ -38,7 +49,21 @@ export function OrganizationDetailPage() {
   const users = useQuery(allUsersQuery(api));
   const organization = organizations.data?.find((candidate) => candidate._id === orgId);
 
-  if (organizations.isPending) return <Skeleton className="h-64 w-full" />;
+  if (organizations.isPending) {
+    return (
+      <div className="space-y-6" data-testid="organization-loading">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-56" />
+          <Skeleton className="h-4 w-80 max-w-full" />
+        </div>
+        <div className="space-y-2">
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton key={index} className="h-10 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
   if (organizations.isError) {
     return (
       <Alert variant="destructive">
@@ -60,6 +85,7 @@ export function OrganizationDetailPage() {
   if (!organization) {
     return (
       <EmptyState
+        icon={<BuildingIcon />}
         title="Organization not found"
         description="It may have been deleted."
         action={
@@ -95,6 +121,10 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
   const [editing, setEditing] = useState<MemberRow | null>(null);
   const [removing, setRemoving] = useState<MemberRow | null>(null);
   const [renaming, setRenaming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const navigate = useNavigate();
+  const remove = useDeleteOrganization();
+  const isRoot = organization.name === ROOT_ORGANIZATION_NAME;
 
   const rows = useMemo<MemberRow[]>(() => {
     const names = new Map(users.map((user) => [user._id, user.name]));
@@ -109,6 +139,9 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
     const taken = new Set(organization.member.map((member) => member.user_id));
     return users.filter((user) => !taken.has(user._id)).map((u) => ({ id: u._id, name: u.name }));
   }, [organization.member, users]);
+
+  const admins = organization.member.filter((member) => member.roles.includes('Admin')).length;
+  const summary = `${organization.member.length === 1 ? '1 member' : `${organization.member.length} members`}, ${admins === 1 ? '1 admin' : `${admins} admins`}`;
 
   // The backend replaces the list, so every change sends all members; only user_id and roles of
   // each, in case the stored documents carry more.
@@ -126,8 +159,15 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
           id: 'name',
           header: 'User',
           cell: ({ row }) =>
-            row.original.name ?? (
-              <span className="text-muted-foreground">Unknown user ({row.original.user_id})</span>
+            row.original.name === null ? (
+              <span className="text-muted-foreground">
+                Deleted user <span className="font-mono text-xs">{row.original.user_id}</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <span className="font-medium">{row.original.name}</span>
+                {row.original.name === selfName ? <Badge variant="neutral">You</Badge> : null}
+              </span>
             ),
         }),
         column.accessor((row) => row.roles.join(', '), {
@@ -150,6 +190,7 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
         column.display({
           id: 'actions',
           header: () => <span className="sr-only">Actions</span>,
+          meta: { align: 'right' },
           cell: ({ row }) => {
             const label = row.original.name ?? row.original.user_id;
             const removeBlock = removalBlock(
@@ -189,29 +230,51 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
     <div className="space-y-6">
       <PageHeader
         title={organization.name}
-        description="Members of this organization and their roles in it."
+        description={
+          isRoot ? (
+            <span className="flex flex-wrap items-center gap-2">
+              {/* Next to the title would put the badge inside the h1 and into its accessible name. */}
+              <Badge variant="neutral">Default</Badge>
+              Default organization for users who log in without one. It cannot be renamed or
+              deleted.
+            </span>
+          ) : (
+            'Members of this organization and their roles in it.'
+          )
+        }
         actions={
           <>
-            <Button
-              variant="outline"
-              onClick={() => setRenaming(true)}
-              disabled={organization.name === ROOT_ORGANIZATION_NAME}
-              title={
-                organization.name === ROOT_ORGANIZATION_NAME
-                  ? 'The root organization cannot be renamed'
-                  : undefined
-              }
-            >
-              <PencilIcon aria-hidden />
-              Rename
-            </Button>
             <Button onClick={() => setAdding(true)} disabled={usersLoading || usersFailed}>
               <PlusIcon aria-hidden />
               Add member
             </Button>
+            {isRoot ? null : (
+              <Button variant="outline" onClick={() => setRenaming(true)}>
+                <PencilIcon aria-hidden />
+                Rename
+              </Button>
+            )}
+            {isRoot ? null : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="More actions">
+                    <EllipsisIcon aria-hidden />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
+                    <Trash2Icon aria-hidden />
+                    Delete organization
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </>
         }
       />
+      <p className="text-muted-foreground -mt-3 text-sm tabular-nums" data-testid="member-summary">
+        {summary}
+      </p>
       {usersFailed ? (
         <Alert variant="destructive">
           <AlertDescription>
@@ -232,6 +295,12 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
             icon={<UsersIcon />}
             title="No members"
             description="Add users to give them roles in this organization."
+            action={
+              <Button onClick={() => setAdding(true)} disabled={usersLoading || usersFailed}>
+                <PlusIcon aria-hidden />
+                Add member
+              </Button>
+            }
           />
         }
       />
@@ -242,6 +311,7 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
       {adding ? (
         <MemberDialog
           title="Add member"
+          description={`Roles apply only inside ${organization.name}.`}
           submitLabel="Add member"
           candidates={candidates}
           pending={setMembers.isPending}
@@ -258,6 +328,7 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
         <MemberDialog
           key={editing.user_id}
           title={`Edit roles of ${editing.name ?? editing.user_id}`}
+          description={`Roles apply only inside ${organization.name}.`}
           submitLabel="Save roles"
           initialRoles={editing.roles}
           pending={setMembers.isPending}
@@ -280,6 +351,22 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
           }}
         />
       ) : null}
+      <ConfirmDialog
+        open={deleting}
+        onOpenChange={setDeleting}
+        title={`Delete ${organization.name}?`}
+        description="Its members lose their roles in it. The user accounts stay. This cannot be undone."
+        confirmLabel="Delete organization"
+        destructive
+        pending={remove.isPending}
+        onConfirm={() => {
+          if (isRoot) return;
+          remove.mutate(organization, {
+            onSuccess: () => void navigate('/organizations'),
+            onSettled: () => setDeleting(false),
+          });
+        }}
+      />
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(open) => {

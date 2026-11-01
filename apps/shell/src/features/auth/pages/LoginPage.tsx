@@ -5,6 +5,7 @@ import {
   Alert,
   AlertDescription,
   Button,
+  cn,
   Field,
   FieldError,
   FieldGroup,
@@ -12,7 +13,8 @@ import {
   Input,
 } from '@oakestra/ui';
 import { useMutation } from '@tanstack/react-query';
-import { useState } from 'react';
+import { Building2Icon, ChevronDownIcon, InfoIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import type { z } from 'zod';
@@ -50,6 +52,11 @@ export function LoginPage() {
     defaultValues: { username: '', password: '', organization_name: '' },
   });
 
+  // Opening the organization field is a request to type in it.
+  useEffect(() => {
+    if (withOrganization) form.setFocus('organization_name');
+  }, [withOrganization, form]);
+
   const login = useMutation({
     mutationFn: (credentials: z.output<typeof loginRequestSchema>) => api.auth.login(credentials),
     // The error is shown in the form; a toast would repeat it.
@@ -73,7 +80,8 @@ export function LoginPage() {
       >
         <FieldGroup>
           {notice && !login.isError ? (
-            <Alert>
+            <Alert variant="info">
+              <InfoIcon aria-hidden />
               <AlertDescription>{notice}</AlertDescription>
             </Alert>
           ) : null}
@@ -112,31 +120,46 @@ export function LoginPage() {
             </Link>
             <FieldError errors={[form.formState.errors.password]} />
           </Field>
-          {withOrganization ? (
-            <Field>
-              <FieldLabel htmlFor="organization">Organization</FieldLabel>
-              <Input
-                id="organization"
-                autoComplete="organization"
-                placeholder="Leave empty for the default organization"
-                {...form.register('organization_name')}
-              />
-            </Field>
-          ) : (
-            <Button
+          {/* A disclosure, not a link: it reveals the field in place and folds it away again.
+              Folding it clears the value so a hidden organization is never sent. */}
+          <div className="space-y-3">
+            <button
               type="button"
-              variant="link"
-              className="h-auto justify-start p-0"
-              onClick={() => setWithOrganization(true)}
+              aria-expanded={withOrganization}
+              aria-controls="organization-field"
+              onClick={() => {
+                if (withOrganization) form.setValue('organization_name', '');
+                setWithOrganization(!withOrganization);
+              }}
+              className="text-muted-foreground hover:text-foreground aria-expanded:text-foreground focus-visible:ring-ring/50 -mx-1 inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-sm font-medium outline-none focus-visible:ring-[3px]"
             >
+              <Building2Icon aria-hidden className="size-4" />
               Log in to an organization
-            </Button>
-          )}
+              <ChevronDownIcon
+                aria-hidden
+                className={cn(
+                  'size-4 transition-transform motion-reduce:transition-none',
+                  withOrganization && 'rotate-180',
+                )}
+              />
+            </button>
+            {withOrganization ? (
+              <Field id="organization-field">
+                <FieldLabel htmlFor="organization">Organization</FieldLabel>
+                <Input
+                  id="organization"
+                  autoComplete="organization"
+                  placeholder="Leave empty for the default organization"
+                  {...form.register('organization_name')}
+                />
+              </Field>
+            ) : null}
+          </div>
           <Button type="submit" className="w-full" disabled={login.isPending}>
             {login.isPending ? 'Logging in...' : 'Log in'}
           </Button>
           {import.meta.env.DEV && import.meta.env.MODE === 'mock' ? (
-            <p className="text-muted-foreground text-xs">
+            <p className="text-muted-foreground bg-muted rounded-md px-3 py-2 text-xs">
               Mock API: log in as Admin, alice, bob, carol or dave. The password is the username.
             </p>
           ) : null}

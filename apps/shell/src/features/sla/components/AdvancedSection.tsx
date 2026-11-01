@@ -21,6 +21,7 @@ export function AdvancedSection({ hasError }: { hasError: boolean }) {
       description="Rarely needed options."
       collapsible
       defaultOpen={hasValues}
+      summary={hasValues ? 'Customized' : 'Defaults'}
       hasError={hasError}
     >
       <div className="flex flex-wrap gap-8">

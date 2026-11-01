@@ -8,10 +8,12 @@ import {
   useMap,
   type MapGeoJSONData,
 } from '@oakestra/ui/map';
+import { cn } from '@oakestra/ui';
 import { useEffect, useMemo } from 'react';
+import { Link } from 'react-router';
 
 import { ErrorBoundary } from '../core/extensions/ErrorBoundary';
-import type { MapLocation } from './location-map-types';
+import type { MapLocation, MapLocationTone } from './location-map-types';
 
 // MapLibre takes [lng, lat], unlike the lat/lng order used everywhere else in the shell.
 const WORLD_CENTER: [number, number] = [0, 20];
@@ -19,9 +21,19 @@ const WORLD_ZOOM = 1;
 const SINGLE_POINT_ZOOM = 6;
 const KM_PER_DEGREE = 111.32;
 const CIRCLE_STEPS = 64;
-// MapLibre paint properties do not understand CSS variables, so the accent is a literal. It
-// matches mapcn's default marker so markers and circles read as one thing.
-const ACCENT = '#3b82f6';
+// MapLibre paint properties do not understand CSS variables, so the circle colors are literals at
+// a lightness that reads on both the light and dark basemap: the Oakestra slate-teal (chart-1),
+// an amber close to the warning token and a neutral grey.
+const CIRCLE_COLORS: Record<MapLocationTone, string> = {
+  default: '#46839d',
+  warning: '#c98a1b',
+  muted: '#8a94a0',
+};
+const MARKER_CLASSES: Record<MapLocationTone, string> = {
+  default: 'bg-primary ring-primary/25',
+  warning: 'bg-warning ring-warning/25',
+  muted: 'bg-muted-foreground ring-muted-foreground/25',
+};
 
 // Equirectangular offsets: off by a few percent for large radii far from the equator, which is
 // fine for a "roughly here" circle and avoids pulling in a geodesy library.
@@ -80,26 +92,45 @@ function FitBounds({ locations }: { locations: readonly MapLocation[] }) {
   return null;
 }
 
-function LocationCircle({ lat, lng, radiusKm }: { lat: number; lng: number; radiusKm: number }) {
+function LocationCircle({
+  lat,
+  lng,
+  radiusKm,
+  tone,
+}: {
+  lat: number;
+  lng: number;
+  radiusKm: number;
+  tone: MapLocationTone;
+}) {
   const data = useMemo(() => circlePolygon(lat, lng, radiusKm), [lat, lng, radiusKm]);
+  const color = CIRCLE_COLORS[tone];
   return (
     <MapGeoJSON
       data={data}
-      fillPaint={{ 'fill-color': ACCENT, 'fill-opacity': 0.15 }}
-      linePaint={{ 'line-color': ACCENT, 'line-width': 1.5 }}
+      fillPaint={{ 'fill-color': color, 'fill-opacity': 0.15 }}
+      linePaint={{ 'line-color': color, 'line-width': 1.5 }}
     />
   );
 }
 
-function LocationMarker({ lat, lng, label }: MapLocation) {
+function LocationMarker({ lat, lng, label, tone = 'default', href }: MapLocation) {
+  const dot = cn(
+    'block size-4 rounded-full border-2 border-white shadow-md ring-4 dark:border-background',
+    MARKER_CLASSES[tone],
+  );
   return (
     <MapMarker longitude={lng} latitude={lat}>
       <MarkerContent>
-        <span
-          role="img"
-          aria-label={label}
-          className="block size-4 rounded-full border-2 border-white bg-blue-500 shadow-lg"
-        />
+        {href ? (
+          <Link
+            to={href}
+            aria-label={label}
+            className={cn(dot, 'focus-visible:ring-ring outline-none focus-visible:ring-[3px]')}
+          />
+        ) : (
+          <span role="img" aria-label={label} className={dot} />
+        )}
       </MarkerContent>
       <MarkerTooltip>{label}</MarkerTooltip>
     </MapMarker>
@@ -126,7 +157,7 @@ export default function LocationMapImpl({
       aria-label={ariaLabel}
       // MapLibre controls carry their own z-indexes; a new stacking context keeps them below the
       // app's dialogs and popovers.
-      className={`isolate ${className ?? 'h-72 w-full overflow-hidden rounded-md'}`}
+      className={`isolate ${className ?? 'h-72 w-full overflow-hidden rounded-lg border'}`}
     >
       {/* MapLibre needs WebGL2. Without it the Map throws while rendering; keep that local to
           the map instead of failing the whole page. */}
@@ -145,6 +176,7 @@ export default function LocationMapImpl({
                 lat={location.lat}
                 lng={location.lng}
                 radiusKm={location.radiusKm}
+                tone={location.tone ?? 'default'}
               />
             ) : null,
           )}

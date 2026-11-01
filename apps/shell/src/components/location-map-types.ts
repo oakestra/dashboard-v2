@@ -6,7 +6,13 @@ export interface MapLocation {
   /** Drawn as a circle around the point. */
   radiusKm?: number;
   label: string;
+  /** Marker and circle color. `warning` flags a location that needs a look (inactive cluster). */
+  tone?: MapLocationTone;
+  /** Makes the marker a link, e.g. to the detail page of what sits there. */
+  href?: string;
 }
+
+export type MapLocationTone = 'default' | 'warning' | 'muted';
 
 /**
  * Converts a parsed `cluster_location` into a map location. Returns null when the cluster has no

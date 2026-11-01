@@ -44,6 +44,46 @@ export function formatRelativeTime(
   return relativeFormat.format(seconds, 'second');
 }
 
+const LEGACY_DATE = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/;
+
+/**
+ * Parses the date strings the backend stores for users: `dd/mm/yyyy hh:mm` (with or without a
+ * comma, written by the old and the new dashboard) or ISO 8601. `new Date()` would read the
+ * legacy form as month-first, so it has to be matched by hand. Returns undefined for anything else.
+ */
+export function parseLegacyDate(value: string | null | undefined): Date | undefined {
+  const text = value?.trim();
+  if (!text) return undefined;
+  const legacy = LEGACY_DATE.exec(text);
+  if (legacy) {
+    const [day = 0, month = 0, year = 0, hour = 0, minute = 0, second = 0] = legacy
+      .slice(1)
+      .map((part) => Number(part ?? 0));
+    const date = new Date(year, month - 1, day, hour, minute, second);
+    // Date rolls 31/02 over to March; treat that as invalid input instead.
+    return date.getMonth() === month - 1 && date.getDate() === day ? date : undefined;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}/.test(text)) return undefined;
+  const iso = new Date(text);
+  return Number.isNaN(iso.getTime()) ? undefined : iso;
+}
+
+const dayFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });
+const dayTimeFormat = new Intl.DateTimeFormat(undefined, {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
+
+/** "Nov 1, 2026" in the viewer's locale. */
+export function formatDate(date: Date): string {
+  return dayFormat.format(date);
+}
+
+/** "Nov 1, 2026, 4:34 PM", for tooltips next to a `formatDate` cell. */
+export function formatDateTime(date: Date): string {
+  return dayTimeFormat.format(date);
+}
+
 function trimTrailingZeros(text: string): string {
   return text.includes('.') ? text.replace(/\.?0+$/, '') : text;
 }

@@ -18,7 +18,16 @@ import {
   type PaginationState,
   type SortingState,
 } from '@tanstack/react-table';
-import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, SearchIcon } from 'lucide-react';
+import {
+  ArrowDownIcon,
+  ArrowUpDownIcon,
+  ArrowUpIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  InboxIcon,
+  SearchIcon,
+  SearchXIcon,
+} from 'lucide-react';
 import * as React from 'react';
 
 import { cn } from '../lib/utils';
@@ -29,9 +38,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Skeleton } from './skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './table';
 
+/** Per-column presentation, set as `meta` on a column definition. */
+interface DataTableColumnMeta {
+  /** Horizontal alignment of the header and the cells. */
+  align?: 'left' | 'center' | 'right';
+  /** Right-aligns the column and uses tabular figures, so digits line up row to row. */
+  numeric?: boolean;
+  /** Extra classes for every body cell of the column. */
+  className?: string;
+  /** Extra classes for the header cell. */
+  headerClassName?: string;
+}
+
+// Type-only slot of tableFeatures: its declared type types `meta` on every column, the value
+// itself is stripped by TanStack at runtime.
+const columnMeta: DataTableColumnMeta = {};
+
 // Module scope on purpose: TanStack Table v9 recomputes its row models whenever the feature
 // object changes identity.
 const dataTableFeatures = tableFeatures({
+  columnMeta,
   rowSortingFeature,
   sortedRowModel: createSortedRowModel(),
   sortFns: {
@@ -151,8 +177,18 @@ function useSearchText(controlled: string, onChange: (value: string) => void) {
   return [text, update] as const;
 }
 
+function alignOf(meta: DataTableColumnMeta | undefined) {
+  return meta?.align ?? (meta?.numeric ? 'right' : 'left');
+}
+
+const ALIGN_CLASS = { left: '', center: 'text-center', right: 'text-right' } as const;
+const SKELETON_WIDTHS = ['w-32', 'w-20', 'w-24', 'w-16', 'w-28'];
+
 function isInteractive(target: EventTarget | null, row: Element) {
   if (!(target instanceof Element)) return false;
+  // React events bubble through portals, so a click inside a dropdown or dialog opened from a
+  // cell reaches the row although its DOM node lives elsewhere. Such clicks never mean "open row".
+  if (!row.contains(target)) return true;
   const interactive = target.closest('a, button, input, select, textarea, [role="menuitem"]');
   return interactive !== null && row.contains(interactive);
 }
@@ -230,11 +266,20 @@ function DataTable<TData extends object>({
 
   let body: React.ReactNode;
   if (isLoading) {
+    const leafHeaders = table.getHeaderGroups().at(-1)?.headers ?? [];
     body = Array.from({ length: loadingRows }, (_, row) => (
-      <TableRow key={row} data-testid="data-table-skeleton-row">
+      <TableRow key={row} data-testid="data-table-skeleton-row" className="hover:bg-transparent">
         {Array.from({ length: columnCount }, (_, cell) => (
-          <TableCell key={cell}>
-            <Skeleton className="h-4 w-full max-w-40" />
+          <TableCell
+            key={cell}
+            className={ALIGN_CLASS[alignOf(leafHeaders[cell]?.column.columnDef.meta)]}
+          >
+            <Skeleton
+              className={cn(
+                'inline-block h-4 max-w-full align-middle',
+                SKELETON_WIDTHS[(row + cell) % SKELETON_WIDTHS.length],
+              )}
+            />
           </TableCell>
         ))}
       </TableRow>
@@ -244,11 +289,19 @@ function DataTable<TData extends object>({
       <TableRow className="hover:bg-transparent">
         <TableCell colSpan={columnCount}>
           {total === 0
-            ? (emptyState ?? <EmptyState title="Nothing here yet" />)
+            ? (emptyState ?? <EmptyState icon={<InboxIcon />} title="Nothing here yet" />)
             : (noResultsState ?? (
                 <EmptyState
+                  icon={<SearchXIcon />}
                   title="No results"
                   description="Nothing matches your search. Try a different term."
+                  action={
+                    searchText ? (
+                      <Button variant="outline" size="sm" onClick={() => onSearchTextChange('')}>
+                        Clear search
+                      </Button>
+                    ) : undefined
+                  }
                 />
               ))}
         </TableCell>
@@ -260,7 +313,11 @@ function DataTable<TData extends object>({
       return (
         <TableRow
           key={row.id}
-          className={cn(clickable && 'cursor-pointer')}
+          data-clickable={clickable || undefined}
+          className={cn(
+            clickable &&
+              'cursor-pointer outline-none focus-visible:bg-muted/60 focus-visible:shadow-[inset_2px_0_0_var(--ring)]',
+          )}
           tabIndex={clickable ? 0 : undefined}
           onClick={
             clickable
@@ -279,11 +336,21 @@ function DataTable<TData extends object>({
               : undefined
           }
         >
-          {row.getAllCells().map((cell) => (
-            <TableCell key={cell.id}>
-              <table.FlexRender cell={cell} />
-            </TableCell>
-          ))}
+          {row.getAllCells().map((cell) => {
+            const meta = cell.column.columnDef.meta;
+            return (
+              <TableCell
+                key={cell.id}
+                className={cn(
+                  ALIGN_CLASS[alignOf(meta)],
+                  meta?.numeric && 'tabular-nums',
+                  meta?.className,
+                )}
+              >
+                <table.FlexRender cell={cell} />
+              </TableCell>
+            );
+          })}
         </TableRow>
       );
     });
@@ -316,18 +383,21 @@ function DataTable<TData extends object>({
         </div>
       )}
 
-      <div className="rounded-md border">
+      <div className="overflow-hidden rounded-lg border bg-card">
         <Table aria-label={label}>
-          <TableHeader>
+          <TableHeader className="bg-muted/50">
             {table.getHeaderGroups().map((group) => (
               <TableRow key={group.id} className="hover:bg-transparent">
                 {group.headers.map((header) => {
                   const sorted = header.column.getIsSorted();
                   const canSort = header.column.getCanSort();
+                  const meta = header.column.columnDef.meta;
+                  const align = alignOf(meta);
                   return (
                     <TableHead
                       key={header.id}
                       colSpan={header.colSpan}
+                      className={cn(ALIGN_CLASS[align], meta?.headerClassName)}
                       aria-sort={
                         sorted === 'asc'
                           ? 'ascending'
@@ -337,10 +407,14 @@ function DataTable<TData extends object>({
                       }
                     >
                       {header.isPlaceholder ? null : canSort ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="-ml-3 h-8 data-[sorted=true]:text-foreground"
+                        // The idle sort icon only shows on hover or focus: one on every header
+                        // is noise. Its space is kept so the label does not shift.
+                        <button
+                          type="button"
+                          className={cn(
+                            'group/sort -mx-1.5 inline-flex h-7 items-center gap-1 rounded-md px-1.5 font-medium outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 data-[sorted=true]:text-foreground [&_svg]:size-3.5 [&_svg]:shrink-0',
+                            align === 'right' && 'flex-row-reverse',
+                          )}
                           data-sorted={sorted !== false}
                           onClick={header.column.getToggleSortingHandler()}
                         >
@@ -350,9 +424,12 @@ function DataTable<TData extends object>({
                           ) : sorted === 'desc' ? (
                             <ArrowDownIcon aria-hidden />
                           ) : (
-                            <ArrowUpDownIcon aria-hidden className="opacity-50" />
+                            <ArrowUpDownIcon
+                              aria-hidden
+                              className="opacity-0 transition-opacity group-hover/sort:opacity-60 group-focus-visible/sort:opacity-60"
+                            />
                           )}
-                        </Button>
+                        </button>
                       ) : (
                         <table.FlexRender header={header} />
                       )}
@@ -367,53 +444,60 @@ function DataTable<TData extends object>({
       </div>
 
       {!isLoading && filteredCount > 0 ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-          <span aria-live="polite">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm text-muted-foreground">
+          <span aria-live="polite" className="tabular-nums">
             {filteredCount === total
               ? `${total} ${total === 1 ? 'row' : 'rows'}`
               : `${filteredCount} of ${total} ${total === 1 ? 'row' : 'rows'}`}
           </span>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span>Rows per page</span>
-              <Select
-                value={String(pagination.pageSize)}
-                onValueChange={(value) => setPagination({ pageIndex: 0, pageSize: Number(value) })}
-              >
-                <SelectTrigger size="sm" aria-label="Rows per page">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {pageSizeOptions.map((size) => (
-                    <SelectItem key={size} value={String(size)}>
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* A single short page needs no paging controls, only the count. */}
+          {pageCount > 1 || filteredCount > (pageSizeOptions[0] ?? 10) ? (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <div className="flex items-center gap-2">
+                <span className="hidden sm:inline">Rows per page</span>
+                <Select
+                  value={String(pagination.pageSize)}
+                  onValueChange={(value) =>
+                    setPagination({ pageIndex: 0, pageSize: Number(value) })
+                  }
+                >
+                  <SelectTrigger size="sm" aria-label="Rows per page" className="tabular-nums">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pageSizeOptions.map((size) => (
+                      <SelectItem key={size} value={String(size)}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <span className="tabular-nums">
+                Page {pageIndex + 1} of {pageCount}
+              </span>
+              <div className="flex gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pageIndex <= 0}
+                  onClick={() => setPagination({ ...pagination, pageIndex: pageIndex - 1 })}
+                >
+                  <ChevronLeftIcon aria-hidden />
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pageIndex >= pageCount - 1}
+                  onClick={() => setPagination({ ...pagination, pageIndex: pageIndex + 1 })}
+                >
+                  Next
+                  <ChevronRightIcon aria-hidden />
+                </Button>
+              </div>
             </div>
-            <span>
-              Page {pageIndex + 1} of {pageCount}
-            </span>
-            <div className="flex gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={pageIndex <= 0}
-                onClick={() => setPagination({ ...pagination, pageIndex: pageIndex - 1 })}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={pageIndex >= pageCount - 1}
-                onClick={() => setPagination({ ...pagination, pageIndex: pageIndex + 1 })}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -421,4 +505,4 @@ function DataTable<TData extends object>({
 }
 
 export { DataTable, createDataTableColumnHelper };
-export type { DataTableColumnDef, DataTableProps };
+export type { DataTableColumnDef, DataTableColumnMeta, DataTableProps };

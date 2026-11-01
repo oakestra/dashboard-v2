@@ -16,11 +16,12 @@ import {
   FieldLabel,
   Input,
 } from '@oakestra/ui';
-import { DicesIcon, DownloadIcon } from 'lucide-react';
+import { CircleCheckIcon, DicesIcon, DownloadIcon, TriangleAlertIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import { CopyButton } from '../../../components/CopyButton';
 import { describeError } from '../../../core/api/errors';
 import { useCreateUser } from '../api/mutations';
 import {
@@ -88,19 +89,22 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
         {created ? (
           <div className="grid gap-4" data-testid="user-created">
             <DialogHeader>
-              <DialogTitle>User created</DialogTitle>
-              <DialogDescription>
-                The password is not shown again. Download the credentials and hand them to the new
-                user.
-              </DialogDescription>
+              <DialogTitle className="flex items-center gap-2">
+                <CircleCheckIcon aria-hidden className="text-success size-5" />
+                User {created.username} created
+              </DialogTitle>
+              <DialogDescription>Hand these credentials to the new user.</DialogDescription>
             </DialogHeader>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-              <dt className="text-muted-foreground">Username</dt>
-              <dd>{created.username}</dd>
-              <dt className="text-muted-foreground">Email</dt>
-              <dd>{created.email}</dd>
-              <dt className="text-muted-foreground">Password</dt>
-              <dd className="font-mono">{created.password}</dd>
+            <Alert variant="warning">
+              <TriangleAlertIcon aria-hidden />
+              <AlertDescription>
+                Copy or download the password now. It is not shown again.
+              </AlertDescription>
+            </Alert>
+            <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 text-sm">
+              <CredentialRow label="Username" value={created.username} />
+              <CredentialRow label="Email" value={created.email} />
+              <CredentialRow label="Password" value={created.password} mono />
             </dl>
             <DialogFooter>
               <Button
@@ -147,6 +151,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                   id="new-user-email"
                   type="email"
                   autoComplete="off"
+                  placeholder="name@example.com"
                   aria-invalid={!!form.formState.errors.email}
                   {...form.register('email')}
                 />
@@ -165,6 +170,8 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                   <Button
                     type="button"
                     variant="outline"
+                    // An invalid Field turns all its text red, the way out of the error included.
+                    className="text-foreground"
                     onClick={() =>
                       form.setValue('password', generatePassword(), { shouldValidate: true })
                     }
@@ -176,8 +183,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                 <FieldDescription>Shown in plain text so you can pass it on.</FieldDescription>
                 <FieldError errors={[form.formState.errors.password]} />
               </Field>
-              <Field data-invalid={!!form.formState.errors.roles}>
-                <FieldLabel>Roles</FieldLabel>
+              <div className="grid gap-2">
                 <Controller
                   control={form.control}
                   name="roles"
@@ -186,7 +192,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                   )}
                 />
                 <FieldError errors={[form.formState.errors.roles]} />
-              </Field>
+              </div>
             </FieldGroup>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
@@ -200,5 +206,17 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function CredentialRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="bg-muted/50 flex min-w-0 items-center justify-between gap-2 rounded-md border py-1 pr-1 pl-3">
+        <span className={mono ? 'truncate font-mono' : 'truncate'}>{value}</span>
+        <CopyButton value={value} label={`Copy ${label.toLowerCase()}`} />
+      </dd>
+    </>
   );
 }

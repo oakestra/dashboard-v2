@@ -4,6 +4,7 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Badge,
   Button,
   ConfirmDialog,
   EmptyState,
@@ -13,7 +14,7 @@ import { createDataTableColumnHelper, DataTable } from '@oakestra/ui/data-table'
 import { useQuery } from '@tanstack/react-query';
 import { BuildingIcon, PlusIcon, Trash2Icon } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import { describeError } from '../../../core/api/errors';
 import { useDeleteOrganization } from '../api/mutations';
@@ -33,31 +34,44 @@ export function OrganizationsPage() {
   const columns = useMemo(
     () =>
       column.columns([
-        column.accessor('name', { header: 'Name' }),
+        column.accessor('name', {
+          header: 'Name',
+          // A real link keeps the row reachable by keyboard; the row click is the mouse shortcut.
+          cell: ({ row }) => (
+            <span className="flex items-center gap-2">
+              <Link
+                to={`/organizations/${row.original._id}`}
+                className="font-medium hover:underline"
+              >
+                {row.original.name}
+              </Link>
+              {row.original.name === ROOT_ORGANIZATION_NAME ? (
+                <Badge variant="neutral">Default</Badge>
+              ) : null}
+            </span>
+          ),
+        }),
         column.accessor((organization) => organization.member.length, {
           id: 'members',
           header: 'Members',
+          meta: { numeric: true },
         }),
         column.display({
           id: 'actions',
           header: () => <span className="sr-only">Actions</span>,
-          cell: ({ row }) => {
-            const isRoot = row.original.name === ROOT_ORGANIZATION_NAME;
-            return (
-              <div className="flex justify-end">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Delete ${row.original.name}`}
-                  disabled={isRoot}
-                  title={isRoot ? 'The root organization cannot be deleted' : undefined}
-                  onClick={() => setDeleting(row.original)}
-                >
-                  <Trash2Icon aria-hidden />
-                </Button>
-              </div>
-            );
-          },
+          meta: { align: 'right' },
+          // The root organization has no delete button at all: the detail page explains why.
+          cell: ({ row }) =>
+            row.original.name === ROOT_ORGANIZATION_NAME ? null : (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Delete ${row.original.name}`}
+                onClick={() => setDeleting(row.original)}
+              >
+                <Trash2Icon aria-hidden />
+              </Button>
+            ),
         }),
       ]),
     [],
@@ -103,8 +117,14 @@ export function OrganizationsPage() {
           emptyState={
             <EmptyState
               icon={<BuildingIcon />}
-              title="No organizations"
-              description="Create one."
+              title="No organizations yet"
+              description="Organizations group users and give them roles."
+              action={
+                <Button onClick={() => setCreateOpen(true)}>
+                  <PlusIcon aria-hidden />
+                  Create organization
+                </Button>
+              }
             />
           }
         />

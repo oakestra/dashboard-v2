@@ -1,21 +1,31 @@
 import { parseClusterLocation } from '@oakestra/api';
-import { useOakestraApi } from '@oakestra/dashboard-sdk';
+import { useOakestraApi, usePermissions } from '@oakestra/dashboard-sdk';
 import {
   Alert,
   AlertDescription,
   AlertTitle,
   Button,
   Card,
+  CardAction,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
   ConfirmDialog,
   EmptyState,
   PageHeader,
   Skeleton,
+  StatCard,
 } from '@oakestra/ui';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeftIcon, SquareIcon } from 'lucide-react';
+import {
+  ClockIcon,
+  CpuIcon,
+  HardDriveIcon,
+  MapPinOffIcon,
+  MemoryStickIcon,
+  SquareIcon,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 
@@ -28,8 +38,10 @@ import { clustersQuery } from '../../infrastructure';
 import { useUndeployInstance } from '../api/mutations';
 import { serviceQuery } from '../api/queries';
 import { DefinitionList } from '../components/DefinitionList';
+import { LogsCard } from '../components/LogsCard';
+import { hasMetrics } from '../components/ServiceOverview';
 import { StatusBadge } from '../components/StatusBadge';
-import { usePollWhileTransitional } from '../status';
+import { describeStatus, usePollWhileTransitional } from '../status';
 
 // Metrics and logs change constantly, so the page refreshes on its own; faster while the
 // scheduler is still placing the instance.
@@ -38,6 +50,7 @@ const REFRESH_MS = 15_000;
 export function InstanceDetailPage() {
   const { appId = '', serviceId = '', instanceNumber = '' } = useParams();
   const api = useOakestraApi();
+  const permissions = usePermissions();
   const refetchInterval = usePollWhileTransitional(REFRESH_MS);
   const service = useQuery({ ...serviceQuery(api, serviceId), refetchInterval });
   const clusters = useQuery(clustersQuery(api));
@@ -107,7 +120,31 @@ export function InstanceDetailPage() {
       : instance.host_ip
     : undefined;
   const mono = (value: string | undefined) =>
-    value ? <span className="font-mono text-xs">{value}</span> : undefined;
+    value ? (
+      <span className="inline-flex items-center gap-1">
+        <span className="font-mono text-xs">{value}</span>
+        <CopyButton value={value} label={`Copy ${value}`} size="icon-xs" />
+      </span>
+    ) : undefined;
+  const { tone: statusTone } = describeStatus(instance.status);
+  // A running instance keeps its last scheduler message; shown next to the badge it contradicts it.
+  const problem =
+    instance.status_detail && statusTone !== 'success' ? instance.status_detail : undefined;
+  const measured = hasMetrics(instance);
+  const canOpenCluster = permissions.hasAnyRole(['Admin', 'Infrastructure_Provider']);
+  const clusterValue =
+    clusterName && instance.cluster_id ? (
+      canOpenCluster ? (
+        <Link
+          to={`/infrastructure/clusters/${instance.cluster_id}`}
+          className="font-medium text-primary hover:underline"
+        >
+          {clusterName}
+        </Link>
+      ) : (
+        clusterName
+      )
+    ) : undefined;
 
   return (
     <div className="space-y-6">
@@ -115,23 +152,52 @@ export function InstanceDetailPage() {
         title={
           <span className="flex flex-wrap items-center gap-3">
             {service.data.microservice_name} #{instance.instance_number}
-            <StatusBadge status={instance.status} />
+            <StatusBadge status={instance.status} detail={problem} />
           </span>
         }
-        description={instance.status_detail}
         actions={
-          <>
-            <Button variant="outline" asChild>
-              <Link to={back}>
-                <ArrowLeftIcon aria-hidden /> Service
-              </Link>
-            </Button>
-            <Button variant="outline" onClick={() => setConfirming(true)}>
-              <SquareIcon aria-hidden /> Undeploy
-            </Button>
-          </>
+          <Button variant="outline" onClick={() => setConfirming(true)}>
+            <SquareIcon aria-hidden /> Undeploy
+          </Button>
         }
       />
+
+      {problem ? (
+        <Alert
+          variant={
+            statusTone === 'destructive' || statusTone === 'warning' ? statusTone : 'default'
+          }
+        >
+          <AlertDescription>{problem}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard
+          label="CPU"
+          value={measured ? formatPercent(instance.cpu_percent) : '-'}
+          icon={<CpuIcon />}
+        />
+        <StatCard
+          label="Memory"
+          value={measured ? formatBytes(instance.memory_percent) : '-'}
+          icon={<MemoryStickIcon />}
+        />
+        <StatCard
+          label="Disk"
+          value={instance.disk === undefined ? '-' : formatBytes(instance.disk)}
+          icon={<HardDriveIcon />}
+        />
+        <StatCard
+          label="Last update"
+          value={
+            instance.last_modified_timestamp
+              ? formatRelativeTime(instance.last_modified_timestamp)
+              : '-'
+          }
+          icon={<ClockIcon />}
+        />
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
@@ -141,23 +207,12 @@ export function InstanceDetailPage() {
           <CardContent>
             <DefinitionList
               items={[
-                { label: 'Cluster', value: clusterName },
+                { label: 'Cluster', value: clusterValue },
                 { label: 'Worker node', value: mono(instance.worker_id) },
                 { label: 'Host address', value: mono(host) },
                 { label: 'Public IP', value: mono(instance.publicip) },
-                { label: 'CPU', value: formatPercent(instance.cpu_percent) },
-                { label: 'Memory', value: formatBytes(instance.memory_percent) },
-                {
-                  label: 'Disk',
-                  value: instance.disk === undefined ? undefined : formatBytes(instance.disk),
-                },
-                {
-                  label: 'Last update',
-                  value: instance.last_modified_timestamp
-                    ? formatRelativeTime(instance.last_modified_timestamp)
-                    : undefined,
-                },
               ]}
+              empty="Not placed on a node yet."
             />
           </CardContent>
         </Card>
@@ -173,7 +228,11 @@ export function InstanceDetailPage() {
                 className="h-56 w-full"
               />
             ) : (
-              <p className="text-sm text-muted-foreground">No location reported yet.</p>
+              <EmptyState
+                icon={<MapPinOffIcon />}
+                title="No location reported yet"
+                className="py-8"
+              />
             )}
           </CardContent>
         </Card>
@@ -183,6 +242,10 @@ export function InstanceDetailPage() {
         <Card>
           <CardHeader>
             <CardTitle>CPU</CardTitle>
+            <CardDescription>Recent samples, refreshed every 15 s</CardDescription>
+            <CardAction className="text-lg font-semibold tabular-nums">
+              {measured ? formatPercent(instance.cpu_percent) : '-'}
+            </CardAction>
           </CardHeader>
           <CardContent>
             <TimeSeriesChart title="CPU usage" unit="percent" data={instance.cpu_history} />
@@ -191,40 +254,22 @@ export function InstanceDetailPage() {
         <Card>
           <CardHeader>
             <CardTitle>Memory</CardTitle>
+            <CardDescription>Recent samples, refreshed every 15 s</CardDescription>
+            <CardAction className="text-lg font-semibold tabular-nums">
+              {measured ? formatBytes(instance.memory_percent) : '-'}
+            </CardAction>
           </CardHeader>
           <CardContent>
-            <TimeSeriesChart
-              title="Memory usage"
-              unit="bytes"
-              variant="line"
-              color="var(--chart-2)"
-              data={instance.memory_history}
-            />
+            <TimeSeriesChart title="Memory usage" unit="bytes" data={instance.memory_history} />
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle>Logs</CardTitle>
-          {instance.logs ? <CopyButton value={instance.logs} label="Copy logs" /> : null}
-        </CardHeader>
-        <CardContent>
-          {instance.logs ? (
-            <pre
-              // Keyboard users need focus on a scrollable region to scroll it.
-              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-              tabIndex={0}
-              data-testid="instance-logs"
-              className="max-h-96 overflow-auto rounded-md bg-muted/40 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap"
-            >
-              {instance.logs}
-            </pre>
-          ) : (
-            <p className="text-sm text-muted-foreground">No logs yet.</p>
-          )}
-        </CardContent>
-      </Card>
+      <LogsCard
+        logs={instance.logs}
+        filename={`${service.data.microservice_name}-${instance.instance_number}.log`}
+        updatedAt={service.dataUpdatedAt}
+      />
       <ConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}

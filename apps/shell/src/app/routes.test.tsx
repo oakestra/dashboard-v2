@@ -19,7 +19,7 @@ interface Case {
 // Each URL must reach its own page. The application and service trees are assembled from route
 // arrays of three features, so a wrong nesting shows up here as a blank or mismatched page.
 const cases: Case[] = [
-  { url: () => '/', heading: /^Welcome, Admin/ },
+  { url: () => '/', heading: 'Overview' },
   { url: () => '/applications', heading: 'Applications', crumbs: 'Applications' },
   { url: () => appBase(), heading: 'webshop', crumbs: 'Applicationswebshop' },
   {
@@ -30,7 +30,7 @@ const cases: Case[] = [
   { url: () => serviceBase(), heading: /^frontend/, crumbs: 'Applicationswebshopfrontend' },
   {
     url: () => `${serviceBase()}/duplicate`,
-    heading: 'Duplicate service',
+    heading: 'Duplicate frontend',
     crumbs: 'ApplicationswebshopfrontendDuplicate',
   },
   {

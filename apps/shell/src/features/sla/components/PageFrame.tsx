@@ -1,4 +1,4 @@
-import { Alert, AlertDescription, AlertTitle, Button, Skeleton } from '@oakestra/ui';
+import { Alert, AlertDescription, AlertTitle, Button, PageHeader, Skeleton } from '@oakestra/ui';
 import type { UseQueryResult } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
@@ -12,17 +12,14 @@ export function PageFrame({
   children,
 }: {
   title: string;
-  description: string;
+  description: ReactNode;
   queries: UseQueryResult[];
   children: ReactNode;
 }) {
   const failed = queries.find((query) => query.isError);
   return (
-    <div className="max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        <p className="text-muted-foreground text-sm">{description}</p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title={title} description={description} />
       {failed ? (
         <Alert variant="destructive">
           <AlertTitle>Could not load the data for this form</AlertTitle>

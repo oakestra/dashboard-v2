@@ -24,6 +24,18 @@ describe('<HelpPage>', () => {
     expect(screen.getByRole('link', { name: /GitHub/ })).toHaveAttribute('target', '_blank');
   });
 
+  it('opens the FAQ entry named in the URL hash', async () => {
+    renderApp({
+      modules: [helpModule],
+      route: '/help#faq-instance-status',
+      user: { username: 'alice' },
+    });
+
+    const item = FAQ_ITEMS.find((candidate) => candidate.id === 'instance-status')!;
+    expect(await screen.findByText(item.answer)).toBeVisible();
+    expect(document.getElementById('faq-instance-status')).not.toBeNull();
+  });
+
   it('describes what the app really does: Admin-only user management, no service editing', () => {
     const answer = (id: string) => FAQ_ITEMS.find((item) => item.id === id)!.answer;
     expect(answer('roles')).toMatch(/Admins manage everything, including the Users/);

@@ -12,6 +12,7 @@ import {
   type ChartConfig,
 } from '@oakestra/ui/chart';
 import { cn } from '@oakestra/ui';
+import { useId } from 'react';
 
 import { formatBytes, formatPercent } from '../lib/format';
 
@@ -41,7 +42,61 @@ interface TimeSeriesChartProps {
   className?: string;
 }
 
-const timeFormat = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
+const secondFormat = new Intl.DateTimeFormat(undefined, {
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+});
+const minuteFormat = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
+const dayFormat = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
+
+const SECOND = 1000;
+const MINUTE = 60 * SECOND;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+const TICK_STEPS = [
+  5 * SECOND,
+  15 * SECOND,
+  30 * SECOND,
+  MINUTE,
+  2 * MINUTE,
+  5 * MINUTE,
+  10 * MINUTE,
+  15 * MINUTE,
+  30 * MINUTE,
+  HOUR,
+  2 * HOUR,
+  3 * HOUR,
+  6 * HOUR,
+  12 * HOUR,
+  DAY,
+];
+const MAX_TICKS = 5;
+
+/**
+ * Ticks on round multiples of one step, with a label precise enough for that step. Letting
+ * Recharts pick ticks on a time scale and printing them as HH:MM repeats a label ("10:20, 10:20")
+ * whenever the data spans only a few minutes.
+ */
+export function timeTicks(
+  min: number,
+  max: number,
+): { ticks: number[]; format: (time: number) => string } {
+  const span = max - min;
+  const step =
+    TICK_STEPS.find((candidate) => span / candidate <= MAX_TICKS) ??
+    Math.ceil(span / MAX_TICKS / DAY) * DAY;
+  const format =
+    step < MINUTE
+      ? (time: number) => secondFormat.format(time)
+      : step < DAY
+        ? (time: number) => minuteFormat.format(time)
+        : (time: number) => dayFormat.format(time);
+  if (span <= 0) return { ticks: [min], format };
+  const ticks: number[] = [];
+  for (let tick = Math.ceil(min / step) * step; tick <= max; tick += step) ticks.push(tick);
+  return { ticks, format };
+}
 const dateTimeFormat = new Intl.DateTimeFormat(undefined, {
   dateStyle: 'medium',
   timeStyle: 'medium',
@@ -57,10 +112,13 @@ export function TimeSeriesChart({
   className,
 }: TimeSeriesChartProps) {
   const format = typeof unit === 'function' ? unit : formatters[unit];
+  // SVG gradient ids are document-global, so every chart needs its own.
+  const gradientId = `ts-fill-${useId().replace(/:/g, '')}`;
   // Recharts wants a numeric x value to scale a time axis properly.
   const points = data.map((point) => ({ time: point.timestamp.getTime(), value: point.value }));
   const config = { value: { label: title, color } } satisfies ChartConfig;
   const last = points.at(-1);
+  const { ticks, format: formatTick } = timeTicks(points.at(0)?.time ?? 0, last?.time ?? 0);
 
   const axes = (
     <>
@@ -73,11 +131,13 @@ export function TimeSeriesChart({
         tickLine={false}
         axisLine={false}
         tickMargin={8}
-        minTickGap={32}
-        tickFormatter={(value: number) => timeFormat.format(value)}
+        ticks={ticks}
+        minTickGap={24}
+        tickFormatter={(value: number) => formatTick(value)}
       />
       <YAxis
-        width={64}
+        // Recharts wraps tick labels that do not fit; 72px keeps "976.6 KB" on one line.
+        width={72}
         tickLine={false}
         axisLine={false}
         tickMargin={4}
@@ -131,13 +191,18 @@ export function TimeSeriesChart({
           </LineChart>
         ) : (
           <AreaChart data={points} margin={{ left: 4, right: 8, top: 4 }}>
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--color-value)" stopOpacity={0.28} />
+                <stop offset="100%" stopColor="var(--color-value)" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
             {axes}
             <Area
               dataKey="value"
               type="monotone"
               stroke="var(--color-value)"
-              fill="var(--color-value)"
-              fillOpacity={0.2}
+              fill={`url(#${gradientId})`}
               strokeWidth={2}
               isAnimationActive={false}
             />

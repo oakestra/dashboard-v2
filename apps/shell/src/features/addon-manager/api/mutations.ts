@@ -15,7 +15,11 @@ export function useInstallAddon() {
       manager.install(addon.marketplaceId),
     meta: { errorMessage: 'Could not install the addon' },
     onSuccess: async (_installed, addon) => {
-      notify.success(`Installing ${addon.name}`);
+      // Not a success: the install has only been accepted. The outcome toast comes from
+      // useInstallOutcomeToasts once the status settles.
+      notify.info(`Installing ${addon.name}`, {
+        description: 'You will be notified when it is active or if it fails.',
+      });
       // Both lists show the new status ("Installed" badge on the card, a row in the table).
       await queryClient.invalidateQueries({ queryKey: addonManagerKeys.all });
     },

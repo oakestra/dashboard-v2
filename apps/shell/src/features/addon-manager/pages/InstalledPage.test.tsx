@@ -50,7 +50,8 @@ describe('<InstalledPage>', () => {
     expect(within(example).getByText('2')).toBeVisible();
     const analytics = await rowOf('analytics');
     expect(within(analytics).getByText('Partially active')).toBeVisible();
-    expect(within(analytics).getByText('-')).toBeVisible();
+    expect(within(analytics).getByText('None')).toBeVisible();
+    expect(within(analytics).getByText(/services failing/)).toBeVisible();
     expect(within(await rowOf('legacy-exporter')).getByText('Failed')).toBeVisible();
     expect(screen.getByTestId('breadcrumbs')).toHaveTextContent('HomeAddonsInstalled');
   });

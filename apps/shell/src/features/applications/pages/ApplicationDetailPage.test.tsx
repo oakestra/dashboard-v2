@@ -24,12 +24,25 @@ describe('<ApplicationDetailPage>', () => {
 
     expect(await screen.findByRole('heading', { name: 'analytics' })).toBeVisible();
     expect(await screen.findByRole('cell', { name: /^warehouse/ })).toBeVisible();
+    // No contributed tabs, so no lone "Services" tab.
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
     expect(screen.getByRole('cell', { name: /^dashboard/ })).toBeVisible();
     expect(screen.getByRole('link', { name: /New service/ })).toHaveAttribute(
       'href',
       `/applications/${alicesApp()._id}/services/new`,
     );
     expect(screen.getByTestId('breadcrumbs')).toHaveTextContent('Applicationsanalytics');
+  });
+
+  it('points at undeployed services and deploys them from the banner', async () => {
+    const { user } = renderDetail();
+
+    expect(await screen.findByText('2 services are not deployed yet.')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Deploy them' }));
+
+    await waitFor(() =>
+      expect(screen.queryByText('2 services are not deployed yet.')).not.toBeInTheDocument(),
+    );
   });
 
   it('deploys one instance of every undeployed service with "Deploy all"', async () => {
@@ -70,9 +83,8 @@ describe('<ApplicationDetailPage>', () => {
 
   it('deploys a single instance from the row actions', async () => {
     const { user } = renderDetail();
-    await user.click(
-      await screen.findByRole('button', { name: 'Deploy an instance of warehouse' }),
-    );
+    await user.click(await screen.findByRole('button', { name: 'Actions for warehouse' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Deploy instance' }));
 
     await waitFor(() =>
       expect(
@@ -80,19 +92,20 @@ describe('<ApplicationDetailPage>', () => {
       ).toHaveLength(1),
     );
     const row = screen.getByRole('cell', { name: /^warehouse/ }).closest('tr')!;
-    expect(await within(row).findByText('1 running')).toBeVisible();
+    expect(await within(row).findByText('1/1')).toBeVisible();
   });
 
   it('links to the duplicate flow and deletes a service after confirmation', async () => {
     const { user } = renderDetail();
-    const duplicate = await screen.findByRole('link', { name: 'Duplicate warehouse' });
+    await user.click(await screen.findByRole('button', { name: 'Actions for warehouse' }));
+    const duplicate = await screen.findByRole('menuitem', { name: 'Duplicate' });
     const serviceId = mockStore.data.services.find((s) => s.microservice_name === 'warehouse')!._id;
     expect(duplicate).toHaveAttribute(
       'href',
       `/applications/${alicesApp()._id}/services/${serviceId}/duplicate`,
     );
 
-    await user.click(screen.getByRole('button', { name: 'Delete warehouse' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete' }));
     await user.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Delete' }),
     );
@@ -110,7 +123,8 @@ describe('<ApplicationDetailPage>', () => {
       ),
     );
     const { user } = renderDetail();
-    await user.click(await screen.findByRole('button', { name: 'Delete warehouse' }));
+    await user.click(await screen.findByRole('button', { name: 'Actions for warehouse' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Delete' }));
     await user.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Delete' }),
     );
@@ -126,7 +140,8 @@ describe('<ApplicationDetailPage>', () => {
       ),
     );
     const { user } = renderDetail();
-    await user.click(await screen.findByRole('button', { name: 'Delete' }));
+    await user.click(await screen.findByRole('button', { name: 'More actions' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Delete' }));
     await user.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Delete' }),
     );

@@ -1,12 +1,17 @@
 import { Button, Field, FieldError, FieldLabel, Input } from '@oakestra/ui';
 import { Plus, Trash2 } from 'lucide-react';
-import { Controller, useFieldArray, useFormContext } from 'react-hook-form';
+import { useFieldArray, useFormContext } from 'react-hook-form';
 
 import type { ServiceFormValues } from '../model/schema';
-import { Section, TextField, useFieldError } from './fields';
+import { FormSelect, Section, TextField, useFieldError } from './fields';
+
+const PROTOCOLS = [
+  { value: 'tcp', label: 'tcp' },
+  { value: 'udp', label: 'udp' },
+];
 
 function PortRow({ index, onRemove }: { index: number; onRemove: () => void }) {
-  const { control, register } = useFormContext<ServiceFormValues>();
+  const { register } = useFormContext<ServiceFormValues>();
   const hostError = useFieldError(`ports.${index}.host`);
   const containerError = useFieldError(`ports.${index}.container`);
   const n = index + 1;
@@ -28,20 +33,11 @@ function PortRow({ index, onRemove }: { index: number; onRemove: () => void }) {
           aria-invalid={!!containerError}
           {...register(`ports.${index}.container`)}
         />
-        <Controller
-          control={control}
+        <FormSelect
           name={`ports.${index}.protocol`}
-          render={({ field }) => (
-            <select
-              aria-label={`Protocol ${n}`}
-              className="border-input bg-background h-9 rounded-md border px-2 text-sm"
-              value={field.value}
-              onChange={field.onChange}
-            >
-              <option value="tcp">tcp</option>
-              <option value="udp">udp</option>
-            </select>
-          )}
+          aria-label={`Protocol ${n}`}
+          className="w-24"
+          options={PROTOCOLS}
         />
         <Button
           type="button"

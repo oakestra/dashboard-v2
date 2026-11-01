@@ -3,5 +3,6 @@ export {
   createDataTableColumnHelper,
   DataTable,
   type DataTableColumnDef,
+  type DataTableColumnMeta,
   type DataTableProps,
 } from './components/data-table';

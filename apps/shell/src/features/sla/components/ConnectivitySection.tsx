@@ -10,15 +10,20 @@ import {
   DEFAULT_RIGIDNESS,
   type ServiceFormValues,
 } from '../model/schema';
-import { Section, TextField, useFieldError } from './fields';
+import { count, FormSelect, Section, TextField, useFieldError } from './fields';
 
 interface Target {
   id: string;
   label: string;
 }
 
+const CONSTRAINT_TYPES = [
+  { value: 'latency', label: 'Latency (ms)' },
+  { value: 'bandwidth', label: 'Bandwidth (kbit/s)' },
+];
+
 function ConnectivityConstraints({ linkIndex }: { linkIndex: number }) {
-  const { control, register } = useFormContext<ServiceFormValues>();
+  const { control } = useFormContext<ServiceFormValues>();
   const { fields, append, remove } = useFieldArray({
     control,
     name: `connectivity.${linkIndex}.constraints`,
@@ -31,14 +36,11 @@ function ConnectivityConstraints({ linkIndex }: { linkIndex: number }) {
           <div key={item.id} className="flex flex-wrap items-start gap-2">
             <Field className="w-36">
               <FieldLabel htmlFor={`sla-conn-${linkIndex}-${index}-type`}>Type</FieldLabel>
-              <select
+              <FormSelect
                 id={`sla-conn-${linkIndex}-${index}-type`}
-                className="border-input bg-background h-9 rounded-md border px-2 text-sm"
-                {...register(`${prefix}.type`)}
-              >
-                <option value="latency">Latency (ms)</option>
-                <option value="bandwidth">Bandwidth (kbit/s)</option>
-              </select>
+                name={`${prefix}.type`}
+                options={CONSTRAINT_TYPES}
+              />
             </Field>
             <TextField name={`${prefix}.threshold`} label="Threshold" className="w-32" />
             <TextField name={`${prefix}.rigidness`} label="Rigidness" className="w-28" />
@@ -80,7 +82,7 @@ function ConnectivityConstraints({ linkIndex }: { linkIndex: number }) {
 }
 
 function LinkTarget({ index, targets }: { index: number; targets: Target[] }) {
-  const { register, getValues } = useFormContext<ServiceFormValues>();
+  const { getValues } = useFormContext<ServiceFormValues>();
   const error = useFieldError(`connectivity.${index}.target`);
   const current = getValues(`connectivity.${index}.target`);
   // An imported target that is not (or no longer) in this application stays visible.
@@ -91,19 +93,13 @@ function LinkTarget({ index, targets }: { index: number; targets: Target[] }) {
   return (
     <Field data-invalid={!!error}>
       <FieldLabel htmlFor={`sla-conn-${index}-target`}>Target service</FieldLabel>
-      <select
+      <FormSelect
         id={`sla-conn-${index}-target`}
-        className="border-input bg-background h-9 rounded-md border px-2 text-sm"
-        aria-invalid={!!error}
-        {...register(`connectivity.${index}.target`)}
-      >
-        <option value="">Select a service</option>
-        {options.map((target) => (
-          <option key={target.id} value={target.id}>
-            {target.label}
-          </option>
-        ))}
-      </select>
+        name={`connectivity.${index}.target`}
+        invalid={!!error}
+        placeholder="Select a service"
+        options={options.map((target) => ({ value: target.id, label: target.label }))}
+      />
       <FieldError errors={[error]} />
     </Field>
   );
@@ -132,6 +128,7 @@ export function ConnectivitySection({
       description="Latency or bandwidth the service needs towards other services of this application."
       collapsible
       defaultOpen={fields.length > 0}
+      summary={count(fields.length, 'connection')}
       hasError={hasError}
     >
       <div className="space-y-4">

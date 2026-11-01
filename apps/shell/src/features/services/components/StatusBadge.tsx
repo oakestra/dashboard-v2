@@ -1,18 +1,25 @@
-import { Badge } from '@oakestra/ui';
+import { StatusBadge as BaseStatusBadge } from '@oakestra/ui';
 
-import { statusTone, type StatusTone } from '../status';
+import { describeStatus } from '../status';
 
-const VARIANT: Record<StatusTone, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  success: 'default',
-  pending: 'secondary',
-  danger: 'destructive',
-  neutral: 'outline',
-};
-
-export function StatusBadge({ status }: { status: string | undefined }) {
+/** Raw backend value stays in `title` and `data-status` for debugging and tests. */
+export function StatusBadge({
+  status,
+  detail,
+}: {
+  status: string | undefined;
+  detail?: string | undefined;
+}) {
+  const { tone, label, hint, pulse } = describeStatus(status, detail);
   return (
-    <Badge variant={VARIANT[statusTone(status)]} data-testid="status-badge">
-      {status ?? 'Not deployed'}
-    </Badge>
+    <BaseStatusBadge
+      tone={tone}
+      pulse={pulse}
+      data-testid="status-badge"
+      data-status={status ?? ''}
+      title={hint ? `${status ?? label}: ${hint}` : (status ?? label)}
+    >
+      {label}
+    </BaseStatusBadge>
   );
 }

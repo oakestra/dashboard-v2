@@ -1,99 +1,49 @@
-import type { Application } from '@oakestra/api';
-import { useCurrentUser, useOakestraApi } from '@oakestra/dashboard-sdk';
+import { useCurrentUser, useOakestraApi, usePermissions } from '@oakestra/dashboard-sdk';
 import {
   Alert,
   AlertDescription,
   Button,
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
-  EmptyState,
-  Skeleton,
+  PageHeader,
+  SectionCard,
+  StatCard,
 } from '@oakestra/ui';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router';
+import { ActivityIcon, BoxesIcon, BoxIcon, PlusIcon, ServerIcon } from 'lucide-react';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router';
 
 import { describeError } from '../../../core/api/errors';
 import { Slot } from '../../../core/extensions/Slot';
-import { applicationsQuery } from '../../applications';
+import {
+  ApplicationFormDialog,
+  applicationHealth,
+  applicationsQuery,
+  type ApplicationHealth,
+} from '../../applications';
 import { clustersQuery } from '../../infrastructure';
 import { profileQuery } from '../../profile';
-import { servicesByApplicationQuery } from '../../services';
+import { servicesByApplicationQuery, summarizeStatuses } from '../../services';
+import { attentionItems } from '../attention';
+import { GettingStarted } from '../components/GettingStarted';
+import { NeedsAttention } from '../components/NeedsAttention';
+import { RecentApplications, RecentApplicationsSkeleton } from '../components/RecentApplications';
 
 const RECENT_APPLICATIONS = 5;
 
-function StatCard({
-  label,
-  value,
-  hint,
-  loading,
-  testId,
-}: {
-  label: string;
-  value: number | string | undefined;
-  hint?: string;
-  loading: boolean;
-  testId: string;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardDescription>{label}</CardDescription>
-        <CardTitle className="text-3xl tabular-nums" data-testid={testId}>
-          {loading ? <Skeleton className="h-8 w-16" /> : (value ?? '-')}
-        </CardTitle>
-      </CardHeader>
-      {hint ? (
-        <CardContent className="text-xs text-muted-foreground">{loading ? '' : hint}</CardContent>
-      ) : null}
-    </Card>
-  );
-}
-
-function RecentApplications({ applications }: { applications: readonly Application[] }) {
-  if (applications.length === 0) {
-    return (
-      <EmptyState
-        title="No applications yet"
-        description="Create your first application to start deploying services."
-        action={
-          <Button asChild>
-            <Link to="/applications">Go to applications</Link>
-          </Button>
-        }
-      />
-    );
-  }
-  return (
-    <ul className="divide-y">
-      {applications.map((application) => (
-        <li key={application._id}>
-          <Link
-            to={`/applications/${application._id}`}
-            className="flex items-center justify-between gap-4 py-3 hover:text-primary"
-          >
-            <span className="min-w-0">
-              <span className="block truncate font-medium">{application.application_name}</span>
-              <span className="block truncate text-xs text-muted-foreground">
-                {application.application_desc || application.application_namespace}
-              </span>
-            </span>
-            <span className="shrink-0 text-sm text-muted-foreground">
-              {application.microservices.length}{' '}
-              {application.microservices.length === 1 ? 'service' : 'services'}
-            </span>
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
+function plural(count: number, singular: string, pluralForm = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : pluralForm}`;
 }
 
 export function OverviewPage() {
   const user = useCurrentUser()!;
   const api = useOakestraApi();
+  const navigate = useNavigate();
+  const permissions = usePermissions();
+  const [creating, setCreating] = useState(false);
 
   const profile = useQuery(profileQuery(api, user.username));
   const userId = profile.data?._id;
@@ -104,32 +54,94 @@ export function OverviewPage() {
   const clusters = useQuery(clustersQuery(api));
   // The API has no "all my services" endpoint for non-admins, so fetch per application. The
   // queries are the ones the application pages use, so opening one afterwards is instant.
-  const services = useQueries({
+  const serviceQueries = useQueries({
     queries: (applications.data ?? []).map((application) =>
       servicesByApplicationQuery(api, application._id),
     ),
   });
 
   const appsLoading = profile.isPending || applications.isPending;
-  const servicesLoading = appsLoading || services.some((query) => query.isPending);
-  const allServices = services.flatMap((query) => query.data ?? []);
-  const instances = allServices.flatMap((service) => service.instance_list);
-  const running = instances.filter((instance) => instance.status === 'RUNNING').length;
-  const activeClusters = (clusters.data ?? []).filter((cluster) => cluster.active);
-  const activeNodes = activeClusters.reduce((sum, cluster) => sum + (cluster.active_nodes ?? 0), 0);
-
+  const servicesLoading = appsLoading || serviceQueries.some((query) => query.isPending);
   const error = profile.error ?? applications.error;
+
+  const entries = (applications.data ?? []).map((application, index) => ({
+    application,
+    services: serviceQueries[index]?.data ?? [],
+  }));
+  const allServices = entries.flatMap((entry) => entry.services);
+  const instanceStatuses = allServices.flatMap((service) =>
+    service.instance_list.map((instance) => instance.status),
+  );
+  const instances = summarizeStatuses(instanceStatuses);
+  const attention = attentionItems(entries);
+  const undeployed = attention.filter((item) => item.tone === 'neutral').length;
+  const problems = attention.filter(
+    (item) => item.tone === 'destructive' || item.tone === 'warning',
+  );
+
+  const healthById = new Map<string, ApplicationHealth | undefined>(
+    entries.map(({ application }, index) => {
+      const query = serviceQueries[index];
+      return [application._id, query?.data ? applicationHealth(query.data) : undefined];
+    }),
+  );
+
+  const clustersList = clusters.data ?? [];
+  const activeClusters = clustersList.filter((cluster) => cluster.active);
+  const activeNodes = activeClusters.reduce((sum, cluster) => sum + (cluster.active_nodes ?? 0), 0);
+  const canSeeInfrastructure = permissions.hasAnyRole(['Admin', 'Infrastructure_Provider']);
+
   const recent = [...(applications.data ?? [])]
     // Newest first: ObjectIds start with their creation time, so they sort chronologically.
     .sort((a, b) => b._id.localeCompare(a._id))
     .slice(0, RECENT_APPLICATIONS);
+  const hasApplications = (applications.data?.length ?? 0) > 0;
+  const showGettingStarted = !appsLoading && !error && !hasApplications;
+
+  const statsLoading = servicesLoading && !error;
+  const instanceHint =
+    instances.total === 0
+      ? 'No instances yet'
+      : instances.failed + instances.pending > 0
+        ? [
+            instances.pending > 0 ? `${instances.pending} pending` : null,
+            instances.failed > 0 ? `${instances.failed} failed` : null,
+          ]
+            .filter(Boolean)
+            .join(', ')
+        : 'All running';
+
+  const clusterTile = (
+    <StatCard
+      label="Clusters"
+      value={clusters.isError ? '-' : `${activeClusters.length}/${clustersList.length}`}
+      icon={<ServerIcon />}
+      tone={
+        !clusters.isPending && !clusters.isError && activeClusters.length === 0
+          ? 'warning'
+          : 'default'
+      }
+      hint={clusters.isError ? 'Could not load clusters' : `active, ${plural(activeNodes, 'node')}`}
+      loading={clusters.isPending}
+      asChild={canSeeInfrastructure}
+    >
+      {canSeeInfrastructure ? <Link to="/infrastructure" /> : undefined}
+    </StatCard>
+  );
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Welcome, {user.username}</h1>
-        <p className="text-sm text-muted-foreground">What is running on your Oakestra platform.</p>
-      </div>
+      <PageHeader
+        title="Overview"
+        description={`Welcome back, ${user.username}.`}
+        actions={
+          hasApplications ? (
+            <Button onClick={() => setCreating(true)}>
+              <PlusIcon aria-hidden /> New application
+            </Button>
+          ) : undefined
+        }
+      />
 
       {error ? (
         <Alert variant="destructive">
@@ -141,64 +153,97 @@ export function OverviewPage() {
 
       <section
         aria-label="Summary"
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
         data-testid="overview-summary"
       >
         <StatCard
+          asChild
           label="Applications"
-          value={applications.data?.length}
+          value={applications.data?.length ?? 0}
+          icon={<BoxesIcon />}
+          hint={plural(allServices.length, 'service')}
           loading={appsLoading && !error}
-          testId="stat-applications"
-        />
+        >
+          <Link to="/applications" />
+        </StatCard>
         <StatCard
+          asChild
           label="Services"
           value={allServices.length}
-          loading={servicesLoading && !error}
-          testId="stat-services"
-        />
+          icon={<BoxIcon />}
+          tone={
+            problems.some((item) => item.tone === 'destructive')
+              ? 'destructive'
+              : problems.length > 0
+                ? 'warning'
+                : 'default'
+          }
+          hint={
+            problems.length > 0
+              ? `${problems.length} need${problems.length === 1 ? 's' : ''} attention`
+              : undeployed > 0
+                ? `${undeployed} not deployed`
+                : allServices.length === 0
+                  ? 'No services yet'
+                  : 'All deployed'
+          }
+          loading={statsLoading}
+        >
+          <Link to="/applications" />
+        </StatCard>
         <StatCard
-          label="Running instances"
-          value={running}
-          hint={`${instances.length} instances in total`}
-          loading={servicesLoading && !error}
-          testId="stat-instances"
-        />
-        <StatCard
-          label="Clusters"
-          value={clusters.isError ? undefined : activeClusters.length}
-          hint={`${activeNodes} active ${activeNodes === 1 ? 'node' : 'nodes'}`}
-          loading={clusters.isPending}
-          testId="stat-clusters"
-        />
+          asChild
+          label="Instances"
+          value={`${instances.running}/${instances.total}`}
+          icon={<ActivityIcon />}
+          tone={instances.failed > 0 ? 'destructive' : instances.pending > 0 ? 'info' : 'default'}
+          hint={instanceHint}
+          loading={statsLoading}
+        >
+          <Link to="/applications" />
+        </StatCard>
+        {clusterTile}
       </section>
 
-      <Card>
-        <CardHeader className="flex-row items-center justify-between">
-          <div className="space-y-1">
-            <CardTitle>Recent applications</CardTitle>
-            <CardDescription>Your newest applications.</CardDescription>
-          </div>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/applications">View all</Link>
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {appsLoading && !error ? (
-            <Skeleton className="h-24 w-full" />
-          ) : (
-            <RecentApplications applications={recent} />
-          )}
-        </CardContent>
-      </Card>
+      {showGettingStarted ? <GettingStarted onCreate={() => setCreating(true)} /> : null}
 
+      {!error && hasApplications ? (
+        <NeedsAttention
+          items={attention}
+          hasServices={allServices.length > 0}
+          loading={servicesLoading}
+        />
+      ) : null}
+
+      {showGettingStarted || error ? null : (
+        <SectionCard
+          title="Recent applications"
+          description="Your newest applications and how they are doing."
+          action={
+            (applications.data?.length ?? 0) > RECENT_APPLICATIONS ? (
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/applications">View all</Link>
+              </Button>
+            ) : undefined
+          }
+          flush
+        >
+          {appsLoading ? (
+            <RecentApplicationsSkeleton />
+          ) : (
+            <RecentApplications applications={recent} healthById={healthById} />
+          )}
+        </SectionCard>
+      )}
+
+      {/* No empty state: end users cannot install widgets, and an empty grid collapses. */}
       <section
         aria-label="Widgets"
-        className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+        className="grid gap-4 empty:hidden md:grid-cols-2 xl:grid-cols-3"
         data-testid="home-widgets"
       >
         <Slot
           point="home.widgets"
-          empty={<p className="text-sm text-muted-foreground">No widgets installed.</p>}
           render={(widget, content, source) => (
             <Card data-testid="home-widget" data-widget-id={`${source.id}:${widget.id}`}>
               <CardHeader>
@@ -209,6 +254,14 @@ export function OverviewPage() {
           )}
         />
       </section>
+
+      <ApplicationFormDialog
+        open={creating}
+        onOpenChange={setCreating}
+        onSaved={(created) => {
+          if (created) void navigate(`/applications/${created._id}`);
+        }}
+      />
     </div>
   );
 }

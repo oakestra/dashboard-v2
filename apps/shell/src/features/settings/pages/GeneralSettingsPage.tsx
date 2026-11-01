@@ -1,29 +1,13 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  EmptyState,
-} from '@oakestra/ui';
-import { SlidersHorizontalIcon } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@oakestra/ui';
 
 import { Slot } from '../../../core/extensions/Slot';
 
-// The theme lives in the account menu (top right), not here, so there is one place to change it.
 export function GeneralSettingsPage() {
   return (
-    <div className="space-y-6">
-      {/* Addons (and later core modules) add their settings here. */}
+    <div className="space-y-4">
+      {/* Core modules and addons add their panels here; Appearance is always present. */}
       <Slot
         point="settings.panels"
-        empty={
-          <EmptyState
-            icon={<SlidersHorizontalIcon aria-hidden />}
-            title="No settings yet"
-            description="Installed addons can add their settings here. The theme is in the account menu at the top right."
-          />
-        }
         render={(panel, content, source) => (
           <Card data-testid="settings-panel" data-panel-id={`${source.id}:${panel.id}`}>
             <CardHeader>

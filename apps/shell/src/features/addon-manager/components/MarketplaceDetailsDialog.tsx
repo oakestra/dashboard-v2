@@ -1,22 +1,37 @@
-import type { MarketplaceAddon } from '@oakestra/api';
+import type { InstalledAddon, MarketplaceAddon } from '@oakestra/api';
 import {
   Badge,
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   ScrollArea,
 } from '@oakestra/ui';
 
+import { DownloadIcon, SettingsIcon } from 'lucide-react';
+import { Link } from 'react-router';
+
+import { installedAddonLink } from './MarketplaceCard';
 import { DefinitionDetails } from './DefinitionDetails';
 
 interface MarketplaceDetailsDialogProps {
   addon: MarketplaceAddon | null;
   onClose: () => void;
+  installed: InstalledAddon | undefined;
+  canInstall: boolean;
+  onInstall: (addon: MarketplaceAddon) => void;
 }
 
-export function MarketplaceDetailsDialog({ addon, onClose }: MarketplaceDetailsDialogProps) {
+export function MarketplaceDetailsDialog({
+  addon,
+  onClose,
+  installed,
+  canInstall,
+  onInstall,
+}: MarketplaceDetailsDialogProps) {
   return (
     <Dialog open={addon !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-xl">
@@ -42,6 +57,30 @@ export function MarketplaceDetailsDialog({ addon, onClose }: MarketplaceDetailsD
                 networks={addon.networks}
               />
             </ScrollArea>
+            <DialogFooter>
+              <Button variant="outline" onClick={onClose}>
+                Close
+              </Button>
+              {installed ? (
+                <Button asChild>
+                  <Link to={installedAddonLink(installed)}>
+                    <SettingsIcon aria-hidden />
+                    Manage
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  disabled={!canInstall}
+                  onClick={() => {
+                    onClose();
+                    onInstall(addon);
+                  }}
+                >
+                  <DownloadIcon aria-hidden />
+                  Install
+                </Button>
+              )}
+            </DialogFooter>
           </>
         ) : null}
       </DialogContent>

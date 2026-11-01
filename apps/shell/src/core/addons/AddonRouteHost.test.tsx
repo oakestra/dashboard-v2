@@ -31,7 +31,10 @@ describe('<AddonRouteHost>', () => {
     expect(screen.getByTestId('addon-loading')).toBeInTheDocument();
 
     act(() => registry.setState({ availability: 'available' }));
-    expect(screen.getByTestId('addon-not-found')).toBeInTheDocument();
+    expect(screen.getByTestId('addon-not-found')).toHaveTextContent('No dashboard UI for "flops"');
+    expect(screen.getByRole('link', { name: 'Back to overview' })).toHaveAttribute('href', '/');
+    // Not signed in as an admin here, so no link into the admin-only addon manager.
+    expect(screen.queryByRole('link', { name: 'Manage addons' })).toBeNull();
   });
 
   it('renders the addon routes with its base path', async () => {

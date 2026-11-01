@@ -22,13 +22,15 @@ function EmptyState({ icon, title, description, action, className, ...props }: E
       {icon ? (
         <div
           aria-hidden
-          className="mb-1 flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground [&_svg:not([class*='size-'])]:size-5"
+          className="mb-1 flex size-10 items-center justify-center rounded-lg border bg-card text-muted-foreground shadow-xs [&_svg:not([class*='size-'])]:size-5"
         >
           {icon}
         </div>
       ) : null}
-      <h3 className="text-base font-medium">{title}</h3>
-      {description ? <p className="max-w-sm text-sm text-muted-foreground">{description}</p> : null}
+      <h3 className="text-sm font-semibold">{title}</h3>
+      {description ? (
+        <p className="max-w-sm text-sm text-pretty text-muted-foreground">{description}</p>
+      ) : null}
       {action ? <div className="mt-2">{action}</div> : null}
     </div>
   );

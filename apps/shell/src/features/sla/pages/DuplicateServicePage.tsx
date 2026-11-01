@@ -22,8 +22,12 @@ export function DuplicateServicePage() {
 
   return (
     <PageFrame
-      title="Duplicate service"
-      description="The backend cannot edit services yet. Adjust this copy and create it, then remove the original if you no longer need it."
+      title={service.data ? `Duplicate ${service.data.microservice_name}` : 'Duplicate service'}
+      description={
+        application.data
+          ? `Creates a copy in ${application.data.application_name}. Services cannot be edited yet, so change the copy and delete the original afterwards.`
+          : 'Services cannot be edited yet, so change the copy and delete the original afterwards.'
+      }
       queries={[application, service]}
     >
       {application.data && service.data && customerId ? (
@@ -33,6 +37,7 @@ export function DuplicateServicePage() {
           application={application.data}
           customerId={customerId}
           initialValues={fromService(service.data)}
+          source={{ id: service.data._id, name: service.data.microservice_name }}
         />
       ) : (
         <Alert variant="destructive">

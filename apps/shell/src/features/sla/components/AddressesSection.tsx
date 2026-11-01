@@ -18,6 +18,7 @@ export function AddressesSection({ hasError }: { hasError: boolean }) {
       description="Optional fixed service IPs. Leave empty to let Oakestra allocate them."
       collapsible
       defaultOpen={hasValues}
+      summary={hasValues ? 'Set' : 'Allocated by Oakestra'}
       hasError={hasError}
     >
       <div className="grid gap-4 sm:grid-cols-2">

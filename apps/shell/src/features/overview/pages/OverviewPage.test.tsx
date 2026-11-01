@@ -7,6 +7,12 @@ import { renderApp } from '../../../test/render';
 import { applicationsModule } from '../../applications';
 import { overviewModule } from '../index';
 
+function tile(label: string) {
+  return within(screen.getByTestId('overview-summary'))
+    .getByText(label, { selector: 'span' })
+    .closest<HTMLElement>('[data-slot="stat-card"]')!;
+}
+
 describe('<OverviewPage>', () => {
   it("counts the user's applications, services, running instances and clusters", async () => {
     renderApp({
@@ -16,20 +22,61 @@ describe('<OverviewPage>', () => {
     });
 
     // Admin owns webshop (3 services, 4 running instances), iotpipe (2, 4) and mlbatch (1, 0).
-    await waitFor(() => expect(screen.getByTestId('stat-applications')).toHaveTextContent('3'));
-    await waitFor(() => expect(screen.getByTestId('stat-services')).toHaveTextContent('6'));
-    await waitFor(() => expect(screen.getByTestId('stat-instances')).toHaveTextContent('8'));
+    await waitFor(() => expect(tile('Applications')).toHaveTextContent('3'));
+    await waitFor(() => expect(tile('Services')).toHaveTextContent('6'));
+    await waitFor(() => expect(tile('Instances')).toHaveTextContent('8/8'));
     const activeClusters = mockStore.data.clusters.filter((c) => c.active).length;
     await waitFor(() =>
-      expect(screen.getByTestId('stat-clusters')).toHaveTextContent(String(activeClusters)),
+      expect(tile('Clusters')).toHaveTextContent(
+        new RegExp(`${activeClusters}/${mockStore.data.clusters.length}\\s*active`),
+      ),
     );
-    expect(screen.getByRole('heading', { name: 'Welcome, Admin' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Overview' })).toBeVisible();
+    expect(screen.getByText('Welcome back, Admin.')).toBeVisible();
   });
 
-  it('says so when no addon contributes a widget', async () => {
+  it('links the stat tiles to the pages behind them', async () => {
+    renderApp({
+      modules: [overviewModule, applicationsModule],
+      route: '/',
+      user: { username: 'Admin' },
+    });
+
+    await waitFor(() => expect(tile('Applications')).toHaveTextContent('3'));
+    expect(tile('Applications')).toHaveAttribute('href', '/applications');
+    expect(tile('Clusters')).toHaveAttribute('href', '/infrastructure');
+  });
+
+  it('does not link the clusters tile for users without infrastructure access', async () => {
+    renderApp({ modules: [overviewModule], route: '/', user: { username: 'alice' } });
+
+    await waitFor(() => expect(tile('Clusters')).toHaveTextContent('active'));
+    expect(tile('Clusters')).not.toHaveAttribute('href');
+  });
+
+  it('lists services that cannot be scheduled under "Needs attention"', async () => {
+    renderApp({
+      modules: [overviewModule, applicationsModule],
+      route: '/',
+      user: { username: 'Admin' },
+    });
+
+    const card = await screen.findByTestId('needs-attention');
+    const row = await within(card).findByRole('link', { name: /trainer/ });
+    const service = mockStore.data.services.find((s) => s.microservice_name === 'trainer')!;
+    expect(row).toHaveAttribute(
+      'href',
+      `/applications/${service.applicationID}/services/${service._id}`,
+    );
+    expect(within(row).getByTestId('status-badge')).toHaveTextContent('No capacity');
+  });
+
+  it('shows no widgets section when no addon contributes a widget', async () => {
     renderApp({ modules: [overviewModule], route: '/' });
 
-    expect(await screen.findByText('No widgets installed.')).toBeVisible();
+    await screen.findByRole('heading', { name: 'Overview' });
+    expect(screen.queryByText('No widgets installed.')).not.toBeInTheDocument();
+    expect(screen.getByTestId('home-widgets')).toBeEmptyDOMElement();
   });
 
   it('links recent applications to their detail page', async () => {
@@ -44,10 +91,20 @@ describe('<OverviewPage>', () => {
     expect(link).toHaveAttribute('href', `/applications/${app._id}`);
   });
 
-  it('shows an empty state for users without applications', async () => {
-    renderApp({ modules: [overviewModule], route: '/', user: { username: 'dave' } });
-    expect(await screen.findByText('No applications yet')).toBeVisible();
-    expect(screen.getByTestId('stat-applications')).toHaveTextContent('0');
+  it('guides users without applications through their first deployment', async () => {
+    const { user } = renderApp({
+      modules: [overviewModule, applicationsModule],
+      route: '/',
+      user: { username: 'dave' },
+    });
+
+    const card = await screen.findByTestId('getting-started');
+    expect(within(card).getByText('Deploy your first service')).toBeVisible();
+    expect(tile('Applications')).toHaveTextContent('0');
+    expect(screen.queryByTestId('needs-attention')).not.toBeInTheDocument();
+
+    await user.click(within(card).getByRole('button', { name: /New application/ }));
+    expect(await screen.findByRole('dialog', { name: 'New application' })).toBeVisible();
   });
 
   it('renders widgets contributed to home.widgets', async () => {

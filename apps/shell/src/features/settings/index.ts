@@ -3,6 +3,7 @@ import { redirect } from 'react-router';
 
 import type { CoreModule } from '../../core/modules';
 import type { RouteHandle } from '../../core/router/route-handle';
+import { AppearancePanel } from './components/AppearancePanel';
 
 export const settingsModule: CoreModule = {
   id: 'settings',
@@ -30,6 +31,14 @@ export const settingsModule: CoreModule = {
     },
   ],
   contributions: {
+    'settings.panels': [
+      {
+        id: 'appearance',
+        title: 'Appearance',
+        description: 'Choose how the dashboard looks on this device.',
+        component: AppearancePanel,
+      },
+    ],
     'nav.items': [
       {
         id: 'settings',

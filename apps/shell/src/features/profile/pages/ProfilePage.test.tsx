@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { mockServer, mockStore, TEST_API_URL } from '../../../test/msw';
 import { renderApp } from '../../../test/render';
+import { ROLE_OPTIONS } from '../../users';
 import { profileModule } from '../index';
 
 function renderProfile(user?: Parameters<typeof renderApp>[0]['user']) {
@@ -28,9 +29,7 @@ describe('<ProfilePage>', () => {
     await user.type(input, 'admin@example.com');
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
-    await waitFor(() =>
-      expect(screen.getByTestId('account-email')).toHaveTextContent('admin@example.com'),
-    );
+    await waitFor(() => expect(input).toHaveValue('admin@example.com'));
     expect(mockStore.data.users.find((u) => u.name === 'Admin')?.email).toBe('admin@example.com');
   });
 
@@ -45,12 +44,22 @@ describe('<ProfilePage>', () => {
     expect(await screen.findByText('Enter a valid email address')).toBeVisible();
   });
 
-  it('keeps the email read-only for non-admins, as the backend would refuse it', async () => {
+  it('shows the email as text for non-admins, as the backend would refuse an edit', async () => {
     renderProfile({ username: 'alice' });
 
-    expect(await screen.findByRole('textbox', { name: 'Email address' })).toBeDisabled();
-    expect(screen.getByText('Ask an administrator to change your email address.')).toBeVisible();
+    expect(await screen.findByTestId('account-email')).toHaveTextContent('alice@example.com');
+    expect(screen.getByText('Ask an administrator to change it.')).toBeVisible();
+    expect(screen.queryByRole('textbox', { name: 'Email address' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+  });
+
+  it('uses the same role wording as the users page', async () => {
+    renderProfile({ username: 'alice' });
+
+    const roles = await screen.findByTestId('roles');
+    const option = ROLE_OPTIONS.find((candidate) => candidate.value === 'Application_Provider')!;
+    expect(within(roles).getByText(option.label)).toBeVisible();
+    expect(within(roles).getByText(option.description)).toBeVisible();
   });
 
   it('shows why a password change was rejected and succeeds with the right password', async () => {

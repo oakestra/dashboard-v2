@@ -1,9 +1,11 @@
 import type { AddonRoute } from '@oakestra/dashboard-sdk';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton } from '@oakestra/ui';
-import { useMemo, type ReactNode } from 'react';
-import { useParams, useRoutes, type RouteObject } from 'react-router';
+import { Button, EmptyState, Skeleton } from '@oakestra/ui';
+import { CloudOffIcon, PowerOffIcon, PuzzleIcon, TriangleAlertIcon } from 'lucide-react';
+import { useContext, useMemo, useSyncExternalStore, type ReactNode } from 'react';
+import { Link, useParams, useRoutes, type RouteObject } from 'react-router';
 import { useStore } from 'zustand';
 
+import { AuthSessionContext } from '../auth/auth-context';
 import { ContributionBoundary } from '../extensions/ContributionBoundary';
 import type { AddonEntry } from './addon-registry';
 import { useAddonRegistry } from './addon-registry-context';
@@ -24,22 +26,30 @@ export function AddonRouteHost() {
   if (!entry) {
     if (wasRemoved) {
       return (
-        <AddonMessage title="Addon disabled" testId="addon-disabled">
-          The addon “{addonId}” has been disabled or uninstalled.
+        <AddonMessage title="Addon disabled" testId="addon-disabled" icon={<PowerOffIcon />}>
+          The addon "{addonId}" has been disabled or uninstalled.
         </AddonMessage>
       );
     }
     if (availability === 'pending') return <AddonPageSkeleton />;
     if (availability === 'unavailable') {
       return (
-        <AddonMessage title="Addons unavailable" testId="addons-unavailable">
+        <AddonMessage
+          title="Addons unavailable"
+          testId="addons-unavailable"
+          icon={<CloudOffIcon />}
+        >
           The addons service cannot be reached right now.
         </AddonMessage>
       );
     }
     return (
-      <AddonMessage title="Addon not found" testId="addon-not-found">
-        There is no active addon called “{addonId}”.
+      <AddonMessage
+        title={`No dashboard UI for "${addonId}"`}
+        testId="addon-not-found"
+        icon={<PuzzleIcon />}
+      >
+        This addon is not active or does not ship a dashboard page.
       </AddonMessage>
     );
   }
@@ -49,14 +59,24 @@ export function AddonRouteHost() {
       return <AddonPageSkeleton />;
     case 'failed':
       return (
-        <AddonMessage title="Addon failed to load" testId="addon-failed">
-          {entry.error}
+        <AddonMessage
+          title="Addon failed to load"
+          testId="addon-failed"
+          icon={<TriangleAlertIcon />}
+          detail={entry.error}
+        >
+          The dashboard UI of "{entry.name}" could not be loaded.
         </AddonMessage>
       );
     case 'incompatible':
       return (
-        <AddonMessage title="Addon not compatible" testId="addon-incompatible">
-          {entry.error}
+        <AddonMessage
+          title="Addon not compatible"
+          testId="addon-incompatible"
+          icon={<TriangleAlertIcon />}
+          detail={entry.error}
+        >
+          "{entry.name}" was built for another version of this dashboard.
         </AddonMessage>
       );
     case 'loaded':
@@ -102,7 +122,7 @@ function toRouteObject(route: AddonRoute): RouteObject {
 
 function AddonPageNotFound() {
   return (
-    <AddonMessage title="Page not found" testId="addon-page-not-found">
+    <AddonMessage title="Page not found" testId="addon-page-not-found" icon={<PuzzleIcon />}>
       This addon has no page at this address.
     </AddonMessage>
   );
@@ -117,22 +137,60 @@ function AddonPageSkeleton() {
   );
 }
 
+const noSubscription = () => () => {};
+
+/** Reads the session straight from its store, so the host also renders without an auth provider. */
+function useIsAdmin(): boolean {
+  const session = useContext(AuthSessionContext);
+  return useSyncExternalStore(
+    session ? session.store.subscribe : noSubscription,
+    () => session?.store.getState().user?.roles.includes('Admin') ?? false,
+  );
+}
+
 function AddonMessage({
   title,
   testId,
+  icon,
+  detail,
   children,
 }: {
   title: string;
   testId: string;
-  children: ReactNode;
+  icon: ReactNode;
+  /** Technical reason (error text), kept apart from the sentence so it can be copied. */
+  detail?: string;
+  children?: ReactNode;
 }) {
+  const isAdmin = useIsAdmin();
   return (
-    <Card className="max-w-xl" data-testid={testId}>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{children}</CardDescription>
-      </CardHeader>
-      <CardContent />
-    </Card>
+    <EmptyState
+      data-testid={testId}
+      className="mx-auto max-w-xl py-16"
+      icon={icon}
+      title={title}
+      description={
+        <>
+          {children}
+          {detail ? (
+            <code className="bg-muted text-muted-foreground mt-3 block rounded-md px-3 py-2 text-left font-mono text-xs break-words whitespace-pre-wrap">
+              {detail}
+            </code>
+          ) : null}
+        </>
+      }
+      action={
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button asChild variant="outline">
+            <Link to="/">Back to overview</Link>
+          </Button>
+          {isAdmin ? (
+            <Button asChild variant="outline">
+              <Link to="/addon-manager/installed">Manage addons</Link>
+            </Button>
+          ) : null}
+        </div>
+      }
+    />
   );
 }

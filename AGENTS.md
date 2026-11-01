@@ -202,9 +202,19 @@ copy of small stateless pieces (`cn`, `Button`, `Table`), which is harmless.
   `createDataTableColumnHelper<Row>()`. `globalFilter`, `sorting` and `pagination` are
   uncontrolled unless the value and its `on...Change` handler are passed, which is how to mirror
   them into URL search params. Numeric columns sort descending on the first click (TanStack
-  default).
+  default). Column `meta: { numeric: true }` right-aligns with tabular figures (`align`,
+  `className`, `headerClassName` also exist).
 - `EmptyState` (icon, title, description, action), `PageHeader` (title, description, actions),
   `ConfirmDialog` (`destructive`, `pending`; the caller closes it when the mutation settles).
+- `StatusBadge` (`tone`, `dot`, `icon`, `pulse`) and `StatusDot`: soft status labels. Tones are
+  meanings, not backend states: `success` healthy, `warning` degraded, `info` in progress,
+  `destructive` failed, `neutral` inactive or unknown. Features map their states onto tones in one
+  place each; never pick colors per page.
+- `StatCard` (`label`, `value`, `icon`, `hint`, `tone`, `loading`, `href`/`onClick`, or `asChild`
+  with a router `Link`): metric tile that fills its grid cell.
+- `SectionCard` (`title`, `description`, `action`, `headingLevel`, `flush`, `footer`): a titled
+  page section, action top right. With plain `Card`, put actions in `CardAction` inside
+  `CardHeader` (a grid; `flex-row` on it does nothing).
 
 `apps/shell/src/components`:
 

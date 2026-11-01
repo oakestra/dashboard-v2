@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createDataTableColumnHelper, DataTable } from './data-table';
@@ -119,6 +120,24 @@ describe('DataTable', () => {
     expect(screen.queryByText('Nothing here yet')).not.toBeInTheDocument();
   });
 
+  it('right-aligns numeric columns with tabular figures', () => {
+    const numeric = column.columns([
+      column.accessor('name', { header: 'Name' }),
+      column.accessor('count', { header: 'Count', meta: { numeric: true } }),
+    ]);
+    render(<DataTable label="People" columns={numeric} data={rows} />);
+    expect(screen.getByRole('columnheader', { name: 'Count' })).toHaveClass('text-right');
+    const cell = screen.getByRole('cell', { name: '10' });
+    expect(cell).toHaveClass('text-right', 'tabular-nums');
+    expect(screen.getByRole('cell', { name: 'Alpha' })).not.toHaveClass('text-right');
+  });
+
+  it('hides paging controls when everything fits on one page', () => {
+    render(<DataTable label="People" columns={columns} data={rows} />);
+    expect(screen.getByText('3 rows')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
+  });
+
   it('calls onRowClick for row clicks but not for buttons inside the row', async () => {
     const user = userEvent.setup();
     const onRowClick = vi.fn();
@@ -139,6 +158,25 @@ describe('DataTable', () => {
     await user.click(screen.getAllByRole('button', { name: 'Delete' })[0]!);
     expect(onDelete).toHaveBeenCalled();
     expect(onRowClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores clicks inside portals opened from a cell', async () => {
+    const user = userEvent.setup();
+    const onRowClick = vi.fn();
+    // Menus and dialogs render into document.body, but React still bubbles their clicks to the row.
+    const withPortal = [
+      ...columns,
+      column.display({
+        id: 'menu',
+        header: 'Menu',
+        cell: ({ row }) =>
+          row.original.id === 'a' ? createPortal(<p>Menu text</p>, document.body) : null,
+      }),
+    ];
+    render(<DataTable label="People" columns={withPortal} data={rows} onRowClick={onRowClick} />);
+
+    await user.click(screen.getByText('Menu text'));
+    expect(onRowClick).not.toHaveBeenCalled();
   });
 
   it('supports controlled filter and sorting state', async () => {

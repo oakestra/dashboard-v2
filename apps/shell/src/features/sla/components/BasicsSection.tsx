@@ -22,7 +22,7 @@ export function BasicsSection() {
   return (
     <Section id="basics" title="Basics" description="What the service is and what it runs.">
       <div className="grid gap-4 sm:grid-cols-2">
-        <TextField name="name" label="Service name" placeholder="nginx" autoComplete="off" />
+        <TextField name="name" label="Service name" placeholder="e.g. nginx" autoComplete="off" />
         <TextField name="namespace" label="Namespace" placeholder="default" autoComplete="off" />
       </div>
       <Field>

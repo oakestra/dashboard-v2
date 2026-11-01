@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   hasTransitionalInstance,
   isTransitionalStatus,
-  statusTone,
+  describeStatus,
+  summarizeStatuses,
   usePollWhileTransitional,
 } from './status';
 
@@ -24,7 +25,7 @@ describe('transitional statuses', () => {
     '%s is transitional',
     (status) => {
       expect(isTransitionalStatus(status)).toBe(true);
-      expect(statusTone(status)).toBe('pending');
+      expect(describeStatus(status).tone).toBe('info');
     },
   );
 
@@ -41,6 +42,43 @@ describe('transitional statuses', () => {
     // Right after a deploy request the backend has no instance yet, only the service status.
     expect(hasTransitionalInstance([service('REQUESTED')])).toBe(true);
     expect(hasTransitionalInstance([])).toBe(false);
+  });
+});
+
+describe('describeStatus', () => {
+  it.each([
+    ['RUNNING', 'success', 'Running'],
+    ['completed', 'success', 'Completed'],
+    ['REQUESTED', 'info', 'Requested'],
+    ['NODE_SCHEDULED', 'info', 'Scheduling'],
+    ['INSTANTIATION', 'info', 'Starting'],
+    ['TERMINATING', 'neutral', 'Stopping'],
+    ['NoActiveClusterWithCapacity', 'warning', 'No capacity'],
+    ['NoWorkerCapacity', 'warning', 'No capacity'],
+    ['FAILED', 'destructive', 'Failed'],
+    ['SOME_ERROR', 'destructive', 'Failed'],
+    ['DEAD', 'destructive', 'Crashed'],
+    [undefined, 'neutral', 'Not deployed'],
+    ['WHATEVER', 'neutral', 'WHATEVER'],
+  ] as const)('%s -> %s / %s', (status, tone, label) => {
+    expect(describeStatus(status)).toMatchObject({ tone, label });
+  });
+
+  it('uses the status detail as the hint of failures', () => {
+    expect(describeStatus('FAILED', 'image pull failed').hint).toBe('image pull failed');
+  });
+
+  it('summarizes the worst tone and the counts', () => {
+    expect(summarizeStatuses(['RUNNING', 'REQUESTED', 'NoWorkerCapacity', 'RUNNING'])).toEqual({
+      tone: 'warning',
+      total: 4,
+      running: 2,
+      pending: 1,
+      failed: 1,
+      other: 0,
+    });
+    expect(summarizeStatuses([]).tone).toBe('neutral');
+    expect(summarizeStatuses(['RUNNING', 'FAILED']).tone).toBe('destructive');
   });
 });
 

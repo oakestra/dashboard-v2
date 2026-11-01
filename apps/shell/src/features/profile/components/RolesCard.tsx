@@ -1,35 +1,30 @@
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@oakestra/ui';
+import { Badge, SectionCard } from '@oakestra/ui';
 
-const ROLE_DESCRIPTIONS: Readonly<Record<string, string>> = {
-  Admin: 'Manages users, organizations and the whole platform.',
-  Organization_Admin: 'Manages the members of an organization.',
-  Application_Provider: 'Deploys applications and services.',
-  Infrastructure_Provider: 'Contributes and operates clusters.',
-};
+import { ROLE_OPTIONS, roleLabel } from '../../users';
 
+/** Same labels and descriptions as the role picker on the Users page, so the wording never drifts. */
 export function RolesCard({ roles }: { roles: readonly string[] }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Roles</CardTitle>
-        <CardDescription>What you can do in this organization.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {roles.length === 0 ? (
-          <p className="text-muted-foreground text-sm">You have no roles in this organization.</p>
-        ) : (
-          <ul className="space-y-3" data-testid="roles">
-            {roles.map((role) => (
-              <li key={role} className="flex flex-col gap-1">
-                <Badge variant="secondary">{role.replaceAll('_', ' ')}</Badge>
-                {ROLE_DESCRIPTIONS[role] ? (
-                  <span className="text-muted-foreground text-sm">{ROLE_DESCRIPTIONS[role]}</span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
+    <SectionCard title="Roles" description="What you can do in this organization.">
+      {roles.length === 0 ? (
+        <p className="text-muted-foreground text-sm">You have no roles in this organization.</p>
+      ) : (
+        <dl
+          className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-[max-content_1fr]"
+          data-testid="roles"
+        >
+          {roles.map((role) => (
+            <div key={role} className="contents">
+              <dt>
+                <Badge variant="secondary">{roleLabel(role)}</Badge>
+              </dt>
+              <dd className="text-muted-foreground">
+                {ROLE_OPTIONS.find((option) => option.value === role)?.description ?? ''}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </SectionCard>
   );
 }

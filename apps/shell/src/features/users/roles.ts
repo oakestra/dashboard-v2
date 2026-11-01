@@ -13,7 +13,8 @@ export const ROLE_OPTIONS: readonly RoleOption[] = [
   {
     value: 'Organization_Admin',
     label: 'Organization Admin',
-    description: 'Manages the users of the organization.',
+    description:
+      'Administrative role inside one organization. Member management currently requires Admin.',
   },
   {
     value: 'Application_Provider',

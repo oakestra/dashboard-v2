@@ -3,7 +3,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
 
 import type { ServiceFormValues } from '../model/schema';
-import { Section, StringListField, useFieldError } from './fields';
+import { Section, SecretInput, StringListField, useFieldError } from './fields';
 
 function EnvironmentRow({ index, onRemove }: { index: number; onRemove: () => void }) {
   const { register } = useFormContext<ServiceFormValues>();
@@ -19,12 +19,14 @@ function EnvironmentRow({ index, onRemove }: { index: number; onRemove: () => vo
           aria-invalid={!!error}
           {...register(`environment.${index}.key`)}
         />
-        <Input
-          className="flex-[2]"
-          placeholder="value"
-          aria-label={`Variable value ${n}`}
-          {...register(`environment.${index}.value`)}
-        />
+        {/* Duplicate pre-fills real values, which may be secrets. */}
+        <div className="flex-[2]">
+          <SecretInput
+            placeholder="value"
+            label={`Variable value ${n}`}
+            {...register(`environment.${index}.value`)}
+          />
+        </div>
         <Button
           type="button"
           variant="ghost"

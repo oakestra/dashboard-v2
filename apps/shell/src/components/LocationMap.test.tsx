@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { LocationMap, toMapLocation } from './LocationMap';
@@ -69,6 +70,26 @@ describe('LocationMap', () => {
 
     rerender(<LocationMap locations={[]} ariaLabel="Map" />);
     expect(camera.jumpTo).toHaveBeenLastCalledWith({ center: [0, 20], zoom: 1 });
+  });
+
+  it('links markers that have an href and colors them by tone', async () => {
+    render(
+      <MemoryRouter>
+        <LocationMap
+          ariaLabel="Map"
+          locations={[
+            { lat: 1, lng: 2, label: 'A', href: '/infrastructure/clusters/a' },
+            { lat: 3, lng: 4, label: 'B (inactive)', tone: 'warning', radiusKm: 10 },
+          ]}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('link', { name: 'A' })).toHaveAttribute(
+      'href',
+      '/infrastructure/clusters/a',
+    );
+    expect(screen.getByRole('img', { name: 'B (inactive)' })).toHaveClass('bg-warning');
   });
 
   it('keeps the page alive when the browser cannot render the map', async () => {

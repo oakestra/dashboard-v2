@@ -72,5 +72,4 @@ export const HELP_LINKS: readonly HelpLink[] = [
   },
 ];
 
-export const CONTACT_TEXT =
-  'If you have found a bug or just have a question about using the system, please write to us and we will get back to you as soon as possible.';
+export const CONTACT_TEXT = 'Found a bug or have a question? Reach us here.';

@@ -58,6 +58,19 @@ export function MarketplacePage() {
 
   const deletingInstalled = deleting ? installedByDefinition.get(deleting._id) : undefined;
 
+  function updateSearch(value: string) {
+    setSearch(value);
+    setParams(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        if (value) next.set('q', value);
+        else next.delete('q');
+        return next;
+      },
+      { replace: true },
+    );
+  }
+
   function startInstall(addon: MarketplaceAddon) {
     install.mutate(
       { marketplaceId: addon._id, name: addon.name },
@@ -69,7 +82,7 @@ export function MarketplacePage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-full min-w-0 sm:max-w-sm sm:flex-1">
+        <div className="relative w-full min-w-0 sm:max-w-xs sm:flex-1">
           <SearchIcon
             aria-hidden
             className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
@@ -80,19 +93,7 @@ export function MarketplacePage() {
             placeholder="Search the marketplace"
             className="pl-9"
             value={search}
-            onChange={(event) => {
-              const value = event.target.value;
-              setSearch(value);
-              setParams(
-                (previous) => {
-                  const next = new URLSearchParams(previous);
-                  if (value) next.set('q', value);
-                  else next.delete('q');
-                  return next;
-                },
-                { replace: true },
-              );
-            }}
+            onChange={(event) => updateSearch(event.target.value)}
           />
         </div>
         <Button className="sm:ml-auto" onClick={() => setRegisterOpen(true)}>
@@ -148,6 +149,13 @@ export function MarketplacePage() {
               ? 'Try another name or image.'
               : 'Register an addon definition to make it available here.'
           }
+          action={
+            search ? (
+              <Button variant="outline" size="sm" onClick={() => updateSearch('')}>
+                Clear search
+              </Button>
+            ) : undefined
+          }
         />
       ) : (
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -167,7 +175,13 @@ export function MarketplacePage() {
         </ul>
       )}
 
-      <MarketplaceDetailsDialog addon={details} onClose={() => setDetails(null)} />
+      <MarketplaceDetailsDialog
+        addon={details}
+        onClose={() => setDetails(null)}
+        installed={details ? installedByDefinition.get(details._id) : undefined}
+        canInstall={installed.isSuccess && !install.isPending}
+        onInstall={startInstall}
+      />
       <RegisterAddonDialog open={registerOpen} onOpenChange={setRegisterOpen} />
       <ConfirmDialog
         open={deleting !== null}

@@ -89,7 +89,8 @@ describe('new service page', () => {
     await user.type(await screen.findByLabelText('Service name'), 'edge');
     await user.type(screen.getByLabelText('Image or code URL'), 'nginx');
     await user.click(screen.getByRole('button', { name: 'Toggle Constraints' }));
-    await user.click(screen.getByRole('button', { name: 'Add latency constraint' }));
+    await user.click(screen.getByRole('button', { name: 'Add constraint' }));
+    await user.click(await screen.findByRole('menuitem', { name: /Latency/ }));
 
     await user.click(screen.getByRole('button', { name: 'Create service' }));
     expect(await screen.findByText('Enter an area, for example munich-1')).toBeVisible();
@@ -229,6 +230,7 @@ describe('creating services', () => {
     await user.click(screen.getByRole('radio', { name: 'Unikernel' }));
     await user.click(screen.getByRole('button', { name: 'Create service' }));
     expect(await screen.findByText('Select at least one architecture')).toBeVisible();
+    expect(screen.getByRole('button', { name: '1 field needs attention' })).toBeVisible();
     expect(captured.sla).toBeUndefined();
 
     await user.click(screen.getByRole('checkbox', { name: 'amd64' }));
@@ -314,6 +316,21 @@ describe('creating services', () => {
 });
 
 describe('duplicate service page', () => {
+  it('names the original and masks environment values', async () => {
+    const original = mockStore.data.services.find((s) => s._id === FRONTEND_ID)!;
+    original.environment = ['TOKEN=hunter2'];
+    const { user } = renderApp({
+      modules: [applicationsModule],
+      route: `/applications/${APP_ID}/services/${FRONTEND_ID}/duplicate`,
+    });
+
+    expect(await screen.findByRole('heading', { name: 'Duplicate frontend' })).toBeVisible();
+    const value = screen.getByLabelText('Variable value 1');
+    expect(value).toHaveAttribute('type', 'password');
+    await user.click(screen.getByRole('button', { name: 'Show variable value 1' }));
+    expect(value).toHaveAttribute('type', 'text');
+  });
+
   it('prefills the form from the existing service', async () => {
     renderApp({
       modules: [applicationsModule],

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { TimeSeriesChart } from './TimeSeriesChart';
+import { TimeSeriesChart, timeTicks } from './TimeSeriesChart';
 
 const data = [
   { timestamp: new Date('2026-03-01T10:00:00Z'), value: 10 },
@@ -30,5 +30,24 @@ describe('TimeSeriesChart', () => {
     rerender(<TimeSeriesChart title="Memory" data={[]} showTitle />);
     expect(screen.getByRole('img', { name: 'Memory, no data' })).toBeInTheDocument();
     expect(screen.getByText('Memory')).toBeVisible();
+  });
+
+  it('picks round, uniquely labelled ticks for short and long windows', () => {
+    const start = Date.parse('2026-03-01T10:20:10Z');
+
+    const short = timeTicks(start, start + 3 * 60_000);
+    expect(short.ticks.length).toBeGreaterThan(1);
+    expect(short.ticks.length).toBeLessThanOrEqual(5);
+    expect(new Set(short.ticks.map(short.format)).size).toBe(short.ticks.length);
+    for (const tick of short.ticks) expect(tick % 60_000).toBe(0);
+
+    const seconds = timeTicks(start, start + 40_000);
+    expect(new Set(seconds.ticks.map(seconds.format)).size).toBe(seconds.ticks.length);
+
+    const week = timeTicks(start, start + 7 * 86_400_000);
+    expect(week.ticks.length).toBeLessThanOrEqual(5);
+    expect(new Set(week.ticks.map(week.format)).size).toBe(week.ticks.length);
+
+    expect(timeTicks(start, start).ticks).toEqual([start]);
   });
 });

@@ -3,9 +3,12 @@ import { useOakestraApi } from '@oakestra/dashboard-sdk';
 import {
   Alert,
   AlertDescription,
-  Badge,
   Button,
   Checkbox,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Field,
   FieldError,
   FieldLabel,
@@ -18,7 +21,7 @@ import { Controller, useFieldArray, useFormContext, useWatch } from 'react-hook-
 import { LocationMap } from '../../../components/LocationMap';
 import { clustersQuery } from '../../infrastructure';
 import { defaultConstraint, type ServiceFormValues } from '../model/schema';
-import { Section, TextField, useFieldError } from './fields';
+import { count, FormSelect, Section, TextField, useFieldError } from './fields';
 
 function RigidnessFields({ prefix }: { prefix: `constraints.${number}` }) {
   return (
@@ -115,25 +118,21 @@ function ClusterPicker({ index, clusters }: { index: number; clusters: Cluster[]
 }
 
 function DirectFields({ index, clusters }: { index: number; clusters: Cluster[] | undefined }) {
-  const { register } = useFormContext<ServiceFormValues>();
   const clusterError = useFieldError(`constraints.${index}.cluster`);
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <Field data-invalid={!!clusterError}>
         <FieldLabel htmlFor={`sla-direct-cluster-${index}`}>Cluster</FieldLabel>
-        <select
+        <FormSelect
           id={`sla-direct-cluster-${index}`}
-          className="border-input bg-background h-9 rounded-md border px-2 text-sm"
-          aria-invalid={!!clusterError}
-          {...register(`constraints.${index}.cluster`)}
-        >
-          <option value="">Select a cluster</option>
-          {clusters?.map((cluster) => (
-            <option key={cluster._id} value={cluster.cluster_name}>
-              {cluster.cluster_name}
-            </option>
-          ))}
-        </select>
+          name={`constraints.${index}.cluster`}
+          invalid={!!clusterError}
+          placeholder="Select a cluster"
+          options={(clusters ?? []).map((cluster) => ({
+            value: cluster.cluster_name,
+            label: cluster.cluster_name,
+          }))}
+        />
         <FieldError errors={[clusterError]} />
       </Field>
       <TextField
@@ -144,6 +143,13 @@ function DirectFields({ index, clusters }: { index: number; clusters: Cluster[] 
     </div>
   );
 }
+
+const HINTS = {
+  latency: 'Stay within N ms of an area',
+  geo: 'Stay within N km of a point',
+  clusters: 'Pick the clusters that may run it',
+  direct: 'Pin it to one cluster and node',
+} as const;
 
 const TITLES = {
   latency: 'Latency',
@@ -166,6 +172,7 @@ export function ConstraintsSection({ hasError }: { hasError: boolean }) {
       description="Where the scheduler may place the service."
       collapsible
       defaultOpen={fields.length > 0}
+      summary={count(fields.length, 'constraint')}
       hasError={hasError}
     >
       {clusters.isError ? (
@@ -179,7 +186,7 @@ export function ConstraintsSection({ hasError }: { hasError: boolean }) {
         {fields.map((item, index) => (
           <div key={item.id} className="space-y-4 rounded-lg border p-4">
             <div className="flex items-center justify-between">
-              <Badge variant="secondary">{TITLES[item.kind]} constraint</Badge>
+              <h3 className="text-sm font-medium">{TITLES[item.kind]} constraint</h3>
               <Button
                 type="button"
                 variant="ghost"
@@ -238,19 +245,23 @@ export function ConstraintsSection({ hasError }: { hasError: boolean }) {
           </div>
         ))}
       </div>
-      <div className="flex flex-wrap gap-2">
-        {(['latency', 'geo', 'clusters', 'direct'] as const).map((kind) => (
-          <Button
-            key={kind}
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => append(defaultConstraint(kind))}
-          >
-            <Plus /> Add {TITLES[kind].toLowerCase()} constraint
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" variant="outline" size="sm">
+            <Plus /> Add constraint
           </Button>
-        ))}
-      </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          {(['latency', 'geo', 'clusters', 'direct'] as const).map((kind) => (
+            <DropdownMenuItem key={kind} onSelect={() => append(defaultConstraint(kind))}>
+              <span>
+                {TITLES[kind]}
+                <span className="block text-xs text-muted-foreground">{HINTS[kind]}</span>
+              </span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </Section>
   );
 }

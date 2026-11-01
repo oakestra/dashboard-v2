@@ -1,4 +1,5 @@
 import type { Cluster } from '@oakestra/api';
+import type { StatusTone } from '@oakestra/ui';
 
 import { formatBytes, formatPercent } from '../../lib/format';
 
@@ -29,7 +30,8 @@ export function totalMemoryBytes(cluster: Cluster): number | undefined {
 
 export function describeMemory(cluster: Cluster): string {
   const total = totalMemoryBytes(cluster);
-  if (total === undefined) return '-';
+  // An inactive cluster reports 0 MB, which would read as "0% of 0 B" next to a real cluster.
+  if (total === undefined || total === 0) return '-';
   const used =
     cluster.memory_percent === undefined ? '' : `${formatPercent(cluster.memory_percent)} of `;
   return `${used}${formatBytes(total)}`;
@@ -55,4 +57,9 @@ export function summarize(clusters: readonly Cluster[]): ClusterTotals {
     memoryBytes: active.reduce((sum, c) => sum + (totalMemoryBytes(c) ?? 0), 0),
     gpuCores: active.reduce((sum, c) => sum + (c.total_gpu_cores ?? 0), 0),
   };
+}
+
+/** Inactive means registered but not reporting: worth a look, but not a failure. */
+export function clusterTone(active: boolean): StatusTone {
+  return active ? 'success' : 'warning';
 }

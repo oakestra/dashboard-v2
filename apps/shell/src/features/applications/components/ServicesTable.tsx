@@ -1,21 +1,57 @@
 import type { Service } from '@oakestra/api';
-import { Button, ConfirmDialog, EmptyState } from '@oakestra/ui';
+import {
+  Button,
+  ConfirmDialog,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  EmptyState,
+} from '@oakestra/ui';
 import { createDataTableColumnHelper, DataTable } from '@oakestra/ui/data-table';
 import { CopyIcon, PlayIcon, ServerIcon, Trash2Icon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
-import { InstanceSummary, StatusBadge, useDeleteService, useDeployInstance } from '../../services';
+import {
+  formatVirtualization,
+  StatusBadge,
+  summarizeStatuses,
+  useDeleteService,
+  useDeployInstance,
+} from '../../services';
+import { RowMenu } from './RowMenu';
 
 const column = createDataTableColumnHelper<Service>();
 
+/** "2/2" running, with pending and failed counts only when there are any. */
+function InstanceCount({ service }: { service: Service }) {
+  const { total, running, pending, failed } = summarizeStatuses(
+    service.instance_list.map((instance) => instance.status),
+  );
+  if (total === 0) return <span className="text-muted-foreground">None</span>;
+  return (
+    <span className="tabular-nums" data-testid="instance-count">
+      {running}/{total}
+      <span className="sr-only"> running</span>
+      {pending > 0 ? <span className="ml-2 text-xs text-info">{pending} pending</span> : null}
+      {failed > 0 ? <span className="ml-2 text-xs text-destructive">{failed} failed</span> : null}
+    </span>
+  );
+}
+
 interface ServicesTableProps {
   applicationId: string;
+  /** Services in a different namespace than their application show it under the name. */
+  applicationNamespace: string;
   services: readonly Service[] | undefined;
   isLoading: boolean;
 }
 
-export function ServicesTable({ applicationId, services, isLoading }: ServicesTableProps) {
+export function ServicesTable({
+  applicationId,
+  applicationNamespace,
+  services,
+  isLoading,
+}: ServicesTableProps) {
   const navigate = useNavigate();
   const deploy = useDeployInstance();
   const remove = useDeleteService();
@@ -27,78 +63,76 @@ export function ServicesTable({ applicationId, services, isLoading }: ServicesTa
         column.accessor('microservice_name', {
           header: 'Name',
           cell: ({ row }) => (
-            <div>
-              <div className="font-medium">{row.original.microservice_name}</div>
-              <div className="text-xs text-muted-foreground">
-                {row.original.microservice_namespace}
-              </div>
+            <div className="min-w-0">
+              <Link
+                to={`/applications/${applicationId}/services/${row.original._id}`}
+                className="font-medium hover:underline"
+              >
+                {row.original.microservice_name}
+              </Link>
+              {row.original.microservice_namespace !== applicationNamespace ? (
+                <div className="text-xs text-muted-foreground">
+                  {row.original.microservice_namespace}
+                </div>
+              ) : null}
             </div>
           ),
+        }),
+        column.accessor((row) => row.status ?? '', {
+          id: 'status',
+          header: 'Status',
+          cell: ({ row }) => (
+            <StatusBadge status={row.original.status} detail={row.original.status_detail} />
+          ),
+        }),
+        column.accessor((row) => row.instance_list.length, {
+          id: 'instances',
+          header: 'Instances',
+          cell: ({ row }) => <InstanceCount service={row.original} />,
         }),
         column.accessor((row) => row.image ?? row.code ?? '', {
           id: 'image',
           header: 'Image',
           cell: (info) => (
-            <span className="block max-w-56 truncate font-mono text-xs">
+            <span className="block max-w-80 truncate font-mono text-xs" title={info.getValue()}>
               {info.getValue() || '-'}
             </span>
           ),
         }),
-        column.accessor((row) => row.virtualization ?? '', {
+        column.accessor((row) => formatVirtualization(row.virtualization) ?? '', {
           id: 'virtualization',
           header: 'Virtualization',
           cell: (info) => info.getValue() || '-',
         }),
-        column.accessor((row) => row.instance_list.length, {
-          id: 'instances',
-          header: 'Instances',
-          cell: ({ row }) => <InstanceSummary instances={row.original.instance_list} />,
-        }),
-        column.accessor((row) => row.status ?? '', {
-          id: 'status',
-          header: 'Status',
-          cell: ({ row }) => <StatusBadge status={row.original.status} />,
-        }),
         column.display({
           id: 'actions',
           header: () => <span className="sr-only">Actions</span>,
+          meta: { align: 'right' },
           cell: ({ row }) => {
             const service = row.original;
             return (
-              <div className="flex justify-end gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Deploy an instance of ${service.microservice_name}`}
-                  title="Deploy an instance"
+              <RowMenu label={`Actions for ${service.microservice_name}`}>
+                <DropdownMenuItem
                   disabled={deploy.isPending}
-                  onClick={() => deploy.mutate(service._id)}
+                  onSelect={() => deploy.mutate(service._id)}
                 >
-                  <PlayIcon aria-hidden />
-                </Button>
-                <Button variant="ghost" size="icon-sm" asChild title="Duplicate with changes">
-                  <Link
-                    aria-label={`Duplicate ${service.microservice_name}`}
-                    to={`/applications/${applicationId}/services/${service._id}/duplicate`}
-                  >
-                    <CopyIcon aria-hidden />
+                  <PlayIcon aria-hidden /> Deploy instance
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to={`/applications/${applicationId}/services/${service._id}/duplicate`}>
+                    <CopyIcon aria-hidden /> Duplicate
                   </Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Delete ${service.microservice_name}`}
-                  title="Delete"
-                  onClick={() => setDeleting(service)}
-                >
-                  <Trash2Icon aria-hidden />
-                </Button>
-              </div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(service)}>
+                  <Trash2Icon aria-hidden /> Delete
+                </DropdownMenuItem>
+              </RowMenu>
             );
           },
         }),
       ]),
-    [applicationId, deploy],
+    [applicationId, applicationNamespace, deploy],
   );
 
   return (
@@ -109,7 +143,7 @@ export function ServicesTable({ applicationId, services, isLoading }: ServicesTa
         data={services}
         isLoading={isLoading}
         getRowId={(row) => row._id}
-        searchPlaceholder="Search services..."
+        searchPlaceholder="Search services"
         onRowClick={(row) => void navigate(`/applications/${applicationId}/services/${row._id}`)}
         emptyState={
           <EmptyState

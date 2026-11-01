@@ -148,6 +148,15 @@ export { Collapsible, CollapsibleContent, CollapsibleTrigger } from './component
 export { ConfirmDialog, type ConfirmDialogProps } from './components/confirm-dialog';
 export { EmptyState, type EmptyStateProps } from './components/empty-state';
 export { PageHeader, type PageHeaderProps } from './components/page-header';
+export { SectionCard, type SectionCardProps } from './components/section-card';
+export { StatCard, type StatCardProps } from './components/stat-card';
+export {
+  StatusBadge,
+  StatusDot,
+  type StatusBadgeProps,
+  type StatusDotProps,
+  type StatusTone,
+} from './components/status-badge';
 export {
   Pagination,
   PaginationContent,

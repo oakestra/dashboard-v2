@@ -1,5 +1,4 @@
 import type { Cluster } from '@oakestra/api';
-import { Badge } from '@oakestra/ui';
 import { createDataTableColumnHelper, DataTable } from '@oakestra/ui/data-table';
 import { Link, useNavigate } from 'react-router';
 
@@ -8,6 +7,9 @@ import { describeMemory } from '../lib';
 import { ClusterStatusBadge } from './ClusterStatusBadge';
 
 const column = createDataTableColumnHelper<Cluster>();
+
+/** An inactive cluster keeps its last report, so its usage would read as an idle cluster. */
+const NO_DATA = <span className="text-muted-foreground">-</span>;
 
 const columns = column.columns([
   column.accessor('cluster_name', {
@@ -29,39 +31,44 @@ const columns = column.columns([
   column.accessor((cluster) => cluster.active_nodes ?? 0, {
     id: 'active_nodes',
     header: 'Active nodes',
+    meta: { numeric: true },
   }),
   column.accessor((cluster) => cluster.cpu_percent ?? cluster.aggregated_cpu_percent ?? 0, {
     id: 'cpu',
     header: 'CPU usage',
-    cell: (info) => formatPercent(info.getValue()),
+    meta: { numeric: true },
+    cell: (info) => (info.row.original.active ? formatPercent(info.getValue()) : NO_DATA),
   }),
   column.accessor((cluster) => cluster.memory_percent ?? 0, {
     id: 'memory',
     header: 'Memory',
-    cell: (info) => describeMemory(info.row.original),
+    meta: { numeric: true },
+    cell: (info) => (info.row.original.active ? describeMemory(info.row.original) : NO_DATA),
   }),
   column.display({
     id: 'virtualization',
     header: 'Virtualization',
     cell: (info) => (
-      <div className="flex flex-wrap gap-1">
-        {info.row.original.virtualization.map((runtime) => (
-          <Badge key={runtime} variant="secondary">
-            {runtime}
-          </Badge>
-        ))}
-      </div>
+      <span className="text-muted-foreground font-mono text-xs">
+        {info.row.original.virtualization.join(', ') || '-'}
+      </span>
     ),
   }),
   column.accessor((cluster) => cluster.total_gpu_cores ?? 0, {
     id: 'gpu',
     header: 'GPU',
-    cell: (info) => (info.getValue() > 0 ? `${info.getValue()} cores` : '-'),
+    meta: { numeric: true },
+    cell: (info) =>
+      info.row.original.active && info.getValue() > 0 ? `${info.getValue()} cores` : NO_DATA,
   }),
   column.accessor((cluster) => cluster.last_modified_timestamp?.getTime() ?? 0, {
     id: 'last_seen',
     header: 'Last seen',
-    cell: (info) => formatRelativeTime(info.row.original.last_modified_timestamp),
+    cell: (info) => (
+      <span className={info.row.original.active ? undefined : 'text-warning'}>
+        {formatRelativeTime(info.row.original.last_modified_timestamp)}
+      </span>
+    ),
   }),
 ]);
 

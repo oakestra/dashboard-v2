@@ -8,16 +8,23 @@ interface CopyButtonProps {
   value: string;
   /** Accessible name; also the tooltip. */
   label?: string;
+  /**
+   * Visible text next to the icon, for toolbars where a lone icon is too easy to miss. Keep it a
+   * prefix of `label` ("Copy" for "Copy logs") so speech input can target the button by what it
+   * shows.
+   */
+  text?: string;
   className?: string;
-  size?: 'icon' | 'icon-sm' | 'icon-xs';
+  size?: 'icon' | 'icon-sm' | 'icon-xs' | 'sm';
   variant?: 'ghost' | 'outline' | 'secondary';
 }
 
 export function CopyButton({
   value,
   label = 'Copy to clipboard',
+  text,
   className,
-  size = 'icon-sm',
+  size = text ? 'sm' : 'icon-sm',
   variant = 'ghost',
 }: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
@@ -49,6 +56,7 @@ export function CopyButton({
       onClick={() => void copy()}
     >
       {copied ? <CheckIcon aria-hidden /> : <CopyIcon aria-hidden />}
+      {text ? (copied ? 'Copied' : text) : null}
     </Button>
   );
 }

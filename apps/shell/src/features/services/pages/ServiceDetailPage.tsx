@@ -1,15 +1,17 @@
-import type { Instance, Service } from '@oakestra/api';
+import type { Instance } from '@oakestra/api';
 import { useCurrentUser, useOakestraApi } from '@oakestra/dashboard-sdk';
 import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Badge,
   Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
   ConfirmDialog,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   EmptyState,
   PageHeader,
   Skeleton,
@@ -17,134 +19,46 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from '@oakestra/ui';
 import { createDataTableColumnHelper, DataTable } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
 import {
+  CircleAlertIcon,
   CopyIcon,
   DownloadIcon,
+  EllipsisIcon,
   ExternalLinkIcon,
+  Loader2Icon,
   PlayIcon,
+  SquareIcon,
   Trash2Icon,
-  UnplugIcon,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 
+import { CopyButton } from '../../../components/CopyButton';
+import { JsonViewer } from '../../../components/JsonViewer';
 import { describeError } from '../../../core/api/errors';
 import { Slot } from '../../../core/extensions/Slot';
-import { JsonViewer } from '../../../components/JsonViewer';
 import { downloadJson } from '../../../lib/download';
 import { formatBytes, formatPercent } from '../../../lib/format';
-import { useDeleteService, useDeployInstance, useUndeployInstance } from '../api/mutations';
 import { clustersQuery } from '../../infrastructure';
+import { useDeleteService, useDeployInstance, useUndeployInstance } from '../api/mutations';
 import { serviceQuery } from '../api/queries';
-import { DefinitionList } from '../components/DefinitionList';
+import { hasMetrics, ServiceOverview } from '../components/ServiceOverview';
 import { StatusBadge } from '../components/StatusBadge';
-import { serviceToSla } from '../sla';
-import { usePollWhileTransitional } from '../status';
+import { redactEnvironment, redactSlaEnvironment, serviceToSla } from '../sla';
+import {
+  describeStatus,
+  formatVirtualization,
+  isTransitionalStatus,
+  usePollWhileTransitional,
+} from '../status';
 
 const column = createDataTableColumnHelper<Instance>();
-
-function ServiceOverview({ service }: { service: Service }) {
-  const addresses = service.addresses;
-  const ports = service.port ? service.port.split(';').filter(Boolean) : [];
-  const mono = (value: string | undefined) =>
-    value ? <span className="font-mono text-xs">{value}</span> : undefined;
-  return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle>Requirements</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DefinitionList
-            items={[
-              { label: 'vCPUs', value: service.vcpus },
-              { label: 'vGPUs', value: service.vgpus },
-              { label: 'vTPUs', value: service.vtpus },
-              { label: 'Memory', value: service.memory ? `${service.memory} MB` : undefined },
-              { label: 'Storage', value: service.storage ? `${service.storage} MB` : undefined },
-              { label: 'Bandwidth in', value: service.bandwidth_in },
-              { label: 'Bandwidth out', value: service.bandwidth_out },
-            ]}
-          />
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Runtime</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DefinitionList
-            items={[
-              { label: 'Virtualization', value: service.virtualization },
-              { label: 'Image', value: mono(service.image ?? service.code) },
-              { label: 'Command', value: mono(service.cmd.join(' ')) },
-              { label: 'Arguments', value: mono(service.args.join(' ')) },
-              { label: 'Environment', value: mono(service.environment.join('\n')) },
-              {
-                label: 'Ports',
-                value: ports.length ? (
-                  <span className="flex flex-col font-mono text-xs">
-                    {ports.map((port) => (
-                      <span key={port}>{port}</span>
-                    ))}
-                  </span>
-                ) : undefined,
-              },
-            ]}
-          />
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Addresses</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DefinitionList
-            items={[
-              {
-                label: 'Round robin (IPv4)',
-                value: mono(addresses?.rr_ip ?? addresses?.RR_ip ?? service.RR_ip),
-              },
-              { label: 'Round robin (IPv6)', value: mono(addresses?.rr_ip_v6 ?? service.RR_ip_v6) },
-              { label: 'Closest (IPv4)', value: mono(addresses?.closest_ip) },
-              { label: 'Closest (IPv6)', value: mono(addresses?.closest_ip_v6) },
-            ]}
-          />
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Constraints</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {service.constraints.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No placement constraints.</p>
-          ) : (
-            <ul className="space-y-3 text-sm">
-              {service.constraints.map((constraint, index) => {
-                const { type, ...rest } = constraint;
-                return (
-                  <li key={`${type}-${index}`}>
-                    <div className="font-medium">{type}</div>
-                    <DefinitionList
-                      items={Object.entries(rest).map(([label, value]) => ({
-                        label,
-                        value: typeof value === 'string' ? value : JSON.stringify(value),
-                      }))}
-                    />
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
 
 export function ServiceDetailPage() {
   const { appId = '', serviceId = '' } = useParams();
@@ -159,6 +73,7 @@ export function ServiceDetailPage() {
   const remove = useDeleteService();
   const [deleting, setDeleting] = useState(false);
   const [undeploying, setUndeploying] = useState<Instance | null>(null);
+  const [tab, setTab] = useState('overview');
 
   const clusterNames = useMemo(
     () => new Map((clusters.data ?? []).map((cluster) => [cluster._id, cluster.cluster_name])),
@@ -168,71 +83,106 @@ export function ServiceDetailPage() {
   const instanceColumns = useMemo(
     () =>
       column.columns([
-        column.accessor('instance_number', { header: '#' }),
+        column.accessor('instance_number', {
+          header: '#',
+          cell: ({ row }) => (
+            <Link
+              aria-label={`Open instance ${row.original.instance_number}`}
+              className="font-medium tabular-nums hover:underline"
+              to={`/applications/${appId}/services/${serviceId}/instances/${row.original.instance_number}`}
+            >
+              {row.original.instance_number}
+            </Link>
+          ),
+        }),
         column.accessor((row) => row.status ?? '', {
           id: 'status',
           header: 'Status',
-          cell: ({ row }) => (
-            <div>
-              <StatusBadge status={row.original.status} />
-              {row.original.status_detail ? (
-                <div className="mt-1 max-w-48 truncate text-xs text-muted-foreground">
-                  {row.original.status_detail}
-                </div>
-              ) : null}
-            </div>
-          ),
+          cell: ({ row }) => {
+            const { status, status_detail } = row.original;
+            // The detail of a running instance is stale scheduler chatter that contradicts the badge.
+            const showDetail =
+              status_detail && describeStatus(status).tone !== 'success'
+                ? status_detail
+                : undefined;
+            return (
+              <div>
+                <StatusBadge status={status} detail={showDetail} />
+                {showDetail ? (
+                  <div className="mt-1 max-w-48 truncate text-xs text-muted-foreground">
+                    {showDetail}
+                  </div>
+                ) : null}
+              </div>
+            );
+          },
         }),
         column.accessor(
           (row) => (row.cluster_id ? (clusterNames.get(row.cluster_id) ?? row.cluster_id) : ''),
           { id: 'cluster', header: 'Cluster', cell: (info) => info.getValue() || '-' },
         ),
-        column.accessor((row) => row.host_ip ?? row.publicip ?? '', {
-          id: 'address',
-          header: 'Host / public IP',
+        column.accessor((row) => row.host_ip ?? '', {
+          id: 'host',
+          header: 'Host',
           cell: ({ row }) => {
-            const { host_ip, host_port, publicip } = row.original;
+            const { host_ip, host_port } = row.original;
             const host = host_ip ? (host_port ? `${host_ip}:${host_port}` : host_ip) : undefined;
-            return (
-              <span className="font-mono text-xs">
-                {[host, publicip].filter(Boolean).join(' / ') || '-'}
-              </span>
-            );
+            return <span className="font-mono text-xs">{host ?? '-'}</span>;
           },
+        }),
+        column.accessor((row) => row.publicip ?? '', {
+          id: 'publicip',
+          header: 'Public IP',
+          meta: { className: 'hidden lg:table-cell', headerClassName: 'hidden lg:table-cell' },
+          cell: ({ row }) => (
+            <span className="font-mono text-xs">{row.original.publicip || '-'}</span>
+          ),
         }),
         column.accessor((row) => row.cpu_percent ?? -1, {
           id: 'cpu',
           header: 'CPU',
-          cell: ({ row }) => formatPercent(row.original.cpu_percent),
+          meta: { numeric: true },
+          cell: ({ row }) =>
+            hasMetrics(row.original) ? formatPercent(row.original.cpu_percent) : '-',
         }),
         column.accessor((row) => row.memory_percent ?? -1, {
           id: 'memory',
           header: 'Memory',
-          cell: ({ row }) => formatBytes(row.original.memory_percent),
+          meta: { numeric: true },
+          cell: ({ row }) =>
+            hasMetrics(row.original) ? formatBytes(row.original.memory_percent) : '-',
         }),
         column.display({
           id: 'actions',
           header: () => <span className="sr-only">Actions</span>,
+          meta: { align: 'right' },
           cell: ({ row }) => (
-            <div className="flex justify-end gap-1">
-              <Button variant="ghost" size="icon-sm" asChild title="Open">
-                <Link
-                  aria-label={`Open instance ${row.original.instance_number}`}
-                  to={`/applications/${appId}/services/${serviceId}/instances/${row.original.instance_number}`}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Actions for instance ${row.original.instance_number}`}
                 >
-                  <ExternalLinkIcon aria-hidden />
-                </Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                title="Undeploy"
-                aria-label={`Undeploy instance ${row.original.instance_number}`}
-                onClick={() => setUndeploying(row.original)}
-              >
-                <UnplugIcon aria-hidden />
-              </Button>
-            </div>
+                  <EllipsisIcon aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link
+                    to={`/applications/${appId}/services/${serviceId}/instances/${row.original.instance_number}`}
+                  >
+                    <ExternalLinkIcon aria-hidden /> Open
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={() => setUndeploying(row.original)}
+                >
+                  <SquareIcon aria-hidden /> Undeploy
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ),
         }),
       ]),
@@ -267,7 +217,21 @@ export function ServiceDetailPage() {
   }
 
   const data = service.data;
-  const sla = serviceToSla(data, user?.organization ?? '');
+  const organization = user?.organization ?? '';
+  const sla = serviceToSla(data, organization);
+  const waiting = data.instance_list.length === 0 && isTransitionalStatus(data.status);
+  const noCapacity =
+    data.instance_list.length === 0 && describeStatus(data.status).tone === 'warning';
+  const virtualization = formatVirtualization(data.virtualization);
+  const image = data.image ?? data.code;
+  const duplicateTo = `/applications/${appId}/services/${data._id}/duplicate`;
+  const deployDisabled = deploy.isPending || waiting;
+
+  const deployButton = (
+    <Button disabled={deployDisabled} onClick={() => deploy.mutate(data._id)}>
+      <PlayIcon aria-hidden /> Deploy instance
+    </Button>
+  );
 
   return (
     <div className="space-y-6">
@@ -275,53 +239,121 @@ export function ServiceDetailPage() {
         title={
           <span className="flex flex-wrap items-center gap-3">
             {data.microservice_name}
-            <StatusBadge status={data.status} />
+            <StatusBadge status={data.status} detail={data.status_detail} />
           </span>
         }
         description={
-          [data.microservice_namespace, data.image ?? data.code].filter(Boolean).join(' - ') ||
-          undefined
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {data.microservice_namespace ? <span>{data.microservice_namespace}</span> : null}
+            {image ? (
+              <span className="inline-flex items-center gap-1">
+                <span className="font-mono text-xs">{image}</span>
+                <CopyButton value={image} label="Copy image" />
+              </span>
+            ) : null}
+            {virtualization ? <span>{virtualization}</span> : null}
+          </span>
         }
         actions={
           <>
-            <Button disabled={deploy.isPending} onClick={() => deploy.mutate(data._id)}>
-              <PlayIcon aria-hidden /> Deploy instance
-            </Button>
+            {waiting ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex">{deployButton}</span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Waiting for the scheduler to place the first instance
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              deployButton
+            )}
             <Button variant="outline" asChild>
-              <Link to={`/applications/${appId}/services/${data._id}/duplicate`}>
+              <Link to={duplicateTo}>
                 <CopyIcon aria-hidden /> Duplicate
               </Link>
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => downloadJson(`${data.microservice_name}.sla.json`, sla)}
-            >
-              <DownloadIcon aria-hidden /> Export SLA
-            </Button>
-            <Button variant="outline" onClick={() => setDeleting(true)}>
-              <Trash2Icon aria-hidden /> Delete
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="More actions">
+                  <EllipsisIcon aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={() => downloadJson(`${data.microservice_name}.sla.json`, sla)}
+                >
+                  <DownloadIcon aria-hidden />
+                  <span>
+                    Download SLA
+                    <span className="block text-xs text-muted-foreground">
+                      Includes environment values
+                    </span>
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
+                  <Trash2Icon aria-hidden /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </>
         }
       />
 
-      <Tabs defaultValue="overview">
+      {noCapacity ? (
+        <Alert variant="warning">
+          <CircleAlertIcon aria-hidden />
+          <AlertTitle>No cluster can fit this service</AlertTitle>
+          <AlertDescription>
+            <p>
+              It needs {data.vcpus ?? 0} vCPU
+              {data.memory ? ` and ${formatBytes(data.memory * 1024 * 1024, 0)} memory` : ''}.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" asChild>
+                <Link to={duplicateTo}>Duplicate with lower requirements</Link>
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={deploy.isPending}
+                onClick={() => deploy.mutate(data._id)}
+              >
+                Retry
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="instances">Instances ({data.instance_list.length})</TabsTrigger>
-          <TabsTrigger value="sla">SLA</TabsTrigger>
+          <TabsTrigger value="instances">
+            Instances
+            <Badge variant="neutral" className="tabular-nums">
+              {data.instance_list.length}
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="json">JSON</TabsTrigger>
           <Slot
             point="service.detail.tabs"
             context={{ applicationId: appId, serviceId }}
-            render={(tab, _content, source) => (
-              <TabsTrigger value={`${source.id}:${tab.id}`}>{tab.label}</TabsTrigger>
+            render={(extTab, _content, source) => (
+              <TabsTrigger value={`${source.id}:${extTab.id}`}>{extTab.label}</TabsTrigger>
             )}
           />
         </TabsList>
-        <TabsContent value="overview">
-          <ServiceOverview service={data} />
+        <TabsContent value="overview" className="min-w-0">
+          <ServiceOverview
+            service={data}
+            appId={appId}
+            clusterNames={clusterNames}
+            onShowInstances={() => setTab('instances')}
+          />
         </TabsContent>
-        <TabsContent value="instances">
+        <TabsContent value="instances" className="min-w-0">
           <DataTable
             label="Instances"
             columns={instanceColumns}
@@ -334,31 +366,51 @@ export function ServiceDetailPage() {
               )
             }
             emptyState={
-              <EmptyState
-                title="No instances"
-                description="Deploy an instance to run this service."
-                action={
-                  <Button disabled={deploy.isPending} onClick={() => deploy.mutate(data._id)}>
-                    Deploy instance
-                  </Button>
-                }
-              />
+              waiting ? (
+                <EmptyState
+                  icon={<Loader2Icon className="animate-spin" />}
+                  title="Waiting for the scheduler"
+                  description="The instance appears here once it is placed on a node."
+                />
+              ) : noCapacity ? (
+                <EmptyState
+                  icon={<CircleAlertIcon />}
+                  title="No cluster can run this service"
+                  description="Lower its requirements or free up capacity, then deploy again."
+                  action={deployButton}
+                />
+              ) : (
+                <EmptyState
+                  icon={<PlayIcon />}
+                  title="No instances"
+                  description="Deploy an instance to run this service."
+                  action={deployButton}
+                />
+              )
             }
           />
         </TabsContent>
-        <TabsContent value="sla">
+        <TabsContent value="json" className="min-w-0 space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Environment values are masked here. Download SLA in the more actions menu includes them.
+          </p>
           <JsonViewer
-            title="Service"
-            data={data}
-            downloadAs={`${data.microservice_name}.json`}
+            title="SLA"
+            data={redactSlaEnvironment(sla)}
+            maxHeightClassName="max-h-[32rem]"
+          />
+          <JsonViewer
+            title="Raw service"
+            data={redactEnvironment(data)}
+            defaultOpen={false}
             maxHeightClassName="max-h-[32rem]"
           />
         </TabsContent>
         <Slot
           point="service.detail.tabs"
           context={{ applicationId: appId, serviceId }}
-          render={(tab, content, source) => (
-            <TabsContent value={`${source.id}:${tab.id}`}>{content}</TabsContent>
+          render={(extTab, content, source) => (
+            <TabsContent value={`${source.id}:${extTab.id}`}>{content}</TabsContent>
           )}
         />
       </Tabs>

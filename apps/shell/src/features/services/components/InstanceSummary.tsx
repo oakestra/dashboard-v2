@@ -1,5 +1,5 @@
-import { Badge } from '@oakestra/ui';
 import type { Instance } from '@oakestra/api';
+import { Badge } from '@oakestra/ui';
 
 import { instanceCounts } from '../status';
 
@@ -10,10 +10,10 @@ export function InstanceSummary({ instances }: { instances: readonly Instance[] 
   const other = total - running - pending - failed;
   return (
     <span className="flex flex-wrap gap-1" data-testid="instance-summary">
-      {running > 0 ? <Badge>{running} running</Badge> : null}
-      {pending > 0 ? <Badge variant="secondary">{pending} pending</Badge> : null}
+      {running > 0 ? <Badge variant="success">{running} running</Badge> : null}
+      {pending > 0 ? <Badge variant="info">{pending} pending</Badge> : null}
       {failed > 0 ? <Badge variant="destructive">{failed} failed</Badge> : null}
-      {other > 0 ? <Badge variant="outline">{other} other</Badge> : null}
+      {other > 0 ? <Badge variant="neutral">{other} other</Badge> : null}
     </span>
   );
 }

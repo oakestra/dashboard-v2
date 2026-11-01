@@ -52,18 +52,15 @@ export function ImportPanel({
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
         className={cn(
-          'flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed p-4',
+          'flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed px-4 py-2.5',
           dragging && 'border-primary bg-primary/5',
         )}
       >
-        <div className="text-sm">
-          <p className="font-medium">Have an SLA file?</p>
-          <p className="text-muted-foreground">
-            Drop a JSON file here to fill in the form. SLA v2 and the older{' '}
-            <code>microservices</code> export are supported.
-          </p>
-        </div>
-        <Button type="button" variant="outline" onClick={() => input.current?.click()}>
+        <p className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Have an SLA file?</span> Drop it here to
+          fill in the form. SLA v2 and the older <code>microservices</code> export work.
+        </p>
+        <Button type="button" variant="outline" size="sm" onClick={() => input.current?.click()}>
           <FileUp /> Import SLA JSON
         </Button>
         <input
@@ -83,7 +80,7 @@ export function ImportPanel({
         </Alert>
       ) : null}
       {warnings.map((warning) => (
-        <Alert key={warning}>
+        <Alert key={warning} variant="warning">
           <AlertDescription>{warning}</AlertDescription>
         </Alert>
       ))}
