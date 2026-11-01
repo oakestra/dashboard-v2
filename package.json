@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "pnpm --filter @oakestra/shell dev",
     "dev:mock": "pnpm --filter @oakestra/shell dev:mock",
+    "storybook": "pnpm --filter @oakestra/ui storybook",
     "build": "pnpm -r --filter=!@oakestra/e2e build",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",

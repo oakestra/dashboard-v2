@@ -1,6 +1,6 @@
 {
   "extends": "@oakestra/tsconfig/react.json",
-  "include": ["src", "vitest.config.ts"],
+  "include": ["src", "stories", ".storybook/*.ts", ".storybook/*.tsx", "vitest.config.ts"],
   "compilerOptions": {
     "types": ["vite/client", "@testing-library/jest-dom/vitest"]
   }

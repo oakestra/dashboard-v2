@@ -11,3 +11,6 @@ minimumReleaseAgeExclude:
 # unrs-resolver only uses its install script as a fallback when no prebuilt binary matches.
 allowBuilds:
   unrs-resolver: false
+  # Pulled in by Storybook. Its postinstall only checks the platform binary, which comes from the
+  # optional @esbuild/<platform> dependency anyway.
+  esbuild: false

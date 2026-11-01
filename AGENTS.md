@@ -284,8 +284,19 @@ values, so the shell stays the one owner of the variables.
 
 To add a shadcn component: run `pnpm dlx shadcn@4 add <name>` in `packages/ui`, rewrite its
 `@oakestra/ui/...` and `cn` imports to relative paths, drop any `next-themes` usage, and export it
-from `packages/ui/src/index.ts`. `packages/ui` has its own vitest setup (`pnpm --filter
-@oakestra/ui test`) for composites like `DataTable`.
+from `packages/ui/src/index.ts`, and give it a story. `packages/ui` has its own vitest setup
+(`pnpm --filter @oakestra/ui test`) for composites like `DataTable`.
+
+Storybook (`pnpm storybook`, port 6006; `pnpm --filter @oakestra/ui build-storybook` writes
+`packages/ui/storybook-static/`) shows every `@oakestra/ui` component with a light/dark switch,
+autodocs and the a11y panel. Stories live in `packages/ui/stories/<group>/*.stories.tsx`, outside
+`src/` on purpose: `styles.css` scans `src/components`, so story-only layout classes there would ship
+in the shell's CSS (`.storybook/preview.css` adds `stories/` as a Tailwind source for Storybook only).
+Stories import the public entries (`../../src`, `../../src/chart`, ...), never component files.
+Rules: a docs page renders all stories of a file at once, so use `useId()` instead of fixed ids, and
+tag stories that render an open modal with `tags: ['!autodocs']`. Keep docs previews inline:
+`docs.story.inline: false` iframes do not get the theme global (the sidebar story contains its
+position-fixed layout with a `transform` frame instead). It is not part of `pnpm build` or CI yet.
 
 ## Import boundaries
 

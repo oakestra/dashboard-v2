@@ -285,6 +285,7 @@ export function createConfig({ rootDir }) {
       ignores: [
         '**/node_modules/**',
         '**/dist/**',
+        '**/storybook-static/**',
         '**/coverage/**',
         '**/.vite/**',
         '**/.__mf__temp/**',
