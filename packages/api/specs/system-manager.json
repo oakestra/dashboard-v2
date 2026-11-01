@@ -1,0 +1,3770 @@
+{
+  "host": "oakestra.io",
+  "x-internal-id": "1",
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/service/{serviceid}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "microserviceID": {
+                      "type": "string",
+                      "maxLength": 0
+                    },
+                    "microservice_name": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9]{1,32}$"
+                    },
+                    "microservice_namespace": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9]{1,32}$"
+                    },
+                    "virtualization": {
+                      "type": "string"
+                    },
+                    "volumes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "volume_id": {
+                            "type": "string"
+                          },
+                          "csi_driver": {
+                            "type": "string"
+                          },
+                          "mount_path": {
+                            "type": "string"
+                          },
+                          "config": {
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "volume_id",
+                          "csi_driver"
+                        ]
+                      }
+                    },
+                    "memory": {
+                      "type": "integer"
+                    },
+                    "vcpus": {
+                      "type": "integer"
+                    },
+                    "vgpus": {
+                      "type": "integer"
+                    },
+                    "vtpus": {
+                      "type": "integer"
+                    },
+                    "bandwidth_in": {
+                      "type": "integer"
+                    },
+                    "bandwidth_out": {
+                      "type": "integer"
+                    },
+                    "storage": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "port": {
+                      "type": "string"
+                    },
+                    "one_shot": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "privileged": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "cmd": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "environment": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "sla_violation_strategy": {
+                      "type": "string"
+                    },
+                    "target_node": {
+                      "type": "string"
+                    },
+                    "addresses": {
+                      "type": "object",
+                      "properties": {
+                        "rr_ip": {
+                          "type": "string"
+                        },
+                        "rr_ip_v6": {
+                          "type": "string"
+                        },
+                        "closest_ip": {
+                          "type": "string"
+                        },
+                        "closest_ip_v6": {
+                          "type": "string"
+                        },
+                        "instances": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "string"
+                              },
+                              "to": {
+                                "type": "string"
+                              },
+                              "start": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "added_files": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "args": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "constraints": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string"
+                          },
+                          "area": {
+                            "type": "string"
+                          },
+                          "cluster": {
+                            "type": "string"
+                          },
+                          "node": {
+                            "type": "string"
+                          },
+                          "location": {
+                            "type": "string"
+                          },
+                          "threshold": {
+                            "type": "number"
+                          },
+                          "rigidness": {
+                            "type": "number"
+                          },
+                          "convergence_time": {
+                            "type": "integer"
+                          },
+                          "needs": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "allowed": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "type"
+                        ]
+                      }
+                    },
+                    "connectivity": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "target_microservice_id": {
+                            "type": "string"
+                          },
+                          "con_constraints": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string"
+                                },
+                                "threshold": {
+                                  "type": "number"
+                                },
+                                "rigidness": {
+                                  "type": "number"
+                                },
+                                "convergence_time": {
+                                  "type": "integer"
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "threshold",
+                                "rigidness",
+                                "convergence_time"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "target_microservice_id",
+                          "con_constraints"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "microservice_name",
+                    "microservice_namespace",
+                    "virtualization",
+                    "code"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Service operations"
+        ]
+      },
+      "put": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_ENTITY"
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sla_version": {
+                    "type": "string"
+                  },
+                  "customerID": {
+                    "type": "string"
+                  },
+                  "applications": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "applicationID": {
+                          "type": "string"
+                        },
+                        "application_name": {
+                          "type": "string",
+                          "pattern": "^[a-zA-Z0-9]{1,32}$"
+                        },
+                        "application_namespace": {
+                          "type": "string",
+                          "pattern": "^[a-zA-Z0-9]{1,32}$"
+                        },
+                        "application_desc": {
+                          "type": "string"
+                        },
+                        "microservices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "microserviceID": {
+                                "type": "string",
+                                "maxLength": 0
+                              },
+                              "microservice_name": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9]{1,32}$"
+                              },
+                              "microservice_namespace": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9]{1,32}$"
+                              },
+                              "virtualization": {
+                                "type": "string"
+                              },
+                              "volumes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "volume_id": {
+                                      "type": "string"
+                                    },
+                                    "csi_driver": {
+                                      "type": "string"
+                                    },
+                                    "mount_path": {
+                                      "type": "string"
+                                    },
+                                    "config": {
+                                      "type": "object"
+                                    }
+                                  },
+                                  "required": [
+                                    "volume_id",
+                                    "csi_driver"
+                                  ]
+                                }
+                              },
+                              "memory": {
+                                "type": "integer"
+                              },
+                              "vcpus": {
+                                "type": "integer"
+                              },
+                              "vgpus": {
+                                "type": "integer"
+                              },
+                              "vtpus": {
+                                "type": "integer"
+                              },
+                              "bandwidth_in": {
+                                "type": "integer"
+                              },
+                              "bandwidth_out": {
+                                "type": "integer"
+                              },
+                              "storage": {
+                                "type": "integer"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "state": {
+                                "type": "string"
+                              },
+                              "port": {
+                                "type": "string"
+                              },
+                              "one_shot": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "privileged": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "cmd": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "environment": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "sla_violation_strategy": {
+                                "type": "string"
+                              },
+                              "target_node": {
+                                "type": "string"
+                              },
+                              "addresses": {
+                                "type": "object",
+                                "properties": {
+                                  "rr_ip": {
+                                    "type": "string"
+                                  },
+                                  "rr_ip_v6": {
+                                    "type": "string"
+                                  },
+                                  "closest_ip": {
+                                    "type": "string"
+                                  },
+                                  "closest_ip_v6": {
+                                    "type": "string"
+                                  },
+                                  "instances": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "from": {
+                                          "type": "string"
+                                        },
+                                        "to": {
+                                          "type": "string"
+                                        },
+                                        "start": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              "added_files": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "args": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "constraints": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string"
+                                    },
+                                    "area": {
+                                      "type": "string"
+                                    },
+                                    "cluster": {
+                                      "type": "string"
+                                    },
+                                    "node": {
+                                      "type": "string"
+                                    },
+                                    "location": {
+                                      "type": "string"
+                                    },
+                                    "threshold": {
+                                      "type": "number"
+                                    },
+                                    "rigidness": {
+                                      "type": "number"
+                                    },
+                                    "convergence_time": {
+                                      "type": "integer"
+                                    },
+                                    "needs": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "allowed": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "type"
+                                  ]
+                                }
+                              },
+                              "connectivity": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "target_microservice_id": {
+                                      "type": "string"
+                                    },
+                                    "con_constraints": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "type": {
+                                            "type": "string"
+                                          },
+                                          "threshold": {
+                                            "type": "number"
+                                          },
+                                          "rigidness": {
+                                            "type": "number"
+                                          },
+                                          "convergence_time": {
+                                            "type": "integer"
+                                          }
+                                        },
+                                        "required": [
+                                          "type",
+                                          "threshold",
+                                          "rigidness",
+                                          "convergence_time"
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "target_microservice_id",
+                                    "con_constraints"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "microservice_name",
+                              "microservice_namespace",
+                              "virtualization",
+                              "code"
+                            ]
+                          },
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "application_name",
+                        "application_namespace",
+                        "microservices"
+                      ]
+                    }
+                  },
+                  "args": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "sla_version",
+                  "customerID",
+                  "applications"
+                ]
+              }
+            }
+          }
+        },
+        "tags": [
+          "Service operations"
+        ]
+      },
+      "delete": {
+        "responses": {
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Service operations"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "serviceid",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "/api/service/": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_ENTITY"
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sla_version": {
+                    "type": "string"
+                  },
+                  "customerID": {
+                    "type": "string"
+                  },
+                  "applications": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "applicationID": {
+                          "type": "string"
+                        },
+                        "application_name": {
+                          "type": "string",
+                          "pattern": "^[a-zA-Z0-9]{1,32}$"
+                        },
+                        "application_namespace": {
+                          "type": "string",
+                          "pattern": "^[a-zA-Z0-9]{1,32}$"
+                        },
+                        "application_desc": {
+                          "type": "string"
+                        },
+                        "microservices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "microserviceID": {
+                                "type": "string",
+                                "maxLength": 0
+                              },
+                              "microservice_name": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9]{1,32}$"
+                              },
+                              "microservice_namespace": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9]{1,32}$"
+                              },
+                              "virtualization": {
+                                "type": "string"
+                              },
+                              "volumes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "volume_id": {
+                                      "type": "string"
+                                    },
+                                    "csi_driver": {
+                                      "type": "string"
+                                    },
+                                    "mount_path": {
+                                      "type": "string"
+                                    },
+                                    "config": {
+                                      "type": "object"
+                                    }
+                                  },
+                                  "required": [
+                                    "volume_id",
+                                    "csi_driver"
+                                  ]
+                                }
+                              },
+                              "memory": {
+                                "type": "integer"
+                              },
+                              "vcpus": {
+                                "type": "integer"
+                              },
+                              "vgpus": {
+                                "type": "integer"
+                              },
+                              "vtpus": {
+                                "type": "integer"
+                              },
+                              "bandwidth_in": {
+                                "type": "integer"
+                              },
+                              "bandwidth_out": {
+                                "type": "integer"
+                              },
+                              "storage": {
+                                "type": "integer"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "state": {
+                                "type": "string"
+                              },
+                              "port": {
+                                "type": "string"
+                              },
+                              "one_shot": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "privileged": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "cmd": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "environment": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "sla_violation_strategy": {
+                                "type": "string"
+                              },
+                              "target_node": {
+                                "type": "string"
+                              },
+                              "addresses": {
+                                "type": "object",
+                                "properties": {
+                                  "rr_ip": {
+                                    "type": "string"
+                                  },
+                                  "rr_ip_v6": {
+                                    "type": "string"
+                                  },
+                                  "closest_ip": {
+                                    "type": "string"
+                                  },
+                                  "closest_ip_v6": {
+                                    "type": "string"
+                                  },
+                                  "instances": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "from": {
+                                          "type": "string"
+                                        },
+                                        "to": {
+                                          "type": "string"
+                                        },
+                                        "start": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              "added_files": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "args": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "constraints": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string"
+                                    },
+                                    "area": {
+                                      "type": "string"
+                                    },
+                                    "cluster": {
+                                      "type": "string"
+                                    },
+                                    "node": {
+                                      "type": "string"
+                                    },
+                                    "location": {
+                                      "type": "string"
+                                    },
+                                    "threshold": {
+                                      "type": "number"
+                                    },
+                                    "rigidness": {
+                                      "type": "number"
+                                    },
+                                    "convergence_time": {
+                                      "type": "integer"
+                                    },
+                                    "needs": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "allowed": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "type"
+                                  ]
+                                }
+                              },
+                              "connectivity": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "target_microservice_id": {
+                                      "type": "string"
+                                    },
+                                    "con_constraints": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "type": {
+                                            "type": "string"
+                                          },
+                                          "threshold": {
+                                            "type": "number"
+                                          },
+                                          "rigidness": {
+                                            "type": "number"
+                                          },
+                                          "convergence_time": {
+                                            "type": "integer"
+                                          }
+                                        },
+                                        "required": [
+                                          "type",
+                                          "threshold",
+                                          "rigidness",
+                                          "convergence_time"
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "target_microservice_id",
+                                    "con_constraints"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "microservice_name",
+                              "microservice_namespace",
+                              "virtualization",
+                              "code"
+                            ]
+                          },
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "application_name",
+                        "application_namespace",
+                        "microservices"
+                      ]
+                    }
+                  },
+                  "args": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "sla_version",
+                  "customerID",
+                  "applications"
+                ]
+              }
+            }
+          }
+        },
+        "tags": [
+          "Service operations"
+        ]
+      }
+    },
+    "/api/services/{appid}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "microserviceID": {
+                        "type": "string",
+                        "maxLength": 0
+                      },
+                      "microservice_name": {
+                        "type": "string",
+                        "pattern": "^[a-zA-Z0-9]{1,32}$"
+                      },
+                      "microservice_namespace": {
+                        "type": "string",
+                        "pattern": "^[a-zA-Z0-9]{1,32}$"
+                      },
+                      "virtualization": {
+                        "type": "string"
+                      },
+                      "volumes": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "volume_id": {
+                              "type": "string"
+                            },
+                            "csi_driver": {
+                              "type": "string"
+                            },
+                            "mount_path": {
+                              "type": "string"
+                            },
+                            "config": {
+                              "type": "object"
+                            }
+                          },
+                          "required": [
+                            "volume_id",
+                            "csi_driver"
+                          ]
+                        }
+                      },
+                      "memory": {
+                        "type": "integer"
+                      },
+                      "vcpus": {
+                        "type": "integer"
+                      },
+                      "vgpus": {
+                        "type": "integer"
+                      },
+                      "vtpus": {
+                        "type": "integer"
+                      },
+                      "bandwidth_in": {
+                        "type": "integer"
+                      },
+                      "bandwidth_out": {
+                        "type": "integer"
+                      },
+                      "storage": {
+                        "type": "integer"
+                      },
+                      "code": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string"
+                      },
+                      "port": {
+                        "type": "string"
+                      },
+                      "one_shot": {
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "privileged": {
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "cmd": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "environment": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "sla_violation_strategy": {
+                        "type": "string"
+                      },
+                      "target_node": {
+                        "type": "string"
+                      },
+                      "addresses": {
+                        "type": "object",
+                        "properties": {
+                          "rr_ip": {
+                            "type": "string"
+                          },
+                          "rr_ip_v6": {
+                            "type": "string"
+                          },
+                          "closest_ip": {
+                            "type": "string"
+                          },
+                          "closest_ip_v6": {
+                            "type": "string"
+                          },
+                          "instances": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "string"
+                                },
+                                "to": {
+                                  "type": "string"
+                                },
+                                "start": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "added_files": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "args": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "constraints": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string"
+                            },
+                            "area": {
+                              "type": "string"
+                            },
+                            "cluster": {
+                              "type": "string"
+                            },
+                            "node": {
+                              "type": "string"
+                            },
+                            "location": {
+                              "type": "string"
+                            },
+                            "threshold": {
+                              "type": "number"
+                            },
+                            "rigidness": {
+                              "type": "number"
+                            },
+                            "convergence_time": {
+                              "type": "integer"
+                            },
+                            "needs": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "allowed": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [
+                            "type"
+                          ]
+                        }
+                      },
+                      "connectivity": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "target_microservice_id": {
+                              "type": "string"
+                            },
+                            "con_constraints": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string"
+                                  },
+                                  "threshold": {
+                                    "type": "number"
+                                  },
+                                  "rigidness": {
+                                    "type": "number"
+                                  },
+                                  "convergence_time": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "required": [
+                                  "type",
+                                  "threshold",
+                                  "rigidness",
+                                  "convergence_time"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "target_microservice_id",
+                            "con_constraints"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "microservice_name",
+                      "microservice_namespace",
+                      "virtualization",
+                      "code"
+                    ]
+                  },
+                  "exclusiveMinimum": 0
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Multiple services operations"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "appid",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "/api/services/": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "microserviceID": {
+                        "type": "string",
+                        "maxLength": 0
+                      },
+                      "microservice_name": {
+                        "type": "string",
+                        "pattern": "^[a-zA-Z0-9]{1,32}$"
+                      },
+                      "microservice_namespace": {
+                        "type": "string",
+                        "pattern": "^[a-zA-Z0-9]{1,32}$"
+                      },
+                      "virtualization": {
+                        "type": "string"
+                      },
+                      "volumes": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "volume_id": {
+                              "type": "string"
+                            },
+                            "csi_driver": {
+                              "type": "string"
+                            },
+                            "mount_path": {
+                              "type": "string"
+                            },
+                            "config": {
+                              "type": "object"
+                            }
+                          },
+                          "required": [
+                            "volume_id",
+                            "csi_driver"
+                          ]
+                        }
+                      },
+                      "memory": {
+                        "type": "integer"
+                      },
+                      "vcpus": {
+                        "type": "integer"
+                      },
+                      "vgpus": {
+                        "type": "integer"
+                      },
+                      "vtpus": {
+                        "type": "integer"
+                      },
+                      "bandwidth_in": {
+                        "type": "integer"
+                      },
+                      "bandwidth_out": {
+                        "type": "integer"
+                      },
+                      "storage": {
+                        "type": "integer"
+                      },
+                      "code": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string"
+                      },
+                      "port": {
+                        "type": "string"
+                      },
+                      "one_shot": {
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "privileged": {
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "cmd": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "environment": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "sla_violation_strategy": {
+                        "type": "string"
+                      },
+                      "target_node": {
+                        "type": "string"
+                      },
+                      "addresses": {
+                        "type": "object",
+                        "properties": {
+                          "rr_ip": {
+                            "type": "string"
+                          },
+                          "rr_ip_v6": {
+                            "type": "string"
+                          },
+                          "closest_ip": {
+                            "type": "string"
+                          },
+                          "closest_ip_v6": {
+                            "type": "string"
+                          },
+                          "instances": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "string"
+                                },
+                                "to": {
+                                  "type": "string"
+                                },
+                                "start": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "added_files": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "args": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "constraints": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string"
+                            },
+                            "area": {
+                              "type": "string"
+                            },
+                            "cluster": {
+                              "type": "string"
+                            },
+                            "node": {
+                              "type": "string"
+                            },
+                            "location": {
+                              "type": "string"
+                            },
+                            "threshold": {
+                              "type": "number"
+                            },
+                            "rigidness": {
+                              "type": "number"
+                            },
+                            "convergence_time": {
+                              "type": "integer"
+                            },
+                            "needs": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "allowed": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [
+                            "type"
+                          ]
+                        }
+                      },
+                      "connectivity": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "target_microservice_id": {
+                              "type": "string"
+                            },
+                            "con_constraints": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string"
+                                  },
+                                  "threshold": {
+                                    "type": "number"
+                                  },
+                                  "rigidness": {
+                                    "type": "number"
+                                  },
+                                  "convergence_time": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "required": [
+                                  "type",
+                                  "threshold",
+                                  "rigidness",
+                                  "convergence_time"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "target_microservice_id",
+                            "con_constraints"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "microservice_name",
+                      "microservice_namespace",
+                      "virtualization",
+                      "code"
+                    ]
+                  },
+                  "exclusiveMinimum": 0
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Multiple services operations"
+        ]
+      }
+    },
+    "/api/permission/{username}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "roles": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Permissions"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "/api/auth/login": {
+      "post": {
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_ENTITY"
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "organization": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Login"
+        ]
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_ENTITY"
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "roles": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Login"
+        ]
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "responses": {
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Login"
+        ]
+      }
+    },
+    "/api/service/{serviceid}/instance": {
+      "post": {
+        "responses": {
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Deployment"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "serviceid",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "/api/service/{serviceid}/instance/{instance_number}": {
+      "delete": {
+        "responses": {
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Deployment"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "instance_number",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        {
+          "in": "path",
+          "name": "serviceid",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "/api/application/{appid}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sla_version": {
+                      "type": "string"
+                    },
+                    "customerID": {
+                      "type": "string"
+                    },
+                    "applications": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "applicationID": {
+                            "type": "string"
+                          },
+                          "application_name": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z0-9]{1,32}$"
+                          },
+                          "application_namespace": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z0-9]{1,32}$"
+                          },
+                          "application_desc": {
+                            "type": "string"
+                          },
+                          "microservices": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "microserviceID": {
+                                  "type": "string",
+                                  "maxLength": 0
+                                },
+                                "microservice_name": {
+                                  "type": "string",
+                                  "pattern": "^[a-zA-Z0-9]{1,32}$"
+                                },
+                                "microservice_namespace": {
+                                  "type": "string",
+                                  "pattern": "^[a-zA-Z0-9]{1,32}$"
+                                },
+                                "virtualization": {
+                                  "type": "string"
+                                },
+                                "volumes": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "volume_id": {
+                                        "type": "string"
+                                      },
+                                      "csi_driver": {
+                                        "type": "string"
+                                      },
+                                      "mount_path": {
+                                        "type": "string"
+                                      },
+                                      "config": {
+                                        "type": "object"
+                                      }
+                                    },
+                                    "required": [
+                                      "volume_id",
+                                      "csi_driver"
+                                    ]
+                                  }
+                                },
+                                "memory": {
+                                  "type": "integer"
+                                },
+                                "vcpus": {
+                                  "type": "integer"
+                                },
+                                "vgpus": {
+                                  "type": "integer"
+                                },
+                                "vtpus": {
+                                  "type": "integer"
+                                },
+                                "bandwidth_in": {
+                                  "type": "integer"
+                                },
+                                "bandwidth_out": {
+                                  "type": "integer"
+                                },
+                                "storage": {
+                                  "type": "integer"
+                                },
+                                "code": {
+                                  "type": "string"
+                                },
+                                "state": {
+                                  "type": "string"
+                                },
+                                "port": {
+                                  "type": "string"
+                                },
+                                "one_shot": {
+                                  "type": "boolean",
+                                  "default": false
+                                },
+                                "privileged": {
+                                  "type": "boolean",
+                                  "default": false
+                                },
+                                "cmd": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "environment": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "sla_violation_strategy": {
+                                  "type": "string"
+                                },
+                                "target_node": {
+                                  "type": "string"
+                                },
+                                "addresses": {
+                                  "type": "object",
+                                  "properties": {
+                                    "rr_ip": {
+                                      "type": "string"
+                                    },
+                                    "rr_ip_v6": {
+                                      "type": "string"
+                                    },
+                                    "closest_ip": {
+                                      "type": "string"
+                                    },
+                                    "closest_ip_v6": {
+                                      "type": "string"
+                                    },
+                                    "instances": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "from": {
+                                            "type": "string"
+                                          },
+                                          "to": {
+                                            "type": "string"
+                                          },
+                                          "start": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                "added_files": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "args": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "constraints": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "type": {
+                                        "type": "string"
+                                      },
+                                      "area": {
+                                        "type": "string"
+                                      },
+                                      "cluster": {
+                                        "type": "string"
+                                      },
+                                      "node": {
+                                        "type": "string"
+                                      },
+                                      "location": {
+                                        "type": "string"
+                                      },
+                                      "threshold": {
+                                        "type": "number"
+                                      },
+                                      "rigidness": {
+                                        "type": "number"
+                                      },
+                                      "convergence_time": {
+                                        "type": "integer"
+                                      },
+                                      "needs": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "allowed": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "type"
+                                    ]
+                                  }
+                                },
+                                "connectivity": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "target_microservice_id": {
+                                        "type": "string"
+                                      },
+                                      "con_constraints": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "type": {
+                                              "type": "string"
+                                            },
+                                            "threshold": {
+                                              "type": "number"
+                                            },
+                                            "rigidness": {
+                                              "type": "number"
+                                            },
+                                            "convergence_time": {
+                                              "type": "integer"
+                                            }
+                                          },
+                                          "required": [
+                                            "type",
+                                            "threshold",
+                                            "rigidness",
+                                            "convergence_time"
+                                          ]
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "target_microservice_id",
+                                      "con_constraints"
+                                    ]
+                                  }
+                                }
+                              },
+                              "required": [
+                                "microservice_name",
+                                "microservice_namespace",
+                                "virtualization",
+                                "code"
+                              ]
+                            },
+                            "exclusiveMinimum": 0
+                          }
+                        },
+                        "required": [
+                          "application_name",
+                          "application_namespace",
+                          "microservices"
+                        ]
+                      }
+                    },
+                    "args": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "sla_version",
+                    "customerID",
+                    "applications"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Application operations"
+        ]
+      },
+      "put": {
+        "responses": {
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Application operations"
+        ]
+      },
+      "delete": {
+        "responses": {
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Application operations"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "appid",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "/api/application/": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "sla_version": {
+                        "type": "string"
+                      },
+                      "customerID": {
+                        "type": "string"
+                      },
+                      "applications": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "applicationID": {
+                              "type": "string"
+                            },
+                            "application_name": {
+                              "type": "string",
+                              "pattern": "^[a-zA-Z0-9]{1,32}$"
+                            },
+                            "application_namespace": {
+                              "type": "string",
+                              "pattern": "^[a-zA-Z0-9]{1,32}$"
+                            },
+                            "application_desc": {
+                              "type": "string"
+                            },
+                            "microservices": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "microserviceID": {
+                                    "type": "string",
+                                    "maxLength": 0
+                                  },
+                                  "microservice_name": {
+                                    "type": "string",
+                                    "pattern": "^[a-zA-Z0-9]{1,32}$"
+                                  },
+                                  "microservice_namespace": {
+                                    "type": "string",
+                                    "pattern": "^[a-zA-Z0-9]{1,32}$"
+                                  },
+                                  "virtualization": {
+                                    "type": "string"
+                                  },
+                                  "volumes": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "volume_id": {
+                                          "type": "string"
+                                        },
+                                        "csi_driver": {
+                                          "type": "string"
+                                        },
+                                        "mount_path": {
+                                          "type": "string"
+                                        },
+                                        "config": {
+                                          "type": "object"
+                                        }
+                                      },
+                                      "required": [
+                                        "volume_id",
+                                        "csi_driver"
+                                      ]
+                                    }
+                                  },
+                                  "memory": {
+                                    "type": "integer"
+                                  },
+                                  "vcpus": {
+                                    "type": "integer"
+                                  },
+                                  "vgpus": {
+                                    "type": "integer"
+                                  },
+                                  "vtpus": {
+                                    "type": "integer"
+                                  },
+                                  "bandwidth_in": {
+                                    "type": "integer"
+                                  },
+                                  "bandwidth_out": {
+                                    "type": "integer"
+                                  },
+                                  "storage": {
+                                    "type": "integer"
+                                  },
+                                  "code": {
+                                    "type": "string"
+                                  },
+                                  "state": {
+                                    "type": "string"
+                                  },
+                                  "port": {
+                                    "type": "string"
+                                  },
+                                  "one_shot": {
+                                    "type": "boolean",
+                                    "default": false
+                                  },
+                                  "privileged": {
+                                    "type": "boolean",
+                                    "default": false
+                                  },
+                                  "cmd": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "environment": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "sla_violation_strategy": {
+                                    "type": "string"
+                                  },
+                                  "target_node": {
+                                    "type": "string"
+                                  },
+                                  "addresses": {
+                                    "type": "object",
+                                    "properties": {
+                                      "rr_ip": {
+                                        "type": "string"
+                                      },
+                                      "rr_ip_v6": {
+                                        "type": "string"
+                                      },
+                                      "closest_ip": {
+                                        "type": "string"
+                                      },
+                                      "closest_ip_v6": {
+                                        "type": "string"
+                                      },
+                                      "instances": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "from": {
+                                              "type": "string"
+                                            },
+                                            "to": {
+                                              "type": "string"
+                                            },
+                                            "start": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "added_files": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "args": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "constraints": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string"
+                                        },
+                                        "area": {
+                                          "type": "string"
+                                        },
+                                        "cluster": {
+                                          "type": "string"
+                                        },
+                                        "node": {
+                                          "type": "string"
+                                        },
+                                        "location": {
+                                          "type": "string"
+                                        },
+                                        "threshold": {
+                                          "type": "number"
+                                        },
+                                        "rigidness": {
+                                          "type": "number"
+                                        },
+                                        "convergence_time": {
+                                          "type": "integer"
+                                        },
+                                        "needs": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "allowed": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "type"
+                                      ]
+                                    }
+                                  },
+                                  "connectivity": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "target_microservice_id": {
+                                          "type": "string"
+                                        },
+                                        "con_constraints": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "properties": {
+                                              "type": {
+                                                "type": "string"
+                                              },
+                                              "threshold": {
+                                                "type": "number"
+                                              },
+                                              "rigidness": {
+                                                "type": "number"
+                                              },
+                                              "convergence_time": {
+                                                "type": "integer"
+                                              }
+                                            },
+                                            "required": [
+                                              "type",
+                                              "threshold",
+                                              "rigidness",
+                                              "convergence_time"
+                                            ]
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "target_microservice_id",
+                                        "con_constraints"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "microservice_name",
+                                  "microservice_namespace",
+                                  "virtualization",
+                                  "code"
+                                ]
+                              },
+                              "exclusiveMinimum": 0
+                            }
+                          },
+                          "required": [
+                            "application_name",
+                            "application_namespace",
+                            "microservices"
+                          ]
+                        }
+                      },
+                      "args": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "sla_version",
+                      "customerID",
+                      "applications"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_ENTITY"
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sla_version": {
+                    "type": "string"
+                  },
+                  "customerID": {
+                    "type": "string"
+                  },
+                  "applications": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "applicationID": {
+                          "type": "string"
+                        },
+                        "application_name": {
+                          "type": "string",
+                          "pattern": "^[a-zA-Z0-9]{1,32}$"
+                        },
+                        "application_namespace": {
+                          "type": "string",
+                          "pattern": "^[a-zA-Z0-9]{1,32}$"
+                        },
+                        "application_desc": {
+                          "type": "string"
+                        },
+                        "microservices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "microserviceID": {
+                                "type": "string",
+                                "maxLength": 0
+                              },
+                              "microservice_name": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9]{1,32}$"
+                              },
+                              "microservice_namespace": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9]{1,32}$"
+                              },
+                              "virtualization": {
+                                "type": "string"
+                              },
+                              "volumes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "volume_id": {
+                                      "type": "string"
+                                    },
+                                    "csi_driver": {
+                                      "type": "string"
+                                    },
+                                    "mount_path": {
+                                      "type": "string"
+                                    },
+                                    "config": {
+                                      "type": "object"
+                                    }
+                                  },
+                                  "required": [
+                                    "volume_id",
+                                    "csi_driver"
+                                  ]
+                                }
+                              },
+                              "memory": {
+                                "type": "integer"
+                              },
+                              "vcpus": {
+                                "type": "integer"
+                              },
+                              "vgpus": {
+                                "type": "integer"
+                              },
+                              "vtpus": {
+                                "type": "integer"
+                              },
+                              "bandwidth_in": {
+                                "type": "integer"
+                              },
+                              "bandwidth_out": {
+                                "type": "integer"
+                              },
+                              "storage": {
+                                "type": "integer"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "state": {
+                                "type": "string"
+                              },
+                              "port": {
+                                "type": "string"
+                              },
+                              "one_shot": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "privileged": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "cmd": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "environment": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "sla_violation_strategy": {
+                                "type": "string"
+                              },
+                              "target_node": {
+                                "type": "string"
+                              },
+                              "addresses": {
+                                "type": "object",
+                                "properties": {
+                                  "rr_ip": {
+                                    "type": "string"
+                                  },
+                                  "rr_ip_v6": {
+                                    "type": "string"
+                                  },
+                                  "closest_ip": {
+                                    "type": "string"
+                                  },
+                                  "closest_ip_v6": {
+                                    "type": "string"
+                                  },
+                                  "instances": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "from": {
+                                          "type": "string"
+                                        },
+                                        "to": {
+                                          "type": "string"
+                                        },
+                                        "start": {
+                                          "type": "string"
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              "added_files": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "args": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "constraints": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string"
+                                    },
+                                    "area": {
+                                      "type": "string"
+                                    },
+                                    "cluster": {
+                                      "type": "string"
+                                    },
+                                    "node": {
+                                      "type": "string"
+                                    },
+                                    "location": {
+                                      "type": "string"
+                                    },
+                                    "threshold": {
+                                      "type": "number"
+                                    },
+                                    "rigidness": {
+                                      "type": "number"
+                                    },
+                                    "convergence_time": {
+                                      "type": "integer"
+                                    },
+                                    "needs": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "allowed": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "type"
+                                  ]
+                                }
+                              },
+                              "connectivity": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "target_microservice_id": {
+                                      "type": "string"
+                                    },
+                                    "con_constraints": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "type": {
+                                            "type": "string"
+                                          },
+                                          "threshold": {
+                                            "type": "number"
+                                          },
+                                          "rigidness": {
+                                            "type": "number"
+                                          },
+                                          "convergence_time": {
+                                            "type": "integer"
+                                          }
+                                        },
+                                        "required": [
+                                          "type",
+                                          "threshold",
+                                          "rigidness",
+                                          "convergence_time"
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "target_microservice_id",
+                                    "con_constraints"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "microservice_name",
+                              "microservice_namespace",
+                              "virtualization",
+                              "code"
+                            ]
+                          },
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "application_name",
+                        "application_namespace",
+                        "microservices"
+                      ]
+                    }
+                  },
+                  "args": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "sla_version",
+                  "customerID",
+                  "applications"
+                ]
+              }
+            }
+          }
+        },
+        "tags": [
+          "Application operations"
+        ]
+      }
+    },
+    "/api/applications/{userid}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "sla_version": {
+                        "type": "string"
+                      },
+                      "customerID": {
+                        "type": "string"
+                      },
+                      "applications": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "applicationID": {
+                              "type": "string"
+                            },
+                            "application_name": {
+                              "type": "string",
+                              "pattern": "^[a-zA-Z0-9]{1,32}$"
+                            },
+                            "application_namespace": {
+                              "type": "string",
+                              "pattern": "^[a-zA-Z0-9]{1,32}$"
+                            },
+                            "application_desc": {
+                              "type": "string"
+                            },
+                            "microservices": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "microserviceID": {
+                                    "type": "string",
+                                    "maxLength": 0
+                                  },
+                                  "microservice_name": {
+                                    "type": "string",
+                                    "pattern": "^[a-zA-Z0-9]{1,32}$"
+                                  },
+                                  "microservice_namespace": {
+                                    "type": "string",
+                                    "pattern": "^[a-zA-Z0-9]{1,32}$"
+                                  },
+                                  "virtualization": {
+                                    "type": "string"
+                                  },
+                                  "volumes": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "volume_id": {
+                                          "type": "string"
+                                        },
+                                        "csi_driver": {
+                                          "type": "string"
+                                        },
+                                        "mount_path": {
+                                          "type": "string"
+                                        },
+                                        "config": {
+                                          "type": "object"
+                                        }
+                                      },
+                                      "required": [
+                                        "volume_id",
+                                        "csi_driver"
+                                      ]
+                                    }
+                                  },
+                                  "memory": {
+                                    "type": "integer"
+                                  },
+                                  "vcpus": {
+                                    "type": "integer"
+                                  },
+                                  "vgpus": {
+                                    "type": "integer"
+                                  },
+                                  "vtpus": {
+                                    "type": "integer"
+                                  },
+                                  "bandwidth_in": {
+                                    "type": "integer"
+                                  },
+                                  "bandwidth_out": {
+                                    "type": "integer"
+                                  },
+                                  "storage": {
+                                    "type": "integer"
+                                  },
+                                  "code": {
+                                    "type": "string"
+                                  },
+                                  "state": {
+                                    "type": "string"
+                                  },
+                                  "port": {
+                                    "type": "string"
+                                  },
+                                  "one_shot": {
+                                    "type": "boolean",
+                                    "default": false
+                                  },
+                                  "privileged": {
+                                    "type": "boolean",
+                                    "default": false
+                                  },
+                                  "cmd": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "environment": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "sla_violation_strategy": {
+                                    "type": "string"
+                                  },
+                                  "target_node": {
+                                    "type": "string"
+                                  },
+                                  "addresses": {
+                                    "type": "object",
+                                    "properties": {
+                                      "rr_ip": {
+                                        "type": "string"
+                                      },
+                                      "rr_ip_v6": {
+                                        "type": "string"
+                                      },
+                                      "closest_ip": {
+                                        "type": "string"
+                                      },
+                                      "closest_ip_v6": {
+                                        "type": "string"
+                                      },
+                                      "instances": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "from": {
+                                              "type": "string"
+                                            },
+                                            "to": {
+                                              "type": "string"
+                                            },
+                                            "start": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "added_files": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "args": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "constraints": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string"
+                                        },
+                                        "area": {
+                                          "type": "string"
+                                        },
+                                        "cluster": {
+                                          "type": "string"
+                                        },
+                                        "node": {
+                                          "type": "string"
+                                        },
+                                        "location": {
+                                          "type": "string"
+                                        },
+                                        "threshold": {
+                                          "type": "number"
+                                        },
+                                        "rigidness": {
+                                          "type": "number"
+                                        },
+                                        "convergence_time": {
+                                          "type": "integer"
+                                        },
+                                        "needs": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "allowed": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "type"
+                                      ]
+                                    }
+                                  },
+                                  "connectivity": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "target_microservice_id": {
+                                          "type": "string"
+                                        },
+                                        "con_constraints": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "properties": {
+                                              "type": {
+                                                "type": "string"
+                                              },
+                                              "threshold": {
+                                                "type": "number"
+                                              },
+                                              "rigidness": {
+                                                "type": "number"
+                                              },
+                                              "convergence_time": {
+                                                "type": "integer"
+                                              }
+                                            },
+                                            "required": [
+                                              "type",
+                                              "threshold",
+                                              "rigidness",
+                                              "convergence_time"
+                                            ]
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "target_microservice_id",
+                                        "con_constraints"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "microservice_name",
+                                  "microservice_namespace",
+                                  "virtualization",
+                                  "code"
+                                ]
+                              },
+                              "exclusiveMinimum": 0
+                            }
+                          },
+                          "required": [
+                            "application_name",
+                            "application_namespace",
+                            "microservices"
+                          ]
+                        }
+                      },
+                      "args": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "sla_version",
+                      "customerID",
+                      "applications"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Applications operations"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "userid",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "/api/applications/": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "sla_version": {
+                        "type": "string"
+                      },
+                      "customerID": {
+                        "type": "string"
+                      },
+                      "applications": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "applicationID": {
+                              "type": "string"
+                            },
+                            "application_name": {
+                              "type": "string",
+                              "pattern": "^[a-zA-Z0-9]{1,32}$"
+                            },
+                            "application_namespace": {
+                              "type": "string",
+                              "pattern": "^[a-zA-Z0-9]{1,32}$"
+                            },
+                            "application_desc": {
+                              "type": "string"
+                            },
+                            "microservices": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "microserviceID": {
+                                    "type": "string",
+                                    "maxLength": 0
+                                  },
+                                  "microservice_name": {
+                                    "type": "string",
+                                    "pattern": "^[a-zA-Z0-9]{1,32}$"
+                                  },
+                                  "microservice_namespace": {
+                                    "type": "string",
+                                    "pattern": "^[a-zA-Z0-9]{1,32}$"
+                                  },
+                                  "virtualization": {
+                                    "type": "string"
+                                  },
+                                  "volumes": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "volume_id": {
+                                          "type": "string"
+                                        },
+                                        "csi_driver": {
+                                          "type": "string"
+                                        },
+                                        "mount_path": {
+                                          "type": "string"
+                                        },
+                                        "config": {
+                                          "type": "object"
+                                        }
+                                      },
+                                      "required": [
+                                        "volume_id",
+                                        "csi_driver"
+                                      ]
+                                    }
+                                  },
+                                  "memory": {
+                                    "type": "integer"
+                                  },
+                                  "vcpus": {
+                                    "type": "integer"
+                                  },
+                                  "vgpus": {
+                                    "type": "integer"
+                                  },
+                                  "vtpus": {
+                                    "type": "integer"
+                                  },
+                                  "bandwidth_in": {
+                                    "type": "integer"
+                                  },
+                                  "bandwidth_out": {
+                                    "type": "integer"
+                                  },
+                                  "storage": {
+                                    "type": "integer"
+                                  },
+                                  "code": {
+                                    "type": "string"
+                                  },
+                                  "state": {
+                                    "type": "string"
+                                  },
+                                  "port": {
+                                    "type": "string"
+                                  },
+                                  "one_shot": {
+                                    "type": "boolean",
+                                    "default": false
+                                  },
+                                  "privileged": {
+                                    "type": "boolean",
+                                    "default": false
+                                  },
+                                  "cmd": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "environment": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "sla_violation_strategy": {
+                                    "type": "string"
+                                  },
+                                  "target_node": {
+                                    "type": "string"
+                                  },
+                                  "addresses": {
+                                    "type": "object",
+                                    "properties": {
+                                      "rr_ip": {
+                                        "type": "string"
+                                      },
+                                      "rr_ip_v6": {
+                                        "type": "string"
+                                      },
+                                      "closest_ip": {
+                                        "type": "string"
+                                      },
+                                      "closest_ip_v6": {
+                                        "type": "string"
+                                      },
+                                      "instances": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "from": {
+                                              "type": "string"
+                                            },
+                                            "to": {
+                                              "type": "string"
+                                            },
+                                            "start": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "added_files": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "args": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "constraints": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string"
+                                        },
+                                        "area": {
+                                          "type": "string"
+                                        },
+                                        "cluster": {
+                                          "type": "string"
+                                        },
+                                        "node": {
+                                          "type": "string"
+                                        },
+                                        "location": {
+                                          "type": "string"
+                                        },
+                                        "threshold": {
+                                          "type": "number"
+                                        },
+                                        "rigidness": {
+                                          "type": "number"
+                                        },
+                                        "convergence_time": {
+                                          "type": "integer"
+                                        },
+                                        "needs": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "allowed": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "type"
+                                      ]
+                                    }
+                                  },
+                                  "connectivity": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "target_microservice_id": {
+                                          "type": "string"
+                                        },
+                                        "con_constraints": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "properties": {
+                                              "type": {
+                                                "type": "string"
+                                              },
+                                              "threshold": {
+                                                "type": "number"
+                                              },
+                                              "rigidness": {
+                                                "type": "number"
+                                              },
+                                              "convergence_time": {
+                                                "type": "integer"
+                                              }
+                                            },
+                                            "required": [
+                                              "type",
+                                              "threshold",
+                                              "rigidness",
+                                              "convergence_time"
+                                            ]
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "target_microservice_id",
+                                        "con_constraints"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "microservice_name",
+                                  "microservice_namespace",
+                                  "virtualization",
+                                  "code"
+                                ]
+                              },
+                              "exclusiveMinimum": 0
+                            }
+                          },
+                          "required": [
+                            "application_name",
+                            "application_namespace",
+                            "microservices"
+                          ]
+                        }
+                      },
+                      "args": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "sla_version",
+                      "customerID",
+                      "applications"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Applications operations"
+        ]
+      }
+    },
+    "/api/user/{username}": {
+      "get": {
+        "responses": {
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "User Operations"
+        ]
+      },
+      "put": {
+        "responses": {
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "User Operations"
+        ]
+      },
+      "delete": {
+        "responses": {
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "User Operations"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "username",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ],
+      "post": {
+        "responses": {
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "User Operations"
+        ]
+      }
+    },
+    "/api/user/": {
+      "post": {
+        "responses": {
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "User Operations"
+        ]
+      },
+      "put": {
+        "responses": {
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "User Operations"
+        ]
+      }
+    },
+    "/api/users/": {
+      "get": {
+        "responses": {
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Multiple Users Operations"
+        ]
+      }
+    },
+    "/api/users/{organization_id}": {
+      "get": {
+        "responses": {
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Multiple Users Operations"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "organization_id",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "/api/result/deploy": {
+      "post": {
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_ENTITY"
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "job_id": {
+                    "type": "string"
+                  },
+                  "candidate_id": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Scheduling"
+        ]
+      }
+    },
+    "/api/information/{clusterid}": {
+      "post": {
+        "responses": {
+          "422": {
+            "$ref": "#/components/responses/UNPROCESSABLE_ENTITY"
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cpu_percent": {
+                    "type": "string"
+                  },
+                  "cpu_cores": {
+                    "type": "string"
+                  },
+                  "gpu_cores": {
+                    "type": "string"
+                  },
+                  "gpu_percent": {
+                    "type": "string"
+                  },
+                  "cumulative_memory_in_mb": {
+                    "type": "string"
+                  },
+                  "number_of_nodes": {
+                    "type": "string"
+                  },
+                  "virtualization": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "csi_drivers": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "more": {
+                    "type": "object"
+                  },
+                  "worker_groups": {
+                    "type": "string"
+                  },
+                  "supported_addons": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "jobs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "instance_list": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "instance_number": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string"
+                              },
+                              "status_detail": {
+                                "type": "string"
+                              },
+                              "publicip": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clusterinfo"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "clusterid",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "/api/clusters/": {
+      "get": {
+        "responses": {
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Clusters"
+        ]
+      }
+    },
+    "/api/clusters/active": {
+      "get": {
+        "responses": {
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Clusters"
+        ]
+      }
+    },
+    "/api/organization/{organizationid}": {
+      "put": {
+        "responses": {
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Organization operations"
+        ]
+      },
+      "delete": {
+        "responses": {
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Organization operations"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "organizationid",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    },
+    "/api/organization/": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "_id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "member": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Organization operations"
+        ]
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "_id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "member": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/DEFAULT_ERROR"
+          }
+        },
+        "tags": [
+          "Organization operations"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Oakestra root api",
+    "version": "v1"
+  },
+  "tags": [
+    {
+      "name": "Service operations",
+      "description": "Service management operations"
+    },
+    {
+      "name": "Multiple services operations",
+      "description": "Operations on multiple services"
+    },
+    {
+      "name": "Permissions",
+      "description": ""
+    },
+    {
+      "name": "Login",
+      "description": ""
+    },
+    {
+      "name": "Deployment",
+      "description": ""
+    },
+    {
+      "name": "Application operations",
+      "description": "Operations on single application"
+    },
+    {
+      "name": "Applications operations",
+      "description": "Operations on multiple applications"
+    },
+    {
+      "name": "User Operations",
+      "description": "Operations on single user"
+    },
+    {
+      "name": "Multiple Users Operations",
+      "description": "Operations on multiple users"
+    },
+    {
+      "name": "Scheduling",
+      "description": ""
+    },
+    {
+      "name": "Clusterinfo",
+      "description": ""
+    },
+    {
+      "name": "Clusters",
+      "description": ""
+    },
+    {
+      "name": "Organization operations",
+      "description": "Operations on single organization"
+    }
+  ],
+  "openapi": "3.0.2",
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Error name"
+          },
+          "message": {
+            "type": "string",
+            "description": "Error message"
+          },
+          "errors": {
+            "type": "object",
+            "description": "Errors"
+          },
+          "code": {
+            "type": "integer",
+            "description": "Error code"
+          }
+        }
+      },
+      "PaginationMetadata": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "total_pages": {
+            "type": "integer"
+          },
+          "first_page": {
+            "type": "integer"
+          },
+          "last_page": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "previous_page": {
+            "type": "integer"
+          },
+          "next_page": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "responses": {
+      "DEFAULT_ERROR": {
+        "description": "Default error response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "UNPROCESSABLE_ENTITY": {
+        "description": "Unprocessable Entity",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

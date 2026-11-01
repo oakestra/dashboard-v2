@@ -1,0 +1,9 @@
+/*
+ * Addons generate utilities only. The shell already loaded Tailwind's reset and the token values;
+ * a second preflight here would reset the shell's styles after the addon loads.
+ */
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+@import '@oakestra/ui/theme.css';
+
+@source './';

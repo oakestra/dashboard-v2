@@ -1,0 +1,29 @@
+{
+  "name": "@oakestra/api",
+  "version": "0.1.0",
+  "description": "Typed client for the Oakestra system-manager API: generated paths, Zod models and endpoint functions",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "gen": "node scripts/gen-api.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.17.0",
+    "semver": "^7.8.5",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@oakestra/tsconfig": "workspace:*",
+    "@types/node": "^24.19.2",
+    "@types/semver": "^7.8.0",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.5"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [
+    "@oakestra/shell",
+    "@oakestra/mocks",
+    "@oakestra/e2e",
+    "@oakestra/addon-example",
+    "@oakestra/mock-addons-manager",
+    "@oakestra/mock-system-manager",
+    "@oakestra/tsconfig",
+    "@oakestra/eslint-config"
+  ]
+}

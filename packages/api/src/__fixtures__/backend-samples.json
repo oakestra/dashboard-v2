@@ -1,0 +1,336 @@
+{
+  "service_with_instances": {
+    "_id": "6ae75bea77578493c2f80308",
+    "added_files": [],
+    "app_name": "webshop",
+    "app_ns": "shop",
+    "applicationID": "6ae75bea77578493c2f80307",
+    "bandwidth_in": 0,
+    "bandwidth_out": 0,
+    "cmd": [],
+    "code": "docker.io/library/nginx:alpine",
+    "image": "docker.io/library/nginx:alpine",
+    "instance_list": [
+      {
+        "cluster_id": "6a6d268f0908db5abba33b10",
+        "cluster_location": "52.5200,13.4050,100",
+        "cpu_history": [
+          {
+            "timestamp": "2026-11-01T15:34:12.046672+00:00",
+            "value": "0.000000"
+          },
+          {
+            "timestamp": "2026-11-01T15:34:27.075358+00:00",
+            "value": "0.000000"
+          },
+          {
+            "timestamp": "2026-11-01T15:34:42.067511+00:00",
+            "value": "0.000000"
+          }
+        ],
+        "cpu_percent": "0.000000",
+        "disk": "4096",
+        "host_ip": "192.168.148.18",
+        "host_port": 50011,
+        "instance_number": 0,
+        "last_modified_timestamp": 1793548421.660484,
+        "logs": " 41\n2026/11/01 15:34:07 [notice] 1#1: start worker process 42\n2026/11/01 15:34:07 [notice] 1#1: start worker process 43\n",
+        "memory_history": [
+          {
+            "timestamp": "2026-11-01T15:34:12.046672+00:00",
+            "value": "6336512.000000"
+          },
+          {
+            "timestamp": "2026-11-01T15:34:27.075358+00:00",
+            "value": "6066176.000000"
+          },
+          {
+            "timestamp": "2026-11-01T15:34:42.067511+00:00",
+            "value": "6066176.000000"
+          }
+        ],
+        "memory_percent": "1654784.000000",
+        "publicip": "192.168.148.18",
+        "status": "RUNNING",
+        "status_detail": "Waiting for scheduling decision",
+        "worker_id": "6ae75bc6558ac1b12c03422e"
+      },
+      {
+        "cluster_id": "6a6d268f0908db5abba33b10",
+        "cluster_location": "52.5200,13.4050,100",
+        "cpu_history": [
+          {
+            "timestamp": "2026-11-01T15:34:12.048181+00:00",
+            "value": "0.000000"
+          },
+          {
+            "timestamp": "2026-11-01T15:34:27.077932+00:00",
+            "value": "0.000000"
+          },
+          {
+            "timestamp": "2026-11-01T15:34:42.070304+00:00",
+            "value": "0.000000"
+          }
+        ],
+        "cpu_percent": "0.000000",
+        "disk": "4096",
+        "host_ip": "192.168.148.19",
+        "host_port": 50011,
+        "instance_number": 1,
+        "last_modified_timestamp": 1793548421.611898,
+        "logs": " 41\n2026/11/01 15:34:11 [notice] 1#1: start worker process 42\n2026/11/01 15:34:11 [notice] 1#1: start worker process 43\n",
+        "memory_history": [
+          {
+            "timestamp": "2026-11-01T15:34:12.048181+00:00",
+            "value": "6356992.000000"
+          },
+          {
+            "timestamp": "2026-11-01T15:34:27.077932+00:00",
+            "value": "6090752.000000"
+          },
+          {
+            "timestamp": "2026-11-01T15:34:42.070304+00:00",
+            "value": "6090752.000000"
+          }
+        ],
+        "memory_percent": "1667072.000000",
+        "publicip": "192.168.148.19",
+        "status": "RUNNING",
+        "status_detail": "Waiting for scheduling decision",
+        "worker_id": "6ae75bc6558ac1b12c03422f"
+      }
+    ],
+    "job_name": "webshop.shop.frontend.shop",
+    "memory": 64,
+    "microserviceID": "6ae75bea77578493c2f80308",
+    "microservice_name": "frontend",
+    "microservice_namespace": "shop",
+    "next_instance_progressive_number": 2,
+    "port": "8081:80/tcp",
+    "service_name": "frontend",
+    "service_ns": "shop",
+    "state": "",
+    "status": "RUNNING",
+    "status_detail": "Waiting for scheduling decision",
+    "storage": 0,
+    "vcpus": 1,
+    "vgpus": 0,
+    "virtualization": "docker",
+    "vtpus": 0
+  },
+  "service_without_instances": {
+    "RR_ip": null,
+    "RR_ip_v6": null,
+    "_id": "6aba5766351ab24aa4fe4bc0",
+    "addresses": {
+      "RR_ip": "10.30.0.0"
+    },
+    "app_name": "8575",
+    "app_ns": "8575",
+    "applicationID": "6aba5766351ab24aa4fe4bbf",
+    "bandwidth_in": 0,
+    "bandwidth_out": 0,
+    "cmd": ["ls", "-al"],
+    "code": "docker.io/library/nginx:latest",
+    "image": "docker.io/library/nginx:latest",
+    "instance_list": [],
+    "job_name": "8575.8575.0.test",
+    "memory": 0,
+    "microserviceID": "6aba5766351ab24aa4fe4bc0",
+    "microservice_name": "0",
+    "microservice_namespace": "test",
+    "next_instance_progressive_number": 0,
+    "port": "80",
+    "service_name": "0",
+    "service_ns": "test",
+    "state": "https://path.to.root.orchestrator.customer.application/example/state_1.json",
+    "storage": 0,
+    "vcpus": 2,
+    "vgpus": 0,
+    "virtualization": "docker",
+    "vtpus": 0
+  },
+  "cluster": {
+    "_id": "6a6d268f0908db5abba33b10",
+    "active": true,
+    "active_nodes": 3,
+    "aggregated_cpu_percent": 9.163526441285653,
+    "candidate_location": "52.5200,13.4050,100",
+    "candidate_name": "test-cluster",
+    "cluster_location": "52.5200,13.4050,100",
+    "cluster_name": "test-cluster",
+    "cpu_history": [
+      {
+        "timestamp": 1790583581.450666,
+        "value": 0.8929634733729366
+      },
+      {
+        "timestamp": 1790583596.44527,
+        "value": 0.9992863090005567
+      },
+      {
+        "timestamp": 1790583611.446501,
+        "value": 0.8559201867020773
+      }
+    ],
+    "cpu_percent": 9.163526441285653,
+    "csi_drivers": [],
+    "gpu_drivers": null,
+    "gpu_percent": 0,
+    "gpu_temp": 0.0,
+    "ip": "cluster_manager",
+    "last_modified_timestamp": 1793548422.073024,
+    "memory": 39760,
+    "memory_history": [
+      {
+        "timestamp": 1790583581.450666,
+        "value": 15.019302536946604
+      },
+      {
+        "timestamp": 1790583596.44527,
+        "value": 14.80750878266243
+      },
+      {
+        "timestamp": 1790583611.446501,
+        "value": 14.877248918463707
+      }
+    ],
+    "memory_in_mb": 39760,
+    "memory_percent": 15.658051149513607,
+    "port": "10100",
+    "supported_addons": [],
+    "total_cpu_cores": 42,
+    "total_gpu_cores": 0,
+    "vcpus": 42,
+    "vgpus": 0,
+    "virtualization": ["runc", "docker", "runc", "docker", "runc", "docker"],
+    "vram": 0,
+    "vram_percent": 0.0
+  },
+  "applications": [
+    {
+      "_id": "6aba5766351ab24aa4fe4bbf",
+      "applicationID": "6aba5766351ab24aa4fe4bbf",
+      "application_desc": "No description here",
+      "application_name": "8575",
+      "application_namespace": "8575",
+      "microservices": [
+        "6aba5766351ab24aa4fe4bc0",
+        "6aba5766351ab24aa4fe4bc1",
+        "6aba5766351ab24aa4fe4bc2",
+        "6aba5766351ab24aa4fe4bc3",
+        "6aba5766351ab24aa4fe4bc4",
+        "6aba5766351ab24aa4fe4bc5",
+        "6aba5766351ab24aa4fe4bc6",
+        "6aba5766351ab24aa4fe4bc7",
+        "6aba5766351ab24aa4fe4bc8",
+        "6aba5766351ab24aa4fe4bc9",
+        "6aba5766351ab24aa4fe4bca",
+        "6aba5766351ab24aa4fe4bcb",
+        "6aba5766351ab24aa4fe4bcc"
+      ],
+      "userId": "Admin"
+    },
+    {
+      "_id": "6aba5766351ab24aa4fe4bcd",
+      "applicationID": "6aba5766351ab24aa4fe4bcd",
+      "application_desc": "No description here",
+      "application_name": "94326",
+      "application_namespace": "94326",
+      "microservices": [],
+      "userId": "Admin"
+    }
+  ],
+  "users": [
+    {
+      "_id": "6a6d268dacdb8b7fdd51f94f",
+      "created_at": "31/07/2026 22:49",
+      "email": "",
+      "name": "Admin",
+      "password": "pbkdf2:sha256:600000$FAKEFAKE$0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "_id": "6ae75be920e49268c755d45e",
+      "created_at": "01/11/2026, 16:34",
+      "email": "alice@example.com",
+      "name": "alice",
+      "password": "pbkdf2:sha256:600000$FAKEFAKE$0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "_id": "6ae75bea20e49268c755d45f",
+      "created_at": "01/11/2026, 16:34",
+      "email": "bob@example.com",
+      "name": "bob",
+      "password": "pbkdf2:sha256:600000$FAKEFAKE$0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "_id": "6ae75bea20e49268c755d460",
+      "created_at": "01/11/2026, 16:34",
+      "email": "carol@example.com",
+      "name": "carol",
+      "password": "pbkdf2:sha256:600000$FAKEFAKE$0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "_id": "6ae75bea20e49268c755d461",
+      "created_at": "01/11/2026, 16:34",
+      "email": "dave@example.com",
+      "name": "dave",
+      "password": "pbkdf2:sha256:600000$FAKEFAKE$0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "_id": "6ae75bea20e49268c755d499",
+      "user_id": "6ae75be920e49268c755d45e",
+      "expiry_date": "Sun, 01 Nov 2026 17:00:00 GMT",
+      "token_hash": "abc123"
+    }
+  ],
+  "user": {
+    "_id": "6a6d268dacdb8b7fdd51f94f",
+    "created_at": "31/07/2026 22:49",
+    "email": "",
+    "name": "Admin",
+    "password": "pbkdf2:sha256:600000$FAKEFAKE$0000000000000000000000000000000000000000000000000000000000000000",
+    "roles": ["Admin", "Organization_Admin", "Application_Provider", "Infrastructure_Provider"]
+  },
+  "organizations": [
+    {
+      "_id": "6a6d268dacdb8b7fdd51f950",
+      "member": [
+        {
+          "roles": [
+            "Admin",
+            "Organization_Admin",
+            "Application_Provider",
+            "Infrastructure_Provider"
+          ],
+          "user_id": "6a6d268dacdb8b7fdd51f94f"
+        },
+        {
+          "roles": ["Application_Provider"],
+          "user_id": "6ae75be920e49268c755d45e"
+        },
+        {
+          "roles": ["Infrastructure_Provider"],
+          "user_id": "6ae75bea20e49268c755d45f"
+        },
+        {
+          "roles": ["Organization_Admin", "Application_Provider"],
+          "user_id": "6ae75bea20e49268c755d460"
+        },
+        {
+          "roles": ["Application_Provider"],
+          "user_id": "6ae75bea20e49268c755d461"
+        }
+      ],
+      "name": "root"
+    },
+    {
+      "_id": "6ae75bea20e49268c755d462",
+      "member": [],
+      "name": "edge-lab"
+    }
+  ],
+  "permission": {
+    "roles": ["Admin", "Organization_Admin", "Application_Provider", "Infrastructure_Provider"]
+  }
+}

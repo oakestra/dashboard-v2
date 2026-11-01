@@ -1,0 +1,13 @@
+packages:
+  - apps/*
+  - packages/*
+  - addons/*
+  - tools/*
+  - e2e
+minimumReleaseAgeExclude:
+  - globals@17.14.0
+  - '@tanstack/query-core@5.105.1'
+  - '@tanstack/react-query@5.105.1'
+# unrs-resolver only uses its install script as a fallback when no prebuilt binary matches.
+allowBuilds:
+  unrs-resolver: false

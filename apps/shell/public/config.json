@@ -1,0 +1,5 @@
+{
+  "apiUrl": "http://localhost:10000/api",
+  "uiAddonsUrl": "/ui-addons",
+  "addonsPollIntervalMs": 15000
+}

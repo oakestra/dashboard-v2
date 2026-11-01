@@ -1,0 +1,56 @@
+# Production images of the shell and the example addon, wired up like a real deployment, with a
+# mock addons manager + marketplace instead of the addons engine and a mock system-manager (the @oakestra/mocks
+# handlers served over HTTP) instead of the real backend. Used by the e2e suite:
+#
+#   docker compose -f docker-compose.dev.yml up --build -d
+#   pnpm e2e
+name: oakestra-dashboard-dev
+
+services:
+  dashboard:
+    build:
+      context: .
+      dockerfile: apps/shell/Dockerfile
+      args:
+        # Exposes window.__OAK_DEBUG__ so the e2e suite can verify shared singletons.
+        VITE_OAK_DEBUG: 'true'
+    ports:
+      - '${DASHBOARD_PORT:-8080}:80'
+    environment:
+      # The browser calls the API directly, so this is the host-mapped port of the mock.
+      API_URL: http://localhost:${MOCK_API_PORT:-10010}/api
+      ADDONS_MANAGER_ADDRESS: mock-addons-manager:11101
+      # One mock serves both the addons-manager and the marketplace-manager (the paths differ).
+      MARKETPLACE_ADDRESS: mock-addons-manager:11101
+      # Short poll interval so the e2e suite does not wait 15s per install/disable step.
+      ADDONS_POLL_INTERVAL_MS: '1000'
+    depends_on:
+      - mock-addons-manager
+      - mock-system-manager
+
+  # Service name = container DNS name the dashboard's nginx proxies /addon-assets/example/ to.
+  addonui-example:
+    build:
+      context: .
+      dockerfile: addons/example/Dockerfile
+
+  mock-addons-manager:
+    build:
+      context: .
+      dockerfile: tools/mock-addons-manager/Dockerfile
+    environment:
+      # Installs and removals settle quickly so e2e tests do not wait. PUT /__test/config changes it.
+      INSTALL_DELAY_MS: '500'
+      # Like the real marketplace once it supports the `ui` block of the example addon.
+      UI_BLOCK_SUPPORT: 'true'
+    ports:
+      # Exposed so the e2e suite can toggle addons through the /__test API.
+      - '${MOCK_ADDONS_MANAGER_PORT:-11101}:11101'
+
+  mock-system-manager:
+    build:
+      context: .
+      dockerfile: tools/mock-system-manager/Dockerfile
+    ports:
+      # Not 10000, so it does not collide with a real system-manager on the same machine.
+      - '${MOCK_API_PORT:-10010}:10000'

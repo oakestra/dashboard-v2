@@ -1,0 +1,10 @@
+pnpm-lock.yaml
+dist/
+coverage/
+MF_PLAN.md
+e2e/test-results/
+e2e/playwright-report/
+.__mf__temp/
+README.md
+packages/api/specs/
+packages/api/src/generated/

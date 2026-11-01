@@ -1,0 +1,8 @@
+{
+  "extends": "@oakestra/tsconfig/node.json",
+  "compilerOptions": {
+    // Node runs these files directly with type stripping, so only erasable syntax is allowed.
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src"]
+}
