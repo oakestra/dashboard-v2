@@ -2,6 +2,7 @@ import {
   Separator,
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarInset,
   SidebarProvider,
@@ -13,7 +14,7 @@ import { Suspense } from 'react';
 import { Link, Outlet } from 'react-router';
 
 import { OakestraLogo } from '../../components/OakestraLogo';
-import { AppNav } from './AppNav';
+import { AppNav, AppNavFooter } from './AppNav';
 import { Breadcrumbs } from './Breadcrumbs';
 import { OrganizationBadge } from './OrganizationBadge';
 import { UserMenu } from './UserMenu';
@@ -46,6 +47,9 @@ export function AppLayout() {
         <SidebarContent>
           <AppNav />
         </SidebarContent>
+        <SidebarFooter className="border-t border-sidebar-border">
+          <AppNavFooter />
+        </SidebarFooter>
         <SidebarRail />
       </Sidebar>
       <SidebarInset>

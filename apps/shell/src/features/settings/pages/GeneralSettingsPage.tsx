@@ -1,23 +1,17 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@oakestra/ui';
+import { SectionCard } from '@oakestra/ui';
 
-import { Slot } from '../../../core/extensions/Slot';
+import { AppearancePanel } from '../components/AppearancePanel';
 
+/**
+ * Settings of the dashboard itself. Addons have no slot here: an addon's settings belong on its
+ * own page, linked as a sub-item of its nav entry, so this page never mixes in addon concerns.
+ */
 export function GeneralSettingsPage() {
   return (
     <div className="space-y-4">
-      {/* Core modules and addons add their panels here; Appearance is always present. */}
-      <Slot
-        point="settings.panels"
-        render={(panel, content, source) => (
-          <Card data-testid="settings-panel" data-panel-id={`${source.id}:${panel.id}`}>
-            <CardHeader>
-              <CardTitle>{panel.title}</CardTitle>
-              {panel.description ? <CardDescription>{panel.description}</CardDescription> : null}
-            </CardHeader>
-            <CardContent>{content}</CardContent>
-          </Card>
-        )}
-      />
+      <SectionCard title="Appearance" description="Choose how the dashboard looks on this device.">
+        <AppearancePanel />
+      </SectionCard>
     </div>
   );
 }

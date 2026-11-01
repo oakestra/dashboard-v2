@@ -139,7 +139,6 @@ type Contributions = {
 | `application.detail.tabs` | `Tab<ApplicationContext>` | `{ applicationId }`            | `/applications/:appId`, tab list after "Services"                                                                         |
 | `service.detail.tabs`     | `Tab<ServiceContext>`     | `{ applicationId, serviceId }` | `/applications/:appId/services/:serviceId`, tab list after "JSON"                                                         |
 | `cluster.widgets`         | `Widget<ClusterContext>`  | `{ clusterId }`                | `/infrastructure/clusters/:clusterId`, bottom of the page (only `Admin` and `Infrastructure_Provider` can open this page) |
-| `settings.panels`         | `Panel`                   | `{}`                           | `/settings`, list of panels                                                                                               |
 
 The ids are also exported at runtime as `EXTENSION_POINT_IDS`.
 
@@ -153,30 +152,113 @@ The ids are also exported at runtime as `EXTENSION_POINT_IDS`.
 
 Ordering: items are sorted by `order`. Items with the same `order` (or without one) keep the order
 in which their source was registered: built-in modules first, then addons in the order they
-finished loading. Outside the sidebar, the only built-in contribution is the "Appearance"
-settings panel. It has no `order`, so an addon panel with any `order` comes before it. Built-in
-tabs such as "Services" or "Overview" are fixed parts of their page and always come first.
+finished loading. Built-in tabs such as "Services" or "Overview" are fixed parts of their page
+and always come first.
 
 ### `NavItem` (`nav.items`)
 
-| Field   | Type                                 | Description                                                                                              |
-| ------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| `label` | `string`                             | Required. Link text.                                                                                     |
-| `path`  | `string`                             | Required. **Relative** to the addon base path. `''` is the index route, `'jobs'` is `/addons/<id>/jobs`. |
-| `icon`  | `ComponentType<IconProps>`           | Optional. Receives `className`. Lucide icons (`lucide-react`) fit.                                       |
-| `group` | `'main' \| 'management' \| 'addons'` | Optional. Addon items default to `'addons'`.                                                             |
+| Field      | Type                                             | Description                                                                                              |
+| ---------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `label`    | `string`                                         | Required. Link text.                                                                                     |
+| `path`     | `string`                                         | Required. **Relative** to the addon base path. `''` is the index route, `'jobs'` is `/addons/<id>/jobs`. |
+| `icon`     | `ComponentType<IconProps>`                       | Optional. Receives `className`. Lucide icons (`lucide-react`) fit.                                       |
+| `group`    | `'main' \| 'management' \| 'addons' \| 'footer'` | Optional. Addon items default to `'addons'`.                                                             |
+| `children` | `readonly NavSubItem[]`                          | Optional. Links shown nested under this item. See [Sub-items](#sub-items).                               |
 
 The sidebar groups have these headings: `main` is "Platform", `management` is "Management",
-`addons` is "Addons". Built-in orders, for placing your item:
+`addons` is "Addons". `footer` has no heading: it is pinned to the bottom of the sidebar and
+stays visible while the groups above scroll. It is meant for items people need from anywhere but
+not for their daily work, such as help or settings. Most addons should not use it. Built-in
+orders, for placing your item:
 
-| Group        | Built-in items (order)                                                            |
-| ------------ | --------------------------------------------------------------------------------- |
-| `main`       | Overview (0), Applications (10), Help (900)                                       |
-| `management` | Users (10), Infrastructure (20), Organizations (20), Addons (20), Settings (1000) |
-| `addons`     | none                                                                              |
+| Group        | Built-in items (order)                                           |
+| ------------ | ---------------------------------------------------------------- |
+| `main`       | Overview (0), Applications (10)                                  |
+| `management` | Users (10), Infrastructure (20), Organizations (20), Addons (20) |
+| `addons`     | none                                                             |
+| `footer`     | Help (900), Settings (1000)                                      |
 
 A nav item has no `visible` function and receives no context. If the icon throws while
 rendering, the shell hides only the icon.
+
+#### Sub-items
+
+An addon with several pages can nest links under its nav item instead of adding several
+top-level items. Flat items from different addons all end up in the same "Addons" group, where
+two addons' "Settings" items cannot be told apart.
+
+`NavSubItem` has the `ContributionBase` fields (`id`, `order`, `roles`) plus:
+
+| Field   | Type     | Description                                                       |
+| ------- | -------- | ----------------------------------------------------------------- |
+| `label` | `string` | Required. Link text.                                              |
+| `path`  | `string` | Required. **Relative** to the addon base path, like `path` above. |
+
+```tsx
+'nav.items': [
+  {
+    id: 'main',
+    label: 'Monitoring',
+    path: '',
+    icon: ServerIcon,
+    children: [
+      { id: 'overview', label: 'Overview', path: '' },
+      { id: 'alerts', label: 'Alerts', path: 'alerts' },
+      { id: 'rules', label: 'Rules', path: 'rules', roles: ['Admin'] },
+    ],
+  },
+],
+```
+
+How the sidebar treats them:
+
+- There is one level of nesting. A sub-item has no `icon`, `group` or `children`; a `children`
+  key on a sub-item is ignored.
+- `id` must be unique among the sub-items of one item. `roles` and `order` work as on top-level
+  items. If `roles` hide every sub-item, the parent is shown as a plain link.
+- The parent stays a link to its own `path`. A chevron next to it expands and collapses the
+  sub-items. The entry expands on its own when the user opens one of its pages.
+- Only one link is highlighted: the one whose path is the longest match for the current URL.
+  On a tie a sub-item wins over its parent, so an "Overview" sub-item with the parent's path is
+  highlighted on the index page. Pages without a sub-item of their own (such as
+  `details/:id`) highlight the closest one above them.
+- In the collapsed (icon-only) sidebar the sub-items are hidden and the parent is highlighted on
+  their pages.
+
+#### Addon settings
+
+The shell's **Settings** page (`/settings`, pinned to the bottom of the sidebar) holds settings
+of the dashboard itself only. There is no extension point for it. If your addon has settings,
+give it its own page and link it as a sub-item:
+
+```tsx
+routes: [
+  { index: true, Component: OverviewPage },
+  { path: 'settings', Component: SettingsPage },
+],
+contributions: {
+  'nav.items': [
+    {
+      id: 'main',
+      label: 'Monitoring',
+      path: '',
+      icon: ServerIcon,
+      children: [
+        { id: 'overview', label: 'Overview', path: '' },
+        { id: 'settings', label: 'Settings', path: 'settings', roles: ['Admin'] },
+      ],
+    },
+  ],
+},
+```
+
+`roles` only hides the link. If the settings are for administrators, the page has to check
+`usePermissions()` itself (see [Users and roles](#users-and-roles)). The example addon's
+`src/pages/SettingsPage.tsx` shows the pattern.
+
+Earlier development builds had a `settings.panels` point for cards on the shell's Settings page.
+It no longer exists. An addon that still declares it loads; the shell logs `ignoring unknown
+extension points` and shows no panel.
 
 ### `Widget<C>` (`home.widgets`, `cluster.widgets`)
 
@@ -194,23 +276,14 @@ rendering, the shell hides only the icon.
 | `component` | `ComponentType<C>`                                   | Required. Content of the tab panel. |
 | `visible`   | `(context: C, user: CurrentUser \| null) => boolean` | Optional.                           |
 
-### `Panel<C>` (`settings.panels`)
-
-| Field         | Type                                                 | Description                      |
-| ------------- | ---------------------------------------------------- | -------------------------------- |
-| `title`       | `string`                                             | Required. Card title.            |
-| `description` | `string`                                             | Optional. Shown under the title. |
-| `component`   | `ComponentType<C>`                                   | Required. Card content.          |
-| `visible`     | `(context: C, user: CurrentUser \| null) => boolean` | Optional.                        |
-
 ### Context types
 
-| Type                 | Fields                                        |
-| -------------------- | --------------------------------------------- |
-| `ApplicationContext` | `applicationId: string`                       |
-| `ServiceContext`     | `applicationId: string`, `serviceId: string`  |
-| `ClusterContext`     | `clusterId: string`                           |
-| `EmptyContext`       | no fields (`home.widgets`, `settings.panels`) |
+| Type                 | Fields                                       |
+| -------------------- | -------------------------------------------- |
+| `ApplicationContext` | `applicationId: string`                      |
+| `ServiceContext`     | `applicationId: string`, `serviceId: string` |
+| `ClusterContext`     | `clusterId: string`                          |
+| `EmptyContext`       | no fields (`home.widgets`)                   |
 
 The shell spreads the context into your component's props: `<YourComponent {...context} />`.
 TypeScript checks that the component accepts the context of its point. `SlotContext<P>` gives
@@ -323,7 +396,7 @@ import {
   usePermissions,
 } from '@oakestra/dashboard-sdk';
 
-export function AboutPanel() {
+export function AboutPage() {
   const { addonId, version, basePath } = useAddonContext();
   const { sdkVersion } = useHostContext();
   const user = useCurrentUser();
@@ -440,11 +513,11 @@ Roles (`KnownRole`): `Admin`, `Organization_Admin`, `Application_Provider`,
 `Infrastructure_Provider`. The `Role` type also accepts any other string, for roles the backend
 may add later.
 
-| Mechanism                          | Scope                                       |
-| ---------------------------------- | ------------------------------------------- |
-| `roles` on a contribution          | Hides nav items, widgets, tabs, panels      |
-| `visible(context, user)`           | Hides widgets, tabs, panels (not nav items) |
-| `usePermissions()`, `hasAnyRole()` | Your own checks in components               |
+| Mechanism                          | Scope                                        |
+| ---------------------------------- | -------------------------------------------- |
+| `roles` on a contribution          | Hides nav items and sub-items, widgets, tabs |
+| `visible(context, user)`           | Hides widgets and tabs (not nav items)       |
+| `usePermissions()`, `hasAnyRole()` | Your own checks in components                |
 
 Addon **routes have no role check**. Hiding a nav item does not protect its page. Check
 `usePermissions()` in the page:
@@ -621,12 +694,12 @@ Third-party packages:
 
 The SDK also exports these. Most addons do not need them.
 
-| Export                                                                                                                                                                                       | Description                                                                              |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `SDK_VERSION`                                                                                                                                                                                | SDK version string, `'0.1.0'`.                                                           |
-| `EXTENSION_POINT_IDS`                                                                                                                                                                        | Array of all extension point ids.                                                        |
-| `HostContext`, `AddonContext`                                                                                                                                                                | The React contexts behind the hooks. Use the hooks instead; tests can use the providers. |
-| `HostContextValue`, `AddonContextValue`                                                                                                                                                      | Types of the context values.                                                             |
-| `ExtensionPoints`, `ExtensionPointId`, `RenderablePointId`, `SlotContext`, `Contributions`, `ContributionBase`, `NavItem`, `NavGroup`, `Widget`, `Tab`, `Panel`, `IconProps`, `EmptyContext` | Types for extension points.                                                              |
-| `Permissions`, `Notify`, `NotifyOptions`, `CurrentUser`, `Role`, `KnownRole`, `OakestraApi`                                                                                                  | Types used by the hooks.                                                                 |
-| `@oakestra/dashboard-sdk/federation`: `sharedDeps`, `withoutFallback`                                                                                                                        | Build config, see [packaging](packaging.md#build-configuration).                         |
+| Export                                                                                                                                                                                            | Description                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `SDK_VERSION`                                                                                                                                                                                     | SDK version string, `'0.1.0'`.                                                           |
+| `EXTENSION_POINT_IDS`                                                                                                                                                                             | Array of all extension point ids.                                                        |
+| `HostContext`, `AddonContext`                                                                                                                                                                     | The React contexts behind the hooks. Use the hooks instead; tests can use the providers. |
+| `HostContextValue`, `AddonContextValue`                                                                                                                                                           | Types of the context values.                                                             |
+| `ExtensionPoints`, `ExtensionPointId`, `RenderablePointId`, `SlotContext`, `Contributions`, `ContributionBase`, `NavItem`, `NavSubItem`, `NavGroup`, `Widget`, `Tab`, `IconProps`, `EmptyContext` | Types for extension points.                                                              |
+| `Permissions`, `Notify`, `NotifyOptions`, `CurrentUser`, `Role`, `KnownRole`, `OakestraApi`                                                                                                       | Types used by the hooks.                                                                 |
+| `@oakestra/dashboard-sdk/federation`: `sharedDeps`, `withoutFallback`                                                                                                                             | Build config, see [packaging](packaging.md#build-configuration).                         |

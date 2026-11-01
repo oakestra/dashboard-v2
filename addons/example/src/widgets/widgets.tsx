@@ -42,7 +42,3 @@ export function ServiceTab({ applicationId, serviceId }: ServiceContext) {
 export function ClusterWidget({ clusterId }: ClusterContext) {
   return <p className="text-sm">Example widget for cluster {clusterId}</p>;
 }
-
-export function SettingsPanel() {
-  return <p className="text-sm">The example addon has no settings.</p>;
-}

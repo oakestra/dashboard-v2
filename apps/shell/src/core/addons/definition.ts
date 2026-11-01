@@ -30,28 +30,12 @@ const renderable = contributionBase.extend({
   visible: callable.optional(),
 });
 
-const navItem = contributionBase.extend({
-  label: z.string().min(1),
-  // Addon nav paths are relative to the addon base path; an absolute path would escape it.
-  path: z.string().refine((path) => !path.startsWith('/') && !/^[a-z]+:/i.test(path), {
+// Addon nav paths are relative to the addon base path; an absolute path would escape it.
+const relativeNavPath = z
+  .string()
+  .refine((path) => !path.startsWith('/') && !/^[a-z]+:/i.test(path), {
     message: 'must be relative to the addon base path',
-  }),
-  icon: reactComponent.optional(),
-  group: z.enum(['main', 'management', 'addons']).optional(),
-});
-
-const widget = renderable.extend({ title: z.string().min(1) });
-const tab = renderable.extend({ label: z.string().min(1) });
-const panel = renderable.extend({ title: z.string().min(1), description: z.string().optional() });
-
-const pointSchemas = {
-  'nav.items': navItem,
-  'home.widgets': widget,
-  'application.detail.tabs': tab,
-  'service.detail.tabs': tab,
-  'cluster.widgets': widget,
-  'settings.panels': panel,
-} satisfies Record<ExtensionPointId, z.ZodType>;
+  });
 
 const uniqueIds = (items: readonly { id: string }[], ctx: z.RefinementCtx) => {
   const seen = new Set<string>();
@@ -62,6 +46,33 @@ const uniqueIds = (items: readonly { id: string }[], ctx: z.RefinementCtx) => {
     seen.add(item.id);
   });
 };
+
+// Unknown keys are stripped rather than rejected, like everywhere else in the definition: an addon
+// built against a newer SDK minor may set fields this shell does not know. The sidebar renders a
+// single level, so a `children` key on a sub-item is dropped here too.
+const navSubItem = contributionBase.extend({
+  label: z.string().min(1),
+  path: relativeNavPath,
+});
+
+const navItem = contributionBase.extend({
+  label: z.string().min(1),
+  path: relativeNavPath,
+  icon: reactComponent.optional(),
+  group: z.enum(['main', 'management', 'addons', 'footer']).optional(),
+  children: z.array(navSubItem).superRefine(uniqueIds).optional(),
+});
+
+const widget = renderable.extend({ title: z.string().min(1) });
+const tab = renderable.extend({ label: z.string().min(1) });
+
+const pointSchemas = {
+  'nav.items': navItem,
+  'home.widgets': widget,
+  'application.detail.tabs': tab,
+  'service.detail.tabs': tab,
+  'cluster.widgets': widget,
+} satisfies Record<ExtensionPointId, z.ZodType>;
 
 const contributionsSchema = z.object(
   Object.fromEntries(

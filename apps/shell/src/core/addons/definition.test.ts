@@ -72,6 +72,52 @@ describe('parseAddonDefinition', () => {
     ).toThrow(/relative to the addon base path/);
   });
 
+  it('accepts nav sub-items and validates them like top-level items', () => {
+    const withChildren = (children: unknown[]) => ({
+      default: {
+        id: 'flops',
+        contributions: {
+          'nav.items': [{ id: 'main', label: 'Flops', path: '', children }],
+        },
+      },
+    });
+
+    const parsed = parseAddonDefinition(
+      withChildren([
+        { id: 'jobs', label: 'Jobs', path: 'jobs', roles: ['Admin'] },
+        // Only one level is rendered; a nested `children` key is dropped, not passed on.
+        { id: 'logs', label: 'Logs', path: 'logs', children: [{ id: 'x', label: 'X', path: 'x' }] },
+      ]),
+      'flops',
+    );
+    expect(parsed.contributions?.['nav.items']?.[0]?.children).toEqual([
+      { id: 'jobs', label: 'Jobs', path: 'jobs', roles: ['Admin'] },
+      { id: 'logs', label: 'Logs', path: 'logs' },
+    ]);
+
+    expect(() =>
+      parseAddonDefinition(withChildren([{ id: 'a', label: 'A', path: '/admin' }]), 'flops'),
+    ).toThrow(/relative to the addon base path/);
+    expect(() =>
+      parseAddonDefinition(
+        withChildren([{ id: 'a', label: 'A', path: 'https://x.test' }]),
+        'flops',
+      ),
+    ).toThrow(/relative to the addon base path/);
+    expect(() =>
+      parseAddonDefinition(
+        withChildren([
+          { id: 'a', label: 'A', path: 'a' },
+          { id: 'a', label: 'B', path: 'b' },
+        ]),
+        'flops',
+      ),
+    ).toThrow(/duplicate id "a"/);
+    expect(() => parseAddonDefinition(withChildren([{ id: 'a', path: 'a' }]), 'flops')).toThrow(
+      /label/,
+    );
+  });
+
   it('validates nested routes', () => {
     const module = {
       default: {
@@ -80,6 +126,25 @@ describe('parseAddonDefinition', () => {
       },
     };
     expect(() => parseAddonDefinition(module, 'flops')).toThrow(/React component/);
+  });
+
+  it('loads an addon that still contributes the removed settings.panels point', () => {
+    // Addon settings moved to the addon's own page; old builds keep loading without the panel.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const parsed = parseAddonDefinition(
+      {
+        default: {
+          id: 'flops',
+          contributions: {
+            'nav.items': [{ id: 'nav', label: 'Flops', path: '' }],
+            'settings.panels': [{ id: 's', title: 'S', component: Page }],
+          },
+        },
+      },
+      'flops',
+    );
+    expect(Object.keys(parsed.contributions ?? {})).toEqual(['nav.items']);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('flops'), ['settings.panels']);
   });
 
   it('drops extension points this shell does not know', () => {

@@ -141,6 +141,7 @@ export function resolveAddonContributions(
       ...item,
       group: item.group ?? 'addons',
       path: joinPath(basePath, item.path),
+      children: item.children?.map((child) => ({ ...child, path: joinPath(basePath, child.path) })),
     })),
   };
 }

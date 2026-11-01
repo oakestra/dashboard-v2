@@ -22,15 +22,14 @@ shell is the **host**.
 The example addon in [`addons/example`](../addons/example) adds something to every place where
 addons can contribute (an **extension point**):
 
-| Extension point           | Where it shows up                                                   |
-| ------------------------- | ------------------------------------------------------------------- |
-| `nav.items`               | "Example" entry in the sidebar, under Addons                        |
-| routes                    | Its own pages at `/addons/example` and `/addons/example/details/42` |
-| `home.widgets`            | "Example addon" and "Crash test" cards on the Overview page         |
-| `application.detail.tabs` | "Example" tab on an application's detail page                       |
-| `service.detail.tabs`     | "Example" tab on a service's detail page                            |
-| `cluster.widgets`         | "Example" card on a cluster's detail page                           |
-| `settings.panels`         | "Example addon" panel in Settings (only for Admins)                 |
+| Extension point           | Where it shows up                                                                                                        |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `nav.items`               | "Example" entry in the sidebar, under Addons, with the sub-items "Overview", "Settings" (Admins only) and "About"        |
+| routes                    | Its own pages at `/addons/example`, `/addons/example/about`, `/addons/example/settings` and `/addons/example/details/42` |
+| `home.widgets`            | "Example addon" and "Crash test" cards on the Overview page                                                              |
+| `application.detail.tabs` | "Example" tab on an application's detail page                                                                            |
+| `service.detail.tabs`     | "Example" tab on a service's detail page                                                                                 |
+| `cluster.widgets`         | "Example" card on a cluster's detail page                                                                                |
 
 ## 1. Run the Docker stack
 
@@ -69,7 +68,10 @@ docker compose -f docker-compose.dev.yml down
 
 1. The sidebar has an **Example** entry under **Addons**. Click it. The fuchsia banner and the
    greeting come from the addon. Click **Notify** to show a toast through the shell, and **Open a
-   nested page** to see a second addon route.
+   nested page** to see a second addon route. The entry expands into the sub-items **Overview**,
+   **Settings** and **About**, which the addon declares as `children` of its nav item. The
+   addon's settings live on its own page; **Settings** at the bottom of the sidebar is only for
+   the dashboard itself.
 2. Go to **Overview**. The **Example addon** and **Crash test** cards are addon widgets.
 3. Open **Applications**, pick an application and select the **Example** tab. The addon receives
    the application id from the shell.
@@ -151,10 +153,12 @@ Reload the Overview page. Only the **Crash test** card shows an error. Remove th
 
 ### Experiment 6: Roles
 
-Contributions can be limited to roles. The example's settings panel is for `Admin` only. Log out
-and log in as `alice` (password `alice`, an Application Provider): the **Example addon** panel in
-**Settings** is gone, and so is the Admin-only **Addons** entry in the sidebar. The **Example**
-entry stays, because it has no role limit.
+Contributions can be limited to roles. The example's **Settings** sub-item is for `Admin` only.
+Log out and log in as `alice` (password `alice`, an Application Provider): the **Settings**
+sub-item under **Example** is gone, and so is the Admin-only **Addons** entry in the sidebar. The
+**Example** entry and its other sub-items stay, because they have no role limit. Open
+`/addons/example/settings` by hand: the page refuses, because `roles` only hides links and the
+page checks the role itself.
 
 | User    | Password | Roles                                    |
 | ------- | -------- | ---------------------------------------- |

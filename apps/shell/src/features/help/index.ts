@@ -20,8 +20,8 @@ export const helpModule: CoreModule = {
         label: 'Help',
         path: '/help',
         icon: CircleHelpIcon,
-        group: 'main',
-        // Last in the main group, below every feature.
+        group: 'footer',
+        // Above Settings.
         order: 900,
       },
     ],

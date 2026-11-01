@@ -59,6 +59,10 @@ export const addonManagerModule: CoreModule = {
         group: 'management',
         order: 20,
         roles: ['Admin'],
+        children: [
+          { id: 'installed', label: 'Installed', path: INSTALLED_PATH },
+          { id: 'marketplace', label: 'Marketplace', path: '/addon-manager/marketplace' },
+        ],
       },
     ],
   },

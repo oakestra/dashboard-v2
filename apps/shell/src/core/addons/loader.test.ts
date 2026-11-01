@@ -14,7 +14,15 @@ const definition = (id: string): AddonDefinition => ({
   contributions: {
     'nav.items': [
       { id: 'nav', label: id, path: '' },
-      { id: 'jobs', label: 'Jobs', path: 'jobs' },
+      {
+        id: 'jobs',
+        label: 'Jobs',
+        path: 'jobs',
+        children: [
+          { id: 'all', label: 'All', path: 'jobs' },
+          { id: 'failed', label: 'Failed', path: './jobs/failed' },
+        ],
+      },
     ],
     'home.widgets': [{ id: 'w', title: 'W', component: Widget }],
   },
@@ -70,8 +78,12 @@ describe('addon loader', () => {
     expect(runtime.load).toHaveBeenCalledWith('flops');
     expect(entry('flops')).toMatchObject({ state: 'loaded', version: '1.0.0' });
     expect(navPaths()).toEqual(['/addons/flops', '/addons/flops/jobs']);
-    const [nav] = selectContributions(contributions.getState().sources, 'nav.items', null);
+    const [nav, jobs] = selectContributions(contributions.getState().sources, 'nav.items', null);
     expect(nav?.item.group).toBe('addons');
+    expect(jobs?.item.children?.map((child) => child.path)).toEqual([
+      '/addons/flops/jobs',
+      '/addons/flops/jobs/failed',
+    ]);
     expect(nav?.source).toMatchObject({ kind: 'addon', addon: { basePath: '/addons/flops' } });
   });
 

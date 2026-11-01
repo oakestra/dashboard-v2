@@ -92,6 +92,30 @@ test.describe('addon runtime', () => {
     await expect(page.getByTestId('example-banner')).toBeVisible();
   });
 
+  test('nav sub-items of an addon lead to its pages', async ({ page }) => {
+    await page.goto('/');
+    const toggle = page.getByTestId('nav-toggle-example-main');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    await page.getByTestId('nav-example-main').click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByTestId('nav-example-main-overview')).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+
+    const about = page.getByTestId('nav-example-main-about');
+    await expect(about).toHaveAttribute('href', '/addons/example/about');
+    await about.click();
+    await expect(page.getByTestId('example-about')).toBeVisible();
+    await expect(about).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByTestId('nav-example-main')).not.toHaveAttribute('aria-current');
+
+    // The addon's settings live on its own page, not on the shell's Settings page.
+    await page.getByTestId('nav-example-main-settings').click();
+    await expect(page.getByTestId('example-settings')).toBeVisible();
+  });
+
   test('a hard refresh on a nested addon route is served by the shell', async ({ page }) => {
     const response = await page.goto('/addons/example/details/42');
     expect(response?.status()).toBe(200);

@@ -51,6 +51,13 @@ test.describe('roles', () => {
       await expect(page.getByText('Access denied')).toBeVisible();
       await expect(page.getByTestId('nav-settings-settings')).toBeVisible();
     });
+
+    test('Admin-only addon sub-items are hidden and their page refuses', async ({ page }) => {
+      await page.goto('/addons/example/settings');
+      await expect(page.getByText('Administrators only')).toBeVisible();
+      await expect(page.getByTestId('nav-example-main-about')).toBeVisible();
+      await expect(page.getByTestId('nav-example-main-settings')).toHaveCount(0);
+    });
   });
 });
 

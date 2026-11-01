@@ -1,5 +1,4 @@
 import { screen } from '@testing-library/react';
-import { act } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { renderApp } from '../../test/render';
@@ -16,33 +15,6 @@ describe('settings', () => {
     await user.click(screen.getByRole('radio', { name: 'Dark' }));
     expect(document.documentElement).toHaveClass('dark');
     expect(screen.getByRole('radio', { name: 'Dark' })).toBeChecked();
-  });
-
-  it('renders settings panels contributed to the slot, filtered by role', async () => {
-    const { services } = renderApp({
-      modules: [settingsModule],
-      route: '/settings',
-      user: { username: 'alice' },
-    });
-    act(() =>
-      services.contributions.getState().register(
-        { kind: 'core', id: 'demo', label: 'demo' },
-        {
-          'settings.panels': [
-            { id: 'everyone', title: 'For everyone', component: () => <p>visible</p> },
-            {
-              id: 'admins',
-              title: 'Admins only',
-              roles: ['Admin'],
-              component: () => <p>secret</p>,
-            },
-          ],
-        },
-      ),
-    );
-
-    expect(await screen.findByText('For everyone')).toBeVisible();
-    expect(screen.queryByText('Admins only')).not.toBeInTheDocument();
   });
 
   it('redirects the old addon status page to the addon manager', async () => {

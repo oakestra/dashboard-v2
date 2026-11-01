@@ -2,7 +2,12 @@ import type { ComponentType } from 'react';
 
 import type { CurrentUser, Role } from './types';
 
-export type NavGroup = 'main' | 'management' | 'addons';
+/**
+ * Where a nav item goes. `main`, `management` and `addons` are labelled groups in that order;
+ * `footer` is pinned to the bottom of the sidebar, for items like Help and Settings that are
+ * reached from every page but are not part of the daily work.
+ */
+export type NavGroup = 'main' | 'management' | 'addons' | 'footer';
 
 /** Context-free slots still pass an (empty) object, so components can always spread props. */
 export type EmptyContext = Record<never, never>;
@@ -29,6 +34,17 @@ export interface NavItem extends ContributionBase {
   path: string;
   icon?: ComponentType<IconProps>;
   group?: NavGroup;
+  /**
+   * Sub-items shown nested under this item. The sidebar has one level of nesting only, so a
+   * sub-item has no children, icon or group of its own.
+   */
+  children?: readonly NavSubItem[];
+}
+
+/** A nested sidebar link. `id` is unique among the siblings, `path` follows the parent's rules. */
+export interface NavSubItem extends ContributionBase {
+  label: string;
+  path: string;
 }
 
 interface RenderableContribution<C extends object> extends ContributionBase {
@@ -43,11 +59,6 @@ export interface Widget<C extends object = EmptyContext> extends RenderableContr
 
 export interface Tab<C extends object> extends RenderableContribution<C> {
   label: string;
-}
-
-export interface Panel<C extends object = EmptyContext> extends RenderableContribution<C> {
-  title: string;
-  description?: string;
 }
 
 export interface ApplicationContext {
@@ -75,7 +86,6 @@ export interface ExtensionPoints {
   'application.detail.tabs': Tab<ApplicationContext>;
   'service.detail.tabs': Tab<ServiceContext>;
   'cluster.widgets': Widget<ClusterContext>;
-  'settings.panels': Panel;
 }
 
 export type ExtensionPointId = keyof ExtensionPoints;
@@ -86,7 +96,6 @@ export const EXTENSION_POINT_IDS = [
   'application.detail.tabs',
   'service.detail.tabs',
   'cluster.widgets',
-  'settings.panels',
 ] as const satisfies readonly ExtensionPointId[];
 
 // Compile-time guard: fails if a point is added to the interface but not to the runtime list.

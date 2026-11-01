@@ -50,12 +50,11 @@ An addon UI can:
 
 | Extension point           | What you add                         | Where it shows up                                                                    |
 | ------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------ |
-| `nav.items`               | A link in the sidebar                | Sidebar, in the "Addons" group by default ("Platform" or "Management" on request)    |
+| `nav.items`               | A link in the sidebar, optionally with nested sub-items | Sidebar, in the "Addons" group by default ("Platform", "Management" or the bottom of the sidebar on request) |
 | `home.widgets`            | A card with a title and your content | Overview page (`/`), in a widget grid at the bottom of the page                      |
 | `application.detail.tabs` | A tab                                | Application page (`/applications/:appId`), next to the "Services" tab                |
 | `service.detail.tabs`     | A tab                                | Service page (`/applications/:appId/services/:serviceId`), after "Overview", "Instances", "JSON" |
 | `cluster.widgets`         | A card with a title and your content | Cluster page (`/infrastructure/clusters/:clusterId`), at the bottom                  |
-| `settings.panels`         | A card with a title and description  | Settings page (`/settings`), next to the built-in "Appearance" panel                 |
 
 Notes:
 
@@ -64,6 +63,9 @@ Notes:
 - The application page shows tabs only when at least one addon contributes a tab. Without
   contributions it shows the service list without tabs.
 - Addon pages are only reachable for logged-in users.
+- The shell's Settings page is for the dashboard's own settings. An addon puts its settings on
+  its own page and links it as a sub-item of its nav entry (see
+  [Addon settings](reference.md#addon-settings)).
 
 All details (fields, props, ordering) are in the [reference](reference.md#extension-points).
 
@@ -127,7 +129,7 @@ In this tutorial you build an addon called `insights`. It adds:
 - a sidebar link,
 - a home page widget,
 - a tab on the application page,
-- a settings panel that only administrators see.
+- a settings page that only administrators can open, linked under the sidebar link.
 
 All code in this tutorial type-checks against the SDK in this repository.
 
@@ -210,32 +212,36 @@ import { ChartLineIcon } from 'lucide-react';
 import { ADDON_ID } from './constants';
 import { ActiveClustersWidget } from './contributions/ActiveClustersWidget';
 import { ApplicationInsightsTab } from './contributions/ApplicationInsightsTab';
-import { InsightsSettingsPanel } from './contributions/InsightsSettingsPanel';
 import { ClusterPage } from './pages/ClusterPage';
 import { ClustersPage } from './pages/ClustersPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 export default defineAddon({
   id: ADDON_ID,
   routes: [
     { index: true, Component: ClustersPage },
     { path: 'clusters/:clusterId', Component: ClusterPage },
+    { path: 'settings', Component: SettingsPage },
   ],
   contributions: {
-    'nav.items': [{ id: 'main', label: 'Insights', path: '', icon: ChartLineIcon }],
+    'nav.items': [
+      {
+        id: 'main',
+        label: 'Insights',
+        path: '',
+        icon: ChartLineIcon,
+        // Nested under "Insights" in the sidebar. `roles` only hides the link, see step 6.
+        children: [
+          { id: 'clusters', label: 'Clusters', path: '' },
+          { id: 'settings', label: 'Settings', path: 'settings', roles: ['Admin'] },
+        ],
+      },
+    ],
     'home.widgets': [
       { id: 'active-clusters', title: 'Active clusters', component: ActiveClustersWidget },
     ],
     'application.detail.tabs': [
       { id: 'services', label: 'Insights', component: ApplicationInsightsTab },
-    ],
-    'settings.panels': [
-      {
-        id: 'about',
-        title: 'Insights addon',
-        description: 'Only administrators see this panel.',
-        component: InsightsSettingsPanel,
-        roles: ['Admin'],
-      },
     ],
   },
 });
@@ -430,8 +436,8 @@ There are three ways to restrict by role:
 
 | Tool                                      | Effect                                                                         |
 | ----------------------------------------- | ------------------------------------------------------------------------------ |
-| `roles: [...]` on a contribution          | The shell hides the nav item, widget, tab or panel from users without a role in the list |
-| `visible: (context, user) => boolean`     | Extra check for widgets, tabs and panels, with the slot context and the user   |
+| `roles: [...]` on a contribution          | The shell hides the nav item, sub-item, widget or tab from users without a role in the list |
+| `visible: (context, user) => boolean`     | Extra check for widgets and tabs, with the slot context and the user           |
 | `usePermissions()` inside a component     | Your own checks, for example inside a page                                     |
 
 Important: `roles` on a nav item only hides the link. **Addon routes have no role check.** Any
@@ -439,14 +445,33 @@ logged-in user who types the URL sees the page. If a page is for administrators 
 `usePermissions()` in the page. Real security comes from the backend: the API answers with the
 user's own permissions anyway.
 
-The `InsightsSettingsPanel` from step 3 uses `roles: ['Admin']`:
+The "Settings" sub-item from step 3 has `roles: ['Admin']`, so other users do not see the link.
+The page checks the role as well, because the URL still works for them:
 
 ```tsx
-// src/contributions/InsightsSettingsPanel.tsx
-export function InsightsSettingsPanel() {
-  return <p className="text-sm">The insights addon has no settings yet.</p>;
+// src/pages/SettingsPage.tsx
+import { usePermissions } from '@oakestra/dashboard-sdk';
+import { EmptyState, PageHeader, SectionCard } from '@oakestra/ui';
+import { LockIcon } from 'lucide-react';
+
+export function SettingsPage() {
+  const permissions = usePermissions();
+  if (!permissions.hasRole('Admin')) {
+    return <EmptyState icon={<LockIcon />} title="Administrators only" />;
+  }
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Insights settings" />
+      <SectionCard title="General">
+        <p className="text-sm">The insights addon has no settings yet.</p>
+      </SectionCard>
+    </div>
+  );
 }
 ```
+
+Addon settings always go on a page of their own like this one. The shell's Settings page in the
+sidebar footer is reserved for the dashboard's own settings.
 
 ### Step 7: add a home widget
 

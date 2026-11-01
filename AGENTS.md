@@ -77,6 +77,9 @@ backends in the browser (installs settle after 3s; `/ui-addons` stays empty).
   to `EXTENSION_POINT_IDS`, and to `pointSchemas` in `core/addons/definition.ts`; render it with
   `<Slot point="..." />`. New points are an SDK minor bump; renames or incompatible context
   changes are a major bump.
+- The shell's Settings page (`features/settings`) is for the dashboard's own settings and has no
+  extension point. Addons put their settings on their own page, linked as a nav sub-item; core
+  sections are added to `GeneralSettingsPage` directly.
 - Addon routes are rendered by `AddonRouteHost` at `/addons/:addonId/*` with `useRoutes`, never
   patched into the data router. Addon routes therefore have no loaders; addons fetch with
   TanStack Query and namespace keys with `addonQueryKey`.
@@ -110,7 +113,10 @@ features/<name>/
   match) feeds the breadcrumbs; `loader: requireRole('Admin', ...)` restricts a page (403 page
   inside the layout). Hide the nav item with `roles` on the contribution as well.
 - **Nav:** `contributions: { 'nav.items': [{ id, label, path: '/x', icon, group, order, roles }] }`
-  with `group` `main`, `management` or `addons`.
+  with `group` `main`, `management`, `addons` or `footer` (pinned to the bottom, Help and
+  Settings). `children: [{ id, label, path, order, roles }]`
+  nests sub-items (one level only, see `app/layouts/nav-model.ts`); the one link with the longest
+  matching path is highlighted, so a parent and its sub-item are never active together.
 - **Data:** components get the API with `useOakestraApi()` from the SDK, exactly like addons, and
   never build URLs. Responses are already parsed by `@oakestra/api` models; failures are
   `ApiError`s with a readable `message` (use `describeError()` from `core/api/errors`).

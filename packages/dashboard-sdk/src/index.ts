@@ -12,7 +12,7 @@ export {
   type IconProps,
   type NavGroup,
   type NavItem,
-  type Panel,
+  type NavSubItem,
   type RenderablePointId,
   type ServiceContext,
   type SlotContext,

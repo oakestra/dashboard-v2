@@ -79,14 +79,14 @@ The shell validates your `defineAddon({...})` object with Zod. The error starts 
 `contributions.nav.items[0].path`. TypeScript catches most of these at build time; the runtime
 check also protects against JavaScript addons and version drift.
 
-| Problem             | Example                                                                | Fix                                                                                                                       |
-| ------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Id mismatch         | `id: 'Insights'`, but `/ui-addons` says `insights`                     | Use the exact same name everywhere (see the [rename table](README.md#step-2-rename-the-addon))                            |
-| Absolute nav path   | `path: '/addons/insights'`                                             | Nav paths are relative: `path: ''` for the index, `path: 'jobs'` for a sub page. URLs like `https://...` are rejected too |
-| Absolute route path | `{ path: '/jobs', ... }`                                               | `{ path: 'jobs', ... }`                                                                                                   |
-| Duplicate ids       | Two `home.widgets` items with `id: 'main'`                             | Ids must be unique per extension point within your addon                                                                  |
-| Missing field       | A widget without `title`, a tab without `label`                        | Add the field (see the [reference](reference.md#extension-points))                                                        |
-| Not a component     | `component: 'MyWidget'` (a string), or `undefined` from a wrong import | Pass the component itself: `component: MyWidget`. An element (`<MyWidget />`) passes validation but fails when it renders |
+| Problem             | Example                                                                | Fix                                                                                                                                                       |
+| ------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Id mismatch         | `id: 'Insights'`, but `/ui-addons` says `insights`                     | Use the exact same name everywhere (see the [rename table](README.md#step-2-rename-the-addon))                                                            |
+| Absolute nav path   | `path: '/addons/insights'`                                             | Nav paths (including those of `children`) are relative: `path: ''` for the index, `path: 'jobs'` for a sub page. URLs like `https://...` are rejected too |
+| Absolute route path | `{ path: '/jobs', ... }`                                               | `{ path: 'jobs', ... }`                                                                                                                                   |
+| Duplicate ids       | Two `home.widgets` items with `id: 'main'`                             | Ids must be unique per extension point within your addon, and sub-item ids among the `children` of one nav item                                           |
+| Missing field       | A widget without `title`, a tab without `label`                        | Add the field (see the [reference](reference.md#extension-points))                                                                                        |
+| Not a component     | `component: 'MyWidget'` (a string), or `undefined` from a wrong import | Pass the component itself: `component: MyWidget`. An element (`<MyWidget />`) passes validation but fails when it renders                                 |
 
 **Unknown extension points are not an error.** The shell drops them and logs
 `[addons] <name>: ignoring unknown extension points [...]`. The rest of the addon loads. If your
@@ -154,7 +154,7 @@ instead of fixed colors, or add `dark:` variants.
 
 ## A contribution crashes
 
-Every widget, tab, panel and addon page runs inside its own error boundary. When one throws, only
+Every widget, tab and addon page runs inside its own error boundary. When one throws, only
 that box shows an error: `<title or label> from addon "<name>" failed to render.` and the error
 message. For a page the label is "Page". The console shows `[addon:<name>] <label> crashed`.
 The rest of the page, the sidebar and other contributions keep working.
