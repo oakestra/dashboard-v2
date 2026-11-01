@@ -21,6 +21,10 @@ architecture; read it before changing anything under `apps/shell/src/core/addons
   `GET /api/v1/ui-addons` (see "Mock addons manager"), with a `/__test` control API.
 - `tools/mock-system-manager`: the `@oakestra/mocks` backend served over HTTP for the e2e stack.
 - `e2e`: Playwright suite against `docker-compose.dev.yml`.
+- `docs`: documentation for people, linked from `README.md`: the demo walkthrough (`demo.md`) and
+  the addon developer guide (`addons/`). Keep `docs/addons/` in sync with changes to the SDK,
+  extension points, addon loading or packaging, and `docs/demo.md` with the compose stack and the
+  example addon. Screenshots live in `docs/images/`.
 
 ## Verify a change
 
