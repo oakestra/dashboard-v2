@@ -33,6 +33,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      # Separate from `pnpm build` so local builds stay fast; here it catches stories that
+      # typecheck but fail to bundle (MDX, imports Vite cannot resolve).
+      - run: pnpm --filter @oakestra/ui build-storybook
 
   e2e:
     runs-on: ubuntu-latest

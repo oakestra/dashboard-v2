@@ -32,8 +32,8 @@ docker compose -f docker-compose.dev.yml up --build -d
 pnpm e2e
 ```
 
-CI (`.github/workflows/ci.yml`) runs the same four commands, then the e2e suite against the compose
-stack. Pushing a `v*.*.*` or `alpha-v*.*.*` tag publishes the shell image to `ghcr.io/oakestra/dashboard`
+CI (`.github/workflows/ci.yml`) runs the same four commands and the Storybook build, then the e2e
+suite against the compose stack. Pushing a `v*.*.*` or `alpha-v*.*.*` tag publishes the shell image to `ghcr.io/oakestra/dashboard`
 (`release-image.yml`; alpha tags do not move `latest`).
 
 Add a changeset (`pnpm changeset`) for any change to `@oakestra/dashboard-sdk`, `@oakestra/ui` or
@@ -296,7 +296,7 @@ Stories import the public entries (`../../src`, `../../src/chart`, ...), never c
 Rules: a docs page renders all stories of a file at once, so use `useId()` instead of fixed ids, and
 tag stories that render an open modal with `tags: ['!autodocs']`. Keep docs previews inline:
 `docs.story.inline: false` iframes do not get the theme global (the sidebar story contains its
-position-fixed layout with a `transform` frame instead). It is not part of `pnpm build` or CI yet.
+position-fixed layout with a `transform` frame instead). CI builds it after `pnpm build`.
 
 ## Import boundaries
 
