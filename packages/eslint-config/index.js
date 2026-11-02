@@ -117,7 +117,7 @@ const sdkVitePattern = {
   message: 'The SDK Vite plugin is for vite.config.ts and vitest.config.ts only.',
 };
 
-/** Workspace packages that addons may import by name. `@oakestra/api` only for types (M2). */
+/** Workspace packages that addons may import by name. `@oakestra/api` only for types. */
 const addonImportRestrictions = {
   patterns: [
     {

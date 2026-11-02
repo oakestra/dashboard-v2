@@ -436,9 +436,9 @@ There are four ways to restrict by role:
 | `visible: (context, user) => boolean` | Extra check for widgets and tabs, with the slot context and the user                        |
 | `usePermissions()` inside a component | Your own checks, for example inside a page                                                  |
 
-Important: `roles` on a nav item only hides the link. Any logged-in user who types the URL still
-reaches the page, unless the route has `roles` too. Real security comes from the backend: the API
-answers with the user's own permissions anyway.
+`roles` on a nav item only hides the link. Any logged-in user who types the URL still
+reaches the page, unless the route has `roles` too. The backend enforces permissions either way: the API
+answers with the user's own permissions.
 
 The "Settings" sub-item from step 3 has `roles: ['Admin']`, so other users do not see the link,
 and its route has the same `roles`, so they cannot open the page either. The page itself needs no
@@ -459,9 +459,6 @@ export function SettingsPage() {
   );
 }
 ```
-
-Addon settings always go on a page of their own like this one. The shell's Settings page in the
-sidebar footer is reserved for the dashboard's own settings.
 
 ### Step 7: add a home widget
 

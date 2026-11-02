@@ -82,7 +82,7 @@ check also protects against JavaScript addons and version drift.
 
 | Problem             | Example                                                                | Fix                                                                                                                                                       |
 | ------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Id mismatch         | `id: 'Insights'`, but `/ui-addons` says `insights`                     | Use the exact same name everywhere (see the [rename table](README.md#step-2-rename-the-addon))                                                            |
+| Id mismatch         | `id: 'Insights'`, but `/ui-addons` says `insights`                     | Use the exact same name everywhere (see [what must match](README.md#step-2-what-must-match))                                                              |
 | Absolute nav path   | `path: '/addons/insights'`                                             | Nav paths (including those of `children`) are relative: `path: ''` for the index, `path: 'jobs'` for a sub page. URLs like `https://...` are rejected too |
 | Absolute route path | `{ path: '/jobs', ... }`                                               | `{ path: 'jobs', ... }`                                                                                                                                   |
 | Duplicate ids       | Two `home.widgets` items with `id: 'main'`                             | Ids must be unique per extension point within your addon, and sub-item ids among the `children` of one nav item                                           |
@@ -110,8 +110,8 @@ the SDK module, it reads its own, empty context. Check:
 - The component is rendered by the shell (as a page or contribution). The hooks do not work in a
   standalone page, a test without providers, or a separate React root you created yourself.
 
-In tests, wrap the component in `HostContext.Provider` (and `AddonContext.Provider` for
-`useAddonBasePath()`), both exported by the SDK.
+In tests, render the component with `renderInHost` from `@oakestra/dashboard-sdk/testing` (see
+[Testing](reference.md#testing)).
 
 A related error, `useAddonContext() can only be used inside UI contributed by an addon.`, means
 `useAddonContext()`, `useAddonBasePath()` or `useAddonPath()` ran outside an addon page or

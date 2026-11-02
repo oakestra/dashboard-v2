@@ -4,7 +4,6 @@ export interface FaqItem {
   answer: string;
 }
 
-// The Angular dashboard shipped placeholder questions ("Question 1"), so these are new.
 export const FAQ_ITEMS: readonly FaqItem[] = [
   {
     id: 'deploy',

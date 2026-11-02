@@ -1,8 +1,6 @@
 # Packaging and shipping an addon UI
 
-This page explains how an addon UI is built, styled, packaged as a container and connected to
-the dashboard, and how versions and upgrades work. The reference implementation is
-`addons/example`.
+The reference implementation is `addons/example`.
 
 Contents:
 
@@ -216,7 +214,7 @@ on this path; the headers your container sends reach the browser.
 
 In the planned Oakestra setup the addons monitor starts the container under the name
 `addonui-<name>`. That part of the real addons engine does not exist yet. In this repository
-the compose file `compose.dev.yml` simply names a service `addonui-example`.
+the compose file `compose.dev.yml` names a service `addonui-example`.
 
 ### Dockerfile and nginx config
 

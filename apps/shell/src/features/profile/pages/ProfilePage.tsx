@@ -33,7 +33,7 @@ export function ProfilePage() {
         <>
           <div className="grid items-start gap-4 lg:grid-cols-2">
             <AccountCard profile={profile.data} user={user} />
-            <SectionCard title="Security" description="Protect access to your account.">
+            <SectionCard title="Security">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="text-sm">
                   <div className="font-medium">Password</div>

@@ -530,8 +530,7 @@ returns the raw `Response`: it does not throw on HTTP errors and does not valida
 ```ts
 import type { OakestraApi } from '@oakestra/dashboard-sdk';
 
-// For endpoints the typed groups do not cover. `api.fetch` adds the bearer token and handles the
-// token refresh, but it does not throw on HTTP errors and does not validate the body.
+// For endpoints the typed groups do not cover.
 export async function fetchUserRoles(api: OakestraApi, username: string): Promise<unknown> {
   const response = await api.fetch(`/permission/${encodeURIComponent(username)}`);
   if (!response.ok) throw new Error(`GET /permission failed with HTTP ${response.status}`);
@@ -589,11 +588,11 @@ routes: [
 
 For finer checks inside a page (a button only admins see), use `usePermissions()`.
 
-UI checks are for a good user experience. The real permission check happens in the backend.
+These checks only shape the UI. The backend enforces permissions.
 
 ## Data fetching rules
 
-The shell and all addons share **one** TanStack Query `QueryClient`. That has consequences:
+The shell and all addons share **one** TanStack Query `QueryClient`, so:
 
 - **Namespace your keys** with `addonQueryKey(ADDON_ID, ...)`. A plain key like `['clusters']`
   could collide with the shell or another addon and show the wrong data.

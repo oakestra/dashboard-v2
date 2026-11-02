@@ -33,10 +33,7 @@ export function AddonManagerLayout() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Addons"
-        description="Install, inspect and remove the addons that extend this platform."
-      />
+      <PageHeader title="Addons" description="Installed addons and the marketplace." />
       <nav aria-label="Addon sections" className="flex gap-1 border-b">
         {TABS.map((tab) => (
           <NavLink

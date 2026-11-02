@@ -1,8 +1,8 @@
 # Try the addon demo
 
-This page shows you how addon UIs work by letting you play with them. You start the dashboard
-with mock backends, look at the example addon, and then turn it off and on, break it, upgrade it
-and change its code. You do not need a real Oakestra cluster for any of this.
+The demo runs the dashboard with mock backends, so you can see how addon UIs work: look at the
+example addon, turn it off and on, break it, upgrade it and change its code. You do not need a
+real Oakestra cluster for any of this.
 
 There are two ways to run the demo:
 

@@ -11,7 +11,7 @@ const NAME_PATTERN = /^[a-zA-Z0-9]{1,32}$/;
 const NAME_MESSAGE = 'Use 1 to 32 letters or digits';
 
 // Numbers live in the form as strings so empty inputs stay empty instead of turning into NaN or 0.
-// The conversion to numbers happens in sla-convert.ts.
+// The conversion to numbers happens in convert.ts.
 const required = (message = 'Required') => z.string().trim().min(1, message);
 const wholeNumber = z.string().trim().regex(/^\d*$/, 'Enter a whole number');
 const nonNegative = z

@@ -2,9 +2,9 @@
 
 The web dashboard for [Oakestra](https://www.oakestra.io/), the orchestration platform for edge
 computing. Deploy and watch applications, manage clusters, users and organizations, and install
-addons, all from the browser.
+addons.
 
-The dashboard is built to be extended: addons ship their own UI, which the dashboard loads at
+Addons can ship their own UI, which the dashboard loads at
 runtime with [Module Federation](https://module-federation.io/). An addon can add pages, sidebar
 entries, widgets and tabs without a new dashboard release.
 
@@ -181,8 +181,7 @@ CI runs the same steps on every pull request. Commit messages follow
 
 The shell is React 19, React Router 8, TanStack Query, Tailwind CSS 4 and shadcn/ui components,
 built with Vite. [AGENTS.md](AGENTS.md) has the detailed conventions (feature modules, query keys,
-mutations, tests, styling, import boundaries). It is written for coding agents but is just as
-useful for people.
+mutations, tests, styling, import boundaries).
 
 ## Releasing
 

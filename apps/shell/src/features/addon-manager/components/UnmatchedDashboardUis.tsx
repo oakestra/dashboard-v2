@@ -17,7 +17,7 @@ import { DashboardUiBadge, dashboardUiProblem } from './DashboardUiBadge';
 
 /**
  * Addon UIs the shell runs that no installed addon explains, e.g. a dev override pointing at a
- * local Vite server. The old settings page listed every UI; this keeps those visible.
+ * local Vite server. Without this section they would appear nowhere in the addon manager.
  */
 export function UnmatchedDashboardUis({ entries }: { entries: readonly AddonEntry[] }) {
   if (entries.length === 0) return null;

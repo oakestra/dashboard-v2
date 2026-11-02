@@ -2,7 +2,7 @@ import { LayoutDashboardIcon } from 'lucide-react';
 
 import type { CoreModule } from '../../core/modules';
 
-/** The landing page. Replaces the placeholder `home` feature's index route. */
+/** The landing page (the index route). */
 export const overviewModule: CoreModule = {
   id: 'overview',
   label: 'Overview',
