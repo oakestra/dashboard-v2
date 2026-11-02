@@ -1,0 +1,1447 @@
+{
+  "users": [
+    {
+      "_id": "6a6d268dacdb8b7fdd51f94f",
+      "created_at": "31/07/2026 22:49",
+      "email": "",
+      "name": "Admin"
+    },
+    {
+      "_id": "6ae75be920e49268c755d45e",
+      "created_at": "01/11/2026, 16:34",
+      "email": "alice@example.com",
+      "name": "alice"
+    },
+    {
+      "_id": "6ae75bea20e49268c755d45f",
+      "created_at": "01/11/2026, 16:34",
+      "email": "bob@example.com",
+      "name": "bob"
+    },
+    {
+      "_id": "6ae75bea20e49268c755d460",
+      "created_at": "01/11/2026, 16:34",
+      "email": "carol@example.com",
+      "name": "carol"
+    },
+    {
+      "_id": "6ae75bea20e49268c755d461",
+      "created_at": "01/11/2026, 16:34",
+      "email": "dave@example.com",
+      "name": "dave"
+    }
+  ],
+  "organizations": [
+    {
+      "_id": "6a6d268dacdb8b7fdd51f950",
+      "member": [
+        {
+          "roles": [
+            "Admin",
+            "Organization_Admin",
+            "Application_Provider",
+            "Infrastructure_Provider"
+          ],
+          "user_id": "6a6d268dacdb8b7fdd51f94f"
+        },
+        {
+          "roles": ["Application_Provider"],
+          "user_id": "6ae75be920e49268c755d45e"
+        },
+        {
+          "roles": ["Infrastructure_Provider"],
+          "user_id": "6ae75bea20e49268c755d45f"
+        },
+        {
+          "roles": ["Organization_Admin", "Application_Provider"],
+          "user_id": "6ae75bea20e49268c755d460"
+        },
+        {
+          "roles": ["Application_Provider"],
+          "user_id": "6ae75bea20e49268c755d461"
+        }
+      ],
+      "name": "root"
+    },
+    {
+      "_id": "6ae75bea20e49268c755d462",
+      "member": [],
+      "name": "edge-lab"
+    }
+  ],
+  "applications": [
+    {
+      "_id": "6ae75bea77578493c2f80307",
+      "applicationID": "6ae75bea77578493c2f80307",
+      "application_desc": "Storefront with cache and API backend",
+      "application_name": "webshop",
+      "application_namespace": "shop",
+      "microservices": [
+        "6ae75bea77578493c2f80308",
+        "6ae75bea77578493c2f80309",
+        "6ae75bea77578493c2f8030a"
+      ],
+      "userId": "Admin"
+    },
+    {
+      "_id": "6ae75bea77578493c2f8030b",
+      "applicationID": "6ae75bea77578493c2f8030b",
+      "application_desc": "Sensor ingest and stream processing",
+      "application_name": "iotpipe",
+      "application_namespace": "iot",
+      "microservices": ["6ae75bea77578493c2f8030c", "6ae75bea77578493c2f8030d"],
+      "userId": "Admin"
+    },
+    {
+      "_id": "6ae75bea77578493c2f8030e",
+      "applicationID": "6ae75bea77578493c2f8030e",
+      "application_desc": "Batch analytics - created but not deployed yet",
+      "application_name": "analytics",
+      "application_namespace": "data",
+      "microservices": ["6ae75bea77578493c2f8030f", "6ae75bea77578493c2f80310"],
+      "userId": "alice"
+    },
+    {
+      "_id": "6ae75bea77578493c2f80311",
+      "applicationID": "6ae75bea77578493c2f80311",
+      "application_desc": "Oversized training job - never fits a worker",
+      "application_name": "mlbatch",
+      "application_namespace": "ml",
+      "microservices": ["6ae75bea77578493c2f80312"],
+      "userId": "Admin"
+    }
+  ],
+  "services": [
+    {
+      "_id": "6ae75bea77578493c2f80308",
+      "added_files": [],
+      "app_name": "webshop",
+      "app_ns": "shop",
+      "applicationID": "6ae75bea77578493c2f80307",
+      "bandwidth_in": 0,
+      "bandwidth_out": 0,
+      "cmd": [],
+      "code": "docker.io/library/nginx:alpine",
+      "image": "docker.io/library/nginx:alpine",
+      "instance_list": [
+        {
+          "cluster_id": "6a6d268f0908db5abba33b10",
+          "cluster_location": "52.5200,13.4050,100",
+          "cpu_history": [
+            {
+              "timestamp": "2026-11-01T15:34:12.046672+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:27.075358+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:42.067511+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:57.081508+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:12.053016+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:27.088380+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:42.053175+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:57.075130+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:12.063629+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:27.091938+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:42.066931+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:57.080685+00:00",
+              "value": "0.000000"
+            }
+          ],
+          "cpu_percent": "0.000000",
+          "disk": "4096",
+          "host_ip": "192.168.148.18",
+          "host_port": 50011,
+          "instance_number": 0,
+          "last_modified_timestamp": 1793548421.660484,
+          "logs": "2026/11/01 15:34:07 [notice] 1#1: start worker process 39\n2026/11/01 15:34:07 [notice] 1#1: start worker process 40\n2026/11/01 15:34:07 [notice] 1#1: start worker process 41\n2026/11/01 15:34:07 [notice] 1#1: start worker process 42\n2026/11/01 15:34:07 [notice] 1#1: start worker process 43\n",
+          "memory_history": [
+            {
+              "timestamp": "2026-11-01T15:34:12.046672+00:00",
+              "value": "6336512.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:27.075358+00:00",
+              "value": "6066176.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:42.067511+00:00",
+              "value": "6066176.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:57.081508+00:00",
+              "value": "6066176.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:12.053016+00:00",
+              "value": "5103616.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:27.088380+00:00",
+              "value": "5103616.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:42.053175+00:00",
+              "value": "5103616.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:57.075130+00:00",
+              "value": "2322432.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:12.063629+00:00",
+              "value": "2322432.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:27.091938+00:00",
+              "value": "2322432.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:42.066931+00:00",
+              "value": "2191360.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:57.080685+00:00",
+              "value": "2191360.000000"
+            }
+          ],
+          "memory_percent": "1654784.000000",
+          "publicip": "192.168.148.18",
+          "status": "RUNNING",
+          "status_detail": "Waiting for scheduling decision",
+          "worker_id": "6ae75bc6558ac1b12c03422e"
+        },
+        {
+          "cluster_id": "6a6d268f0908db5abba33b10",
+          "cluster_location": "52.5200,13.4050,100",
+          "cpu_history": [
+            {
+              "timestamp": "2026-11-01T15:34:12.048181+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:27.077932+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:42.070304+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:57.083941+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:12.054752+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:27.090876+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:42.054716+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:57.077182+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:12.065827+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:27.094521+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:42.069518+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:57.082941+00:00",
+              "value": "0.000000"
+            }
+          ],
+          "cpu_percent": "0.000000",
+          "disk": "4096",
+          "host_ip": "192.168.148.19",
+          "host_port": 50011,
+          "instance_number": 1,
+          "last_modified_timestamp": 1793548421.611898,
+          "logs": "2026/11/01 15:34:11 [notice] 1#1: start worker process 39\n2026/11/01 15:34:11 [notice] 1#1: start worker process 40\n2026/11/01 15:34:11 [notice] 1#1: start worker process 41\n2026/11/01 15:34:11 [notice] 1#1: start worker process 42\n2026/11/01 15:34:11 [notice] 1#1: start worker process 43\n",
+          "memory_history": [
+            {
+              "timestamp": "2026-11-01T15:34:12.048181+00:00",
+              "value": "6356992.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:27.077932+00:00",
+              "value": "6090752.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:42.070304+00:00",
+              "value": "6090752.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:57.083941+00:00",
+              "value": "6090752.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:12.054752+00:00",
+              "value": "3145728.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:27.090876+00:00",
+              "value": "3145728.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:42.054716+00:00",
+              "value": "3145728.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:57.077182+00:00",
+              "value": "2203648.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:12.065827+00:00",
+              "value": "2203648.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:27.094521+00:00",
+              "value": "2203648.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:42.069518+00:00",
+              "value": "1798144.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:57.082941+00:00",
+              "value": "1798144.000000"
+            }
+          ],
+          "memory_percent": "1667072.000000",
+          "publicip": "192.168.148.19",
+          "status": "RUNNING",
+          "status_detail": "Waiting for scheduling decision",
+          "worker_id": "6ae75bc6558ac1b12c03422f"
+        }
+      ],
+      "job_name": "webshop.shop.frontend.shop",
+      "memory": 64,
+      "microserviceID": "6ae75bea77578493c2f80308",
+      "microservice_name": "frontend",
+      "microservice_namespace": "shop",
+      "next_instance_progressive_number": 2,
+      "port": "8081:80/tcp",
+      "service_name": "frontend",
+      "service_ns": "shop",
+      "state": "",
+      "status": "RUNNING",
+      "status_detail": "Waiting for scheduling decision",
+      "storage": 0,
+      "vcpus": 1,
+      "vgpus": 0,
+      "virtualization": "docker",
+      "vtpus": 0
+    },
+    {
+      "_id": "6ae75bea77578493c2f80309",
+      "added_files": [],
+      "app_name": "webshop",
+      "app_ns": "shop",
+      "applicationID": "6ae75bea77578493c2f80307",
+      "bandwidth_in": 0,
+      "bandwidth_out": 0,
+      "cmd": [],
+      "code": "docker.io/library/redis:alpine",
+      "image": "docker.io/library/redis:alpine",
+      "instance_list": [
+        {
+          "cluster_id": "6a6d268f0908db5abba33b10",
+          "cluster_location": "52.5200,13.4050,100",
+          "cpu_history": [
+            {
+              "timestamp": "2026-11-01T15:34:12.056033+00:00",
+              "value": ""
+            },
+            {
+              "timestamp": "2026-11-01T15:34:27.092212+00:00",
+              "value": "0.035537"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:42.084255+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:57.094724+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:12.062461+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:27.101848+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:42.062695+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:57.086222+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:12.075394+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:27.104607+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:42.085279+00:00",
+              "value": "0.035714"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:57.093761+00:00",
+              "value": "0.000000"
+            }
+          ],
+          "cpu_percent": "0.000000",
+          "disk": "0",
+          "host_ip": "192.168.148.18",
+          "host_port": 50011,
+          "instance_number": 0,
+          "last_modified_timestamp": 1793548421.654186,
+          "logs": "1:M 01 Nov 2026 15:34:14.244 * Module 'ReJSON' loaded from /usr/local/lib/redis/modules//rejson.so\n1:M 01 Nov 2026 15:34:14.244 * <search> Acquired RedisJSON_V8 API\n1:M 01 Nov 2026 15:34:14.244 * Server initialized\n1:M 01 Nov 2026 15:34:14.244 * Ready to accept connections tcp\n1:M 01 Nov 2026 15:34:14.244 # WARNING: Redis does not require authentication and is not protected by network restrictions. Redis will accept connections from any IP address on any network interface.\n",
+          "memory_history": [
+            {
+              "timestamp": "2026-11-01T15:34:12.056033+00:00",
+              "value": ""
+            },
+            {
+              "timestamp": "2026-11-01T15:34:27.092212+00:00",
+              "value": "19017728.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:42.084255+00:00",
+              "value": "19017728.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:57.094724+00:00",
+              "value": "19017728.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:12.062461+00:00",
+              "value": "10506240.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:27.101848+00:00",
+              "value": "10506240.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:42.062695+00:00",
+              "value": "10506240.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:57.086222+00:00",
+              "value": "8204288.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:12.075394+00:00",
+              "value": "8204288.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:27.104607+00:00",
+              "value": "8204288.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:42.085279+00:00",
+              "value": "8204288.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:57.093761+00:00",
+              "value": "8204288.000000"
+            }
+          ],
+          "memory_percent": "7696384.000000",
+          "publicip": "192.168.148.18",
+          "status": "RUNNING",
+          "status_detail": "Waiting for scheduling decision",
+          "worker_id": "6ae75bc6558ac1b12c03422e"
+        }
+      ],
+      "job_name": "webshop.shop.cache.shop",
+      "memory": 128,
+      "microserviceID": "6ae75bea77578493c2f80309",
+      "microservice_name": "cache",
+      "microservice_namespace": "shop",
+      "next_instance_progressive_number": 1,
+      "port": "",
+      "service_name": "cache",
+      "service_ns": "shop",
+      "state": "",
+      "status": "RUNNING",
+      "status_detail": "Waiting for scheduling decision",
+      "storage": 0,
+      "vcpus": 1,
+      "vgpus": 0,
+      "virtualization": "docker",
+      "vtpus": 0
+    },
+    {
+      "_id": "6ae75bea77578493c2f8030a",
+      "added_files": [],
+      "app_name": "webshop",
+      "app_ns": "shop",
+      "applicationID": "6ae75bea77578493c2f80307",
+      "bandwidth_in": 0,
+      "bandwidth_out": 0,
+      "cmd": [],
+      "code": "docker.io/library/httpd:alpine",
+      "image": "docker.io/library/httpd:alpine",
+      "instance_list": [
+        {
+          "cluster_id": "6a6d268f0908db5abba33b10",
+          "cluster_location": "52.5200,13.4050,100",
+          "cpu_history": [
+            {
+              "timestamp": "2026-11-01T15:34:12.052087+00:00",
+              "value": ""
+            },
+            {
+              "timestamp": "2026-11-01T15:34:27.085431+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:42.078493+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:57.089779+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:12.058865+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:27.097000+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:42.058900+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:57.081688+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:12.070746+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:27.099950+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:42.079124+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:57.088512+00:00",
+              "value": "0.000000"
+            }
+          ],
+          "cpu_percent": "0.000000",
+          "disk": "4096",
+          "host_ip": "192.168.148.18",
+          "host_port": 50011,
+          "instance_number": 0,
+          "last_modified_timestamp": 1793548421.648033,
+          "logs": "AH00558: httpd: Could not reliably determine the server's fully qualified domain name, using 127.0.0.1. Set the 'ServerName' directive globally to suppress this message\nAH00557: httpd: apr_sockaddr_info_get() failed for instance-0\nAH00558: httpd: Could not reliably determine the server's fully qualified domain name, using 127.0.0.1. Set the 'ServerName' directive globally to suppress this message\n[Sun Nov 01 15:34:12.123628 2026] [mpm_event:notice] [pid 1:tid 1] AH00489: Apache/2.4.69 (Unix) configured -- resuming normal operations\n[Sun Nov 01 15:34:12.123732 2026] [core:notice] [pid 1:tid 1] AH00094: Command line: 'httpd -D FOREGROUND'\n",
+          "memory_history": [
+            {
+              "timestamp": "2026-11-01T15:34:12.052087+00:00",
+              "value": ""
+            },
+            {
+              "timestamp": "2026-11-01T15:34:27.085431+00:00",
+              "value": "4272128.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:42.078493+00:00",
+              "value": "4272128.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:34:57.089779+00:00",
+              "value": "4272128.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:12.058865+00:00",
+              "value": "2392064.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:27.097000+00:00",
+              "value": "2392064.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:42.058900+00:00",
+              "value": "2392064.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:57.081688+00:00",
+              "value": "1708032.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:12.070746+00:00",
+              "value": "1708032.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:27.099950+00:00",
+              "value": "1708032.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:42.079124+00:00",
+              "value": "1708032.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:57.088512+00:00",
+              "value": "1708032.000000"
+            }
+          ],
+          "memory_percent": "1294336.000000",
+          "publicip": "192.168.148.18",
+          "status": "RUNNING",
+          "status_detail": "Waiting for scheduling decision",
+          "worker_id": "6ae75bc6558ac1b12c03422e"
+        }
+      ],
+      "job_name": "webshop.shop.api.shop",
+      "memory": 64,
+      "microserviceID": "6ae75bea77578493c2f8030a",
+      "microservice_name": "api",
+      "microservice_namespace": "shop",
+      "next_instance_progressive_number": 1,
+      "port": "",
+      "service_name": "api",
+      "service_ns": "shop",
+      "state": "",
+      "status": "RUNNING",
+      "status_detail": "Waiting for scheduling decision",
+      "storage": 0,
+      "vcpus": 1,
+      "vgpus": 0,
+      "virtualization": "docker",
+      "vtpus": 0
+    },
+    {
+      "_id": "6ae75bea77578493c2f8030c",
+      "added_files": [],
+      "app_name": "iotpipe",
+      "app_ns": "iot",
+      "applicationID": "6ae75bea77578493c2f8030b",
+      "bandwidth_in": 0,
+      "bandwidth_out": 0,
+      "cmd": ["sh", "-c", "while true; do echo tick; sleep 30; done"],
+      "code": "docker.io/library/busybox:latest",
+      "image": "docker.io/library/busybox:latest",
+      "instance_list": [
+        {
+          "cluster_id": "6a6d268f0908db5abba33b10",
+          "cluster_location": "52.5200,13.4050,100",
+          "cpu_history": [
+            {
+              "timestamp": "2026-11-01T15:34:57.099318+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:12.065983+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:27.106739+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:42.066667+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:57.091712+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:12.079453+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:27.109015+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:42.090404+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:57.098757+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:12.083490+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:27.093667+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:42.078690+00:00",
+              "value": "0.000000"
+            }
+          ],
+          "cpu_percent": "0.000000",
+          "disk": "0",
+          "host_ip": "192.168.148.20",
+          "host_port": 50011,
+          "instance_number": 0,
+          "last_modified_timestamp": 1793548421.825846,
+          "logs": "tick\ntick\ntick\ntick\ntick\n",
+          "memory_history": [
+            {
+              "timestamp": "2026-11-01T15:34:57.099318+00:00",
+              "value": "1986560.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:12.065983+00:00",
+              "value": "1986560.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:27.106739+00:00",
+              "value": "1986560.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:42.066667+00:00",
+              "value": "1986560.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:57.091712+00:00",
+              "value": "1851392.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:12.079453+00:00",
+              "value": "1851392.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:27.109015+00:00",
+              "value": "1851392.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:42.090404+00:00",
+              "value": "1716224.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:57.098757+00:00",
+              "value": "1716224.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:12.083490+00:00",
+              "value": "1716224.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:27.093667+00:00",
+              "value": "1716224.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:42.078690+00:00",
+              "value": "1716224.000000"
+            }
+          ],
+          "memory_percent": "1716224.000000",
+          "publicip": "192.168.148.20",
+          "status": "RUNNING",
+          "status_detail": "Waiting for scheduling decision",
+          "worker_id": "6ae75bc6558ac1b12c034230"
+        },
+        {
+          "cluster_id": "6a6d268f0908db5abba33b10",
+          "cluster_location": "52.5200,13.4050,100",
+          "cpu_history": [
+            {
+              "timestamp": "2026-11-01T15:34:57.100978+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:12.067170+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:27.108356+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:42.068234+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:57.093703+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:12.080919+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:27.110570+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:42.092360+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:57.100814+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:12.084874+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:27.095289+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:42.080228+00:00",
+              "value": "0.000000"
+            }
+          ],
+          "cpu_percent": "0.000000",
+          "disk": "0",
+          "host_ip": "192.168.148.20",
+          "host_port": 50011,
+          "instance_number": 1,
+          "last_modified_timestamp": 1793548421.833183,
+          "logs": "tick\ntick\ntick\ntick\ntick\n",
+          "memory_history": [
+            {
+              "timestamp": "2026-11-01T15:34:57.100978+00:00",
+              "value": "1994752.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:12.067170+00:00",
+              "value": "1994752.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:27.108356+00:00",
+              "value": "1994752.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:42.068234+00:00",
+              "value": "1994752.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:57.093703+00:00",
+              "value": "1859584.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:12.080919+00:00",
+              "value": "1859584.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:27.110570+00:00",
+              "value": "1859584.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:42.092360+00:00",
+              "value": "1724416.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:57.100814+00:00",
+              "value": "1724416.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:12.084874+00:00",
+              "value": "1724416.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:27.095289+00:00",
+              "value": "1724416.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:42.080228+00:00",
+              "value": "1724416.000000"
+            }
+          ],
+          "memory_percent": "1724416.000000",
+          "publicip": "192.168.148.20",
+          "status": "RUNNING",
+          "status_detail": "Waiting for scheduling decision",
+          "worker_id": "6ae75bc6558ac1b12c034230"
+        },
+        {
+          "cluster_id": "6a6d268f0908db5abba33b10",
+          "cluster_location": "52.5200,13.4050,100",
+          "cpu_history": [
+            {
+              "timestamp": "2026-11-01T15:34:57.102391+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:12.068401+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:27.109942+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:42.069722+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:57.095468+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:12.082332+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:27.112142+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:42.094262+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:57.102596+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:12.086372+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:27.096845+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:42.081653+00:00",
+              "value": "0.000000"
+            }
+          ],
+          "cpu_percent": "0.000000",
+          "disk": "0",
+          "host_ip": "192.168.148.20",
+          "host_port": 50011,
+          "instance_number": 2,
+          "last_modified_timestamp": 1793548421.840341,
+          "logs": "tick\ntick\ntick\ntick\ntick\n",
+          "memory_history": [
+            {
+              "timestamp": "2026-11-01T15:34:57.102391+00:00",
+              "value": "1982464.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:12.068401+00:00",
+              "value": "1982464.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:27.109942+00:00",
+              "value": "1982464.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:42.069722+00:00",
+              "value": "1982464.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:57.095468+00:00",
+              "value": "1847296.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:12.082332+00:00",
+              "value": "1847296.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:27.112142+00:00",
+              "value": "1847296.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:42.094262+00:00",
+              "value": "1712128.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:57.102596+00:00",
+              "value": "1712128.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:12.086372+00:00",
+              "value": "1712128.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:27.096845+00:00",
+              "value": "1712128.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:42.081653+00:00",
+              "value": "1712128.000000"
+            }
+          ],
+          "memory_percent": "1712128.000000",
+          "publicip": "192.168.148.20",
+          "status": "RUNNING",
+          "status_detail": "Waiting for scheduling decision",
+          "worker_id": "6ae75bc6558ac1b12c034230"
+        }
+      ],
+      "job_name": "iotpipe.iot.ingest.iot",
+      "memory": 32,
+      "microserviceID": "6ae75bea77578493c2f8030c",
+      "microservice_name": "ingest",
+      "microservice_namespace": "iot",
+      "next_instance_progressive_number": 3,
+      "port": "",
+      "service_name": "ingest",
+      "service_ns": "iot",
+      "state": "",
+      "status": "RUNNING",
+      "status_detail": "Waiting for scheduling decision",
+      "storage": 0,
+      "vcpus": 1,
+      "vgpus": 0,
+      "virtualization": "docker",
+      "vtpus": 0
+    },
+    {
+      "_id": "6ae75bea77578493c2f8030d",
+      "added_files": [],
+      "app_name": "iotpipe",
+      "app_ns": "iot",
+      "applicationID": "6ae75bea77578493c2f8030b",
+      "bandwidth_in": 0,
+      "bandwidth_out": 0,
+      "cmd": ["sh", "-c", "while true; do echo tick; sleep 30; done"],
+      "code": "docker.io/library/alpine:latest",
+      "image": "docker.io/library/alpine:latest",
+      "instance_list": [
+        {
+          "cluster_id": "6a6d268f0908db5abba33b10",
+          "cluster_location": "52.5200,13.4050,100",
+          "cpu_history": [
+            {
+              "timestamp": "2026-11-01T15:34:57.106028+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:12.071756+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:27.113939+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:42.073684+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:57.099296+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:12.086007+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:27.115828+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:42.098902+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:57.106801+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:12.089928+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:27.100705+00:00",
+              "value": "0.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:42.085298+00:00",
+              "value": "0.000000"
+            }
+          ],
+          "cpu_percent": "0.000000",
+          "disk": "0",
+          "host_ip": "192.168.148.20",
+          "host_port": 50011,
+          "instance_number": 0,
+          "last_modified_timestamp": 1793548421.846315,
+          "logs": "tick\ntick\ntick\ntick\ntick\n",
+          "memory_history": [
+            {
+              "timestamp": "2026-11-01T15:34:57.106028+00:00",
+              "value": "999424.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:12.071756+00:00",
+              "value": "999424.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:27.113939+00:00",
+              "value": "999424.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:42.073684+00:00",
+              "value": "999424.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:35:57.099296+00:00",
+              "value": "864256.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:12.086007+00:00",
+              "value": "864256.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:27.115828+00:00",
+              "value": "864256.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:42.098902+00:00",
+              "value": "864256.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:36:57.106801+00:00",
+              "value": "864256.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:12.089928+00:00",
+              "value": "864256.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:27.100705+00:00",
+              "value": "864256.000000"
+            },
+            {
+              "timestamp": "2026-11-01T15:37:42.085298+00:00",
+              "value": "864256.000000"
+            }
+          ],
+          "memory_percent": "864256.000000",
+          "publicip": "192.168.148.20",
+          "status": "RUNNING",
+          "status_detail": "Waiting for scheduling decision",
+          "worker_id": "6ae75bc6558ac1b12c034230"
+        }
+      ],
+      "job_name": "iotpipe.iot.process.iot",
+      "memory": 32,
+      "microserviceID": "6ae75bea77578493c2f8030d",
+      "microservice_name": "process",
+      "microservice_namespace": "iot",
+      "next_instance_progressive_number": 1,
+      "port": "",
+      "service_name": "process",
+      "service_ns": "iot",
+      "state": "",
+      "status": "RUNNING",
+      "status_detail": "Waiting for scheduling decision",
+      "storage": 0,
+      "vcpus": 1,
+      "vgpus": 0,
+      "virtualization": "docker",
+      "vtpus": 0
+    },
+    {
+      "_id": "6ae75bea77578493c2f8030f",
+      "added_files": [],
+      "app_name": "analytics",
+      "app_ns": "data",
+      "applicationID": "6ae75bea77578493c2f8030e",
+      "bandwidth_in": 0,
+      "bandwidth_out": 0,
+      "cmd": [],
+      "code": "docker.io/library/postgres:alpine",
+      "image": "docker.io/library/postgres:alpine",
+      "instance_list": [],
+      "job_name": "analytics.data.warehouse.data",
+      "memory": 256,
+      "microserviceID": "6ae75bea77578493c2f8030f",
+      "microservice_name": "warehouse",
+      "microservice_namespace": "data",
+      "next_instance_progressive_number": 0,
+      "port": "",
+      "service_name": "warehouse",
+      "service_ns": "data",
+      "state": "",
+      "storage": 0,
+      "vcpus": 1,
+      "vgpus": 0,
+      "virtualization": "docker",
+      "vtpus": 0
+    },
+    {
+      "_id": "6ae75bea77578493c2f80310",
+      "added_files": [],
+      "app_name": "analytics",
+      "app_ns": "data",
+      "applicationID": "6ae75bea77578493c2f8030e",
+      "bandwidth_in": 0,
+      "bandwidth_out": 0,
+      "cmd": [],
+      "code": "docker.io/library/nginx:alpine",
+      "image": "docker.io/library/nginx:alpine",
+      "instance_list": [],
+      "job_name": "analytics.data.dashboard.data",
+      "memory": 64,
+      "microserviceID": "6ae75bea77578493c2f80310",
+      "microservice_name": "dashboard",
+      "microservice_namespace": "data",
+      "next_instance_progressive_number": 0,
+      "port": "",
+      "service_name": "dashboard",
+      "service_ns": "data",
+      "state": "",
+      "storage": 0,
+      "vcpus": 1,
+      "vgpus": 0,
+      "virtualization": "docker",
+      "vtpus": 0
+    },
+    {
+      "_id": "6ae75bea77578493c2f80312",
+      "added_files": [],
+      "app_name": "mlbatch",
+      "app_ns": "ml",
+      "applicationID": "6ae75bea77578493c2f80311",
+      "bandwidth_in": 0,
+      "bandwidth_out": 0,
+      "cmd": ["sh", "-c", "while true; do echo tick; sleep 30; done"],
+      "code": "docker.io/library/alpine:latest",
+      "image": "docker.io/library/alpine:latest",
+      "instance_list": [],
+      "job_name": "mlbatch.ml.trainer.ml",
+      "memory": 500000,
+      "microserviceID": "6ae75bea77578493c2f80312",
+      "microservice_name": "trainer",
+      "microservice_namespace": "ml",
+      "next_instance_progressive_number": 0,
+      "port": "",
+      "service_name": "trainer",
+      "service_ns": "ml",
+      "state": "",
+      "status": "NoActiveClusterWithCapacity",
+      "status_detail": "Waiting for scheduling decision",
+      "storage": 0,
+      "vcpus": 64,
+      "vgpus": 0,
+      "virtualization": "docker",
+      "vtpus": 0
+    }
+  ],
+  "clusters": [
+    {
+      "_id": "6a6d268f0908db5abba33b10",
+      "active": true,
+      "active_nodes": 3,
+      "aggregated_cpu_percent": 9.163526441285653,
+      "candidate_location": "52.5200,13.4050,100",
+      "candidate_name": "test-cluster",
+      "cluster_location": "52.5200,13.4050,100",
+      "cluster_name": "test-cluster",
+      "cpu_history": [
+        {
+          "timestamp": 1790583581.450666,
+          "value": 0.8929634733729366
+        },
+        {
+          "timestamp": 1790583596.44527,
+          "value": 0.9992863090005567
+        },
+        {
+          "timestamp": 1790583611.446501,
+          "value": 0.8559201867020773
+        },
+        {
+          "timestamp": 1790583626.450973,
+          "value": 1.0468756174520397
+        },
+        {
+          "timestamp": 1790583641.444284,
+          "value": 1.851412503830307
+        },
+        {
+          "timestamp": 1790583656.448889,
+          "value": 1.1056958929437755
+        },
+        {
+          "timestamp": 1790583671.439359,
+          "value": 0.7968171175943708
+        },
+        {
+          "timestamp": 1790583686.449029,
+          "value": 0.9290138424660368
+        },
+        {
+          "timestamp": 1790583701.447161,
+          "value": 0.9282274094098824
+        },
+        {
+          "timestamp": 1790583716.446959,
+          "value": 0.9165519876521808
+        },
+        {
+          "timestamp": 1790583731.450146,
+          "value": 0.8209400096698687
+        },
+        {
+          "timestamp": 1790583746.449233,
+          "value": 0.8211353088232731
+        }
+      ],
+      "cpu_percent": 9.163526441285653,
+      "csi_drivers": [],
+      "gpu_drivers": null,
+      "gpu_percent": 0,
+      "gpu_temp": 0.0,
+      "ip": "cluster_manager",
+      "last_modified_timestamp": 1793548422.073024,
+      "memory": 39760,
+      "memory_history": [
+        {
+          "timestamp": 1790583581.450666,
+          "value": 15.019302536946604
+        },
+        {
+          "timestamp": 1790583596.44527,
+          "value": 14.80750878266243
+        },
+        {
+          "timestamp": 1790583611.446501,
+          "value": 14.877248918463707
+        },
+        {
+          "timestamp": 1790583626.450973,
+          "value": 14.868603447083384
+        },
+        {
+          "timestamp": 1790583641.444284,
+          "value": 14.85328513300388
+        },
+        {
+          "timestamp": 1790583656.448889,
+          "value": 14.939057950472895
+        },
+        {
+          "timestamp": 1790583671.439359,
+          "value": 14.877857754476405
+        },
+        {
+          "timestamp": 1790583686.449029,
+          "value": 14.864439008756522
+        },
+        {
+          "timestamp": 1790583701.447161,
+          "value": 14.880098271003137
+        },
+        {
+          "timestamp": 1790583716.446959,
+          "value": 14.795518772119012
+        },
+        {
+          "timestamp": 1790583731.450146,
+          "value": 14.77720498485703
+        },
+        {
+          "timestamp": 1790583746.449233,
+          "value": 14.787725671156467
+        }
+      ],
+      "memory_in_mb": 39760,
+      "memory_percent": 15.658051149513607,
+      "port": "10100",
+      "supported_addons": [],
+      "total_cpu_cores": 42,
+      "total_gpu_cores": 0,
+      "vcpus": 42,
+      "vgpus": 0,
+      "virtualization": ["runc", "docker", "runc", "docker", "runc", "docker"],
+      "vram": 0,
+      "vram_percent": 0.0
+    },
+    {
+      "_id": "6a6d268f0908db5abba33b99",
+      "active": false,
+      "active_nodes": 0,
+      "aggregated_cpu_percent": 0,
+      "candidate_location": "48.1351,11.5820,50",
+      "candidate_name": "edge-munich",
+      "cluster_location": "48.1351,11.5820,50",
+      "cluster_name": "edge-munich",
+      "cpu_history": [],
+      "cpu_percent": 0,
+      "csi_drivers": [],
+      "gpu_drivers": null,
+      "gpu_percent": 0,
+      "gpu_temp": 0.0,
+      "ip": "cluster_manager_munich",
+      "last_modified_timestamp": 1793548422.073024,
+      "memory": 0,
+      "memory_history": [],
+      "memory_in_mb": 0,
+      "memory_percent": 0,
+      "port": "10100",
+      "supported_addons": [],
+      "total_cpu_cores": 0,
+      "total_gpu_cores": 0,
+      "vcpus": 0,
+      "vgpus": 0,
+      "virtualization": [],
+      "vram": 0,
+      "vram_percent": 0.0
+    }
+  ]
+}

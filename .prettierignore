@@ -1,0 +1,13 @@
+pnpm-lock.yaml
+dist/
+storybook-static/
+coverage/
+e2e/test-results/
+e2e/playwright-report/
+.__mf__temp/
+README.md
+packages/api/specs/
+packages/api/src/generated/
+packages/*/api-report/
+# Placeholders (`port: __PORT__`) make the template invalid until it is generated.
+tools/create-addon/template/

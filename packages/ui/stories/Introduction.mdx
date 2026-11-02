@@ -1,0 +1,50 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Introduction" />
+
+# @oakestra/ui
+
+The component library of the Oakestra dashboard: shadcn components on Radix, a few composites built
+for the dashboard, and the Tailwind v4 theme. The shell and every addon use the same copy of it at
+runtime (a Module Federation singleton).
+
+Use the toolbar to switch between the light and dark theme. Every story has a **Docs** page with its
+props, and the **Accessibility** panel runs axe against the current story.
+
+## Importing
+
+Import from the package root:
+
+```tsx
+import { Button, SectionCard, StatusBadge } from '@oakestra/ui';
+```
+
+Components that pull in a large library are subpath exports, so pages that do not use them never
+load them:
+
+| Import                    | Contents                                                      |
+| ------------------------- | ------------------------------------------------------------- |
+| `@oakestra/ui/chart`      | `ChartContainer`, tooltip and legend, plus the Recharts parts |
+| `@oakestra/ui/data-table` | `DataTable`, `createDataTableColumnHelper`                    |
+| `@oakestra/ui/command`    | The cmdk based `Command*` components                          |
+| `@oakestra/ui/map`        | mapcn on MapLibre GL (`Map`, `MapMarker`, `MapControls`, ...) |
+
+Never import from deeper paths such as `@oakestra/ui/components/button`: that would give an addon its
+own copy of the component and its React context.
+
+## Picking a component
+
+- Page title and actions: **PageHeader**. Titled sections below it: **SectionCard**.
+- Metric tiles in a grid: **StatCard**.
+- Any state label: **StatusBadge** with a tone. Tones are meanings (`success` healthy, `warning`
+  degraded, `info` in progress, `destructive` failed, `neutral` inactive), and each feature maps its
+  backend states onto them in one place.
+- Lists with sorting, search and paging: **DataTable**. Nothing to show: **EmptyState**.
+- Asking before a destructive action: **ConfirmDialog**. It stays open until the caller closes it, so
+  it can show the request as pending.
+
+## Adding a component
+
+Run `pnpm dlx shadcn@4 add <name>` in `packages/ui`, rewrite the `@oakestra/ui/...` and `cn` imports
+to relative paths, export it from `src/index.ts`, and add a story under `packages/ui/stories/`.
+Stories stay outside `src/` so their layout classes do not end up in the shell's CSS.

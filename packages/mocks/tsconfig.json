@@ -1,0 +1,11 @@
+{
+  "extends": "@oakestra/tsconfig/base.json",
+  "compilerOptions": {
+    // Fetch, Request and friends; no React and no DOM-only APIs beyond those.
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"],
+    // Node runs these sources directly (mock server, gen script), so only erasable syntax.
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src", "scripts", "vitest.config.ts"]
+}

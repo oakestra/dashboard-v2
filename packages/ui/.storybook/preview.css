@@ -1,0 +1,11 @@
+/* The same global stylesheet the shell loads, plus the story files as an extra Tailwind source. */
+@import '../src/styles/styles.css';
+
+@source '../stories';
+
+/* Docs pages draw their own light canvas behind each story; use the theme background instead so
+   the dark theme shows on the docs tab as well. */
+.docs-story {
+  background-color: var(--background);
+  color: var(--foreground);
+}

@@ -1,0 +1,104 @@
+# Upstreams are referenced through variables on purpose. With a literal host in proxy_pass, nginx
+# resolves it once at startup and refuses to start if it does not exist, e.g. when the addons
+# engine is not deployed or no addon UI is installed yet. Variables are resolved per request.
+resolver ${DNS_RESOLVER} valid=10s ipv6=off;
+resolver_timeout 5s;
+
+# nginx's mime.types has no .mjs, so the MapLibre worker (assets/maplibre-gl-worker-*.mjs) would go
+# out as application/octet-stream, and browsers refuse to start a module worker from that. This
+# file is included at http level next to mime.types, where a second types block adds to the list
+# instead of replacing it.
+types {
+  text/javascript mjs;
+}
+
+server {
+  listen 80;
+  server_name _;
+  root /usr/share/nginx/html;
+
+  gzip on;
+  gzip_vary on;
+  gzip_proxied any;
+  gzip_min_length 1024;
+  gzip_types text/plain text/css application/json application/javascript text/javascript image/svg+xml;
+
+  add_header X-Content-Type-Options nosniff always;
+
+  # The three proxies below serve backend bodies on the dashboard's own origin, and the
+  # addons-manager answers JSON as text/html with unescaped user input (addon names, monitor
+  # logs). Opened as a page, that is script on the dashboard origin with access to localStorage.
+  # `sandbox` gives such a document an opaque origin, `default-src 'none'` stops it from loading
+  # anything, and attachment keeps browsers from rendering it at all; fetch() ignores all three.
+  # add_header does not inherit once a location sets its own, so each of them repeats the
+  # server-level header too.
+
+  # Addon UI containers, named addonui-<name> by the addons monitor. The name pattern keeps this
+  # proxy from being pointed at arbitrary containers on the network.
+  location ~ ^/addon-assets/([a-z0-9-]+)/(.*)$ {
+    set $addon_upstream addonui-$1;
+    proxy_pass http://$addon_upstream:80/$2$is_args$args;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+
+  location = /ui-addons {
+    set $addons_manager ${ADDONS_MANAGER_ADDRESS};
+    proxy_pass http://$addons_manager/api/v1/ui-addons;
+    add_header Cache-Control "no-store" always;
+    add_header Content-Security-Policy "default-src 'none'; sandbox" always;
+    add_header Content-Disposition "attachment" always;
+    add_header X-Content-Type-Options nosniff always;
+  }
+
+  # Addon management API for the admin pages. The dashboard's own paths differ from the backends
+  # so the prefix is rewritten; the rest (id, query string) is passed through. Variable upstreams
+  # as above, so a missing addons engine yields 502 instead of a failing nginx start.
+  location /addons-api/ {
+    set $addons_manager ${ADDONS_MANAGER_ADDRESS};
+    rewrite ^/addons-api/(.*)$ /api/v1/addons/$1 break;
+    proxy_pass http://$addons_manager;
+    add_header Cache-Control "no-store" always;
+    add_header Content-Security-Policy "default-src 'none'; sandbox" always;
+    add_header Content-Disposition "attachment" always;
+    add_header X-Content-Type-Options nosniff always;
+  }
+
+  location /marketplace-api/ {
+    set $marketplace_manager ${MARKETPLACE_ADDRESS};
+    rewrite ^/marketplace-api/(.*)$ /api/v1/marketplace/addons/$1 break;
+    proxy_pass http://$marketplace_manager;
+    add_header Cache-Control "no-store" always;
+    add_header Content-Security-Policy "default-src 'none'; sandbox" always;
+    add_header Content-Disposition "attachment" always;
+    add_header X-Content-Type-Options nosniff always;
+  }
+
+  # Entry points must always be revalidated, otherwise browsers keep running an old shell.
+  # No default-src CSP for the shell itself: API, Grafana and map tile origins come from the
+  # runtime config.json (and addon UIs load from /addon-assets), so a policy would have to be
+  # rendered per deployment. These directives do not depend on any of that.
+  location = /index.html {
+    add_header Cache-Control "no-cache" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Content-Security-Policy "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'" always;
+  }
+
+  location = /config.json {
+    add_header Cache-Control "no-cache" always;
+    add_header X-Content-Type-Options nosniff always;
+  }
+
+  # Content-hashed build output.
+  location /assets/ {
+    add_header Cache-Control "public, max-age=31536000, immutable" always;
+    add_header X-Content-Type-Options nosniff always;
+    # A missing chunk must be a 404, not index.html served as JavaScript.
+    try_files $uri =404;
+  }
+
+  # Client-side routes, including hard refreshes on /addons/<name>/...
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+}

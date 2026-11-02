@@ -1,0 +1,13 @@
+{
+  "name": "__NAME__",
+  "description": "__LABEL__ addon for the Oakestra dashboard.",
+  "services": [
+    {
+      "service_name": "__NAME__-ui",
+      "image": "ghcr.io/your-org/addon-__NAME__-ui:0.1.0",
+      "networks": ["oakestra-net"]
+    }
+  ],
+  "networks": [{ "name": "oakestra-net", "driver": "bridge" }],
+  "ui": { "service": "__NAME__-ui", "sdk": "__SDK_RANGE__" }
+}

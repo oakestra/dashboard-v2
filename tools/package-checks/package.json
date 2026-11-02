@@ -1,0 +1,15 @@
+{
+  "name": "@oakestra/package-checks",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@microsoft/api-extractor": "^7.60.1",
+    "@oakestra/tsconfig": "workspace:*",
+    "@types/node": "^24.19.2",
+    "typescript": "~6.0.3"
+  }
+}

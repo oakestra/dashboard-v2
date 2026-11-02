@@ -1,0 +1,28 @@
+{
+  "name": "@oakestra/mocks",
+  "version": "0.0.0",
+  "private": true,
+  "description": "MSW handlers and fixtures that stand in for the Oakestra system-manager",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./node": "./src/node.ts",
+    "./http": "./src/http-server.ts",
+    "./browser": "./src/browser.ts",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@oakestra/api": "workspace:*",
+    "msw": "^3.0.3"
+  },
+  "devDependencies": {
+    "@oakestra/tsconfig": "workspace:*",
+    "@types/node": "^24.19.2",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.5"
+  }
+}

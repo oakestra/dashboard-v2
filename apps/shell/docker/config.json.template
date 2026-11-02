@@ -1,0 +1,8 @@
+{
+  "apiUrl": "${API_URL}",
+  "uiAddonsUrl": "${UI_ADDONS_URL}",
+  "addonsPollIntervalMs": ${ADDONS_POLL_INTERVAL_MS},
+  "grafanaUrl": "${GRAFANA_URL}",
+  "addonsManagerUrl": "${ADDONS_MANAGER_URL}",
+  "marketplaceUrl": "${MARKETPLACE_URL}"
+}

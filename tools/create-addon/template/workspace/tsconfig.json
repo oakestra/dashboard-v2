@@ -1,0 +1,7 @@
+{
+  "extends": "@oakestra/tsconfig/react.json",
+  "compilerOptions": {
+    "types": ["vite/client", "node", "@oakestra/dashboard-sdk/vite/client"]
+  },
+  "include": ["src", "vite.config.ts", "vitest.config.ts"]
+}
