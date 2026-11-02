@@ -13,6 +13,16 @@ export interface Crumb {
 
 export interface RouteHandle {
   crumb?: string | ((match: UIMatch) => string);
+  /** Drops the layout's centered column for this route and its children, see `pageFullWidth`. */
+  fullWidth?: boolean;
+}
+
+/**
+ * Whether the page fills the width next to the sidebar, from the `fullWidth` of every matched
+ * route, outermost first. The deepest one that sets it decides, so a child can opt back out.
+ */
+export function pageFullWidth(values: readonly (boolean | undefined)[]): boolean {
+  return values.findLast((value) => value !== undefined) ?? false;
 }
 
 export function crumbOf(match: UIMatch): string | null {

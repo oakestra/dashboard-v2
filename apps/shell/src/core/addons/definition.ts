@@ -94,6 +94,7 @@ const routeSchema: z.ZodType<AddonRoute> = z.lazy(() =>
     children: z.array(routeSchema).optional(),
     roles: z.array(z.string()).optional(),
     crumb: z.string().min(1).optional(),
+    fullWidth: z.boolean().optional(),
   }),
 );
 

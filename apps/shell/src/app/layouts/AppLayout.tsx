@@ -8,10 +8,14 @@ import {
   SidebarProvider,
   SidebarRail,
   SidebarTrigger,
+  cn,
 } from '@oakestra/ui';
 import { useCurrentUser } from '@oakestra/dashboard-sdk';
 import { Suspense } from 'react';
-import { Link, Outlet } from 'react-router';
+import { Link, Outlet, useMatches } from 'react-router';
+
+import { ADDON_PAGE_ROUTE_ID, useAddonFullWidth } from '../../core/addons/addon-crumbs';
+import { pageFullWidth, type RouteHandle } from '../../core/router/route-handle';
 
 import { OakestraLogo } from '../../components/OakestraLogo';
 import { AppNav, AppNavFooter } from './AppNav';
@@ -19,11 +23,24 @@ import { Breadcrumbs } from './Breadcrumbs';
 import { OrganizationBadge } from './OrganizationBadge';
 import { UserMenu } from './UserMenu';
 
+/** Whether the current page asked for the full width, with an addon page's own routes included. */
+function useFullWidth(): boolean {
+  const matches = useMatches();
+  const addonMatch = matches.find((match) => match.id === ADDON_PAGE_ROUTE_ID);
+  const addonValues = useAddonFullWidth(addonMatch);
+  return pageFullWidth(
+    matches.flatMap((match) =>
+      match === addonMatch ? addonValues : [(match.handle as RouteHandle | undefined)?.fullWidth],
+    ),
+  );
+}
+
 export function AppLayout() {
   // requireAuth guarantees a user when the layout mounts. When the session ends, the page is
   // unmounted right away instead of re-rendering without a user until the redirect to /login
   // lands, so pages below can rely on useCurrentUser() being set.
   const signedIn = useCurrentUser() !== null;
+  const fullWidth = useFullWidth();
 
   return (
     <SidebarProvider>
@@ -62,8 +79,16 @@ export function AppLayout() {
             <UserMenu />
           </div>
         </header>
-        {/* SidebarInset already is the <main> landmark. Pages share one width and gutter. */}
-        <div className="mx-auto w-full max-w-7xl min-w-0 flex-1 px-4 py-6 md:px-6 md:py-8 lg:px-8">
+        {/* SidebarInset already is the <main> landmark. Pages share one gutter, and one width
+            unless a route asks for all of it (`fullWidth`). */}
+        <div
+          data-testid="page-content"
+          data-width={fullWidth ? 'full' : 'default'}
+          className={cn(
+            'mx-auto w-full min-w-0 flex-1 px-4 py-6 md:px-6 md:py-8 lg:px-8',
+            !fullWidth && 'max-w-7xl',
+          )}
+        >
           <Suspense fallback={null}>{signedIn ? <Outlet /> : null}</Suspense>
         </div>
       </SidebarInset>

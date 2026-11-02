@@ -26,6 +26,13 @@ export interface AddonRoute {
    * matched path. Routes without one add no crumb.
    */
   crumb?: string;
+  /**
+   * Lets the page use the whole width next to the sidebar instead of the shell's centered column,
+   * for pages that are mostly a canvas, editor or split view. Applies to the route's children
+   * too; the deepest matched route that sets it decides, so a child can set `false` again.
+   * Shells that predate this field ignore it and show the page in the centered column.
+   */
+  fullWidth?: boolean;
 }
 
 export interface AddonDefinition {

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { setEntry, type AddonRegistry } from '../../core/addons/addon-registry';
 import type { CoreModule } from '../../core/modules';
+import type { RouteHandle } from '../../core/router/route-handle';
 import { renderApp } from '../../test/render';
 
 const modules: CoreModule[] = [
@@ -11,6 +12,11 @@ const modules: CoreModule[] = [
     label: 'Demo',
     routes: [
       { path: 'infra', element: <h1>Infrastructure</h1>, handle: { crumb: 'Infrastructure' } },
+      {
+        path: 'map',
+        element: <h1>Map</h1>,
+        handle: { crumb: 'Map', fullWidth: true } satisfies RouteHandle,
+      },
     ],
     contributions: {
       'nav.items': [
@@ -98,6 +104,18 @@ describe('<AppLayout>', () => {
     );
     // Root organization: no badge.
     expect(screen.queryByTestId('organization-badge')).not.toBeInTheDocument();
+  });
+
+  it('keeps pages in the centered column unless their route asks for the full width', async () => {
+    const { router } = renderApp({ modules, route: '/infra' });
+    expect(await screen.findByRole('heading', { name: 'Infrastructure' })).toBeVisible();
+    expect(screen.getByTestId('page-content')).toHaveAttribute('data-width', 'default');
+    expect(screen.getByTestId('page-content')).toHaveClass('max-w-7xl');
+
+    await act(() => router.navigate('/map'));
+    expect(await screen.findByRole('heading', { name: 'Map' })).toBeVisible();
+    expect(screen.getByTestId('page-content')).toHaveAttribute('data-width', 'full');
+    expect(screen.getByTestId('page-content')).not.toHaveClass('max-w-7xl');
   });
 
   describe('nested nav items', () => {
@@ -243,6 +261,47 @@ describe('<AppLayout>', () => {
       expect(screen.queryByRole('heading', { name: 'FLOps settings' })).not.toBeInTheDocument();
       // The 403 replaces only the addon page: the layout and its breadcrumb trail stay.
       expect(screen.getByTestId('breadcrumbs')).toHaveTextContent(/^HomeFLOpsSettings$/);
+    });
+
+    it('gives an addon page the full width when its routes ask for it', async () => {
+      const { services, router } = renderApp({ modules, route: '/addons/canvas' });
+      act(() =>
+        setEntry(services.addons, {
+          name: 'canvas',
+          version: '1.0.0',
+          sdk: '^0.1.0',
+          entry: 'http://x/mf-manifest.json',
+          state: 'loaded',
+          definition: {
+            id: 'canvas',
+            routes: [
+              { index: true, Component: () => <Page name="Canvas home" /> },
+              {
+                path: 'board',
+                fullWidth: true,
+                children: [
+                  { index: true, Component: () => <Page name="Board" /> },
+                  { path: 'notes', fullWidth: false, Component: () => <Page name="Notes" /> },
+                ],
+              },
+            ],
+          },
+        }),
+      );
+      const content = () => screen.getByTestId('page-content');
+
+      expect(await screen.findByRole('heading', { name: 'Canvas home' })).toBeVisible();
+      expect(content()).toHaveAttribute('data-width', 'default');
+
+      // Children inherit the flag of their parent route...
+      await act(() => router.navigate('/addons/canvas/board'));
+      expect(await screen.findByRole('heading', { name: 'Board' })).toBeVisible();
+      expect(content()).toHaveAttribute('data-width', 'full');
+
+      // ...unless they set it themselves.
+      await act(() => router.navigate('/addons/canvas/board/notes'));
+      expect(await screen.findByRole('heading', { name: 'Notes' })).toBeVisible();
+      expect(content()).toHaveAttribute('data-width', 'default');
     });
 
     it('opens a role-restricted addon route for users holding the role', async () => {

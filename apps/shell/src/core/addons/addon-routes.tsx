@@ -1,12 +1,15 @@
 import { hasAnyRole, type AddonRoute, type CurrentUser } from '@oakestra/dashboard-sdk';
 import { createContext, useContext, useSyncExternalStore, type ReactNode } from 'react';
-import { Outlet, type RouteObject } from 'react-router';
+import { matchRoutes, Outlet, type RouteMatch, type RouteObject } from 'react-router';
 
 import { AuthSessionContext } from '../auth/auth-context';
+import type { AddonEntry } from './addon-registry';
+import { addonBasePath } from './ui-addons';
 
-/** What an addon route carries into the react-router tree, for the host and the breadcrumbs. */
+/** What an addon route carries into the react-router tree, for the host and the layout. */
 export interface AddonRouteHandle {
   crumb?: string;
+  fullWidth?: boolean;
 }
 
 /** The page shown for a route the user lacks the roles for. Provided by the app. */
@@ -25,8 +28,31 @@ export function addonRouteObjects(routes: readonly AddonRoute[]): RouteObject[] 
   return objects;
 }
 
+/**
+ * The addon routes that `pathname` matches, outermost first. Empty while the addon isn't loaded
+ * and for paths outside its base path or matching none of its routes.
+ *
+ * AddonRouteHost resolves addon routes with useRoutes, so the data router's matches end at
+ * `addons/:addonId/*`. Whatever the layout needs from them (breadcrumbs, page width) is derived
+ * from the same route objects here instead of being published by the host. That keeps it right
+ * while the addon is loading, failed or missing, and needs no cleanup on navigation.
+ */
+export function matchAddonRoutes(
+  addonId: string,
+  pathname: string,
+  entry: AddonEntry | undefined,
+): RouteMatch[] {
+  const base = addonBasePath(addonId);
+  const definition = entry?.state === 'loaded' ? entry.definition : undefined;
+  // react-router matches paths case-insensitively, so `/Addons/example/about` renders the page too.
+  if (!definition?.routes || !pathname.toLowerCase().startsWith(base.toLowerCase())) return [];
+  return (
+    matchRoutes(addonRouteObjects(definition.routes), pathname.slice(base.length) || '/') ?? []
+  );
+}
+
 function toRouteObject(route: AddonRoute): RouteObject {
-  const handle: AddonRouteHandle = { crumb: route.crumb };
+  const handle: AddonRouteHandle = { crumb: route.crumb, fullWidth: route.fullWidth };
   // A route without a component renders its children, like in react-router. The gate wraps that
   // outlet too, which is how a parent's roles also guard every child route.
   const content = route.Component ? <route.Component /> : <Outlet />;

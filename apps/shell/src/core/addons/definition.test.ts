@@ -128,7 +128,7 @@ describe('parseAddonDefinition', () => {
     expect(() => parseAddonDefinition(module, 'flops')).toThrow(/React component/);
   });
 
-  it('keeps the label, route roles and crumbs', () => {
+  it('keeps the label, route roles, crumbs and widths', () => {
     const parsed = parseAddonDefinition(
       {
         default: {
@@ -139,7 +139,8 @@ describe('parseAddonDefinition', () => {
               path: 'admin',
               roles: ['Admin'],
               crumb: 'Admin',
-              children: [{ path: 'jobs', crumb: 'Jobs', Component: Page }],
+              fullWidth: true,
+              children: [{ path: 'jobs', crumb: 'Jobs', fullWidth: false, Component: Page }],
             },
           ],
         },
@@ -149,6 +150,8 @@ describe('parseAddonDefinition', () => {
     expect(parsed.label).toBe('FLOps');
     expect(parsed.routes?.[0]).toMatchObject({ roles: ['Admin'], crumb: 'Admin' });
     expect(parsed.routes?.[0]?.children?.[0]?.crumb).toBe('Jobs');
+    expect(parsed.routes?.[0]?.fullWidth).toBe(true);
+    expect(parsed.routes?.[0]?.children?.[0]?.fullWidth).toBe(false);
   });
 
   it.each([
@@ -156,6 +159,11 @@ describe('parseAddonDefinition', () => {
     ['a label that is not a string', { label: 42 }, /label/],
     ['roles that are not a list', { routes: [{ path: 'a', roles: 'Admin' }] }, /roles/],
     ['an empty crumb', { routes: [{ path: 'a', crumb: '' }] }, /crumb/],
+    [
+      'a fullWidth that is not a boolean',
+      { routes: [{ path: 'a', fullWidth: 'yes' }] },
+      /fullWidth/,
+    ],
     [
       'a crumb function',
       { routes: [{ path: 'a', children: [{ path: 'b', crumb: () => 'B' }] }] },

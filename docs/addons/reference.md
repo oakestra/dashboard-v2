@@ -50,6 +50,7 @@ completion. The object must be the **default export** of the module your build e
 | `children`  | `readonly AddonRoute[]` | Nested routes. The parent component renders them with `<Outlet />` from `react-router`.                                                                             |
 | `roles`     | `readonly Role[]`       | Optional. Only users with at least one of these roles may open the route and its children; others get the shell's "Access denied" page. Empty or missing: everyone. |
 | `crumb`     | `string`                | Optional. Breadcrumb label of the route, linking to its matched path. Routes without one add no breadcrumb.                                                         |
+| `fullWidth` | `boolean`               | Optional. `true` lets the page fill the width next to the sidebar instead of the shell's centered column. Inherited by children; a child can set `false` again.     |
 
 How addon routes behave:
 
@@ -69,6 +70,11 @@ How addon routes behave:
   route, and a child can restrict further. A denied page shows the same "Access denied" page as
   core pages; the sidebar and breadcrumbs stay. For a denied child, it appears in the parent's
   `<Outlet />`. See [Users and roles](#users-and-roles).
+- Pages share the shell's centered column (at most `80rem`, Tailwind's `max-w-7xl`) by default.
+  Set `fullWidth: true` on a route whose page is mostly a canvas, an editor or a split view to
+  give it the whole width next to the sidebar. The deepest matched route that sets `fullWidth`
+  decides, so it applies to children unless they set it too. Shells older than this field ignore
+  it, so the page still works there, just in the centered column.
 
 Nested routes and a lazy page:
 
@@ -127,7 +133,8 @@ fails, the addon gets the state `failed` and nothing of it is shown. It is rejec
 - `id` is missing, empty or differs from the name in `/ui-addons`, or `label` is set but empty,
 - a route `path` starts with `/`, or `Component` is not a React component (a function or a
   `memo`/`lazy`/`forwardRef` object; a JSX element is not caught here and fails when it renders),
-- a route's `roles` is not a list of strings, or its `crumb` is not a non-empty string,
+- a route's `roles` is not a list of strings, its `crumb` is not a non-empty string, or its
+  `fullWidth` is not a boolean,
 - a contribution misses a required field (`id`, `label`/`title`, `component`, `path`), or a field
   has the wrong type (for example `order` that is not a finite number),
 - two contributions **to the same extension point** have the same `id`,

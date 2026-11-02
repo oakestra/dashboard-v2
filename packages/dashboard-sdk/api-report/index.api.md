@@ -41,6 +41,7 @@ export interface AddonRoute {
     // (undocumented)
     Component?: ComponentType;
     crumb?: string;
+    fullWidth?: boolean;
     // (undocumented)
     index?: boolean;
     path?: string;
