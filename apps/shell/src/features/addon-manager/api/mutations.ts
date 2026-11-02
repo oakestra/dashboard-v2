@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useAddonsAdminApi } from '../../../core/addons/addons-admin';
 import { addonManagerKeys } from '../keys';
+import { pendingReviewsFor } from './pending-reviews';
 
 export function useInstallAddon() {
   const { manager } = useAddonsAdminApi();
@@ -101,17 +102,21 @@ export function useRemoveAddon() {
 }
 
 export function useRegisterAddon() {
-  const { marketplace } = useAddonsAdminApi();
+  const api = useAddonsAdminApi();
   const queryClient = useQueryClient();
   const notify = useNotify();
   return useMutation({
-    mutationFn: (input: RegisterAddonInput) => marketplace.register(input),
+    mutationFn: (input: RegisterAddonInput) => api.marketplace.register(input),
     // The dialog shows the reason next to the input.
     meta: { silent: true },
     onSuccess: async (definition) => {
-      notify.success(`Submitted ${definition.name} for review`, {
-        description: 'It is listed in the marketplace once the review approved it.',
-      });
+      if (definition.status === 'under_review') {
+        // useReviewOutcomes (in the layout) polls it and announces the result.
+        pendingReviewsFor(api).add(definition);
+        notify.success(`Submitted ${definition.name} for review`, {
+          description: 'You will be notified when it is listed in the marketplace.',
+        });
+      } else notify.success(`Registered ${definition.name}`);
       await queryClient.invalidateQueries({ queryKey: addonManagerKeys.marketplace() });
     },
   });

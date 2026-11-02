@@ -5,6 +5,7 @@ import { NavLink, Outlet } from 'react-router';
 import { useAddonsAdminApi } from '../../../core/addons/addons-admin';
 import { installedAddonsQuery, marketplaceAddonsQuery } from '../api/queries';
 import { useInstallOutcomeToasts } from '../api/use-install-outcome-toasts';
+import { useReviewOutcomes } from '../api/use-review-outcomes';
 import { useUiAddonsSync } from '../api/use-ui-addons-sync';
 import { INSTALLED_PATH, MARKETPLACE_PATH } from '../paths';
 
@@ -28,6 +29,7 @@ export function AddonManagerLayout() {
   );
   useUiAddonsSync(installed.data);
   useInstallOutcomeToasts(installed.data);
+  useReviewOutcomes();
 
   return (
     <div className="space-y-6">

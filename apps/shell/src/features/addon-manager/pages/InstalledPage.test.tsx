@@ -14,6 +14,9 @@ vi.mock('../api/polling', () => ({
   INSTALLED_POLL_MS: 30,
   INSTALLED_IDLE_POLL_MS: 100,
   STUCK_AFTER_MS: 500,
+  REVIEW_POLL_MS: 30,
+  REVIEW_IDLE_POLL_MS: 100,
+  REVIEW_SLOW_AFTER_MS: 500,
 }));
 
 const base = { sdk: '^0.1.0', entry: 'http://x/mf-manifest.json' };

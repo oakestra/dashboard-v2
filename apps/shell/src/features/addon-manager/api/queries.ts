@@ -4,7 +4,15 @@ import { useEffect, useMemo, useState } from 'react';
 
 import type { AddonsAdminApi } from '../../../core/addons/addons-admin';
 import { addonManagerKeys } from '../keys';
-import { INSTALLED_IDLE_POLL_MS, INSTALLED_POLL_MS, STUCK_AFTER_MS } from './polling';
+import type { PendingReview } from './pending-reviews';
+import {
+  INSTALLED_IDLE_POLL_MS,
+  INSTALLED_POLL_MS,
+  REVIEW_IDLE_POLL_MS,
+  REVIEW_POLL_MS,
+  REVIEW_SLOW_AFTER_MS,
+  STUCK_AFTER_MS,
+} from './polling';
 
 /**
  * Remembers since when this page has seen an addon in its current transitional status. Shared by
@@ -115,5 +123,21 @@ export function marketplaceAddonsQuery(api: AddonsAdminApi) {
     queryKey: addonManagerKeys.marketplace(),
     queryFn: ({ signal }) => api.marketplace.list({ signal }),
     retry: false,
+  });
+}
+
+/**
+ * One definition this page registered, polled until its review is done. `GET /<id>` returns
+ * definitions of any status, unlike the list.
+ */
+export function definitionReviewQuery(api: AddonsAdminApi, review: PendingReview) {
+  return queryOptions({
+    queryKey: addonManagerKeys.review(review.id),
+    queryFn: ({ signal }) => api.marketplace.get(review.id, { signal }),
+    refetchInterval: () =>
+      Date.now() - review.since < REVIEW_SLOW_AFTER_MS ? REVIEW_POLL_MS : REVIEW_IDLE_POLL_MS,
+    // A failed poll waits for the next interval instead of retrying, and never toasts.
+    retry: false,
+    meta: { silent: true },
   });
 }

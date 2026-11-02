@@ -527,7 +527,11 @@ anyway", with a warning that a monitor mid-install may overwrite the status. A f
 poll keeps the table and shows a banner (the query is `silent`, no toast per poll). The layout
 calls `refreshUiAddons` when an addon becomes or stops being `active`. Disable reads the addon
 first and does not send DELETE for one that is already `disabled` (the backend would delete it);
-a 404 on remove counts as removed. Environment values are never rendered, only their names.
+a 404 on remove counts as removed. A definition registered from the page starts `under_review` and is
+not listed yet, so `useReviewOutcomes` (in the layout) polls it by id (`marketplace.get`) until it
+is `approved` or `verification_failed`, then refetches the marketplace and toasts the result; it
+polls every `REVIEW_POLL_MS`, and less often after `REVIEW_SLOW_AFTER_MS`, because a real review
+pulls every image. Environment values are never rendered, only their names.
 Marketplace 422s are flattened by `messageFromErrorBody` into `ui: Unknown field.`; the register
 dialog never shows JSON.parse's message, which quotes the pasted text, only line and column.
 

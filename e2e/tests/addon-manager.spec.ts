@@ -16,6 +16,9 @@ const DISABLE_DELAY_MS = 3000;
 // is the backend delay plus one poll plus slack for a slow CI runner.
 const SHELL_FAST_POLL_MS = 2500;
 const SHELL_IDLE_POLL_MS = 10_000;
+// REVIEW_POLL_MS in the same file.
+const SHELL_REVIEW_POLL_MS = 2500;
+const REVIEW_DELAY_MS = 2000;
 const SLACK_MS = 5000;
 
 const exampleNav = (page: Page) => page.getByTestId('nav-example-main');
@@ -146,6 +149,38 @@ test.describe('addon manager', () => {
     await expect(page.getByTestId('addon-detail')).toBeVisible();
     await expect(page.getByTestId('addon-logs')).toHaveCount(0);
     await expect(page.getByTestId('failed-services')).toHaveCount(0);
+  });
+
+  test('a registered addon appears in the marketplace once approved, without a reload', async ({
+    page,
+  }) => {
+    await addonsManager.setDelays({
+      installDelayMs: COMPOSE_DELAY_MS,
+      disableDelayMs: COMPOSE_DELAY_MS,
+      reviewDelayMs: REVIEW_DELAY_MS,
+    });
+    await page.goto('/addon-manager/marketplace');
+    await expect(page.getByTestId('marketplace-card-example')).toBeVisible();
+    const notReloaded = await markPage(page);
+
+    await page.getByRole('button', { name: 'Register addon' }).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByLabel('Definition (JSON)').fill(
+      JSON.stringify({
+        name: 'e2e-registered',
+        services: [{ service_name: 'main', image: 'ghcr.io/oakestra/e2e-registered:1' }],
+      }),
+    );
+    await dialog.getByRole('button', { name: 'Submit for review' }).click();
+    await expect(page.getByText('Submitted e2e-registered for review')).toBeVisible();
+    await expect(page.getByTestId('marketplace-card-e2e-registered')).toHaveCount(0);
+
+    const reviewTimeout = REVIEW_DELAY_MS + SHELL_REVIEW_POLL_MS + SLACK_MS;
+    await expect(page.getByTestId('marketplace-card-e2e-registered')).toBeVisible({
+      timeout: reviewTimeout,
+    });
+    await expect(page.getByText('e2e-registered is now in the marketplace')).toBeVisible();
+    expect(await notReloaded()).toBe(true);
   });
 });
 

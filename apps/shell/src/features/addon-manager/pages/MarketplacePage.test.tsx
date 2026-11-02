@@ -6,11 +6,15 @@ import { uiAddonsQueryKey } from '../../../core/addons/ui-addons';
 import { mockAddons, mockServer, TEST_MARKETPLACE_URL } from '../../../test/msw';
 import { renderApp } from '../../../test/render';
 import { addonManagerModule } from '../index';
+import { addonManagerKeys } from '../keys';
 
 vi.mock('../api/polling', () => ({
   INSTALLED_POLL_MS: 40,
   INSTALLED_IDLE_POLL_MS: 60_000,
   STUCK_AFTER_MS: 60_000,
+  REVIEW_POLL_MS: 40,
+  REVIEW_IDLE_POLL_MS: 60_000,
+  REVIEW_SLOW_AFTER_MS: 60_000,
 }));
 
 function renderMarketplace(options: Partial<Parameters<typeof renderApp>[0]> = {}) {
@@ -168,26 +172,83 @@ describe('<MarketplacePage>', () => {
     expect(errors).not.toHaveTextContent('oops');
   });
 
+  async function register(user: ReturnType<typeof renderMarketplace>['user'], definition: object) {
+    await user.click(await screen.findByRole('button', { name: 'Register addon' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByLabelText('Definition (JSON)'));
+    await user.paste(JSON.stringify(definition));
+    await user.click(within(dialog).getByRole('button', { name: 'Submit for review' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  }
+
   it('registers a definition, which then waits for review', async () => {
     mockAddons.setDelays({ reviewDelayMs: 60_000 });
     const { user } = renderMarketplace();
-    await user.click(await screen.findByRole('button', { name: 'Register addon' }));
-    const dialog = await screen.findByRole('dialog');
+    await card('example');
 
-    await user.click(within(dialog).getByLabelText('Definition (JSON)'));
-    await user.paste(
-      JSON.stringify({
-        name: 'my-addon',
-        services: [{ service_name: 'main', image: 'ghcr.io/me/x:1' }],
-      }),
-    );
-    await user.click(within(dialog).getByRole('button', { name: 'Submit for review' }));
+    await register(user, {
+      name: 'my-addon',
+      services: [{ service_name: 'main', image: 'ghcr.io/me/x:1' }],
+    });
 
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(mockAddons.state.marketplace.find((a) => a.name === 'my-addon')?.status).toBe(
       'under_review',
     );
     expect(await screen.findByText('Submitted my-addon for review')).toBeVisible();
+    expect(screen.queryByTestId('marketplace-card-my-addon')).not.toBeInTheDocument();
+  });
+
+  it('lists a registered definition once the review approved it, without a reload', async () => {
+    mockAddons.setDelays({ reviewDelayMs: 150 });
+    const { user } = renderMarketplace();
+    await card('example');
+
+    await register(user, {
+      name: 'my-addon',
+      services: [{ service_name: 'main', image: 'ghcr.io/me/x:1' }],
+    });
+
+    expect(await card('my-addon')).toBeVisible();
+    expect(await screen.findByText('my-addon is now in the marketplace')).toBeVisible();
+  });
+
+  it('says so when a registered definition fails the review', async () => {
+    mockAddons.setDelays({ reviewDelayMs: 150 });
+    const { user } = renderMarketplace();
+    await card('example');
+
+    await register(user, {
+      name: 'bad-addon',
+      services: [{ service_name: 'main', image: 'ghcr.io/me/does-not-exist:1' }],
+    });
+
+    expect(await screen.findByText('bad-addon did not pass the review')).toBeVisible();
+    expect(mockAddons.state.marketplace.find((a) => a.name === 'bad-addon')?.status).toBe(
+      'verification_failed',
+    );
+    expect(screen.queryByTestId('marketplace-card-bad-addon')).not.toBeInTheDocument();
+  });
+
+  it('stops waiting for a definition that is deleted while under review', async () => {
+    mockAddons.setDelays({ reviewDelayMs: 60_000 });
+    const { user, services } = renderMarketplace();
+    await card('example');
+    await register(user, {
+      name: 'gone-addon',
+      services: [{ service_name: 'main', image: 'ghcr.io/me/x:1' }],
+    });
+    const definition = mockAddons.state.marketplace.find((a) => a.name === 'gone-addon')!;
+    const review = () =>
+      services.queryClient
+        .getQueryCache()
+        .find({ queryKey: addonManagerKeys.review(definition._id) });
+    await waitFor(() => expect(review()?.getObserversCount()).toBe(1));
+
+    mockAddons.marketplace.remove(definition._id);
+
+    // The next poll gets a 404, which drops the review and with it the polling query.
+    await waitFor(() => expect(review()?.getObserversCount() ?? 0).toBe(0));
+    expect(screen.queryByText(/gone-addon (is now|did not)/)).not.toBeInTheDocument();
   });
 
   it('imports a definition from a file', async () => {

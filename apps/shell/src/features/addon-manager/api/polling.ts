@@ -15,3 +15,12 @@ export const INSTALLED_IDLE_POLL_MS = 10_000;
  * Fast polling stops and an install can be disabled anyway.
  */
 export const STUCK_AFTER_MS = 120_000;
+
+/**
+ * Poll intervals of a definition this page registered while it is `under_review`. The real
+ * review pulls every image and can take minutes, so after `REVIEW_SLOW_AFTER_MS` the page keeps
+ * asking, just less often.
+ */
+export const REVIEW_POLL_MS = 2500;
+export const REVIEW_IDLE_POLL_MS = 15_000;
+export const REVIEW_SLOW_AFTER_MS = 120_000;
