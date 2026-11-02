@@ -14,6 +14,11 @@ const config: StorybookConfig = {
     // react-docgen cannot follow the cva VariantProps types; the TypeScript-based one can, so the
     // controls panel lists `variant` and `size` options.
     reactDocgen: 'react-docgen-typescript',
+    // Only components need docgen. Without this the plugin also tries .storybook/preview.tsx and
+    // warns that it is outside the TypeScript project.
+    reactDocgenTypescriptOptions: {
+      include: ['src/**/*.tsx'],
+    },
   },
   // packages/ui has no vite.config of its own (it ships source), so the plugins the shell uses for
   // these components are added here.
