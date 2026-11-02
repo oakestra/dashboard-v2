@@ -12,7 +12,7 @@ import { createMockHttpServer } from '@oakestra/mocks/http';
 
 /**
  * Mock of the addons-manager AND the marketplace-manager on one port (their paths differ), for the
- * e2e stack and `docker-compose.dev.yml`. The behaviour lives in `@oakestra/mocks` (shared with
+ * e2e stack and `compose.dev.yml`. The behaviour lives in `@oakestra/mocks` (shared with
  * the MSW handlers); this file only serves it over HTTP and adds the `/__test` control API.
  *
  * Endpoints:

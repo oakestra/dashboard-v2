@@ -2,7 +2,7 @@
 # mock addons manager + marketplace instead of the addons engine and a mock system-manager (the @oakestra/mocks
 # handlers served over HTTP) instead of the real backend. Used by the e2e suite:
 #
-#   docker compose -f docker-compose.dev.yml up --build -d
+#   docker compose -f compose.dev.yml up --build -d
 #   pnpm e2e
 name: oakestra-dashboard-dev
 

@@ -35,7 +35,7 @@ React shell that loads addon UIs at runtime through Module Federation.
   real files in `template/{common,workspace,standalone}` with `__NAME__`-style placeholders,
   excluded from ESLint, Prettier and tsc. Changes to the example's build setup or the SDK Vite
   plugin must be mirrored there; `pnpm pack:check` builds an addon generated from it.
-- `e2e`: Playwright suite against `docker-compose.dev.yml`.
+- `e2e`: Playwright suite against `compose.dev.yml`.
 - `docs`: documentation for people, linked from `README.md`: the demo walkthrough (`demo.md`) and
   the addon developer guide (`addons/`). Keep `docs/addons/` in sync with changes to the SDK,
   extension points, addon loading or packaging, and `docs/demo.md` with the compose stack and the
@@ -47,7 +47,7 @@ React shell that loads addon UIs at runtime through Module Federation.
 loading, nginx, Docker or the SDK, also run the e2e suite:
 
 ```sh
-docker compose -f docker-compose.dev.yml up --build -d
+docker compose -f compose.dev.yml up --build -d
 pnpm e2e
 ```
 

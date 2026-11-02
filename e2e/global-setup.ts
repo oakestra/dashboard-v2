@@ -14,7 +14,7 @@ export default async function globalSetup(): Promise<void> {
     } catch (error) {
       throw new Error(
         `${url} is not reachable (${String(error)}). Start the stack first: ` +
-          'docker compose -f docker-compose.dev.yml up --build -d',
+          'docker compose -f compose.dev.yml up --build -d',
       );
     }
   }

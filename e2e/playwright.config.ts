@@ -1,9 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Runs against the production images from docker-compose.dev.yml, which must already be up:
+ * Runs against the production images from compose.dev.yml, which must already be up:
  *
- *   docker compose -f docker-compose.dev.yml up --build -d
+ *   docker compose -f compose.dev.yml up --build -d
  *   pnpm e2e
  */
 export default defineConfig({

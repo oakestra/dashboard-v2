@@ -216,7 +216,7 @@ on this path; the headers your container sends reach the browser.
 
 In the planned Oakestra setup the addons monitor starts the container under the name
 `addonui-<name>`. That part of the real addons engine does not exist yet. In this repository
-the compose file `docker-compose.dev.yml` simply names a service `addonui-example`.
+the compose file `compose.dev.yml` simply names a service `addonui-example`.
 
 ### Dockerfile and nginx config
 
@@ -375,7 +375,7 @@ answers `/ui-addons` in the browser with an empty list.
 
 ### With Docker Compose
 
-`docker-compose.dev.yml` runs production images of the shell, the example addon, the mock
+`compose.dev.yml` runs production images of the shell, the example addon, the mock
 addons manager and the mock system-manager. To add your addon without changing that file, create
 an override file at the repository root, for example `compose.insights.yml`:
 
@@ -391,7 +391,7 @@ Start the stack with both files, then register the addon with the same `curl` co
 (the mock is on host port 11101):
 
 ```sh
-docker compose -f docker-compose.dev.yml -f compose.insights.yml up --build -d
+docker compose -f compose.dev.yml -f compose.insights.yml up --build -d
 ```
 
 The dashboard is on `http://localhost:8080`. The service name is the container's DNS name, which

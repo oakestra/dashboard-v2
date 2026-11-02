@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 
 import { addonsManager, expect, markPage, test, withoutUiAddonsPolling } from './fixtures.ts';
 
-// docker-compose.dev.yml starts the mock with INSTALL_DELAY_MS=500; `reset` keeps delays, so
+// compose.dev.yml starts the mock with INSTALL_DELAY_MS=500; `reset` keeps delays, so
 // tests that change them put this back.
 const COMPOSE_DELAY_MS = 500;
 const COMPOSE_MONITOR_DELAY_MS = 4000;

@@ -42,7 +42,7 @@ deployment. Two small Node servers stand in for the Oakestra backends:
   small `/__test` API that we use below to change addons from the command line.
 
 ```sh
-docker compose -f docker-compose.dev.yml up --build -d
+docker compose -f compose.dev.yml up --build -d
 ```
 
 Open <http://localhost:8080> and log in as `Admin` with the password `Admin`.
@@ -61,7 +61,7 @@ If a port is already taken, change it with the variables `DASHBOARD_PORT`, `MOCK
 Stop the stack when you are done:
 
 ```sh
-docker compose -f docker-compose.dev.yml down
+docker compose -f compose.dev.yml down
 ```
 
 ### Look around
@@ -240,7 +240,7 @@ The [addon developer guide](addons/README.md) explains each of these in detail.
   for the Docker stack set the port variables shown above. An old Vite server on 5173 can serve a
   stale build: stop it before you run `pnpm dev:mock`.
 - **No "Example" entry in the Docker stack.** Check that all four containers run
-  (`docker compose -f docker-compose.dev.yml ps`) and reset the mock with
+  (`docker compose -f compose.dev.yml ps`) and reset the mock with
   `curl -X POST http://localhost:11101/__test/reset`.
 - **No "Example" entry without Docker.** Check that the addon dev server runs on port 5174 and
   that the URL contains the override. The browser console shows `[addons]` messages when loading

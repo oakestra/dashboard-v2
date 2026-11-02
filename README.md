@@ -55,7 +55,7 @@ The fastest way to see the dashboard, including a working addon, is the demo sta
 the dashboard with mock Oakestra backends, so you need nothing but Docker:
 
 ```sh
-docker compose -f docker-compose.dev.yml up --build -d
+docker compose -f compose.dev.yml up --build -d
 ```
 
 Open <http://localhost:8080> and log in as `Admin` with the password `Admin`.
@@ -172,7 +172,7 @@ If you changed the public types of the SDK, `@oakestra/ui` or `@oakestra/api`, a
 Changes to addon loading, nginx, Docker or the SDK also need the end-to-end suite:
 
 ```sh
-docker compose -f docker-compose.dev.yml up --build -d
+docker compose -f compose.dev.yml up --build -d
 pnpm e2e
 ```
 
