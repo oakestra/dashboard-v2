@@ -1,8 +1,5 @@
 import { useCurrentUser, useOakestraApi } from '@oakestra/dashboard-sdk';
 import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
   Badge,
   Button,
   ConfirmDialog,
@@ -24,10 +21,10 @@ import { createDataTableColumnHelper, DataTable } from '@oakestra/ui/data-table'
 import { useQuery } from '@tanstack/react-query';
 import { EllipsisIcon, PencilIcon, PlusIcon, Trash2Icon, UsersIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router';
 
-import { describeError } from '../../../core/api/errors';
+import { QueryErrorAlert } from '../../../components/QueryErrorAlert';
 import { formatDate, formatDateTime, parseLegacyDate } from '../../../lib/format';
+import { useSearchParam } from '../../../lib/use-search-param';
 import { useDeleteUser } from '../api/mutations';
 import { allUsersQuery, organizationUsersQuery } from '../api/queries';
 import { CreateUserDialog } from '../components/CreateUserDialog';
@@ -67,19 +64,8 @@ export function UsersPage() {
   // they are known would overwrite them with just the new selection.
   const rolesKnown = members.isSuccess;
 
-  const [params, setParams] = useSearchParams();
-  const search = params.get('q') ?? '';
-  const roleFilter = params.get('role') ?? ALL_ROLES;
-  const updateParam = (key: string, value: string, empty: string) =>
-    setParams(
-      (previous) => {
-        const next = new URLSearchParams(previous);
-        if (value === empty) next.delete(key);
-        else next.set(key, value);
-        return next;
-      },
-      { replace: true },
-    );
+  const [search, setSearch] = useSearchParam('q');
+  const [roleFilter, setRoleFilter] = useSearchParam('role', ALL_ROLES);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<UserRow | null>(null);
@@ -245,37 +231,19 @@ export function UsersPage() {
       />
 
       {members.isError ? (
-        <Alert variant="destructive">
-          <AlertTitle>Could not load the roles</AlertTitle>
-          <AlertDescription>
-            <p>{describeError(members.error)}</p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-2"
-              onClick={() => void members.refetch()}
-            >
-              Try again
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <QueryErrorAlert
+          title="Could not load the roles"
+          error={members.error}
+          onRetry={() => void members.refetch()}
+        />
       ) : null}
 
       {primary.isError ? (
-        <Alert variant="destructive">
-          <AlertTitle>Could not load the users</AlertTitle>
-          <AlertDescription>
-            <p>{describeError(primary.error)}</p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-2"
-              onClick={() => void primary.refetch()}
-            >
-              Try again
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <QueryErrorAlert
+          title="Could not load the users"
+          error={primary.error}
+          onRetry={() => void primary.refetch()}
+        />
       ) : (
         <DataTable
           label="Users"
@@ -285,7 +253,7 @@ export function UsersPage() {
           isLoading={primary.isPending}
           searchPlaceholder="Search users"
           globalFilter={search}
-          onGlobalFilterChange={(value) => updateParam('q', value, '')}
+          onGlobalFilterChange={(value) => setSearch(value)}
           emptyState={
             rows.length > 0 ? (
               <EmptyState
@@ -293,10 +261,7 @@ export function UsersPage() {
                 title="No users with this role"
                 description="Nobody in your organization has this role yet."
                 action={
-                  <Button
-                    variant="outline"
-                    onClick={() => updateParam('role', ALL_ROLES, ALL_ROLES)}
-                  >
+                  <Button variant="outline" onClick={() => setRoleFilter(ALL_ROLES)}>
                     Clear filter
                   </Button>
                 }
@@ -310,10 +275,7 @@ export function UsersPage() {
             )
           }
           toolbar={
-            <Select
-              value={roleFilter}
-              onValueChange={(value) => updateParam('role', value, ALL_ROLES)}
-            >
+            <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value)}>
               <SelectTrigger aria-label="Filter by role" className="w-full sm:w-52">
                 <SelectValue />
               </SelectTrigger>

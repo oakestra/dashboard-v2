@@ -1,6 +1,7 @@
 import { parseClusterLocation, type Cluster } from '@oakestra/api';
 
 import { LocationMap, toMapLocation } from '../../../components/LocationMap';
+import { plural } from '../../../lib/format';
 
 /** Map of the clusters with a usable location; says how many had to be left out. */
 export function ClusterMap({
@@ -41,7 +42,7 @@ export function ClusterMap({
       )}
       {skipped > 0 && locations.length > 0 ? (
         <p className="text-muted-foreground text-xs" data-testid="map-skipped">
-          {skipped === 1 ? '1 cluster' : `${skipped} clusters`} not shown: no valid location.
+          {plural(skipped, 'cluster')} not shown: no valid location.
         </p>
       ) : null}
     </div>

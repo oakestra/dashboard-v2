@@ -24,6 +24,10 @@ export type SlotProps<P extends RenderablePointId> = {
   empty?: ReactNode;
 } & ContextProp<P>;
 
+// Shared so a slot without context passes the same object every render; a fresh `{}` would
+// defeat the memo in useContributions.
+const NO_CONTEXT: EmptyContext = Object.freeze({});
+
 function labelOf(item: object): string {
   for (const key of ['title', 'label'] as const) {
     if (key in item) {
@@ -36,7 +40,7 @@ function labelOf(item: object): string {
 
 export function Slot<P extends RenderablePointId>(props: SlotProps<P>) {
   const { point, render, empty = null } = props;
-  const context = props.context ?? {};
+  const context = props.context ?? NO_CONTEXT;
   const contributions = useContributions(point, context);
 
   if (contributions.length === 0) return <>{empty}</>;

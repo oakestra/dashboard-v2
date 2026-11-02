@@ -5,9 +5,10 @@ import { requireRole } from '../../core/auth/guards';
 import type { CoreModule } from '../../core/modules';
 import type { RouteHandle } from '../../core/router/route-handle';
 
-export { addonManagerKeys } from './keys';
+import { INSTALLED_PATH, MARKETPLACE_PATH } from './paths';
 
-export const INSTALLED_PATH = '/addon-manager/installed';
+export { addonManagerKeys } from './keys';
+export { INSTALLED_PATH, MARKETPLACE_PATH, installedAddonLink } from './paths';
 
 const requireAdmin = requireRole('Admin');
 
@@ -61,7 +62,7 @@ export const addonManagerModule: CoreModule = {
         roles: ['Admin'],
         children: [
           { id: 'installed', label: 'Installed', path: INSTALLED_PATH },
-          { id: 'marketplace', label: 'Marketplace', path: '/addon-manager/marketplace' },
+          { id: 'marketplace', label: 'Marketplace', path: MARKETPLACE_PATH },
         ],
       },
     ],

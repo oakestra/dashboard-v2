@@ -1,16 +1,8 @@
 import { useCurrentUser, useOakestraApi } from '@oakestra/dashboard-sdk';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-  Button,
-  PageHeader,
-  SectionCard,
-  Skeleton,
-} from '@oakestra/ui';
+import { PageHeader, SectionCard, Skeleton } from '@oakestra/ui';
 import { useQuery } from '@tanstack/react-query';
 
-import { describeError } from '../../../core/api/errors';
+import { QueryErrorAlert } from '../../../components/QueryErrorAlert';
 import { profileQuery } from '../api/queries';
 import { AccountCard } from '../components/AccountCard';
 import { ChangePasswordDialog } from '../components/ChangePasswordDialog';
@@ -32,20 +24,11 @@ export function ProfilePage() {
           <Skeleton className="h-56 w-full" />
         </div>
       ) : profile.isError ? (
-        <Alert variant="destructive">
-          <AlertTitle>Could not load your profile</AlertTitle>
-          <AlertDescription>
-            <p>{describeError(profile.error)}</p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-2"
-              onClick={() => void profile.refetch()}
-            >
-              Try again
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <QueryErrorAlert
+          title="Could not load your profile"
+          error={profile.error}
+          onRetry={() => void profile.refetch()}
+        />
       ) : (
         <>
           <div className="grid items-start gap-4 lg:grid-cols-2">

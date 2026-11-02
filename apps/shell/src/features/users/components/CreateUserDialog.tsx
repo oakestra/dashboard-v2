@@ -23,13 +23,10 @@ import { z } from 'zod';
 
 import { CopyButton } from '../../../components/CopyButton';
 import { describeError } from '../../../core/api/errors';
+import { downloadText } from '../../../lib/download';
+import { formatLegacyDate } from '../../../lib/format';
 import { useCreateUser } from '../api/mutations';
-import {
-  downloadTextFile,
-  formatCredentials,
-  generatePassword,
-  type Credentials,
-} from '../credentials';
+import { formatCredentials, generatePassword, type Credentials } from '../credentials';
 import { RoleSelect } from './RoleSelect';
 
 const schema = z.object({
@@ -41,12 +38,6 @@ const schema = z.object({
 
 type FormValues = z.input<typeof schema>;
 const EMPTY: FormValues = { name: '', email: '', password: '', roles: [] };
-
-/** The old dashboard sent `dd/mm/yyyy hh:mm`; other tools parse that format, so keep it. */
-function formatCreatedAt(date: Date): string {
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
 
 interface CreateUserDialogProps {
   open: boolean;
@@ -69,7 +60,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
 
   const onValid = (values: z.output<typeof schema>) => {
     create.mutate(
-      { ...values, name: values.name.trim(), created_at: formatCreatedAt(new Date()) },
+      { ...values, name: values.name.trim(), created_at: formatLegacyDate(new Date()) },
       {
         // The password is only known here; the credentials view is the one chance to hand it over.
         onSuccess: () =>
@@ -110,7 +101,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
               <Button
                 variant="outline"
                 onClick={() =>
-                  downloadTextFile(`oakestra-${created.username}.txt`, formatCredentials(created))
+                  downloadText(`oakestra-${created.username}.txt`, formatCredentials(created))
                 }
               >
                 <DownloadIcon aria-hidden />

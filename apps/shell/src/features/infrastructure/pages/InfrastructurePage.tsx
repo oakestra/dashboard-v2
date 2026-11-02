@@ -1,14 +1,5 @@
 import { useOakestraApi } from '@oakestra/dashboard-sdk';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-  Button,
-  PageHeader,
-  SectionCard,
-  Skeleton,
-  StatCard,
-} from '@oakestra/ui';
+import { Button, PageHeader, SectionCard, Skeleton, StatCard } from '@oakestra/ui';
 import { useQuery } from '@tanstack/react-query';
 import {
   CpuIcon,
@@ -19,14 +10,14 @@ import {
   ServerIcon,
 } from 'lucide-react';
 
-import { describeError } from '../../../core/api/errors';
+import { QueryErrorAlert } from '../../../components/QueryErrorAlert';
 import { useAppConfig } from '../../../core/config/config-context';
 import { formatBytes } from '../../../lib/format';
 import { clustersQuery } from '../api/queries';
 import { ClusterMap } from '../components/ClusterMap';
 import { ClustersEmptyState } from '../components/ClustersEmptyState';
 import { ClusterTable } from '../components/ClusterTable';
-import { summarize } from '../lib';
+import { clusterTotals } from '../lib';
 
 export function InfrastructurePage() {
   const api = useOakestraApi();
@@ -65,20 +56,11 @@ export function InfrastructurePage() {
           <Skeleton className="h-72 w-full" />
         </div>
       ) : clusters.isError ? (
-        <Alert variant="destructive">
-          <AlertTitle>Could not load clusters</AlertTitle>
-          <AlertDescription>
-            <p>{describeError(clusters.error)}</p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-2"
-              onClick={() => void clusters.refetch()}
-            >
-              Try again
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <QueryErrorAlert
+          title="Could not load clusters"
+          error={clusters.error}
+          onRetry={() => void clusters.refetch()}
+        />
       ) : clusters.data.length === 0 ? (
         <ClustersEmptyState />
       ) : (
@@ -88,8 +70,8 @@ export function InfrastructurePage() {
   );
 }
 
-function Loaded({ clusters }: { clusters: Parameters<typeof summarize>[0] }) {
-  const totals = summarize(clusters);
+function Loaded({ clusters }: { clusters: Parameters<typeof clusterTotals>[0] }) {
+  const totals = clusterTotals(clusters);
   const showGpu = totals.gpuCores > 0;
   return (
     <>

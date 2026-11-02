@@ -6,12 +6,7 @@ import { deleteEntries, setEntry, type AddonEntry, type AddonRegistry } from './
 import { parseAddonDefinition } from './definition';
 import type { AddonModuleRuntime } from './federation-runtime';
 import { checkSdkCompatibility } from './sdk-compat';
-import { addonBasePath, type UiAddon } from './ui-addons';
-
-/** A /ui-addons entry plus the manifest URL it will be loaded from. */
-export interface ResolvedAddon extends UiAddon {
-  entry: string;
-}
+import { addonSource, type ResolvedAddon, type UiAddon } from './ui-addons';
 
 export interface AddonLoaderDeps {
   sdkVersion: string;
@@ -52,21 +47,18 @@ export function createAddonLoader(deps: AddonLoaderDeps): AddonLoader {
       const definition = parseAddonDefinition(module, addon.name);
       if (currentLoads.get(addon.name) !== token) return;
 
-      const basePath = addonBasePath(addon.name);
-      contributions.getState().register(
-        {
-          kind: 'addon',
-          id: addon.name,
-          label: `addon "${addon.name}"`,
-          addon: { addonId: addon.name, version: addon.version, basePath },
-        },
-        resolveAddonContributions(definition, basePath),
-      );
+      const source = addonSource(addon);
+      contributions
+        .getState()
+        .register(source, resolveAddonContributions(definition, source.addon.basePath));
       setEntry(addons, { ...addon, state: 'loaded', definition });
     } catch (error) {
       if (currentLoads.get(addon.name) !== token) return;
       console.error(`[addons] failed to load "${addon.name}"`, error);
-      setEntry(addons, { ...addon, state: 'failed', error: errorMessage(error) });
+      const failed: FailedEntry = { ...addon, state: 'failed', error: errorMessage(error) };
+      // Failed addons are retried on every poll. Writing an identical entry would still hand out
+      // a new `entries` object each time and re-render everything that selects it.
+      if (!sameFailure(addons.getState().entries[addon.name], failed)) setEntry(addons, failed);
     } finally {
       if (currentLoads.get(addon.name) === token) currentLoads.delete(addon.name);
     }
@@ -127,11 +119,20 @@ export function createAddonLoader(deps: AddonLoaderDeps): AddonLoader {
   return { sync };
 }
 
+type FailedEntry = Extract<AddonEntry, { state: 'failed' }>;
+
+function sameFailure(current: AddonEntry | undefined, next: FailedEntry): boolean {
+  return (
+    current?.state === 'failed' &&
+    current.version === next.version &&
+    current.sdk === next.sdk &&
+    current.entry === next.entry &&
+    current.error === next.error
+  );
+}
+
 /** Addon nav paths are written relative to the addon; the registry stores absolute paths. */
-export function resolveAddonContributions(
-  definition: AddonDefinition,
-  basePath: string,
-): Contributions {
+function resolveAddonContributions(definition: AddonDefinition, basePath: string): Contributions {
   const contributions = definition.contributions ?? {};
   const navItems = contributions['nav.items'];
   if (!navItems) return contributions;

@@ -1,8 +1,6 @@
 import { useOakestraApi } from '@oakestra/dashboard-sdk';
 import {
   Alert,
-  AlertDescription,
-  AlertTitle,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -33,11 +31,12 @@ import {
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useRevalidator } from 'react-router';
 
-import { describeError } from '../../../core/api/errors';
+import { QueryErrorAlert } from '../../../components/QueryErrorAlert';
 import { Slot } from '../../../core/extensions/Slot';
 import { useContributions } from '../../../core/extensions/use-contributions';
+import { plural } from '../../../lib/format';
 import {
-  isTransitionalStatus,
+  isUndeployed,
   servicesByApplicationQuery,
   useDeployAll,
   usePollWhileTransitional,
@@ -74,29 +73,18 @@ export function ApplicationDetailPage() {
   }
   if (application.isError) {
     return (
-      <Alert variant="destructive">
-        <AlertTitle>Could not load the application</AlertTitle>
-        <AlertDescription>
-          <p>{describeError(application.error)}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="mt-2"
-            onClick={() => void application.refetch()}
-          >
-            Try again
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <QueryErrorAlert
+        title="Could not load the application"
+        error={application.error}
+        onRetry={() => void application.refetch()}
+      />
     );
   }
 
   const app = application.data;
   // The backend marks a service REQUESTED right away but only adds the instance once it is
   // scheduled, so an empty instance list alone would let a second click deploy it again.
-  const undeployed = (services.data ?? []).filter(
-    (service) => service.instance_list.length === 0 && !isTransitionalStatus(service.status),
-  );
+  const undeployed = (services.data ?? []).filter(isUndeployed);
 
   const health = applicationHealth(services.data ?? []);
   const canDeploy = undeployed.length > 0 && !deployAll.isPending;
@@ -106,12 +94,11 @@ export function ApplicationDetailPage() {
   // tried and needs a retry, which is what deploying it again does.
   const stuck = undeployed.filter((service) => service.status !== undefined).length;
   const onlyStuck = undeployed.length > 0 && stuck === undeployed.length;
-  const noun = (count: number) => `${count} ${count === 1 ? 'service' : 'services'}`;
   const bannerText = onlyStuck
-    ? `${noun(stuck)} could not be scheduled.`
+    ? `${plural(stuck, 'service')} could not be scheduled.`
     : stuck > 0
-      ? `${noun(undeployed.length - stuck)} not deployed yet, ${stuck} could not be scheduled.`
-      : `${noun(undeployed.length)} ${undeployed.length === 1 ? 'is' : 'are'} not deployed yet.`;
+      ? `${plural(undeployed.length - stuck, 'service')} not deployed yet, ${stuck} could not be scheduled.`
+      : `${plural(undeployed.length, 'service')} ${undeployed.length === 1 ? 'is' : 'are'} not deployed yet.`;
 
   const servicesPanel = (
     <div className="space-y-3">
@@ -137,20 +124,11 @@ export function ApplicationDetailPage() {
         </Alert>
       ) : null}
       {services.isError ? (
-        <Alert variant="destructive">
-          <AlertTitle>Could not load the services</AlertTitle>
-          <AlertDescription>
-            <p>{describeError(services.error)}</p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-2"
-              onClick={() => void services.refetch()}
-            >
-              Try again
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <QueryErrorAlert
+          title="Could not load the services"
+          error={services.error}
+          onRetry={() => void services.refetch()}
+        />
       ) : (
         <ServicesTable
           applicationId={app._id}

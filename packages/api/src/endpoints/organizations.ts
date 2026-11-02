@@ -13,7 +13,10 @@ const organizationList = lenientArray(organizationSchema, 'organizations');
 export interface OrganizationEndpoints {
   list(options?: RequestOptions): Promise<Organization[]>;
   create(organization: OrganizationInput): Promise<Organization>;
-  /** Replaces name and member list. */
+  /**
+   * Replaces name and member list: the backend `$set`s both, so a missing `name` would null it.
+   * Members are sent as `{user_id, roles}` only, so fetched members can be passed back as they are.
+   */
   update(organizationId: string, organization: OrganizationInput): Promise<void>;
   delete(organizationId: string): Promise<void>;
 }
@@ -36,7 +39,10 @@ export function createOrganizationEndpoints(client: OakestraClient): Organizatio
       await send({ method: 'PUT', path: `/organization/${organizationId}` }, () =>
         client.PUT('/organization/{organizationid}', {
           params: { path: { organizationid: organizationId } },
-          body: body(organization),
+          body: body({
+            name: organization.name,
+            member: organization.member.map(({ user_id, roles }) => ({ user_id, roles })),
+          }),
         }),
       );
     },

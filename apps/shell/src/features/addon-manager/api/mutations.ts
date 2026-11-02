@@ -3,7 +3,6 @@ import { useNotify } from '@oakestra/dashboard-sdk';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useAddonsAdminApi } from '../../../core/addons/addons-admin';
-import { useRefreshUiAddons } from '../../../core/addons/use-refresh-ui-addons';
 import { addonManagerKeys } from '../keys';
 
 export function useInstallAddon() {
@@ -20,8 +19,9 @@ export function useInstallAddon() {
       notify.info(`Installing ${addon.name}`, {
         description: 'You will be notified when it is active or if it fails.',
       });
-      // Both lists show the new status ("Installed" badge on the card, a row in the table).
-      await queryClient.invalidateQueries({ queryKey: addonManagerKeys.all });
+      // The marketplace itself is unchanged: its "Installed" badges come from the installed list
+      // too, like the new row in the table.
+      await queryClient.invalidateQueries({ queryKey: addonManagerKeys.installed() });
     },
   });
 }
@@ -34,6 +34,9 @@ const isNotFound = (error: unknown) => isApiError(error) && error.status === 404
 /**
  * First DELETE: the addon moves to `disabling` and ends `disabled` on its own.
  *
+ * `/ui-addons` is not refetched here: useUiAddonsSync in the layout does that as soon as the
+ * refetched list shows the addon is no longer `active`.
+ *
  * The backend deletes the record when it receives a DELETE for an addon that is already
  * `disabled`, so a stale row ("Disable" clicked while the list still says active) could remove
  * an addon the person only wanted to stop. The current status is read first for that reason; the
@@ -42,7 +45,6 @@ const isNotFound = (error: unknown) => isApiError(error) && error.status === 404
 export function useDisableAddon() {
   const { manager } = useAddonsAdminApi();
   const queryClient = useQueryClient();
-  const refreshUiAddons = useRefreshUiAddons();
   const notify = useNotify();
   return useMutation({
     mutationFn: async (addon: { id: string; name: string }): Promise<DisableOutcome> => {
@@ -66,11 +68,7 @@ export function useDisableAddon() {
       } else if (outcome === 'removed') {
         notify.info(`${addon.name} had finished disabling and was removed`);
       } else notify.info(`${addon.name} no longer exists`);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: addonManagerKeys.installed() }),
-        // Its UI is gone as soon as the containers stop; do not wait for the next poll.
-        refreshUiAddons(),
-      ]);
+      await queryClient.invalidateQueries({ queryKey: addonManagerKeys.installed() });
     },
   });
 }

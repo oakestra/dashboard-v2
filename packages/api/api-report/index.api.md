@@ -239,12 +239,31 @@ export const clusterSchema: z.ZodObject<{
     total_cpu_cores: z.ZodCatch<z.ZodOptional<z.ZodPipe<z.ZodUnion<readonly [z.ZodNumber, z.ZodString]>, z.ZodTransform<number, string | number>>>>;
     total_gpu_cores: z.ZodCatch<z.ZodOptional<z.ZodPipe<z.ZodUnion<readonly [z.ZodNumber, z.ZodString]>, z.ZodTransform<number, string | number>>>>;
     gpu_percent: z.ZodCatch<z.ZodOptional<z.ZodPipe<z.ZodUnion<readonly [z.ZodNumber, z.ZodString]>, z.ZodTransform<number, string | number>>>>;
+    gpu_temp: z.ZodCatch<z.ZodOptional<z.ZodPipe<z.ZodUnion<readonly [z.ZodNumber, z.ZodString]>, z.ZodTransform<number, string | number>>>>;
     vram: z.ZodCatch<z.ZodOptional<z.ZodPipe<z.ZodUnion<readonly [z.ZodNumber, z.ZodString]>, z.ZodTransform<number, string | number>>>>;
+    vram_percent: z.ZodCatch<z.ZodOptional<z.ZodPipe<z.ZodUnion<readonly [z.ZodNumber, z.ZodString]>, z.ZodTransform<number, string | number>>>>;
+    vcpus: z.ZodCatch<z.ZodOptional<z.ZodPipe<z.ZodUnion<readonly [z.ZodNumber, z.ZodString]>, z.ZodTransform<number, string | number>>>>;
     ip: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
     port: z.ZodCatch<z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>>;
     virtualization: z.ZodPipe<z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>, z.ZodTransform<string[], string[]>>;
-    csi_drivers: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodUnknown>>>, z.ZodTransform<unknown[], unknown[] | null | undefined>>;
-    supported_addons: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodUnknown>>>, z.ZodTransform<unknown[], unknown[] | null | undefined>>;
+    csi_drivers: z.ZodCatch<z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodCatch<z.ZodUnion<readonly [z.ZodString, z.ZodPipe<z.ZodObject<{
+        name: z.ZodString;
+    }, z.core.$loose>, z.ZodTransform<string, {
+        [x: string]: unknown;
+        name: string;
+    }>>]>>>>>, z.ZodTransform<string[], string[] | null | undefined>>>;
+    gpu_drivers: z.ZodCatch<z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodCatch<z.ZodUnion<readonly [z.ZodString, z.ZodPipe<z.ZodObject<{
+        name: z.ZodString;
+    }, z.core.$loose>, z.ZodTransform<string, {
+        [x: string]: unknown;
+        name: string;
+    }>>]>>>>>, z.ZodTransform<string[], string[] | null | undefined>>>;
+    supported_addons: z.ZodCatch<z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodCatch<z.ZodUnion<readonly [z.ZodString, z.ZodPipe<z.ZodObject<{
+        name: z.ZodString;
+    }, z.core.$loose>, z.ZodTransform<string, {
+        [x: string]: unknown;
+        name: string;
+    }>>]>>>>>, z.ZodTransform<string[], string[] | null | undefined>>>;
     cpu_history: z.ZodPipe<z.ZodOptional<z.ZodPipe<z.ZodArray<z.ZodUnknown>, z.ZodTransform<{
         [x: string]: unknown;
         timestamp: Date;

@@ -1,4 +1,4 @@
-import type { Service, SlaMicroservice } from '@oakestra/api';
+import { slaMicroserviceSchema, type Service, type SlaMicroservice } from '@oakestra/api';
 
 import {
   defaultServiceValues,
@@ -179,50 +179,41 @@ export function fromSlaMicroservice(ms: SlaMicroservice | Raw): ServiceFormValue
 const ROUND_ROBIN_KEYS = ['rr_ip', 'rr_ip_v6', 'RR_ip', 'RR_ip_v6'];
 
 /** Drops the allocated round-robin addresses, keeping closest IPs and instance addresses. */
-export function withoutRoundRobinIps(addresses: Service['addresses']): Raw | undefined {
+function withoutRoundRobinIps(addresses: Service['addresses']): Raw | undefined {
   if (!addresses) return undefined;
   return Object.fromEntries(
     Object.entries(addresses as Raw).filter(([key]) => !ROUND_ROBIN_KEYS.includes(key)),
   );
 }
 
+// `microserviceID` names the stored service; the backend rejects it on create.
+const SLA_FIELDS = Object.keys(slaMicroserviceSchema.shape).filter(
+  (key) => key !== 'microserviceID',
+);
+
 /**
- * Prefills the form from an existing service. The service document carries runtime state
- * (instances, status, ids) that must never be sent back, so only SLA fields are taken over and
- * `extra` is limited to volumes.
+ * The SLA microservice a stored service was created from. The service document also carries
+ * runtime state (instances, status, ids, job names) that the backend would reject or ignore, so
+ * only the fields of the SLA schema are taken over.
  */
+export function serviceToSlaMicroservice(service: Service): SlaMicroservice {
+  const microservice: Raw = {};
+  for (const key of SLA_FIELDS) {
+    const value = (service as Raw)[key];
+    if (value !== undefined && value !== null) microservice[key] = value;
+  }
+  // The round-robin address belongs to the original: net-manager refuses a second service with
+  // the same one, so a copy or an import elsewhere has to ask for a fresh address (or none). The
+  // backend stores it as RR_ip as well as rr_ip, which is why neither spelling may survive.
+  if (microservice.addresses) microservice.addresses = withoutRoundRobinIps(service.addresses);
+  return microservice as SlaMicroservice;
+}
+
+/** Prefills the form from an existing service, under a new name. */
 export function fromService(service: Service, nameSuffix = 'copy'): ServiceFormValues {
-  const raw = service as Raw;
   const values = fromSlaMicroservice({
-    microservice_name: service.microservice_name,
-    microservice_namespace: service.microservice_namespace,
-    virtualization: service.virtualization,
-    arch: raw.arch,
+    ...serviceToSlaMicroservice(service),
     code: service.code ?? service.image,
-    state: service.state,
-    port: service.port,
-    memory: service.memory,
-    vcpus: service.vcpus,
-    vgpus: service.vgpus,
-    vtpus: service.vtpus,
-    bandwidth_in: service.bandwidth_in,
-    bandwidth_out: service.bandwidth_out,
-    storage: service.storage,
-    cmd: service.cmd,
-    args: service.args,
-    environment: service.environment,
-    added_files: service.added_files,
-    one_shot: raw.one_shot,
-    privileged: raw.privileged,
-    sla_violation_strategy: raw.sla_violation_strategy,
-    target_node: raw.target_node,
-    // The round-robin address belongs to the original: net-manager refuses a second service
-    // with the same one, so a copy has to ask for a fresh address (or none). The backend stores
-    // it as RR_ip as well as rr_ip, which is why neither spelling may survive.
-    addresses: withoutRoundRobinIps(service.addresses),
-    constraints: service.constraints,
-    connectivity: service.connectivity,
-    volumes: raw.volumes,
   });
   // Names only allow letters and digits, so a "-copy" suffix would fail validation.
   values.name = `${values.name.slice(0, 32 - nameSuffix.length)}${nameSuffix}`;

@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { createContributionRegistry, selectContributions } from '../extensions/registry';
 import { createAddonRegistry } from './addon-registry';
 import type { AddonModuleRuntime } from './federation-runtime';
-import { createAddonLoader, type ResolvedAddon } from './loader';
+import { createAddonLoader } from './loader';
+import type { ResolvedAddon } from './ui-addons';
 
 const Widget = () => null;
 
@@ -136,6 +137,22 @@ describe('addon loader', () => {
     await loader.sync([addon('flops')]);
     expect(runtime.register).toHaveBeenCalledTimes(2);
     expect(entry('flops')?.state).toBe('loaded');
+  });
+
+  it('leaves the registry untouched when a retry fails the same way', async () => {
+    let attempts = 0;
+    const { addons, loader, entry } = setup(() => {
+      attempts += 1;
+      return Promise.reject(new Error(attempts < 3 ? '502 Bad Gateway' : '504 Gateway Timeout'));
+    });
+
+    await loader.sync([addon('flops')]);
+    const entries = addons.getState().entries;
+    await loader.sync([addon('flops')]);
+    expect(addons.getState().entries).toBe(entries);
+
+    await loader.sync([addon('flops')]);
+    expect(entry('flops')).toMatchObject({ state: 'failed', error: '504 Gateway Timeout' });
   });
 
   it('keeps showing the previous failure while a retry is in flight', async () => {

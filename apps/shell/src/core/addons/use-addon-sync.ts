@@ -2,6 +2,7 @@ import { SDK_VERSION } from '@oakestra/dashboard-sdk';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
 
+import { useAuthState } from '../auth/auth-context';
 import { useAppConfig } from '../config/config-context';
 import { useContributionRegistry } from '../extensions/registry-context';
 import { notifyReloadRequired } from '../notify/notify';
@@ -37,9 +38,14 @@ export function useAddonSync(): void {
   // Read once per page load: overrides only change through the URL, which reloads the page anyway.
   const overrides = useMemo(() => getDevOverrides(), []);
 
+  // Addon UIs only render behind requireAuth, so the login and password reset pages neither poll
+  // nor run addon code next to the password field.
+  const authenticated = useAuthState((state) => state.status === 'authenticated');
+
   const query = useQuery({
     queryKey: uiAddonsQueryKey,
     queryFn: ({ signal }) => fetchUiAddons(config.uiAddonsUrl, signal),
+    enabled: authenticated,
     refetchInterval: config.addonsPollIntervalMs,
     retry: false,
     // Unavailability is an expected state (addons engine not installed), not an error to toast.

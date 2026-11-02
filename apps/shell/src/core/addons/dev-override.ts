@@ -1,5 +1,4 @@
-import { ADDON_NAME_PATTERN, addonEntryUrl, type UiAddon } from './ui-addons';
-import type { ResolvedAddon } from './loader';
+import { ADDON_NAME_PATTERN, addonEntryUrl, type ResolvedAddon, type UiAddon } from './ui-addons';
 
 /** Addon name -> manifest URL of a local dev server. */
 export type AddonOverrides = Readonly<Record<string, string>>;

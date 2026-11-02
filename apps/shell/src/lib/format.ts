@@ -12,6 +12,18 @@ export function formatBytes(bytes: number | null | undefined, fractionDigits = 1
   return `${trimTrailingZeros(value.toFixed(fractionDigits))} ${BYTE_UNITS[exponent]}`;
 }
 
+export const BYTES_PER_MB = 1024 * 1024;
+
+/** `formatBytes` for the megabyte figures the backend uses for memory requirements and VRAM. */
+export function formatMegabytes(mb: number | null | undefined, fractionDigits = 1): string {
+  return formatBytes(mb === null || mb === undefined ? mb : mb * BYTES_PER_MB, fractionDigits);
+}
+
+/** "1 service", "3 services". */
+export function plural(count: number, singular: string, pluralForm = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : pluralForm}`;
+}
+
 /** Formats a value that is already a percentage (`42.5` becomes `42.5%`), not a 0..1 ratio. */
 export function formatPercent(value: number | null | undefined, fractionDigits = 1): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return '-';
@@ -66,6 +78,15 @@ export function parseLegacyDate(value: string | null | undefined): Date | undefi
   if (!/^\d{4}-\d{2}-\d{2}/.test(text)) return undefined;
   const iso = new Date(text);
   return Number.isNaN(iso.getTime()) ? undefined : iso;
+}
+
+/**
+ * Writes the `dd/mm/yyyy hh:mm` form `parseLegacyDate` reads. The backend stores user creation
+ * dates that way and other tools parse it, so new users keep it.
+ */
+export function formatLegacyDate(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 const dayFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' });

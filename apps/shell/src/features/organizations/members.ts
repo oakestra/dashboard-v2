@@ -2,7 +2,7 @@ import { ROOT_ORGANIZATION_NAME, type Organization, type OrganizationMember } fr
 
 const ADMIN = 'Admin';
 
-function adminCount(organization: Organization): number {
+export function adminCount(organization: Organization): number {
   return organization.member.filter((member) => member.roles.includes(ADMIN)).length;
 }
 

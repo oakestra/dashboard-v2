@@ -105,13 +105,7 @@ function LinkTarget({ index, targets }: { index: number; targets: Target[] }) {
   );
 }
 
-export function ConnectivitySection({
-  applicationId,
-  hasError,
-}: {
-  applicationId: string;
-  hasError: boolean;
-}) {
+export function ConnectivitySection({ applicationId }: { applicationId: string }) {
   const api = useOakestraApi();
   const { control } = useFormContext<ServiceFormValues>();
   const { fields, append, remove } = useFieldArray({ control, name: 'connectivity' });
@@ -129,7 +123,6 @@ export function ConnectivitySection({
       collapsible
       defaultOpen={fields.length > 0}
       summary={count(fields.length, 'connection')}
-      hasError={hasError}
     >
       <div className="space-y-4">
         {fields.map((item, index) => (

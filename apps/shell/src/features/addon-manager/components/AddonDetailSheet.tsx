@@ -18,6 +18,7 @@ import { PowerOffIcon, Trash2Icon } from 'lucide-react';
 
 import type { AddonEntry } from '../../../core/addons/addon-registry';
 import { CopyButton } from '../../../components/CopyButton';
+import { addonAction, type AddonAction } from '../addon-action';
 import { AddonStatusBadge } from './AddonStatusBadge';
 import { DashboardUiBadge, dashboardUiProblem } from './DashboardUiBadge';
 import { DefinitionDetails } from './DefinitionDetails';
@@ -28,9 +29,7 @@ interface AddonDetailSheetProps {
   onClose: () => void;
   /** Installing for so long that it is probably stuck. */
   stuck: boolean;
-  onDisable: (addon: InstalledAddon) => void;
-  onForceDisable: (addon: InstalledAddon) => void;
-  onRemove: (addon: InstalledAddon) => void;
+  onAction: (action: AddonAction, addon: InstalledAddon) => void;
 }
 
 export function AddonDetailSheet({
@@ -38,11 +37,10 @@ export function AddonDetailSheet({
   uiEntry,
   onClose,
   stuck,
-  onDisable,
-  onForceDisable,
-  onRemove,
+  onAction,
 }: AddonDetailSheetProps) {
   const transitional = addon ? isTransitionalAddonStatus(addon.status) : false;
+  const action = addon ? addonAction(addon, stuck) : undefined;
   const uiProblem = dashboardUiProblem(uiEntry);
   const failedServices = addon?.status_details?.failed_services ?? [];
 
@@ -129,18 +127,22 @@ export function AddonDetailSheet({
               </div>
             </ScrollArea>
             <SheetFooter className="border-t sm:flex-row sm:justify-end">
-              {addon.status === 'disabled' ? (
-                <Button variant="destructive" onClick={() => onRemove(addon)}>
+              {action === 'remove' ? (
+                <Button variant="destructive" onClick={() => onAction(action, addon)}>
                   <Trash2Icon aria-hidden />
                   Remove addon
                 </Button>
-              ) : stuck && addon.status === 'installing' ? (
-                <Button variant="outline" onClick={() => onForceDisable(addon)}>
+              ) : action === 'force-disable' ? (
+                <Button variant="outline" onClick={() => onAction(action, addon)}>
                   <PowerOffIcon aria-hidden />
                   Disable anyway
                 </Button>
               ) : (
-                <Button variant="outline" disabled={transitional} onClick={() => onDisable(addon)}>
+                <Button
+                  variant="outline"
+                  disabled={transitional}
+                  onClick={() => onAction('disable', addon)}
+                >
                   <PowerOffIcon aria-hidden />
                   Disable addon
                 </Button>

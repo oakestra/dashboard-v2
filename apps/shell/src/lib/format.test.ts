@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatBytes, formatPercent, formatRelativeTime, parseLegacyDate } from './format';
+import {
+  formatBytes,
+  formatLegacyDate,
+  formatMegabytes,
+  formatPercent,
+  formatRelativeTime,
+  parseLegacyDate,
+  plural,
+} from './format';
 
 describe('formatBytes', () => {
   it.each([
@@ -92,4 +100,28 @@ describe('parseLegacyDate', () => {
       expect(parseLegacyDate(input)).toBeUndefined();
     },
   );
+});
+
+describe('formatMegabytes', () => {
+  it('formats megabytes with binary steps', () => {
+    expect(formatMegabytes(512)).toBe('512 MB');
+    expect(formatMegabytes(1536)).toBe('1.5 GB');
+    expect(formatMegabytes(undefined)).toBe('-');
+  });
+});
+
+describe('plural', () => {
+  it('picks the form by count', () => {
+    expect(plural(1, 'service')).toBe('1 service');
+    expect(plural(0, 'service')).toBe('0 services');
+    expect(plural(2, 'policy', 'policies')).toBe('2 policies');
+  });
+});
+
+describe('formatLegacyDate', () => {
+  it('round-trips through parseLegacyDate', () => {
+    const date = new Date(2026, 0, 5, 7, 9);
+    expect(formatLegacyDate(date)).toBe('05/01/2026 07:09');
+    expect(parseLegacyDate(formatLegacyDate(date))).toEqual(date);
+  });
 });

@@ -1,12 +1,14 @@
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import type { Server } from 'node:http';
 
 import {
   createAddonsBackend,
+  createAddonsFetchHandler,
+  createObjectId,
   type AddonsBackend,
-  type BackendResponse,
   type MockInstalledAddon,
   type MockMarketplaceAddon,
-} from '@oakestra/mocks/addons';
+} from '@oakestra/mocks';
+import { createMockHttpServer } from '@oakestra/mocks/http';
 
 /**
  * Mock of the addons-manager AND the marketplace-manager on one port (their paths differ), for the
@@ -50,12 +52,9 @@ export interface MockAddonsManagerOptions {
   uiBlockSupport?: boolean;
 }
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-  'Access-Control-Max-Age': '600',
-};
+// Handlers match on absolute URLs. Requests are rebuilt against this origin, whatever Host header
+// the browser sent.
+const INTERNAL_ORIGIN = 'http://mock-addons-manager';
 
 const DEFAULT_SDK = '^0.1.0';
 const DEFAULT_VERSION = '0.1.0';
@@ -77,68 +76,29 @@ export function createMockAddonsManager(options: MockAddonsManagerOptions = {}):
     }
   }
 
-  return createServer((request, response) => {
-    handle(request, response).catch((error: unknown) => {
-      sendJson(response, 500, { message: String(error) });
-    });
+  const handleBackends = createAddonsFetchHandler({
+    backend,
+    managerUrl: `${INTERNAL_ORIGIN}/api/v1/addons`,
+    marketplaceUrl: `${INTERNAL_ORIGIN}/api/v1/marketplace/addons`,
   });
 
-  async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
-    const url = new URL(request.url ?? '/', 'http://localhost');
-    const method = request.method ?? 'GET';
+  return createMockHttpServer({ name: 'mock-addons-manager', origin: INTERNAL_ORIGIN, handle });
+
+  async function handle(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    const method = request.method;
     const path = url.pathname.replace(/(?<=.)\/+$/, '');
 
-    if (method === 'OPTIONS') {
-      response.writeHead(204, CORS_HEADERS).end();
-      return;
-    }
-    if (method === 'GET' && path === '/healthz') return sendJson(response, 200, { ok: true });
-    if (method === 'GET' && path === '/api/v1/ui-addons') {
-      return sendJson(response, 200, backend.uiAddons());
-    }
+    if (method === 'GET' && path === '/healthz') return Response.json({ ok: true });
+    if (method === 'GET' && path === '/api/v1/ui-addons') return Response.json(backend.uiAddons());
 
-    const addons = /^\/api\/v1\/addons(?:\/([^/]+))?$/.exec(path);
-    if (addons) {
-      const id = addons[1] ? decodeURIComponent(addons[1]) : undefined;
-      const body = method === 'POST' || method === 'PATCH' ? await readJson(request) : undefined;
-      if (!id && method === 'GET') {
-        return sendBackend(
-          response,
-          backend.manager.list({ status: url.searchParams.get('status') }),
-        );
-      }
-      if (!id && method === 'POST') return sendBackend(response, backend.manager.install(body));
-      if (id && method === 'GET') return sendBackend(response, backend.manager.get(id));
-      if (id && method === 'PATCH') return sendBackend(response, backend.manager.patch(id, body));
-      if (id && method === 'DELETE') return sendBackend(response, backend.manager.remove(id));
-    }
-
-    const market = /^\/api\/v1\/marketplace\/addons(?:\/([^/]+))?$/.exec(path);
-    if (market) {
-      const id = market[1] ? decodeURIComponent(market[1]) : undefined;
-      if (!id && method === 'GET') {
-        return sendBackend(
-          response,
-          backend.marketplace.list({ name: url.searchParams.get('name') }),
-        );
-      }
-      if (!id && method === 'POST') {
-        return sendBackend(response, backend.marketplace.register(await readJson(request)));
-      }
-      if (id && method === 'GET') return sendBackend(response, backend.marketplace.get(id));
-      if (id && method === 'DELETE') return sendBackend(response, backend.marketplace.remove(id));
-    }
+    const mocked = await handleBackends(request);
+    if (mocked) return mocked;
 
     if (method === 'GET' && path === '/__test/addons') {
-      return sendJson(
-        response,
-        200,
-        backend.state.installed.map((addon) => legacyView(backend, addon)),
-      );
+      return Response.json(backend.state.installed.map((addon) => legacyView(backend, addon)));
     }
-    if (method === 'GET' && path === '/__test/state') {
-      return sendJson(response, 200, backend.state);
-    }
+    if (method === 'GET' && path === '/__test/state') return Response.json(backend.state);
     if (method === 'PUT' && path === '/__test/config') {
       const config = (await readJson(request)) as Record<string, unknown>;
       const numbers = (key: string) => (typeof config[key] === 'number' ? config[key] : undefined);
@@ -148,29 +108,24 @@ export function createMockAddonsManager(options: MockAddonsManagerOptions = {}):
         reviewDelayMs: numbers('reviewDelayMs'),
         monitorDelayMs: numbers('monitorDelayMs'),
       });
-      return sendJson(response, 200, { ok: true });
+      return Response.json({ ok: true });
     }
     if (method === 'POST' && path === '/__test/reset') {
       seed();
-      return sendJson(
-        response,
-        200,
-        backend.state.installed.map((addon) => legacyView(backend, addon)),
-      );
+      return Response.json(backend.state.installed.map((addon) => legacyView(backend, addon)));
     }
 
     const test = /^\/__test\/addons\/([a-z0-9-]+)$/.exec(path);
     if (test && (method === 'PUT' || method === 'PATCH')) {
       const patch = (await readJson(request)) as Partial<LegacyAddon>;
-      const addon = applyPatch(backend, test[1]!, patch);
-      return sendJson(response, 200, legacyView(backend, addon));
+      return Response.json(legacyView(backend, applyPatch(backend, test[1]!, patch)));
     }
     if (test && method === 'DELETE') {
       backend.state.installed = backend.state.installed.filter((addon) => addon.name !== test[1]);
-      return sendJson(response, 204, null);
+      return new Response(null, { status: 204 });
     }
 
-    sendJson(response, 404, { message: `No route for ${method} ${url.pathname}` });
+    return Response.json({ message: `No route for ${method} ${url.pathname}` }, { status: 404 });
   }
 }
 
@@ -200,7 +155,7 @@ function applyPatch(
   if (!definition) {
     const service = `${name}-ui`;
     definition = {
-      _id: crypto.randomUUID().replaceAll('-', '').slice(0, 24),
+      _id: createObjectId(),
       name,
       description: `Addon created through the test API`,
       services: [
@@ -249,35 +204,13 @@ function applyPatch(
   );
 }
 
-async function readJson(request: IncomingMessage): Promise<unknown> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(chunk as Buffer);
-  const text = Buffer.concat(chunks).toString('utf8');
+async function readJson(request: Request): Promise<unknown> {
+  const text = await request.text();
   try {
     return text ? JSON.parse(text) : {};
   } catch {
     return undefined;
   }
-}
-
-function sendBackend(response: ServerResponse, result: BackendResponse): void {
-  const headers: Record<string, string> = { ...CORS_HEADERS, 'Cache-Control': 'no-store' };
-  if (result.contentType) headers['Content-Type'] = result.contentType;
-  response.writeHead(result.status, headers);
-  response.end(result.text);
-}
-
-function sendJson(response: ServerResponse, status: number, body: unknown): void {
-  if (status === 204) {
-    response.writeHead(204, CORS_HEADERS).end();
-    return;
-  }
-  response.writeHead(status, {
-    ...CORS_HEADERS,
-    'Content-Type': 'application/json',
-    'Cache-Control': 'no-store',
-  });
-  response.end(JSON.stringify(body));
 }
 
 export function seedFromEnv(

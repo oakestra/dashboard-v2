@@ -8,7 +8,7 @@ import { ContributionBoundary } from '../extensions/ContributionBoundary';
 import { addonLabel, type AddonEntry } from './addon-registry';
 import { useAddonRegistry } from './addon-registry-context';
 import { AddonForbiddenContext, addonRouteObjects, useSessionUser } from './addon-routes';
-import { addonBasePath } from './ui-addons';
+import { addonSource } from './ui-addons';
 
 /**
  * Renders `/addons/:addonId/*`. Addon routes are resolved here with useRoutes instead of being
@@ -95,19 +95,11 @@ function LoadedAddonRoutes({ entry }: { entry: Extract<AddonEntry, { state: 'loa
     ],
     [entry],
   );
+  const source = useMemo(() => addonSource(entry), [entry]);
   const element = useRoutes(routes);
 
   return (
-    <ContributionBoundary
-      source={{
-        kind: 'addon',
-        id: entry.name,
-        label: `addon "${entry.name}"`,
-        addon: { addonId: entry.name, version: entry.version, basePath: addonBasePath(entry.name) },
-      }}
-      label="Page"
-      fallback={<AddonPageSkeleton />}
-    >
+    <ContributionBoundary source={source} label="Page" fallback={<AddonPageSkeleton />}>
       {element}
     </ContributionBoundary>
   );

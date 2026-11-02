@@ -173,6 +173,20 @@ describe('SLA conversion', () => {
     expect(body.addresses).toEqual({ closest_ip: '10.30.1.1' });
   });
 
+  it('carries every SLA field of a stored service into a duplicate, e.g. volumes', () => {
+    const volumes = [{ volume_id: 'v1', csi_driver: 'local', mount_path: '/data' }];
+    const service = {
+      _id: 's1',
+      microservice_name: 'frontend',
+      microservice_namespace: 'shop',
+      code: 'nginx',
+      volumes,
+    } as unknown as Service;
+    const values = fromService(service);
+    expect(values.extra).toEqual({ volumes });
+    expect(toSlaMicroservice(values).volumes).toEqual(volumes);
+  });
+
   it('keeps a long duplicate name within 32 characters', () => {
     const service = {
       _id: 's1',
@@ -261,6 +275,11 @@ describe('SLA documents', () => {
     expect(!bad.ok && bad.error).toMatch(/not valid JSON/);
     const invalid = importSla(JSON.stringify({ hello: 1 }), context);
     expect(!invalid.ok && invalid.error).toMatch(/Not a valid SLA/);
+    const { code: _code, ...noCode } = full;
+    const missing = importSla(v2({}, { microservices: [noCode] }), context);
+    expect(!missing.ok && missing.error).toBe(
+      'Not a valid SLA file. applications[0].microservices[0].code is required',
+    );
     const empty = importSla(v2({}, { microservices: [] }), context);
     expect(!empty.ok && empty.error).toMatch(/does not contain any service/);
   });

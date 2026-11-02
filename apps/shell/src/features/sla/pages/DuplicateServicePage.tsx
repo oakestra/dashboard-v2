@@ -1,5 +1,4 @@
-import { useCurrentUser, useOakestraApi } from '@oakestra/dashboard-sdk';
-import { Alert, AlertDescription } from '@oakestra/ui';
+import { useOakestraApi } from '@oakestra/dashboard-sdk';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router';
 
@@ -16,7 +15,6 @@ import { fromService } from '../model/convert';
 export function DuplicateServicePage() {
   const { appId = '', serviceId = '' } = useParams();
   const api = useOakestraApi();
-  const customerId = useCurrentUser()?.organization ?? null;
   const application = useQuery(applicationQuery(api, appId));
   const service = useQuery(serviceQuery(api, serviceId));
 
@@ -30,22 +28,18 @@ export function DuplicateServicePage() {
       }
       queries={[application, service]}
     >
-      {application.data && service.data && customerId ? (
-        // Keyed so navigating between two duplicates never reuses the previous form state.
-        <ServiceForm
-          key={service.data._id}
-          application={application.data}
-          customerId={customerId}
-          initialValues={fromService(service.data)}
-          source={{ id: service.data._id, name: service.data.microservice_name }}
-        />
-      ) : (
-        <Alert variant="destructive">
-          <AlertDescription>
-            Your session has no organization, so a service cannot be created.
-          </AlertDescription>
-        </Alert>
-      )}
+      {(customerId) =>
+        application.data && service.data ? (
+          // Keyed so navigating between two duplicates never reuses the previous form state.
+          <ServiceForm
+            key={service.data._id}
+            application={application.data}
+            customerId={customerId}
+            initialValues={fromService(service.data)}
+            source={{ id: service.data._id, name: service.data.microservice_name }}
+          />
+        ) : null
+      }
     </PageFrame>
   );
 }

@@ -159,7 +159,9 @@ features/<name>/
   services routes while services invalidates application keys). Clusters have one shared query,
   `clustersQuery` from `infrastructure`; overview, services and SLA use it instead of their own.
   Users and organizations list each other's data, so mutations on either invalidate both
-  `userKeys.all` and `organizationKeys.all`.
+  `userKeys.all` and `organizationKeys.all`. Loaders that `ensureQueryData` a detail spread
+  `seedFromLists(queryClient, keys.lists(), match)` (`core/query/seed-from-lists.ts`) into the
+  options, so coming from a list does not wait for a round trip (applications and services).
 
   ```ts
   export const appKeys = {
@@ -270,9 +272,14 @@ copy of small stateless pieces (`cn`, `Button`, `Table`), which is harmless.
 - `TimeSeriesChart`: line or area chart of `{ timestamp: Date, value: number }[]` with `unit`
   (`percent`, `bytes`, `number` or a formatter) and an accessible `title`.
 - `CopyButton`, `JsonViewer` (pretty-printed, collapsible, copy, optional `downloadAs`).
+- `QueryErrorAlert` (`title`, `error`, `onRetry`, optional extra text as children): the inline
+  error state of a failed query, with a "Try again" button. Use it instead of building the alert.
 
-`apps/shell/src/lib`: `format.ts` (`formatBytes`, `formatPercent`, `formatRelativeTime`) and
-`download.ts` (`downloadJson(filename, data)`).
+`apps/shell/src/lib`: `format.ts` (`formatBytes`, `formatMegabytes`, `formatPercent`,
+`formatRelativeTime`, `plural`, `parseLegacyDate`/`formatLegacyDate`), `download.ts`
+(`downloadJson(filename, data)`, `downloadText`), `use-search-param.ts` (`useSearchParam(key,
+fallback)`, one search param as state, replacing the history entry) and `zod-issues.ts`
+(`formatIssue`, Zod issues worded for people who write JSON by hand).
 
 TanStack Table is on v9 (`useTable`, `tableFeatures`, row models registered once at module scope
 in `data-table.tsx`); the v8 `useReactTable` API does not exist there.
@@ -294,9 +301,10 @@ in `data-table.tsx`); the v8 `useReactTable` API does not exist there.
   `createAddonsClient({ baseUrl, fetch })`, which parses the body text as JSON whatever the
   Content-Type is. Components call `useAddonsAdminApi()` (`core/addons/addons-admin`) for
   `{ manager, marketplace }`; loaders use `context.get(appRouterContext).addonsAdmin`. Both use the
-  authorized fetch. After an install reached `active` or an addon was disabled, call
-  `useRefreshUiAddons()` (or `refreshUiAddons(queryClient)`) so `/ui-addons` is refetched at once
-  instead of at the next poll. `manager.remove(id)` returns `{ kind: 'disabling', addon }` or
+  authorized fetch. When an addon becomes or stops being `active`, `/ui-addons` must be refetched
+  at once instead of at the next poll: inside the addon manager `useUiAddonsSync` (mounted in its
+  layout) does that from the installed list, so mutations there do not call it themselves;
+  elsewhere call `useRefreshUiAddons()` (or `refreshUiAddons(queryClient)`). `manager.remove(id)` returns `{ kind: 'disabling', addon }` or
   `{ kind: 'removed' }` (see Backend quirks); poll while `isTransitionalAddonStatus(status)`.
   Environment values of services may be secrets: show keys only, never values.
 - `@oakestra/api` models are loose (`z.looseObject`), so new backend fields pass through. The

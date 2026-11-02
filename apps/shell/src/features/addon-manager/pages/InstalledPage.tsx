@@ -1,29 +1,25 @@
 import { isTransitionalAddonStatus, type InstalledAddon } from '@oakestra/api';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-  Button,
-  ConfirmDialog,
-  EmptyState,
-  useIsMobile,
-} from '@oakestra/ui';
+import { Button, ConfirmDialog, EmptyState, useIsMobile } from '@oakestra/ui';
 import { createDataTableColumnHelper, DataTable } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
 import { PowerOffIcon, PuzzleIcon, StoreIcon, Trash2Icon } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link } from 'react-router';
 import { useStore } from 'zustand';
 
 import { useAddonRegistry } from '../../../core/addons/addon-registry-context';
 import { useAddonsAdminApi } from '../../../core/addons/addons-admin';
-import { describeError } from '../../../core/api/errors';
+import { QueryErrorAlert } from '../../../components/QueryErrorAlert';
+import { plural } from '../../../lib/format';
+import { useSearchParam } from '../../../lib/use-search-param';
+import { addonAction, type AddonAction } from '../addon-action';
 import { useDisableAddon, useRemoveAddon } from '../api/mutations';
 import { installedAddonsQuery, useStuckAddonIds } from '../api/queries';
 import { AddonDetailSheet } from '../components/AddonDetailSheet';
 import { AddonStatusBadge, addonStatusLabel } from '../components/AddonStatusBadge';
 import { DashboardUiBadge } from '../components/DashboardUiBadge';
 import { UnmatchedDashboardUis } from '../components/UnmatchedDashboardUis';
+import { MARKETPLACE_PATH } from '../paths';
 
 const column = createDataTableColumnHelper<InstalledAddon>();
 
@@ -32,11 +28,36 @@ function failingServicesHint(addon: InstalledAddon): string | null {
   if (addon.status !== 'failed' && addon.status !== 'partially_active') return null;
   const failing = addon.status_details?.failed_services.length ?? 0;
   if (failing === 0) return null;
-  const total = addon.services.length;
-  return `${failing} of ${total} ${total === 1 ? 'service' : 'services'} failing`;
+  return `${failing} of ${plural(addon.services.length, 'service')} failing`;
 }
 
-type Pending = { kind: 'disable' | 'force-disable' | 'remove'; addon: InstalledAddon };
+type Pending = { kind: AddonAction; addon: InstalledAddon };
+
+const CONFIRM_COPY: Readonly<
+  Record<
+    AddonAction,
+    { title: (name: string) => string; description: string; confirmLabel: string }
+  >
+> = {
+  disable: {
+    title: (name) => `Disable ${name}?`,
+    description:
+      'All containers of this addon are stopped and its dashboard UI disappears. You can remove it afterwards.',
+    confirmLabel: 'Disable addon',
+  },
+  'force-disable': {
+    title: (name) => `Disable ${name} anyway?`,
+    description:
+      'This addon has been installing for a long time. Disabling it now stops its containers, but the addons monitor may still be working on the installation and can overwrite the status afterwards. Check the list again once it settled.',
+    confirmLabel: 'Disable anyway',
+  },
+  remove: {
+    title: (name) => `Remove ${name}?`,
+    description:
+      'The addon is deleted from this platform. You can install it again from the marketplace.',
+    confirmLabel: 'Remove addon',
+  },
+};
 
 export function InstalledPage() {
   const api = useAddonsAdminApi();
@@ -45,19 +66,8 @@ export function InstalledPage() {
   const registry = useAddonRegistry();
   const uiEntries = useStore(registry, (state) => state.entries);
 
-  const [params, setParams] = useSearchParams();
-  const selectedId = params.get('addon');
-  const search = params.get('q') ?? '';
-  const setParam = (key: string, value: string | null) =>
-    setParams(
-      (previous) => {
-        const next = new URLSearchParams(previous);
-        if (value) next.set(key, value);
-        else next.delete(key);
-        return next;
-      },
-      { replace: true },
-    );
+  const [selectedId, setSelectedId] = useSearchParam('addon');
+  const [search, setSearch] = useSearchParam('q');
 
   const [pending, setPending] = useState<Pending | null>(null);
   const disable = useDisableAddon();
@@ -83,6 +93,7 @@ export function InstalledPage() {
           header: 'Name',
           cell: (info) => <span className="font-medium">{info.getValue()}</span>,
         }),
+        // Phones keep name, status and the actions; the sheet has everything else.
         ...(compact
           ? []
           : [
@@ -109,7 +120,6 @@ export function InstalledPage() {
             );
           },
         }),
-        // Phones keep name, status and the actions; the sheet has everything else.
         ...(compact
           ? []
           : [
@@ -117,10 +127,6 @@ export function InstalledPage() {
                 id: 'services',
                 header: 'Services',
               }),
-            ]),
-        ...(compact
-          ? []
-          : [
               column.display({
                 id: 'ui',
                 header: 'Dashboard UI',
@@ -132,27 +138,27 @@ export function InstalledPage() {
           header: () => <span className="sr-only">Actions</span>,
           cell: ({ row }) => {
             const addon = row.original;
+            const action = addonAction(addon, stuckIds.has(addon._id));
             const transitional = isTransitionalAddonStatus(addon.status);
-            const stuckInstall = addon.status === 'installing' && stuckIds.has(addon._id);
             return (
               <div className="flex justify-end gap-1">
-                {stuckInstall ? (
+                {action === 'force-disable' ? (
                   <Button
                     variant="outline"
                     size="sm"
                     aria-label={`Disable ${addon.name} anyway`}
-                    onClick={() => setPending({ kind: 'force-disable', addon })}
+                    onClick={() => setPending({ kind: action, addon })}
                   >
                     <PowerOffIcon aria-hidden />
                     Disable anyway
                   </Button>
-                ) : addon.status === 'disabled' ? (
+                ) : action === 'remove' ? (
                   <Button
                     variant="ghost"
                     size="sm"
                     className="text-destructive hover:text-destructive"
                     aria-label={`Remove ${addon.name}`}
-                    onClick={() => setPending({ kind: 'remove', addon })}
+                    onClick={() => setPending({ kind: action, addon })}
                   >
                     <Trash2Icon aria-hidden />
                     Remove
@@ -178,6 +184,9 @@ export function InstalledPage() {
     [uiEntries, compact, stuckIds],
   );
 
+  // While the dialog animates closed `pending` is already null; the disable copy stands in.
+  const confirmCopy = CONFIRM_COPY[pending?.kind ?? 'disable'];
+
   const confirm = () => {
     if (!pending) return;
     const target = { id: pending.addon._id, name: pending.addon.name };
@@ -185,7 +194,7 @@ export function InstalledPage() {
     mutation.mutate(target, {
       onSettled: () => setPending(null),
       onSuccess: () => {
-        if (pending.kind === 'remove' && selectedId === target.id) setParam('addon', null);
+        if (pending.kind === 'remove' && selectedId === target.id) setSelectedId('');
       },
     });
   };
@@ -193,27 +202,18 @@ export function InstalledPage() {
   return (
     <div className="space-y-6">
       {installed.isError ? (
-        <Alert variant="destructive" data-testid="installed-error">
-          <AlertTitle>
-            {addons
+        <QueryErrorAlert
+          data-testid="installed-error"
+          title={
+            addons
               ? 'Could not refresh the installed addons'
-              : 'Could not load the installed addons'}
-          </AlertTitle>
-          <AlertDescription>
-            <p>
-              {describeError(installed.error)}
-              {addons ? ' The list below may be out of date.' : null}
-            </p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-2"
-              onClick={() => void installed.refetch()}
-            >
-              Try again
-            </Button>
-          </AlertDescription>
-        </Alert>
+              : 'Could not load the installed addons'
+          }
+          error={installed.error}
+          onRetry={() => void installed.refetch()}
+        >
+          {addons ? ' The list below may be out of date.' : null}
+        </QueryErrorAlert>
       ) : null}
       {installed.isError && !addons ? null : (
         <DataTable
@@ -224,9 +224,9 @@ export function InstalledPage() {
           isLoading={installed.isPending}
           searchPlaceholder="Search installed addons"
           globalFilter={search}
-          onGlobalFilterChange={(value) => setParam('q', value)}
+          onGlobalFilterChange={setSearch}
           initialSorting={[{ id: 'name', desc: false }]}
-          onRowClick={(addon) => setParam('addon', addon._id)}
+          onRowClick={(addon) => setSelectedId(addon._id)}
           emptyState={
             <EmptyState
               icon={<PuzzleIcon />}
@@ -234,7 +234,7 @@ export function InstalledPage() {
               description="Browse the marketplace to install your first addon."
               action={
                 <Button asChild>
-                  <Link to="/addon-manager/marketplace">
+                  <Link to={MARKETPLACE_PATH}>
                     <StoreIcon aria-hidden />
                     Open the marketplace
                   </Link>
@@ -251,10 +251,8 @@ export function InstalledPage() {
         addon={selected}
         uiEntry={selected ? uiEntries[selected.name] : undefined}
         stuck={selected ? stuckIds.has(selected._id) : false}
-        onClose={() => setParam('addon', null)}
-        onDisable={(addon) => setPending({ kind: 'disable', addon })}
-        onForceDisable={(addon) => setPending({ kind: 'force-disable', addon })}
-        onRemove={(addon) => setPending({ kind: 'remove', addon })}
+        onClose={() => setSelectedId('')}
+        onAction={(kind, addon) => setPending({ kind, addon })}
       />
 
       <ConfirmDialog
@@ -262,27 +260,9 @@ export function InstalledPage() {
         onOpenChange={(open) => {
           if (!open) setPending(null);
         }}
-        title={
-          pending?.kind === 'remove'
-            ? `Remove ${pending.addon.name}?`
-            : pending?.kind === 'force-disable'
-              ? `Disable ${pending.addon.name} anyway?`
-              : `Disable ${pending?.addon.name ?? 'addon'}?`
-        }
-        description={
-          pending?.kind === 'remove'
-            ? 'The addon is deleted from this platform. You can install it again from the marketplace.'
-            : pending?.kind === 'force-disable'
-              ? 'This addon has been installing for a long time. Disabling it now stops its containers, but the addons monitor may still be working on the installation and can overwrite the status afterwards. Check the list again once it settled.'
-              : 'All containers of this addon are stopped and its dashboard UI disappears. You can remove it afterwards.'
-        }
-        confirmLabel={
-          pending?.kind === 'remove'
-            ? 'Remove addon'
-            : pending?.kind === 'force-disable'
-              ? 'Disable anyway'
-              : 'Disable addon'
-        }
+        title={confirmCopy.title(pending?.addon.name ?? 'addon')}
+        description={confirmCopy.description}
+        confirmLabel={confirmCopy.confirmLabel}
         destructive
         pending={disable.isPending || remove.isPending}
         onConfirm={confirm}

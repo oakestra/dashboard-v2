@@ -3,6 +3,8 @@ import { toast } from '@oakestra/ui';
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 
+import { installedAddonLink } from '../paths';
+
 export type InstallOutcome = 'active' | 'partially_active' | 'failed';
 
 /**
@@ -39,8 +41,7 @@ export function useInstallOutcomeToasts(installed: readonly InstalledAddon[] | u
       if (!outcome) continue;
       const details = {
         label: 'View details',
-        onClick: () =>
-          void navigate(`/addon-manager/installed?addon=${encodeURIComponent(addon._id)}`),
+        onClick: () => void navigate(installedAddonLink(addon._id)),
       };
       if (outcome === 'active') toast.success(`${addon.name} is active`);
       else if (outcome === 'partially_active') {

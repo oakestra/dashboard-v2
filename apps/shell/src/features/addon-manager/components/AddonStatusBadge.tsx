@@ -12,7 +12,7 @@ const LABELS: Readonly<Record<AddonStatus, string>> = {
 };
 
 /** The one place that decides which color an addon status gets. */
-export const ADDON_STATUS_TONES: Readonly<Record<AddonStatus, StatusTone>> = {
+const ADDON_STATUS_TONES: Readonly<Record<AddonStatus, StatusTone>> = {
   installing: 'info',
   disabling: 'info',
   active: 'success',
@@ -23,10 +23,6 @@ export const ADDON_STATUS_TONES: Readonly<Record<AddonStatus, StatusTone>> = {
 
 export function addonStatusLabel(status: AddonStatus): string {
   return LABELS[status];
-}
-
-export function addonStatusTone(status: AddonStatus): StatusTone {
-  return ADDON_STATUS_TONES[status];
 }
 
 export function AddonStatusBadge({ status }: { status: AddonStatus }) {

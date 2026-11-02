@@ -1,8 +1,10 @@
+import type { Application } from '@oakestra/api';
 import type { LoaderFunctionArgs, UIMatch } from 'react-router';
 
 import { requireAuth } from '../../core/auth/guards';
+import { seedFromLists } from '../../core/query/seed-from-lists';
 import { appRouterContext } from '../../core/router/app-context';
-import { applicationQuery } from './api/queries';
+import { applicationKeys, applicationQuery } from './api/queries';
 
 export interface ApplicationCrumbData {
   name: string;
@@ -18,7 +20,11 @@ export async function applicationCrumbLoader(
 ): Promise<ApplicationCrumbData> {
   await requireAuth(args);
   const { api, queryClient } = args.context.get(appRouterContext);
-  const application = await queryClient.ensureQueryData(applicationQuery(api, args.params.appId!));
+  const appId = args.params.appId!;
+  const application = await queryClient.ensureQueryData({
+    ...applicationQuery(api, appId),
+    ...seedFromLists<Application>(queryClient, applicationKeys.lists(), (app) => app._id === appId),
+  });
   return { name: application.application_name };
 }
 

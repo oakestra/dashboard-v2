@@ -14,7 +14,7 @@ import {
 import { DownloadIcon, SettingsIcon } from 'lucide-react';
 import { Link } from 'react-router';
 
-import { installedAddonLink } from './MarketplaceCard';
+import { installedAddonLink } from '../paths';
 import { DefinitionDetails } from './DefinitionDetails';
 
 interface MarketplaceDetailsDialogProps {
@@ -63,7 +63,7 @@ export function MarketplaceDetailsDialog({
               </Button>
               {installed ? (
                 <Button asChild>
-                  <Link to={installedAddonLink(installed)}>
+                  <Link to={installedAddonLink(installed._id)}>
                     <SettingsIcon aria-hidden />
                     Manage
                   </Link>

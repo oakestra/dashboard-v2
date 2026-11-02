@@ -159,7 +159,7 @@ const TITLES = {
   other: 'Other',
 } as const;
 
-export function ConstraintsSection({ hasError }: { hasError: boolean }) {
+export function ConstraintsSection() {
   const api = useOakestraApi();
   const { control } = useFormContext<ServiceFormValues>();
   const { fields, append, remove } = useFieldArray({ control, name: 'constraints' });
@@ -173,7 +173,6 @@ export function ConstraintsSection({ hasError }: { hasError: boolean }) {
       collapsible
       defaultOpen={fields.length > 0}
       summary={count(fields.length, 'constraint')}
-      hasError={hasError}
     >
       {clusters.isError ? (
         <Alert variant="destructive">

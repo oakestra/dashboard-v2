@@ -23,20 +23,24 @@ function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
 }
 
+/** For a request that threw before a response arrived: the service was not reached. */
+export function rethrowAsNetworkError(error: unknown, call: Call, message: string): never {
+  // Cancellation is not a failure; TanStack Query expects the AbortError to come through as is.
+  if (isAbortError(error) || error instanceof ApiError) throw error;
+  throw new ApiError(message, { kind: 'network', status: 0, ...call, cause: error });
+}
+
 /** Runs one openapi-fetch call and turns every failure into an ApiError. */
 export async function send(call: Call, run: () => Promise<RawResult>): Promise<unknown> {
   let result: RawResult;
   try {
     result = await run();
   } catch (error) {
-    // Cancellation is not a failure; TanStack Query expects the AbortError to come through as is.
-    if (isAbortError(error) || error instanceof ApiError) throw error;
-    throw new ApiError('Could not reach the Oakestra API. Check your connection and try again.', {
-      kind: 'network',
-      status: 0,
-      ...call,
-      cause: error,
-    });
+    rethrowAsNetworkError(
+      error,
+      call,
+      'Could not reach the Oakestra API. Check your connection and try again.',
+    );
   }
   const { response } = result;
   if (!response.ok) {

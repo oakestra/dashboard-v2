@@ -5,7 +5,7 @@ import { useFieldArray, useFormContext } from 'react-hook-form';
 import type { ServiceFormValues } from '../model/schema';
 import { Section, TextField } from './fields';
 
-export function AddressesSection({ hasError }: { hasError: boolean }) {
+export function AddressesSection() {
   const { control, getValues } = useFormContext<ServiceFormValues>();
   const { fields, append, remove } = useFieldArray({ control, name: 'addresses.instances' });
   const hasValues = Object.values(getValues('addresses')).some((value) =>
@@ -19,7 +19,6 @@ export function AddressesSection({ hasError }: { hasError: boolean }) {
       collapsible
       defaultOpen={hasValues}
       summary={hasValues ? 'Set' : 'Allocated by Oakestra'}
-      hasError={hasError}
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField name="addresses.rr_ip" label="Round-robin IP (IPv4)" placeholder="10.30.0.1" />

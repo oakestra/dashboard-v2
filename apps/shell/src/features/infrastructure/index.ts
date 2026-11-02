@@ -1,3 +1,4 @@
+import type { Role } from '@oakestra/dashboard-sdk';
 import { ServerIcon } from 'lucide-react';
 
 import { requireRole } from '../../core/auth/guards';
@@ -8,6 +9,10 @@ import { clusterCrumb, clusterCrumbLoader } from './crumbs';
 // The one cluster list query: the overview, service and SLA pages read it too, so there is a
 // single cache entry and poll for clusters.
 export { clusterKeys, clustersQuery } from './api/queries';
+export { clusterTotals, type ClusterTotals } from './lib';
+
+/** Who may open the infrastructure pages; other features use it to decide whether to link there. */
+export const INFRASTRUCTURE_ROLES: readonly Role[] = ['Admin', 'Infrastructure_Provider'];
 
 export const infrastructureModule: CoreModule = {
   id: 'infrastructure',
@@ -16,7 +21,7 @@ export const infrastructureModule: CoreModule = {
     {
       path: 'infrastructure',
       handle: { crumb: 'Infrastructure' } satisfies RouteHandle,
-      loader: requireRole('Admin', 'Infrastructure_Provider'),
+      loader: requireRole(...INFRASTRUCTURE_ROLES),
       children: [
         {
           index: true,
@@ -42,7 +47,7 @@ export const infrastructureModule: CoreModule = {
         icon: ServerIcon,
         group: 'management',
         order: 20,
-        roles: ['Admin', 'Infrastructure_Provider'],
+        roles: INFRASTRUCTURE_ROLES,
       },
     ],
   },

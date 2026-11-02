@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router';
 
+import { plural } from '../../../lib/format';
+import { installedAddonLink } from '../paths';
 import { AddonStatusBadge } from './AddonStatusBadge';
 
 interface MarketplaceCardProps {
@@ -39,10 +41,6 @@ interface MarketplaceCardProps {
   onInstall: () => void;
   onDetails: () => void;
   onDelete: () => void;
-}
-
-export function installedAddonLink(installed: InstalledAddon): string {
-  return `/addon-manager/installed?addon=${encodeURIComponent(installed._id)}`;
 }
 
 export function MarketplaceCard({
@@ -73,7 +71,7 @@ export function MarketplaceCard({
               {addon.ui ? <Badge variant="secondary">Dashboard UI</Badge> : null}
             </CardTitle>
             <p className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs tabular-nums">
-              {addon.services.length} {addon.services.length === 1 ? 'service' : 'services'}
+              {plural(addon.services.length, 'service')}
               {installed ? <AddonStatusBadge status={installed.status} /> : null}
             </p>
           </div>
@@ -103,7 +101,7 @@ export function MarketplaceCard({
       <CardFooter className="mt-auto flex-wrap gap-2 pt-2">
         {installed ? (
           <Button size="sm" variant="outline" asChild>
-            <Link to={installedAddonLink(installed)} aria-label={`Manage ${addon.name}`}>
+            <Link to={installedAddonLink(installed._id)} aria-label={`Manage ${addon.name}`}>
               <SettingsIcon aria-hidden />
               Manage
             </Link>

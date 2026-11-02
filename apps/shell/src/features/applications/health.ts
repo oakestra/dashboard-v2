@@ -1,6 +1,7 @@
 import type { Service } from '@oakestra/api';
 
-import { isTransitionalStatus, summarizeStatuses, type StatusTone } from '../services';
+import { plural } from '../../lib/format';
+import { isUndeployed, summarizeStatuses, type StatusTone } from '../services';
 
 export interface ApplicationHealth {
   tone: StatusTone;
@@ -24,9 +25,7 @@ export function applicationHealth(services: readonly Service[]): ApplicationHeal
     ...services.map((service) => service.status),
     ...instanceStatuses,
   ]);
-  const undeployed = services.filter(
-    (service) => service.instance_list.length === 0 && !isTransitionalStatus(service.status),
-  ).length;
+  const undeployed = services.filter(isUndeployed).length;
   const counts = {
     total: instances.total,
     running: instances.running,
@@ -45,7 +44,7 @@ export function applicationHealth(services: readonly Service[]): ApplicationHeal
 
 /** "3 services, 4/4 running", or just the service count when nothing runs. */
 export function describeServiceCounts(health: ApplicationHealth): string {
-  const noun = health.services === 1 ? 'service' : 'services';
-  if (health.instances.total === 0) return `${health.services} ${noun}`;
-  return `${health.services} ${noun}, ${health.instances.running}/${health.instances.total} running`;
+  const services = plural(health.services, 'service');
+  if (health.instances.total === 0) return services;
+  return `${services}, ${health.instances.running}/${health.instances.total} running`;
 }

@@ -17,7 +17,7 @@ export {
   type MockInstallOutcome,
   type MockMarketplaceAddon,
 } from './fixtures/addons.ts';
-export { createMockFetchHandler } from './fetch-handler.ts';
+export { createAddonsFetchHandler, createMockFetchHandler } from './fetch-handler.ts';
 export { createHandlers, LEAKED_PASSWORD_PLACEHOLDER, type MockApiOptions } from './handlers.ts';
 export {
   createMockStore,

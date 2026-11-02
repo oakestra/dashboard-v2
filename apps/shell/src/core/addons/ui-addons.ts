@@ -1,6 +1,8 @@
 import semver from 'semver';
 import { z } from 'zod';
 
+import type { ContributionSource } from '../extensions/registry';
+
 /** Addon names double as container names (`addonui-<name>`) and nginx path segments. */
 export const ADDON_NAME_PATTERN = /^[a-z0-9-]+$/;
 
@@ -14,6 +16,12 @@ export const uiAddonsQueryKey = ['ui-addons'] as const;
 
 /** One entry of `GET /ui-addons`: an active addon that ships a UI. */
 export type UiAddon = z.infer<typeof uiAddonSchema>;
+
+/** A /ui-addons entry plus the manifest URL it will be loaded from. */
+export interface ResolvedAddon extends UiAddon {
+  /** Manifest URL the remote was (or is being) loaded from. */
+  entry: string;
+}
 
 /** The addons manager is missing (addons disabled) or down. Not an error worth showing users. */
 export class UiAddonsUnavailableError extends Error {
@@ -72,4 +80,16 @@ export function addonEntryUrl(name: string, origin = window.location.origin): st
 
 export function addonBasePath(name: string): string {
   return `/addons/${name}`;
+}
+
+/** The source an addon's contributions and pages are registered and isolated under. */
+export function addonSource(
+  addon: Pick<UiAddon, 'name' | 'version'>,
+): Extract<ContributionSource, { kind: 'addon' }> {
+  return {
+    kind: 'addon',
+    id: addon.name,
+    label: `addon "${addon.name}"`,
+    addon: { addonId: addon.name, version: addon.version, basePath: addonBasePath(addon.name) },
+  };
 }

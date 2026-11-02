@@ -1,6 +1,7 @@
 import type { Application } from '@oakestra/api';
 import { ConfirmDialog } from '@oakestra/ui';
 
+import { plural } from '../../../lib/format';
 import { useDeleteApplication } from '../api/mutations';
 
 interface DeleteApplicationDialogProps {
@@ -23,7 +24,7 @@ export function DeleteApplicationDialog({
       title={`Delete ${application?.application_name ?? 'application'}?`}
       description={
         count > 0
-          ? `This also deletes its ${count} ${count === 1 ? 'service' : 'services'} and stops all running instances. This cannot be undone.`
+          ? `This also deletes its ${plural(count, 'service')} and stops all running instances. This cannot be undone.`
           : 'This cannot be undone.'
       }
       confirmLabel="Delete"

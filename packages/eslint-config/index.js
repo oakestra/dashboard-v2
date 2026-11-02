@@ -28,75 +28,34 @@ const elements = [
 
 const shellShared = ['sdk', 'ui', 'api'];
 
+/** A policy letting `from` import every element of the given types. */
+const allow = (from, ...types) => ({
+  from: { element: { type: from } },
+  allow: { to: { element: { types: { anyOf: types } } } },
+});
+
 const policies = [
   // `mocks` only for src/mock-api.ts (dev:mock); no-restricted-imports keeps it out of the rest.
-  {
-    from: { element: { type: 'shell-entry' } },
-    allow: {
-      to: {
-        element: {
-          types: { anyOf: ['shell-entry', 'shell-app', 'shell-core', 'mocks', ...shellShared] },
-        },
-      },
-    },
-  },
-  {
-    from: { element: { type: 'shell-app' } },
-    allow: {
-      to: {
-        element: {
-          types: {
-            anyOf: [
-              'shell-app',
-              'shell-core',
-              'shell-shared',
-              'shell-feature',
-              'shell-test',
-              ...shellShared,
-            ],
-          },
-        },
-      },
-    },
-  },
+  allow('shell-entry', 'shell-entry', 'shell-app', 'shell-core', 'mocks', ...shellShared),
+  allow(
+    'shell-app',
+    'shell-app',
+    'shell-core',
+    'shell-shared',
+    'shell-feature',
+    'shell-test',
+    ...shellShared,
+  ),
   // Core is the platform features build on; it must not depend on any feature. `mocks` is for
   // tests only, enforced by no-restricted-imports below.
-  {
-    from: { element: { type: 'shell-core' } },
-    allow: {
-      to: { element: { types: { anyOf: ['shell-core', 'shell-test', 'mocks', ...shellShared] } } },
-    },
-  },
+  allow('shell-core', 'shell-core', 'shell-test', 'mocks', ...shellShared),
   // The test helpers render the real app (providers, router, layouts) around what is tested.
-  {
-    from: { element: { type: 'shell-test' } },
-    allow: {
-      to: {
-        element: { types: { anyOf: ['shell-core', 'shell-app', 'mocks', ...shellShared] } },
-      },
-    },
-  },
+  allow('shell-test', 'shell-core', 'shell-app', 'mocks', ...shellShared),
   // Shared components sit between core and features: they may use the platform, not features.
-  {
-    from: { element: { type: 'shell-shared' } },
-    allow: {
-      to: { element: { types: { anyOf: ['shell-shared', 'shell-core', ...shellShared] } } },
-    },
-  },
+  allow('shell-shared', 'shell-shared', 'shell-core', ...shellShared),
   // Features may use core, shared components and their own files. Other features only through
   // their index.ts.
-  {
-    from: { element: { type: 'shell-feature' } },
-    allow: {
-      to: {
-        element: {
-          types: {
-            anyOf: ['shell-core', 'shell-shared', 'shell-test', 'mocks', ...shellShared],
-          },
-        },
-      },
-    },
-  },
+  allow('shell-feature', 'shell-core', 'shell-shared', 'shell-test', 'mocks', ...shellShared),
   {
     from: { element: { type: 'shell-feature' } },
     allow: {
@@ -118,16 +77,10 @@ const policies = [
   },
   // The SDK is the public contract and the UI library is below it; neither may reach upwards.
   // The SDK types its API facade with @oakestra/api, which itself depends on nothing internal.
-  {
-    from: { element: { type: 'sdk' } },
-    allow: { to: { element: { types: { anyOf: ['sdk', 'api'] } } } },
-  },
-  { from: { element: { type: 'ui' } }, allow: { to: { element: { type: 'ui' } } } },
-  { from: { element: { type: 'api' } }, allow: { to: { element: { type: 'api' } } } },
-  {
-    from: { element: { type: 'mocks' } },
-    allow: { to: { element: { types: { anyOf: ['mocks', 'api'] } } } },
-  },
+  allow('sdk', 'sdk', 'api'),
+  allow('ui', 'ui'),
+  allow('api', 'api'),
+  allow('mocks', 'mocks', 'api'),
   // Addons are built and deployed separately: their own files plus the published packages only.
   {
     from: { element: { type: 'addon' } },
@@ -136,20 +89,22 @@ const policies = [
     },
   },
   // `api` for types only, see addonImportRestrictions.
-  {
-    from: { element: { type: 'addon' } },
-    allow: { to: { element: { types: { anyOf: ['sdk', 'ui', 'api'] } } } },
-  },
+  allow('addon', 'sdk', 'ui', 'api'),
   {
     from: { element: { type: 'tool' } },
     allow: {
       to: { element: { type: 'tool', captured: { tool: '{{ from.element.captured.tool }}' } } },
     },
   },
-  // tools/mock-system-manager serves the @oakestra/mocks handlers over HTTP.
-  { from: { element: { type: 'tool' } }, allow: { to: { element: { type: 'mocks' } } } },
-  { from: { element: { type: 'e2e' } }, allow: { to: { element: { type: 'e2e' } } } },
+  // The mock tools serve the @oakestra/mocks handlers over HTTP.
+  allow('tool', 'mocks'),
+  allow('e2e', 'e2e'),
 ];
+
+const publicEntryPattern = {
+  group: ['@oakestra/*/src', '@oakestra/*/src/**'],
+  message: 'Import packages by their public entry points.',
+};
 
 const SDK_TESTING_ENTRY = '@oakestra/dashboard-sdk/testing';
 
@@ -183,10 +138,7 @@ const addonImportRestrictions = {
       message:
         'Addons may only import @oakestra/dashboard-sdk, @oakestra/ui and (types of) @oakestra/api.',
     },
-    {
-      group: ['@oakestra/*/src', '@oakestra/*/src/**'],
-      message: 'Import packages by their public entry points.',
-    },
+    publicEntryPattern,
     sdkVitePattern,
   ],
   paths: [
@@ -285,10 +237,7 @@ export function importBoundaries({ rootDir }) {
           'error',
           {
             patterns: [
-              {
-                group: ['@oakestra/*/src', '@oakestra/*/src/**'],
-                message: 'Import packages by their public entry points.',
-              },
+              publicEntryPattern,
               {
                 group: ['@oakestra/dashboard-sdk/testing'],
                 message: 'The SDK test helpers are for tests only.',
@@ -385,12 +334,7 @@ export function createConfig({ rootDir }) {
         'no-restricted-imports': [
           'error',
           {
-            patterns: [
-              {
-                group: ['@oakestra/*/src', '@oakestra/*/src/**'],
-                message: 'Import packages by their public entry points.',
-              },
-            ],
+            patterns: [publicEntryPattern],
           },
         ],
       },

@@ -18,13 +18,15 @@ import { Link, useNavigate } from 'react-router';
 
 import { describeError } from '../../../core/api/errors';
 import { Slot } from '../../../core/extensions/Slot';
+import { plural } from '../../../lib/format';
 import {
   ApplicationFormDialog,
   applicationHealth,
   applicationsQuery,
+  newestFirst,
   type ApplicationHealth,
 } from '../../applications';
-import { clustersQuery } from '../../infrastructure';
+import { clusterTotals, clustersQuery, INFRASTRUCTURE_ROLES } from '../../infrastructure';
 import { profileQuery } from '../../profile';
 import { servicesByApplicationQuery, summarizeStatuses } from '../../services';
 import { attentionItems } from '../attention';
@@ -33,10 +35,6 @@ import { NeedsAttention } from '../components/NeedsAttention';
 import { RecentApplications, RecentApplicationsSkeleton } from '../components/RecentApplications';
 
 const RECENT_APPLICATIONS = 5;
-
-function plural(count: number, singular: string, pluralForm = `${singular}s`) {
-  return `${count} ${count === 1 ? singular : pluralForm}`;
-}
 
 export function OverviewPage() {
   const user = useCurrentUser()!;
@@ -86,15 +84,10 @@ export function OverviewPage() {
     }),
   );
 
-  const clustersList = clusters.data ?? [];
-  const activeClusters = clustersList.filter((cluster) => cluster.active);
-  const activeNodes = activeClusters.reduce((sum, cluster) => sum + (cluster.active_nodes ?? 0), 0);
-  const canSeeInfrastructure = permissions.hasAnyRole(['Admin', 'Infrastructure_Provider']);
+  const clusterCounts = clusterTotals(clusters.data ?? []);
+  const canSeeInfrastructure = permissions.hasAnyRole(INFRASTRUCTURE_ROLES);
 
-  const recent = [...(applications.data ?? [])]
-    // Newest first: ObjectIds start with their creation time, so they sort chronologically.
-    .sort((a, b) => b._id.localeCompare(a._id))
-    .slice(0, RECENT_APPLICATIONS);
+  const recent = newestFirst(applications.data ?? []).slice(0, RECENT_APPLICATIONS);
   const hasApplications = (applications.data?.length ?? 0) > 0;
   const showGettingStarted = !appsLoading && !error && !hasApplications;
 
@@ -114,14 +107,18 @@ export function OverviewPage() {
   const clusterTile = (
     <StatCard
       label="Clusters"
-      value={clusters.isError ? '-' : `${activeClusters.length}/${clustersList.length}`}
+      value={clusters.isError ? '-' : `${clusterCounts.activeClusters}/${clusterCounts.clusters}`}
       icon={<ServerIcon />}
       tone={
-        !clusters.isPending && !clusters.isError && activeClusters.length === 0
+        !clusters.isPending && !clusters.isError && clusterCounts.activeClusters === 0
           ? 'warning'
           : 'default'
       }
-      hint={clusters.isError ? 'Could not load clusters' : `active, ${plural(activeNodes, 'node')}`}
+      hint={
+        clusters.isError
+          ? 'Could not load clusters'
+          : `active, ${plural(clusterCounts.activeNodes, 'node')}`
+      }
       loading={clusters.isPending}
       asChild={canSeeInfrastructure}
     >

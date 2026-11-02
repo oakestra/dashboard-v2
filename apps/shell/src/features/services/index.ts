@@ -8,7 +8,10 @@ export { StatusBadge } from './components/StatusBadge';
 export {
   describeStatus,
   formatVirtualization,
+  instanceHost,
+  instanceProblem,
   isTransitionalStatus,
+  isUndeployed,
   summarizeStatuses,
   usePollWhileTransitional,
 } from './status';

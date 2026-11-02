@@ -1,26 +1,19 @@
 import type { MarketplaceAddon } from '@oakestra/api';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-  Button,
-  ConfirmDialog,
-  EmptyState,
-  Input,
-  Skeleton,
-} from '@oakestra/ui';
+import { Button, ConfirmDialog, EmptyState, Input, Skeleton } from '@oakestra/ui';
 import { useQuery } from '@tanstack/react-query';
 import { PlusIcon, SearchIcon, StoreIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate } from 'react-router';
 
+import { QueryErrorAlert } from '../../../components/QueryErrorAlert';
 import { useAddonsAdminApi } from '../../../core/addons/addons-admin';
-import { describeError } from '../../../core/api/errors';
+import { useSearchParam } from '../../../lib/use-search-param';
 import { useDeleteDefinition, useInstallAddon } from '../api/mutations';
 import { installedAddonsQuery, marketplaceAddonsQuery } from '../api/queries';
 import { MarketplaceCard } from '../components/MarketplaceCard';
 import { MarketplaceDetailsDialog } from '../components/MarketplaceDetailsDialog';
 import { RegisterAddonDialog } from '../components/RegisterAddonDialog';
+import { INSTALLED_PATH } from '../paths';
 
 function matches(addon: MarketplaceAddon, term: string): boolean {
   const haystack = [addon.name, addon.description, ...addon.services.map((s) => s.image)];
@@ -33,11 +26,11 @@ export function MarketplacePage() {
   const installed = useQuery(installedAddonsQuery(api));
   const navigate = useNavigate();
 
-  const [params, setParams] = useSearchParams();
+  const [query, setQuery] = useSearchParam('q');
   // The box keeps its own text: the router applies location changes asynchronously, so binding
   // the input straight to the URL would drop keystrokes typed in between. The URL only makes the
   // search linkable.
-  const [search, setSearch] = useState(params.get('q') ?? '');
+  const [search, setSearch] = useState(query);
   const [details, setDetails] = useState<MarketplaceAddon | null>(null);
   const [deleting, setDeleting] = useState<MarketplaceAddon | null>(null);
   const [registerOpen, setRegisterOpen] = useState(false);
@@ -60,22 +53,14 @@ export function MarketplacePage() {
 
   function updateSearch(value: string) {
     setSearch(value);
-    setParams(
-      (previous) => {
-        const next = new URLSearchParams(previous);
-        if (value) next.set('q', value);
-        else next.delete('q');
-        return next;
-      },
-      { replace: true },
-    );
+    setQuery(value);
   }
 
   function startInstall(addon: MarketplaceAddon) {
     install.mutate(
       { marketplaceId: addon._id, name: addon.name },
       // The installed tab shows the progress of the new addon.
-      { onSuccess: () => void navigate('/addon-manager/installed') },
+      { onSuccess: () => void navigate(INSTALLED_PATH) },
     );
   }
 
@@ -103,37 +88,23 @@ export function MarketplacePage() {
       </div>
 
       {installed.isError && marketplace.isSuccess ? (
-        <Alert variant="destructive" data-testid="installed-unknown">
-          <AlertTitle>Installed addons are unknown</AlertTitle>
-          <AlertDescription>
-            <p>{describeError(installed.error)} Installing is paused until they load.</p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-2"
-              onClick={() => void installed.refetch()}
-            >
-              Try again
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <QueryErrorAlert
+          data-testid="installed-unknown"
+          title="Installed addons are unknown"
+          error={installed.error}
+          onRetry={() => void installed.refetch()}
+        >
+          {' Installing is paused until they load.'}
+        </QueryErrorAlert>
       ) : null}
 
       {marketplace.isError ? (
-        <Alert variant="destructive" data-testid="marketplace-error">
-          <AlertTitle>Could not load the marketplace</AlertTitle>
-          <AlertDescription>
-            <p>{describeError(marketplace.error)}</p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-2"
-              onClick={() => void marketplace.refetch()}
-            >
-              Try again
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <QueryErrorAlert
+          data-testid="marketplace-error"
+          title="Could not load the marketplace"
+          error={marketplace.error}
+          onRetry={() => void marketplace.refetch()}
+        />
       ) : marketplace.isPending ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true">
           {Array.from({ length: 3 }, (_, index) => (

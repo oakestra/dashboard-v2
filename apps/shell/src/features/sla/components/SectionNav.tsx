@@ -34,6 +34,22 @@ export const FORM_SECTIONS = [
   },
 ] as const;
 
+type FormSection = (typeof FORM_SECTIONS)[number];
+export type FormSectionId = FormSection['id'];
+
+/** RHF keeps errors nested under the top-level field name, so a section checks its own keys. */
+function sectionHasErrors(section: FormSection, errors: FieldErrors<ServiceFormValues>): boolean {
+  return section.keys.some((key) => key in errors);
+}
+
+export function hasErrorsInSection(
+  id: FormSectionId,
+  errors: FieldErrors<ServiceFormValues>,
+): boolean {
+  const section = FORM_SECTIONS.find((candidate) => candidate.id === id);
+  return section ? sectionHasErrors(section, errors) : false;
+}
+
 /** Number of invalid leaf fields; RHF nests errors by path, with `message` on the leaves. */
 export function countErrors(errors: unknown): number {
   if (!errors || typeof errors !== 'object') return 0;
@@ -51,7 +67,7 @@ export function SectionNav({ errors }: { errors: FieldErrors<ServiceFormValues> 
     <nav aria-label="Form sections" className="sticky top-20 hidden self-start xl:block">
       <ul className="space-y-1 border-l text-sm">
         {FORM_SECTIONS.map((section) => {
-          const failing = section.keys.some((key) => key in errors);
+          const failing = sectionHasErrors(section, errors);
           return (
             <li key={section.id}>
               <a

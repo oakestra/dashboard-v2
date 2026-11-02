@@ -53,7 +53,9 @@ export function ServicesTable({
   isLoading,
 }: ServicesTableProps) {
   const navigate = useNavigate();
-  const deploy = useDeployInstance();
+  // `mutate` is stable, the mutation result object is not: depending on the latter would rebuild
+  // the columns on every render and close an open row menu.
+  const { mutate: deployInstance, isPending: deploying } = useDeployInstance();
   const remove = useDeleteService();
   const [deleting, setDeleting] = useState<Service | null>(null);
 
@@ -112,10 +114,7 @@ export function ServicesTable({
             const service = row.original;
             return (
               <RowMenu label={`Actions for ${service.microservice_name}`}>
-                <DropdownMenuItem
-                  disabled={deploy.isPending}
-                  onSelect={() => deploy.mutate(service._id)}
-                >
+                <DropdownMenuItem disabled={deploying} onSelect={() => deployInstance(service._id)}>
                   <PlayIcon aria-hidden /> Deploy instance
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
@@ -132,7 +131,7 @@ export function ServicesTable({
           },
         }),
       ]),
-    [applicationId, applicationNamespace, deploy],
+    [applicationId, applicationNamespace, deployInstance, deploying],
   );
 
   return (

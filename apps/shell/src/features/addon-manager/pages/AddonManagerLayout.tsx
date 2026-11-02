@@ -6,10 +6,11 @@ import { useAddonsAdminApi } from '../../../core/addons/addons-admin';
 import { installedAddonsQuery, marketplaceAddonsQuery } from '../api/queries';
 import { useInstallOutcomeToasts } from '../api/use-install-outcome-toasts';
 import { useUiAddonsSync } from '../api/use-ui-addons-sync';
+import { INSTALLED_PATH, MARKETPLACE_PATH } from '../paths';
 
 const TABS = [
-  { to: '/addon-manager/installed', label: 'Installed' },
-  { to: '/addon-manager/marketplace', label: 'Marketplace' },
+  { to: INSTALLED_PATH, label: 'Installed' },
+  { to: MARKETPLACE_PATH, label: 'Marketplace' },
 ] as const;
 
 export function AddonManagerLayout() {
@@ -19,8 +20,8 @@ export function AddonManagerLayout() {
   const installed = useQuery(installedAddonsQuery(api));
   const marketplace = useQuery(marketplaceAddonsQuery(api));
   const counts = {
-    '/addon-manager/installed': installed.data?.length,
-    '/addon-manager/marketplace': marketplace.data?.length,
+    [INSTALLED_PATH]: installed.data?.length,
+    [MARKETPLACE_PATH]: marketplace.data?.length,
   };
   const hasProblem = installed.data?.some(
     (addon) => addon.status === 'failed' || addon.status === 'partially_active',
@@ -54,7 +55,7 @@ export function AddonManagerLayout() {
                 {counts[tab.to]}
               </span>
             ) : null}
-            {tab.to === '/addon-manager/installed' && hasProblem ? (
+            {tab.to === INSTALLED_PATH && hasProblem ? (
               <span className="ml-1.5 inline-flex align-middle">
                 <StatusDot tone="warning" />
                 <span className="sr-only">Some addons need attention</span>

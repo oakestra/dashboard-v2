@@ -12,16 +12,16 @@ import {
 import { ActivityIcon, CpuIcon, MemoryStickIcon, ServerIcon } from 'lucide-react';
 import { Link } from 'react-router';
 
-import { formatBytes, formatPercent } from '../../../lib/format';
+import { formatBytes, formatMegabytes, formatPercent } from '../../../lib/format';
 import { environmentKeys } from '../sla';
-import { describeStatus } from '../status';
+import { describeStatus, instanceHost } from '../status';
 import { DefinitionList } from './DefinitionList';
 import { StatusBadge } from './StatusBadge';
 
 const mono = (value: string | undefined) =>
   value ? <span className="font-mono text-xs">{value}</span> : undefined;
 
-const mb = (value: number | undefined) => (value ? formatBytes(value * 1024 * 1024, 0) : undefined);
+const mb = (value: number | undefined) => (value ? formatMegabytes(value, 0) : undefined);
 
 export function hasMetrics(instance: Instance): boolean {
   return (
@@ -34,7 +34,8 @@ export function hasMetrics(instance: Instance): boolean {
 interface OverviewProps {
   service: Service;
   appId: string;
-  clusterNames: ReadonlyMap<string, string>;
+  /** Cluster names by id. */
+  clusterNames: Readonly<Record<string, string>>;
   onShowInstances: () => void;
 }
 
@@ -50,9 +51,7 @@ function InstanceStats({ service, clusterNames }: Pick<OverviewProps, 'service' 
     ? measured.reduce((sum, i) => sum + (i.memory_percent ?? 0), 0)
     : undefined;
   const clusters = new Set(
-    instances.flatMap((i) =>
-      i.cluster_id ? [clusterNames.get(i.cluster_id) ?? i.cluster_id] : [],
-    ),
+    instances.flatMap((i) => (i.cluster_id ? [clusterNames[i.cluster_id] ?? i.cluster_id] : [])),
   );
   const failing = instances.some((i) => {
     const { tone } = describeStatus(i.status);
@@ -125,15 +124,11 @@ function InstancePreview({ service, appId, clusterNames, onShowInstances }: Over
                 <StatusBadge status={instance.status} detail={instance.status_detail} />
                 <span className="text-muted-foreground">
                   {instance.cluster_id
-                    ? (clusterNames.get(instance.cluster_id) ?? instance.cluster_id)
+                    ? (clusterNames[instance.cluster_id] ?? instance.cluster_id)
                     : '-'}
                 </span>
                 <span className="font-mono text-xs text-muted-foreground sm:ml-auto">
-                  {instance.host_ip
-                    ? instance.host_port
-                      ? `${instance.host_ip}:${instance.host_port}`
-                      : instance.host_ip
-                    : '-'}
+                  {instanceHost(instance) ?? '-'}
                 </span>
               </Link>
             </li>

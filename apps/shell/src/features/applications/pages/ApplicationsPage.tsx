@@ -1,9 +1,6 @@
 import type { Application } from '@oakestra/api';
 import { useCurrentUser, useOakestraApi } from '@oakestra/dashboard-sdk';
 import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
   Button,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -16,12 +13,14 @@ import { createDataTableColumnHelper, DataTable } from '@oakestra/ui/data-table'
 import { useQuery } from '@tanstack/react-query';
 import { BoxesIcon, PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
-import { describeError } from '../../../core/api/errors';
+import { QueryErrorAlert } from '../../../components/QueryErrorAlert';
+import { plural } from '../../../lib/format';
+import { useSearchParam } from '../../../lib/use-search-param';
 import { profileQuery } from '../../profile';
 import { servicesByApplicationQuery } from '../../services';
-import { applicationsQuery } from '../api/queries';
+import { applicationsQuery, newestFirst } from '../api/queries';
 import { ApplicationFormDialog } from '../components/ApplicationFormDialog';
 import { applicationHealth, describeServiceCounts } from '../health';
 import { RowMenu } from '../components/RowMenu';
@@ -48,15 +47,14 @@ function HealthCell({ application, part }: { application: Application; part: 'ba
     );
   }
   if (health) return <>{describeServiceCounts(health)}</>;
-  const count = application.microservices.length;
-  return <>{`${count} ${count === 1 ? 'service' : 'services'}`}</>;
+  return <>{plural(application.microservices.length, 'service')}</>;
 }
 
 export function ApplicationsPage() {
   const user = useCurrentUser()!;
   const api = useOakestraApi();
   const navigate = useNavigate();
-  const [params, setParams] = useSearchParams();
+  const [search, setSearch] = useSearchParam('q');
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Application | null>(null);
   const [deleting, setDeleting] = useState<Application | null>(null);
@@ -68,11 +66,8 @@ export function ApplicationsPage() {
     enabled: userId !== undefined,
   });
 
-  // Newest first (ObjectIds start with their creation time), so a new application is on top.
-  const rows = useMemo(
-    () => [...(applications.data ?? [])].sort((a, b) => b._id.localeCompare(a._id)),
-    [applications.data],
-  );
+  // A new application is on top.
+  const rows = useMemo(() => newestFirst(applications.data ?? []), [applications.data]);
 
   const columns = useMemo(
     () =>
@@ -147,20 +142,11 @@ export function ApplicationsPage() {
       />
 
       {error ? (
-        <Alert variant="destructive">
-          <AlertTitle>Could not load your applications</AlertTitle>
-          <AlertDescription>
-            <p>{describeError(error)}</p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-2"
-              onClick={() => void (profile.isError ? profile.refetch() : applications.refetch())}
-            >
-              Try again
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <QueryErrorAlert
+          title="Could not load your applications"
+          error={error}
+          onRetry={() => void (profile.isError ? profile.refetch() : applications.refetch())}
+        />
       ) : (
         <DataTable
           label="Applications"
@@ -169,18 +155,8 @@ export function ApplicationsPage() {
           isLoading={applications.isPending}
           getRowId={(row) => row._id}
           searchPlaceholder="Search applications"
-          globalFilter={params.get('q') ?? ''}
-          onGlobalFilterChange={(value) =>
-            setParams(
-              (previous) => {
-                const next = new URLSearchParams(previous);
-                if (value) next.set('q', value);
-                else next.delete('q');
-                return next;
-              },
-              { replace: true },
-            )
-          }
+          globalFilter={search}
+          onGlobalFilterChange={setSearch}
           onRowClick={(row) => void navigate(`/applications/${row._id}`)}
           emptyState={
             <EmptyState

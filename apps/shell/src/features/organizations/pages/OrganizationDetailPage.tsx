@@ -3,7 +3,6 @@ import { useCurrentUser, useNotify, useOakestraApi } from '@oakestra/dashboard-s
 import {
   Alert,
   AlertDescription,
-  AlertTitle,
   Badge,
   Button,
   ConfirmDialog,
@@ -26,15 +25,20 @@ import {
   UsersIcon,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams, useRevalidator } from 'react-router';
 
-import { describeError } from '../../../core/api/errors';
+import { QueryErrorAlert } from '../../../components/QueryErrorAlert';
+import { plural } from '../../../lib/format';
 import { allUsersQuery, roleLabel } from '../../users';
-import { useDeleteOrganization, useSetOrganizationMembers } from '../api/mutations';
+import {
+  useDeleteOrganization,
+  useRenameOrganization,
+  useSetOrganizationMembers,
+} from '../api/mutations';
 import { organizationsQuery } from '../api/queries';
 import { MemberDialog } from '../components/MemberDialog';
-import { RenameOrganizationDialog } from '../components/RenameOrganizationDialog';
-import { removalBlock, rolesBlock } from '../members';
+import { OrganizationNameDialog } from '../components/OrganizationNameDialog';
+import { adminCount, removalBlock, rolesBlock } from '../members';
 
 interface MemberRow extends OrganizationMember {
   name: string | null;
@@ -66,20 +70,11 @@ export function OrganizationDetailPage() {
   }
   if (organizations.isError) {
     return (
-      <Alert variant="destructive">
-        <AlertTitle>Could not load the organization</AlertTitle>
-        <AlertDescription>
-          <p>{describeError(organizations.error)}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="mt-2"
-            onClick={() => void organizations.refetch()}
-          >
-            Try again
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <QueryErrorAlert
+        title="Could not load the organization"
+        error={organizations.error}
+        onRetry={() => void organizations.refetch()}
+      />
     );
   }
   if (!organization) {
@@ -115,6 +110,8 @@ interface MembersProps {
 
 function Members({ organization, users, usersFailed, usersLoading }: MembersProps) {
   const setMembers = useSetOrganizationMembers(organization);
+  const rename = useRenameOrganization(organization);
+  const revalidator = useRevalidator();
   const me = useCurrentUser();
   const notify = useNotify();
   const [adding, setAdding] = useState(false);
@@ -140,12 +137,8 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
     return users.filter((user) => !taken.has(user._id)).map((u) => ({ id: u._id, name: u.name }));
   }, [organization.member, users]);
 
-  const admins = organization.member.filter((member) => member.roles.includes('Admin')).length;
-  const summary = `${organization.member.length === 1 ? '1 member' : `${organization.member.length} members`}, ${admins === 1 ? '1 admin' : `${admins} admins`}`;
+  const summary = `${plural(organization.member.length, 'member')}, ${plural(adminCount(organization), 'admin')}`;
 
-  // The backend replaces the list, so every change sends all members; only user_id and roles of
-  // each, in case the stored documents carry more.
-  const plain = (member: OrganizationMember) => ({ user_id: member.user_id, roles: member.roles });
   // Forms stay open after a failure so the input is not lost; the confirm dialog always closes.
   const send = (member: OrganizationMember[], done: () => void, closeOnFailure = false) =>
     setMembers.mutate(member, closeOnFailure ? { onSettled: done } : { onSuccess: done });
@@ -306,7 +299,17 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
       />
 
       {renaming ? (
-        <RenameOrganizationDialog organization={organization} onClose={() => setRenaming(false)} />
+        <OrganizationNameDialog
+          title="Rename organization"
+          description="Members keep their roles. Users log in with the organization name, so tell them about the new one."
+          initialName={organization.name}
+          submitLabel="Rename"
+          pendingLabel="Saving..."
+          mutation={rename}
+          // The breadcrumb comes from the route loader, which only reruns on revalidation.
+          onDone={() => void revalidator.revalidate()}
+          onClose={() => setRenaming(false)}
+        />
       ) : null}
       {adding ? (
         <MemberDialog
@@ -318,9 +321,7 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
           onClose={() => setAdding(false)}
           onSubmit={({ userId, roles }) => {
             if (userId === null) return;
-            send([...organization.member.map(plain), { user_id: userId, roles }], () =>
-              setAdding(false),
-            );
+            send([...organization.member, { user_id: userId, roles }], () => setAdding(false));
           }}
         />
       ) : null}
@@ -342,9 +343,7 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
             }
             send(
               organization.member.map((member) =>
-                member.user_id === editing.user_id
-                  ? { user_id: member.user_id, roles }
-                  : plain(member),
+                member.user_id === editing.user_id ? { user_id: member.user_id, roles } : member,
               ),
               () => setEditing(null),
             );
@@ -386,7 +385,7 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
             return;
           }
           send(
-            organization.member.filter((member) => member.user_id !== removing.user_id).map(plain),
+            organization.member.filter((member) => member.user_id !== removing.user_id),
             () => setRemoving(null),
             true,
           );

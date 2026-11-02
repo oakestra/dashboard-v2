@@ -1,25 +1,20 @@
 import type { AddonDefinition } from '@oakestra/dashboard-sdk';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
-import type { UiAddon } from './ui-addons';
+import type { ResolvedAddon } from './ui-addons';
 
 export type AddonState = 'loading' | 'loaded' | 'failed' | 'incompatible';
 
-interface AddonEntryBase extends UiAddon {
-  /** Manifest URL the remote was (or is being) loaded from. */
-  entry: string;
-}
-
 export type AddonEntry =
-  | (AddonEntryBase & { state: 'loading' })
-  | (AddonEntryBase & {
+  | (ResolvedAddon & { state: 'loading' })
+  | (ResolvedAddon & {
       state: 'loaded';
       definition: AddonDefinition;
       /** Set when /ui-addons reports a newer version than the one running in this page. */
       availableVersion?: string;
     })
-  | (AddonEntryBase & { state: 'failed'; error: string })
-  | (AddonEntryBase & { state: 'incompatible'; error: string });
+  | (ResolvedAddon & { state: 'failed'; error: string })
+  | (ResolvedAddon & { state: 'incompatible'; error: string });
 
 /**
  * - `pending`: the first /ui-addons request has not completed yet.

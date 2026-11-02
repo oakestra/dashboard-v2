@@ -2,6 +2,7 @@
 // feature's index (which would create an import cycle).
 export const applicationKeys = {
   all: ['applications'] as const,
-  list: (userId: string) => [...applicationKeys.all, 'list', userId] as const,
+  lists: () => [...applicationKeys.all, 'list'] as const,
+  list: (userId: string) => [...applicationKeys.lists(), userId] as const,
   detail: (applicationId: string) => [...applicationKeys.all, 'detail', applicationId] as const,
 };

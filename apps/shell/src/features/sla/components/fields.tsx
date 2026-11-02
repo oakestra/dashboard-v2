@@ -22,15 +22,24 @@ import {
 } from '@oakestra/ui';
 import { ChevronDown, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
 import { useState, type ComponentProps, type ReactNode } from 'react';
-import { Controller, get, useFieldArray, useFormContext, type Path } from 'react-hook-form';
+import {
+  Controller,
+  get,
+  useFieldArray,
+  useFormContext,
+  useFormState,
+  type Path,
+} from 'react-hook-form';
 
+import { plural } from '../../../lib/format';
 import type { ServiceFormValues } from '../model/schema';
+import { hasErrorsInSection, type FormSectionId } from './SectionNav';
 
 type FieldName = Path<ServiceFormValues>;
 
 /** Summary text of a closed section. */
 export function count(n: number, noun: string): string {
-  return n === 0 ? 'None' : `${n} ${noun}${n === 1 ? '' : 's'}`;
+  return n === 0 ? 'None' : plural(n, noun);
 }
 
 export function fieldId(name: string): string {
@@ -81,21 +90,21 @@ export function Section({
   description,
   collapsible = false,
   defaultOpen = false,
-  hasError = false,
   summary,
   actions,
   children,
 }: {
-  id: string;
+  id: FormSectionId;
   title: string;
   description?: string;
   collapsible?: boolean;
   defaultOpen?: boolean;
-  hasError?: boolean;
   summary?: string;
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  const { errors } = useFormState<ServiceFormValues>();
+  const hasError = collapsible && hasErrorsInSection(id, errors);
   const [open, setOpen] = useState(defaultOpen);
   // Adjusting state while rendering (instead of in an effect) avoids a flash of the closed card.
   const [forcedOpen, setForcedOpen] = useState(false);

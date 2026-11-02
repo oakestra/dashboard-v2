@@ -7,6 +7,9 @@ import {
 } from '@oakestra/api';
 import type { ZodError } from 'zod';
 
+import { plural } from '../../../lib/format';
+import { formatIssue } from '../../../lib/zod-issues';
+
 export interface SlaContext {
   /** The token's `organization` claim. */
   customerId: string;
@@ -41,9 +44,9 @@ export type ImportResult =
 function describeZodError(error: ZodError): string {
   const issue = error.issues[0];
   if (!issue) return 'The file is not a valid SLA.';
-  const path = issue.path.join('.');
-  const more = error.issues.length > 1 ? ` (and ${error.issues.length - 1} more problems)` : '';
-  return `${path ? `${path}: ` : ''}${issue.message}${more}`;
+  const more =
+    error.issues.length > 1 ? ` (and ${plural(error.issues.length - 1, 'more problem')})` : '';
+  return `${formatIssue(issue, 'The file')}${more}`;
 }
 
 /**

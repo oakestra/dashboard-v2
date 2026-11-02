@@ -136,6 +136,7 @@ const serverError = (): BackendResponse => ({
   contentType: 'text/html; charset=utf-8',
 });
 
+/** Both backends call `ObjectId(id)` on the path segment, which raises for anything else. */
 const isObjectId = (id: string) => /^[0-9a-fA-F]{24}$/.test(id);
 
 type ErrorTree = { [key: string]: string[] | ErrorTree };
@@ -267,12 +268,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsBackend {
-  let delays = {
-    install: options.installDelayMs ?? 1500,
-    disable: options.disableDelayMs ?? options.installDelayMs ?? 1500,
-    review: options.reviewDelayMs ?? options.installDelayMs ?? 1500,
-    monitor: options.monitorDelayMs ?? 4000,
-  };
+  const delays = { install: 1500, disable: 1500, review: 1500, monitor: 4000 };
+  setDelays(options);
   const uiBlockSupport = options.uiBlockSupport ?? false;
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
   const versions = new Map<string, string>();
@@ -343,6 +340,13 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
     }
   }
 
+  function setDelays(next: Omit<AddonsBackendOptions, 'uiBlockSupport'>): void {
+    delays.install = next.installDelayMs ?? delays.install;
+    delays.disable = next.disableDelayMs ?? next.installDelayMs ?? delays.disable;
+    delays.review = next.reviewDelayMs ?? next.installDelayMs ?? delays.review;
+    delays.monitor = next.monitorDelayMs ?? delays.monitor;
+  }
+
   function forceStatus(id: string, status: MockInstalledAddon['status']): void {
     const addon = findInstalled(id);
     if (!addon) return;
@@ -350,16 +354,14 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
     addon.status = status;
   }
 
-  /** Both backends call `ObjectId(id)` on the path segment, which raises for anything else. */
-  const invalidId = (id: string) => !isObjectId(id);
-
   /** The marketplace schema's output: undeclared fields (such as `ui`) never leave the service. */
   function serializeDefinition(definition: MockMarketplaceAddon): MockMarketplaceAddon {
     const { ui, ...rest } = definition;
     return uiBlockSupport && ui ? { ...rest, ui } : rest;
   }
 
-  function validName(filter: unknown): string | undefined {
+  /** An empty query parameter (`?status=`) filters nothing. */
+  function nonEmpty(filter: unknown): string | undefined {
     return typeof filter === 'string' && filter !== '' ? filter : undefined;
   }
 
@@ -368,7 +370,7 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
     versions,
     manager: {
       list(query) {
-        const status = validName(query?.status);
+        const status = nonEmpty(query?.status);
         return asText(
           200,
           state.installed.filter((addon) => !status || addon.status === status),
@@ -402,7 +404,7 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
         return asText(201, addon);
       },
       get(id) {
-        if (invalidId(id)) return serverError();
+        if (!isObjectId(id)) return serverError();
         const addon = findInstalled(id);
         return addon ? asText(200, addon) : abort(404, 'Addon not found');
       },
@@ -414,7 +416,7 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
         if (!STATUSES.includes(status)) {
           return unprocessable({ status: [`Must be one of: ${STATUSES.join(', ')}.`] });
         }
-        if (invalidId(id)) return serverError();
+        if (!isObjectId(id)) return serverError();
         const addon = findInstalled(id);
         if (!addon) return abort(400, 'Failed to update addon');
         // unknown=INCLUDE in the real schema: extra fields are written to the record as well.
@@ -425,7 +427,7 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
         return asText(200, addon);
       },
       remove(id) {
-        if (invalidId(id)) return serverError();
+        if (!isObjectId(id)) return serverError();
         const addon = findInstalled(id);
         if (!addon) return abort(404, 'Addon not found');
         if (addon.status !== 'disabled') {
@@ -440,7 +442,7 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
     },
     marketplace: {
       list(query) {
-        const name = validName(query?.name);
+        const name = nonEmpty(query?.name);
         return asJson(
           200,
           state.marketplace
@@ -484,14 +486,14 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
         return asJson(201, serializeDefinition(definition));
       },
       get(id) {
-        if (invalidId(id)) return serverError();
+        if (!isObjectId(id)) return serverError();
         const definition = findDefinition(id);
         return definition
           ? asJson(200, serializeDefinition(definition))
           : abort(404, 'Addon not found');
       },
       remove(id) {
-        if (invalidId(id)) return serverError();
+        if (!isObjectId(id)) return serverError();
         const before = state.marketplace.length;
         state.marketplace = state.marketplace.filter((addon) => addon._id !== id);
         clearTimeout(timers.get(`review-${id}`));
@@ -513,14 +515,7 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
       return entries;
     },
     forceStatus,
-    setDelays(next) {
-      delays = {
-        install: next.installDelayMs ?? delays.install,
-        disable: next.disableDelayMs ?? next.installDelayMs ?? delays.disable,
-        review: next.reviewDelayMs ?? next.installDelayMs ?? delays.review,
-        monitor: next.monitorDelayMs ?? delays.monitor,
-      };
-    },
+    setDelays,
     reset() {
       for (const timer of timers.values()) clearTimeout(timer);
       timers.clear();

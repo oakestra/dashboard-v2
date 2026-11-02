@@ -3,6 +3,7 @@ import { ChevronRightIcon } from 'lucide-react';
 import type { Application } from '@oakestra/api';
 import { Link } from 'react-router';
 
+import { plural } from '../../../lib/format';
 import { describeServiceCounts, type ApplicationHealth } from '../../applications';
 
 interface RecentApplicationsProps {
@@ -45,9 +46,7 @@ export function RecentApplications({ applications, healthById }: RecentApplicati
                 <span className="block truncate text-xs text-muted-foreground">
                   {health
                     ? describeServiceCounts(health)
-                    : `${application.microservices.length} ${
-                        application.microservices.length === 1 ? 'service' : 'services'
-                      }`}
+                    : plural(application.microservices.length, 'service')}
                   {application.application_desc ? ` - ${application.application_desc}` : ''}
                 </span>
               </span>

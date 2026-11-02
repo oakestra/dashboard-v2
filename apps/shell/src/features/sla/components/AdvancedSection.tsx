@@ -4,7 +4,7 @@ import { Controller, useFormContext } from 'react-hook-form';
 import type { ServiceFormValues } from '../model/schema';
 import { Section, StringListField, TextField } from './fields';
 
-export function AdvancedSection({ hasError }: { hasError: boolean }) {
+export function AdvancedSection() {
   const { control, getValues } = useFormContext<ServiceFormValues>();
   const v = getValues();
   const hasValues =
@@ -22,7 +22,6 @@ export function AdvancedSection({ hasError }: { hasError: boolean }) {
       collapsible
       defaultOpen={hasValues}
       summary={hasValues ? 'Customized' : 'Defaults'}
-      hasError={hasError}
     >
       <div className="flex flex-wrap gap-8">
         {(

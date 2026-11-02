@@ -42,9 +42,8 @@ export function useDeleteOrganization() {
 }
 
 /**
- * Members are not addressable on their own: `PUT /organization/{id}` replaces `name` and the whole
- * `member` list (the backend `$set`s both, so omitting `name` would null it). Callers pass the
- * complete new list.
+ * Members are not addressable on their own: `PUT /organization/{id}` replaces the whole `member`
+ * list. Callers pass the complete new list.
  */
 export function useSetOrganizationMembers(organization: Organization) {
   const api = useOakestraApi();
@@ -68,10 +67,7 @@ export function useRenameOrganization(organization: Organization) {
   const notify = useNotify();
   return useMutation({
     mutationFn: (name: string) =>
-      api.organizations.update(organization._id, {
-        name,
-        member: organization.member.map(({ user_id, roles }) => ({ user_id, roles })),
-      }),
+      api.organizations.update(organization._id, { name, member: organization.member }),
     meta: { silent: true },
     onSuccess: async (_data, name) => {
       notify.success(`Organization renamed to ${name}`);

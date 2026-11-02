@@ -1,6 +1,7 @@
 import type { Application, Service } from '@oakestra/api';
 
-import { describeStatus, isTransitionalStatus, type StatusTone } from '../services';
+import { plural } from '../../lib/format';
+import { describeStatus, isUndeployed, type StatusTone } from '../services';
 
 export interface AttentionItem {
   key: string;
@@ -57,13 +58,11 @@ export function attentionItems(
           status: worst.status,
           detail: worst.status_detail,
           tone: description.tone,
-          note: `${failing.length} of ${service.instance_list.length} ${
-            service.instance_list.length === 1 ? 'instance' : 'instances'
-          } failing`,
+          note: `${failing.length} of ${plural(service.instance_list.length, 'instance')} failing`,
         });
         continue;
       }
-      if (service.instance_list.length === 0 && !isTransitionalStatus(service.status)) {
+      if (isUndeployed(service)) {
         items.push({
           ...base,
           status: undefined,

@@ -1,5 +1,5 @@
 import { ApiError, messageFromErrorBody } from '../errors.ts';
-import type { RequestOptions } from './request.ts';
+import { rethrowAsNetworkError, type RequestOptions } from './request.ts';
 
 export interface AddonsClientOptions {
   /** Base URL up to the service root, e.g. `/addons-api` or `http://localhost:11101/api/v1/addons`. */
@@ -30,10 +30,6 @@ export interface AddonsResponse {
 export interface AddonsClient {
   readonly baseUrl: string;
   request(request: AddonsRequest): Promise<AddonsResponse>;
-}
-
-function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === 'AbortError';
 }
 
 /**
@@ -81,13 +77,11 @@ export function createAddonsClient(options: AddonsClientOptions): AddonsClient {
         response = await send(request);
         text = await response.text();
       } catch (error) {
-        if (isAbortError(error) || error instanceof ApiError) throw error;
-        throw new ApiError('Could not reach the addons service. Check your connection.', {
-          kind: 'network',
-          status: 0,
-          ...call,
-          cause: error,
-        });
+        rethrowAsNetworkError(
+          error,
+          call,
+          'Could not reach the addons service. Check your connection.',
+        );
       }
 
       const parsed = parseBody(text);

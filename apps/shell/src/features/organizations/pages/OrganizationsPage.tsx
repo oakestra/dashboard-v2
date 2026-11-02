@@ -1,25 +1,16 @@
 import { ROOT_ORGANIZATION_NAME, type Organization } from '@oakestra/api';
 import { useOakestraApi } from '@oakestra/dashboard-sdk';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-  Badge,
-  Button,
-  ConfirmDialog,
-  EmptyState,
-  PageHeader,
-} from '@oakestra/ui';
+import { Badge, Button, ConfirmDialog, EmptyState, PageHeader } from '@oakestra/ui';
 import { createDataTableColumnHelper, DataTable } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
 import { BuildingIcon, PlusIcon, Trash2Icon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
-import { describeError } from '../../../core/api/errors';
-import { useDeleteOrganization } from '../api/mutations';
+import { QueryErrorAlert } from '../../../components/QueryErrorAlert';
+import { useCreateOrganization, useDeleteOrganization } from '../api/mutations';
 import { organizationsQuery } from '../api/queries';
-import { CreateOrganizationDialog } from '../components/CreateOrganizationDialog';
+import { OrganizationNameDialog } from '../components/OrganizationNameDialog';
 
 const column = createDataTableColumnHelper<Organization>();
 
@@ -29,6 +20,7 @@ export function OrganizationsPage() {
   const organizations = useQuery(organizationsQuery(api));
   const [createOpen, setCreateOpen] = useState(false);
   const [deleting, setDeleting] = useState<Organization | null>(null);
+  const create = useCreateOrganization();
   const remove = useDeleteOrganization();
 
   const columns = useMemo(
@@ -91,20 +83,11 @@ export function OrganizationsPage() {
       />
 
       {organizations.isError ? (
-        <Alert variant="destructive">
-          <AlertTitle>Could not load the organizations</AlertTitle>
-          <AlertDescription>
-            <p>{describeError(organizations.error)}</p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-2"
-              onClick={() => void organizations.refetch()}
-            >
-              Try again
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <QueryErrorAlert
+          title="Could not load the organizations"
+          error={organizations.error}
+          onRetry={() => void organizations.refetch()}
+        />
       ) : (
         <DataTable
           label="Organizations"
@@ -130,7 +113,16 @@ export function OrganizationsPage() {
         />
       )}
 
-      <CreateOrganizationDialog open={createOpen} onOpenChange={setCreateOpen} />
+      {createOpen ? (
+        <OrganizationNameDialog
+          title="Create organization"
+          description="Members can be added once it exists."
+          submitLabel="Create organization"
+          pendingLabel="Creating..."
+          mutation={create}
+          onClose={() => setCreateOpen(false)}
+        />
+      ) : null}
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(open) => {

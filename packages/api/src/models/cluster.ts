@@ -2,6 +2,17 @@ import { z } from 'zod';
 
 import { historySchema, list, optionalNumber, optionalString, timestamp } from './common.ts';
 
+/**
+ * Addons, CSI and GPU drivers arrive as strings or `{name}` objects, depending on the cluster
+ * version. Anything else is shown as its JSON rather than hidden, and a list that is not a list at
+ * all counts as empty: a capability list is never worth failing the whole cluster over.
+ */
+const labelList = list(
+  z
+    .union([z.string(), z.looseObject({ name: z.string() }).transform(({ name }) => name)])
+    .catch(({ value }) => JSON.stringify(value) ?? String(value)),
+).catch([]);
+
 export const clusterSchema = z.looseObject({
   _id: z.string(),
   cluster_name: z.string(),
@@ -19,13 +30,18 @@ export const clusterSchema = z.looseObject({
   total_cpu_cores: optionalNumber,
   total_gpu_cores: optionalNumber,
   gpu_percent: optionalNumber,
+  gpu_temp: optionalNumber,
+  /** In MB. */
   vram: optionalNumber,
+  vram_percent: optionalNumber,
+  vcpus: optionalNumber,
   ip: optionalString,
   port: optionalString.catch(undefined),
   // /clusters/active repeats the list once per node ("runc","docker","runc","docker",...).
   virtualization: list(z.string()).transform((items) => [...new Set(items)]),
-  csi_drivers: list(z.unknown()),
-  supported_addons: list(z.unknown()),
+  csi_drivers: labelList,
+  gpu_drivers: labelList,
+  supported_addons: labelList,
   /** Aggregated CPU usage in percent over time. */
   cpu_history: historySchema,
   /** Aggregated memory usage in percent over time. */

@@ -82,6 +82,30 @@ describe('clusterSchema', () => {
     expect(cluster.virtualization).toEqual(['runc', 'docker']);
     expect(cluster.active).toBe(true);
   });
+
+  it('reads the GPU and vCPU figures the spec does not document', () => {
+    const cluster = clusterSchema.parse({
+      ...samples.cluster,
+      gpu_temp: 61.5,
+      vram_percent: '12.5',
+      vcpus: 8,
+    });
+    expect(cluster).toMatchObject({ gpu_temp: 61.5, vram_percent: 12.5, vcpus: 8 });
+    expect(clusterSchema.parse({ ...samples.cluster, gpu_temp: 'hot' }).gpu_temp).toBeUndefined();
+  });
+
+  it('turns addons and drivers into labels, whatever shape they arrive in', () => {
+    const cluster = clusterSchema.parse({
+      ...samples.cluster,
+      supported_addons: ['flops', { name: 'monitoring', version: '1.0' }],
+      csi_drivers: [{ driver: 'nfs' }, 3],
+      gpu_drivers: null,
+    });
+    expect(cluster.supported_addons).toEqual(['flops', 'monitoring']);
+    expect(cluster.csi_drivers).toEqual(['{"driver":"nfs"}', '3']);
+    expect(cluster.gpu_drivers).toEqual([]);
+    expect(clusterSchema.parse({ ...samples.cluster, csi_drivers: 'nfs' }).csi_drivers).toEqual([]);
+  });
 });
 
 describe('parseClusterLocation', () => {

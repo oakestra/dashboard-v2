@@ -1,4 +1,5 @@
 import type { Instance, Service } from '@oakestra/api';
+import type { StatusTone } from '@oakestra/ui';
 import { useRef } from 'react';
 
 /**
@@ -32,7 +33,7 @@ export function hasTransitionalInstance(services: readonly Service[]): boolean {
   );
 }
 
-export type StatusTone = 'success' | 'info' | 'warning' | 'destructive' | 'neutral';
+export type { StatusTone };
 
 export interface StatusDescription {
   tone: StatusTone;
@@ -77,18 +78,29 @@ export function describeStatus(status: string | undefined, detail?: string): Sta
   return make('neutral', status);
 }
 
-/** Summary of a service's instances, e.g. "2 running, 1 pending". */
-export function instanceCounts(instances: readonly Instance[]) {
-  let running = 0;
-  let pending = 0;
-  let failed = 0;
-  for (const instance of instances) {
-    const { tone, pulse } = describeStatus(instance.status);
-    if (tone === 'success') running += 1;
-    else if (tone === 'info' || pulse) pending += 1;
-    else if (tone === 'destructive' || tone === 'warning') failed += 1;
-  }
-  return { total: instances.length, running, pending, failed };
+/**
+ * A service with nothing running and nothing on the way. Right after a deploy request the service
+ * is REQUESTED with an empty `instance_list` (the instance appears only once it is scheduled), so
+ * an empty list alone does not mean undeployed.
+ */
+export function isUndeployed(service: Service): boolean {
+  return service.instance_list.length === 0 && !isTransitionalStatus(service.status);
+}
+
+/** `ip:port`, or just the IP when the instance exposes no port. */
+export function instanceHost(instance: Instance): string | undefined {
+  const { host_ip, host_port } = instance;
+  if (!host_ip) return undefined;
+  return host_port ? `${host_ip}:${host_port}` : host_ip;
+}
+
+/**
+ * The scheduler message worth showing for an instance. A running instance keeps its last
+ * scheduler message, which next to a green badge would contradict it.
+ */
+export function instanceProblem(instance: Instance): string | undefined {
+  const { status, status_detail } = instance;
+  return status_detail && describeStatus(status).tone !== 'success' ? status_detail : undefined;
 }
 
 const TONE_RANK: Record<StatusTone, number> = {

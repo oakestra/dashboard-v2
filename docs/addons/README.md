@@ -95,7 +95,8 @@ sequenceDiagram
 
 Step by step:
 
-1. The shell polls `GET /ui-addons`. The answer lists the active addons that ship a UI, as
+1. Once someone is logged in, the shell polls `GET /ui-addons` (the login page loads no addon
+   code). The answer lists the active addons that ship a UI, as
    `{ name, version, sdk }` entries. The URL and the interval come from the shell's runtime
    `config.json` (`uiAddonsUrl`, default `/ui-addons`; `addonsPollIntervalMs`, default `15000`).
    Entries with an invalid `name` (allowed: `a-z`, `0-9`, `-`) or an invalid semver range in

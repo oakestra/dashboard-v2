@@ -29,17 +29,23 @@ import {
   TriangleAlertIcon,
   ZapIcon,
 } from 'lucide-react';
+import { useMemo } from 'react';
 import { Link, useParams } from 'react-router';
 
 import { CopyButton } from '../../../components/CopyButton';
+import { QueryErrorAlert } from '../../../components/QueryErrorAlert';
 import { TimeSeriesChart } from '../../../components/TimeSeriesChart';
-import { describeError } from '../../../core/api/errors';
 import { Slot } from '../../../core/extensions/Slot';
-import { formatBytes, formatPercent, formatRelativeTime } from '../../../lib/format';
+import {
+  formatBytes,
+  formatMegabytes,
+  formatPercent,
+  formatRelativeTime,
+} from '../../../lib/format';
 import { clusterQuery } from '../api/queries';
 import { ClusterMap } from '../components/ClusterMap';
 import { ClusterStatusBadge } from '../components/ClusterStatusBadge';
-import { extraNumber, itemLabels, totalMemoryBytes } from '../lib';
+import { totalMemoryBytes } from '../lib';
 
 export function ClusterDetailPage() {
   const { clusterId = '' } = useParams();
@@ -75,20 +81,11 @@ export function ClusterDetailPage() {
     return (
       <div className="space-y-4">
         {back}
-        <Alert variant="destructive">
-          <AlertTitle>Could not load the cluster</AlertTitle>
-          <AlertDescription>
-            <p>{describeError(cluster.error)}</p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-2"
-              onClick={() => void cluster.refetch()}
-            >
-              Try again
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <QueryErrorAlert
+          title="Could not load the cluster"
+          error={cluster.error}
+          onRetry={() => void cluster.refetch()}
+        />
       </div>
     );
   }
@@ -114,13 +111,11 @@ export function ClusterDetailPage() {
 
 function ClusterDetail({ cluster }: { cluster: Cluster }) {
   const location = parseClusterLocation(cluster.cluster_location);
-  const gpuPercent = extraNumber(cluster, 'gpu_percent') ?? cluster.gpu_percent;
-  const gpuTemp = extraNumber(cluster, 'gpu_temp');
-  const vramPercent = extraNumber(cluster, 'vram_percent');
-  const vcpus = extraNumber(cluster, 'vcpus');
+  const { gpu_temp: gpuTemp, vram_percent: vramPercent, vcpus } = cluster;
   const hasGpu = (cluster.total_gpu_cores ?? 0) > 0;
   const memoryTotal = totalMemoryBytes(cluster);
   const { active } = cluster;
+  const widgetContext = useMemo(() => ({ clusterId: cluster._id }), [cluster._id]);
   // An inactive cluster keeps its last report, which would otherwise read as an idle cluster.
   const live = (value: string) => (active ? value : '-');
   const noData = active ? undefined : 'No current data';
@@ -140,9 +135,9 @@ function ClusterDetail({ cluster }: { cluster: Cluster }) {
   const coordinates = location ? `${location.latitude}, ${location.longitude}` : null;
   const capabilities = [
     { title: 'Virtualization', items: cluster.virtualization },
-    { title: 'Supported addons', items: itemLabels(cluster.supported_addons) },
-    { title: 'CSI drivers', items: itemLabels(cluster.csi_drivers) },
-    { title: 'GPU drivers', items: itemLabels(cluster.gpu_drivers) },
+    { title: 'Supported addons', items: cluster.supported_addons },
+    { title: 'CSI drivers', items: cluster.csi_drivers },
+    { title: 'GPU drivers', items: cluster.gpu_drivers },
   ];
   const reported = capabilities.filter((group) => group.items.length > 0);
   const statCount = 3 + (hasGpu ? 1 + (gpuTemp === undefined ? 0 : 1) + (cluster.vram ? 1 : 0) : 0);
@@ -199,7 +194,7 @@ function ClusterDetail({ cluster }: { cluster: Cluster }) {
             <StatCard
               label="GPU usage"
               icon={<ZapIcon />}
-              value={live(formatPercent(gpuPercent))}
+              value={live(formatPercent(cluster.gpu_percent))}
               hint={noData}
             />
             {gpuTemp !== undefined ? (
@@ -214,7 +209,7 @@ function ClusterDetail({ cluster }: { cluster: Cluster }) {
               <StatCard
                 label="VRAM"
                 icon={<MemoryStickIcon />}
-                value={formatBytes(cluster.vram * 1024 * 1024)}
+                value={formatMegabytes(cluster.vram)}
                 hint={
                   noData ??
                   (vramPercent === undefined ? undefined : `${formatPercent(vramPercent)} used`)
@@ -283,7 +278,7 @@ function ClusterDetail({ cluster }: { cluster: Cluster }) {
 
       <Slot
         point="cluster.widgets"
-        context={{ clusterId: cluster._id }}
+        context={widgetContext}
         render={(item, content) => (
           <Card>
             <CardHeader>

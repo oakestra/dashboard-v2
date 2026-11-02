@@ -1,4 +1,4 @@
-import type { Instance } from '@oakestra/api';
+import type { Cluster, Instance } from '@oakestra/api';
 import { useCurrentUser, useOakestraApi } from '@oakestra/dashboard-sdk';
 import {
   Alert,
@@ -36,15 +36,15 @@ import {
   SquareIcon,
   Trash2Icon,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 
 import { CopyButton } from '../../../components/CopyButton';
 import { JsonViewer } from '../../../components/JsonViewer';
-import { describeError } from '../../../core/api/errors';
+import { QueryErrorAlert } from '../../../components/QueryErrorAlert';
 import { Slot } from '../../../core/extensions/Slot';
 import { downloadJson } from '../../../lib/download';
-import { formatBytes, formatPercent } from '../../../lib/format';
+import { formatBytes, formatMegabytes, formatPercent } from '../../../lib/format';
 import { clustersQuery } from '../../infrastructure';
 import { useDeleteService, useDeployInstance, useUndeployInstance } from '../api/mutations';
 import { serviceQuery } from '../api/queries';
@@ -54,11 +54,22 @@ import { redactEnvironment, redactSlaEnvironment, serviceToSla } from '../sla';
 import {
   describeStatus,
   formatVirtualization,
+  instanceHost,
+  instanceProblem,
   isTransitionalStatus,
   usePollWhileTransitional,
 } from '../status';
 
 const column = createDataTableColumnHelper<Instance>();
+
+const NO_CLUSTER_NAMES: Readonly<Record<string, string>> = {};
+
+// The cluster list changes with every 30s poll (load figures), but the names rarely do. A plain
+// record rather than a Map, because TanStack Query structurally shares `select` results: the names
+// keep their identity, so the instance columns are not rebuilt, which would close an open row menu.
+function selectClusterNames(clusters: readonly Cluster[]): Record<string, string> {
+  return Object.fromEntries(clusters.map((cluster) => [cluster._id, cluster.cluster_name]));
+}
 
 export function ServiceDetailPage() {
   const { appId = '', serviceId = '' } = useParams();
@@ -67,7 +78,7 @@ export function ServiceDetailPage() {
   const navigate = useNavigate();
   const refetchInterval = usePollWhileTransitional();
   const service = useQuery({ ...serviceQuery(api, serviceId), refetchInterval });
-  const clusters = useQuery(clustersQuery(api));
+  const clusters = useQuery({ ...clustersQuery(api), select: selectClusterNames });
   const deploy = useDeployInstance();
   const undeploy = useUndeployInstance();
   const remove = useDeleteService();
@@ -75,9 +86,24 @@ export function ServiceDetailPage() {
   const [undeploying, setUndeploying] = useState<Instance | null>(null);
   const [tab, setTab] = useState('overview');
 
-  const clusterNames = useMemo(
-    () => new Map((clusters.data ?? []).map((cluster) => [cluster._id, cluster.cluster_name])),
-    [clusters.data],
+  const clusterNames = clusters.data ?? NO_CLUSTER_NAMES;
+  const instancePath = useCallback(
+    (instanceNumber: number) =>
+      `/applications/${appId}/services/${serviceId}/instances/${instanceNumber}`,
+    [appId, serviceId],
+  );
+  const slotContext = useMemo(() => ({ applicationId: appId, serviceId }), [appId, serviceId]);
+
+  // Computed once per service response: JsonViewer memoizes its serialized text on `data`.
+  const organization = user?.organization ?? '';
+  const sla = useMemo(
+    () => (service.data ? serviceToSla(service.data, organization) : undefined),
+    [service.data, organization],
+  );
+  const slaJson = useMemo(() => (sla ? redactSlaEnvironment(sla) : undefined), [sla]);
+  const serviceJson = useMemo(
+    () => (service.data ? redactEnvironment(service.data) : undefined),
+    [service.data],
   );
 
   const instanceColumns = useMemo(
@@ -89,7 +115,7 @@ export function ServiceDetailPage() {
             <Link
               aria-label={`Open instance ${row.original.instance_number}`}
               className="font-medium tabular-nums hover:underline"
-              to={`/applications/${appId}/services/${serviceId}/instances/${row.original.instance_number}`}
+              to={instancePath(row.original.instance_number)}
             >
               {row.original.instance_number}
             </Link>
@@ -99,18 +125,13 @@ export function ServiceDetailPage() {
           id: 'status',
           header: 'Status',
           cell: ({ row }) => {
-            const { status, status_detail } = row.original;
-            // The detail of a running instance is stale scheduler chatter that contradicts the badge.
-            const showDetail =
-              status_detail && describeStatus(status).tone !== 'success'
-                ? status_detail
-                : undefined;
+            const problem = instanceProblem(row.original);
             return (
               <div>
-                <StatusBadge status={status} detail={showDetail} />
-                {showDetail ? (
+                <StatusBadge status={row.original.status} detail={problem} />
+                {problem ? (
                   <div className="mt-1 max-w-48 truncate text-xs text-muted-foreground">
-                    {showDetail}
+                    {problem}
                   </div>
                 ) : null}
               </div>
@@ -118,17 +139,15 @@ export function ServiceDetailPage() {
           },
         }),
         column.accessor(
-          (row) => (row.cluster_id ? (clusterNames.get(row.cluster_id) ?? row.cluster_id) : ''),
+          (row) => (row.cluster_id ? (clusterNames[row.cluster_id] ?? row.cluster_id) : ''),
           { id: 'cluster', header: 'Cluster', cell: (info) => info.getValue() || '-' },
         ),
         column.accessor((row) => row.host_ip ?? '', {
           id: 'host',
           header: 'Host',
-          cell: ({ row }) => {
-            const { host_ip, host_port } = row.original;
-            const host = host_ip ? (host_port ? `${host_ip}:${host_port}` : host_ip) : undefined;
-            return <span className="font-mono text-xs">{host ?? '-'}</span>;
-          },
+          cell: ({ row }) => (
+            <span className="font-mono text-xs">{instanceHost(row.original) ?? '-'}</span>
+          ),
         }),
         column.accessor((row) => row.publicip ?? '', {
           id: 'publicip',
@@ -169,9 +188,7 @@ export function ServiceDetailPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
-                  <Link
-                    to={`/applications/${appId}/services/${serviceId}/instances/${row.original.instance_number}`}
-                  >
+                  <Link to={instancePath(row.original.instance_number)}>
                     <ExternalLinkIcon aria-hidden /> Open
                   </Link>
                 </DropdownMenuItem>
@@ -186,7 +203,7 @@ export function ServiceDetailPage() {
           ),
         }),
       ]),
-    [appId, serviceId, clusterNames],
+    [instancePath, clusterNames],
   );
 
   if (service.isPending) {
@@ -199,26 +216,15 @@ export function ServiceDetailPage() {
   }
   if (service.isError) {
     return (
-      <Alert variant="destructive">
-        <AlertTitle>Could not load the service</AlertTitle>
-        <AlertDescription>
-          <p>{describeError(service.error)}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="mt-2"
-            onClick={() => void service.refetch()}
-          >
-            Try again
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <QueryErrorAlert
+        title="Could not load the service"
+        error={service.error}
+        onRetry={() => void service.refetch()}
+      />
     );
   }
 
   const data = service.data;
-  const organization = user?.organization ?? '';
-  const sla = serviceToSla(data, organization);
   const waiting = data.instance_list.length === 0 && isTransitionalStatus(data.status);
   const noCapacity =
     data.instance_list.length === 0 && describeStatus(data.status).tone === 'warning';
@@ -308,7 +314,7 @@ export function ServiceDetailPage() {
           <AlertDescription>
             <p>
               It needs {data.vcpus ?? 0} vCPU
-              {data.memory ? ` and ${formatBytes(data.memory * 1024 * 1024, 0)} memory` : ''}.
+              {data.memory ? ` and ${formatMegabytes(data.memory, 0)} memory` : ''}.
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               <Button size="sm" variant="outline" asChild>
@@ -339,7 +345,7 @@ export function ServiceDetailPage() {
           <TabsTrigger value="json">JSON</TabsTrigger>
           <Slot
             point="service.detail.tabs"
-            context={{ applicationId: appId, serviceId }}
+            context={slotContext}
             render={(extTab, _content, source) => (
               <TabsTrigger value={`${source.id}:${extTab.id}`}>{extTab.label}</TabsTrigger>
             )}
@@ -360,11 +366,7 @@ export function ServiceDetailPage() {
             data={data.instance_list}
             getRowId={(row) => String(row.instance_number)}
             hideSearch
-            onRowClick={(row) =>
-              void navigate(
-                `/applications/${appId}/services/${serviceId}/instances/${row.instance_number}`,
-              )
-            }
+            onRowClick={(row) => void navigate(instancePath(row.instance_number))}
             emptyState={
               waiting ? (
                 <EmptyState
@@ -394,21 +396,17 @@ export function ServiceDetailPage() {
           <p className="text-sm text-muted-foreground">
             Environment values are masked here. Download SLA in the more actions menu includes them.
           </p>
-          <JsonViewer
-            title="SLA"
-            data={redactSlaEnvironment(sla)}
-            maxHeightClassName="max-h-[32rem]"
-          />
+          <JsonViewer title="SLA" data={slaJson} maxHeightClassName="max-h-[32rem]" />
           <JsonViewer
             title="Raw service"
-            data={redactEnvironment(data)}
+            data={serviceJson}
             defaultOpen={false}
             maxHeightClassName="max-h-[32rem]"
           />
         </TabsContent>
         <Slot
           point="service.detail.tabs"
-          context={{ applicationId: appId, serviceId }}
+          context={slotContext}
           render={(extTab, content, source) => (
             <TabsContent value={`${source.id}:${extTab.id}`}>{content}</TabsContent>
           )}

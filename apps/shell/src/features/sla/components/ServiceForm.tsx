@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router';
 
 import { describeError } from '../../../core/api/errors';
 import { downloadJson } from '../../../lib/download';
+import { plural } from '../../../lib/format';
 import { useDeleteService } from '../../services';
 import { useCreateServices } from '../api/mutations';
 import { buildSla, importSla, type SlaContext } from '../model/document';
@@ -133,19 +134,10 @@ export function ServiceForm({
           <BasicsSection />
           <ResourcesSection />
           <CommandSection />
-          <ConstraintsSection hasError={!!errors.constraints} />
-          <ConnectivitySection applicationId={application._id} hasError={!!errors.connectivity} />
-          <AddressesSection hasError={!!errors.addresses} />
-          <AdvancedSection
-            hasError={
-              !!(
-                errors.state ||
-                errors.target_node ||
-                errors.sla_violation_strategy ||
-                errors.added_files
-              )
-            }
-          />
+          <ConstraintsSection />
+          <ConnectivitySection applicationId={application._id} />
+          <AddressesSection />
+          <AdvancedSection />
 
           {create.isError ? (
             <Alert variant="destructive">
@@ -166,9 +158,7 @@ export function ServiceForm({
                     ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
                 }
               >
-                {errorCount === 1
-                  ? '1 field needs attention'
-                  : `${errorCount} fields need attention`}
+                {plural(errorCount, 'field needs', 'fields need')} attention
               </button>
             ) : (
               <p className="text-muted-foreground truncate text-sm">

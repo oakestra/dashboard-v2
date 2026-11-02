@@ -6,8 +6,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./addons": "./src/addons-entry.ts",
     "./node": "./src/node.ts",
+    "./http": "./src/http-server.ts",
     "./browser": "./src/browser.ts",
     "./package.json": "./package.json"
   },

@@ -20,6 +20,7 @@ import { UploadIcon } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 import { describeError } from '../../../core/api/errors';
+import { formatIssue } from '../../../lib/zod-issues';
 import { useRegisterAddon } from '../api/mutations';
 
 const PLACEHOLDER = `{
@@ -29,14 +30,6 @@ const PLACEHOLDER = `{
     { "service_name": "my-addon", "image": "ghcr.io/me/my-addon:1.0.0" }
   ]
 }`;
-
-/** `services.0.image` as `services[0].image`, the way a JSON author counts. */
-function formatPath(path: readonly PropertyKey[]): string {
-  return path.reduce<string>((text, part) => {
-    if (typeof part === 'number') return `${text}[${part}]`;
-    return text ? `${text}.${String(part)}` : String(part);
-  }, '');
-}
 
 /**
  * Where JSON.parse gave up, as "line 3, column 7". Only numbers are taken from the engine's
@@ -52,22 +45,6 @@ function jsonErrorLocation(text: string, error: unknown): string | undefined {
   const before = text.slice(0, Number(position[1]));
   const lines = before.split('\n');
   return `line ${lines.length}, column ${lines[lines.length - 1]!.length + 1}`;
-}
-
-/**
- * Zod words a missing field as "expected string, received undefined", which reads like a bug
- * report to someone writing JSON by hand.
- */
-export function formatIssue(issue: {
-  code: string;
-  message: string;
-  path: readonly PropertyKey[];
-}): string {
-  const path = formatPath(issue.path);
-  if (issue.code === 'invalid_type' && /received undefined$/.test(issue.message)) {
-    return path ? `${path} is required` : 'The definition is required';
-  }
-  return path ? `${path}: ${issue.message}` : issue.message;
 }
 
 type Parsed = { ok: true; input: RegisterAddonInput } | { ok: false; errors: string[] };
@@ -87,7 +64,7 @@ function parseDefinition(text: string): Parsed {
   if (result.success) return { ok: true, input: json as RegisterAddonInput };
   return {
     ok: false,
-    errors: result.error.issues.map(formatIssue),
+    errors: result.error.issues.map((issue) => formatIssue(issue, 'The definition')),
   };
 }
 

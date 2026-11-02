@@ -3,7 +3,6 @@ import { useOakestraApi, usePermissions } from '@oakestra/dashboard-sdk';
 import {
   Alert,
   AlertDescription,
-  AlertTitle,
   Button,
   Card,
   CardAction,
@@ -32,16 +31,16 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { CopyButton } from '../../../components/CopyButton';
 import { LocationMap, toMapLocation } from '../../../components/LocationMap';
 import { TimeSeriesChart } from '../../../components/TimeSeriesChart';
-import { describeError } from '../../../core/api/errors';
+import { QueryErrorAlert } from '../../../components/QueryErrorAlert';
 import { formatBytes, formatPercent, formatRelativeTime } from '../../../lib/format';
-import { clustersQuery } from '../../infrastructure';
+import { clustersQuery, INFRASTRUCTURE_ROLES } from '../../infrastructure';
 import { useUndeployInstance } from '../api/mutations';
 import { serviceQuery } from '../api/queries';
 import { DefinitionList } from '../components/DefinitionList';
 import { LogsCard } from '../components/LogsCard';
 import { hasMetrics } from '../components/ServiceOverview';
 import { StatusBadge } from '../components/StatusBadge';
-import { describeStatus, usePollWhileTransitional } from '../status';
+import { describeStatus, instanceHost, instanceProblem, usePollWhileTransitional } from '../status';
 
 // Metrics and logs change constantly, so the page refreshes on its own; faster while the
 // scheduler is still placing the instance.
@@ -84,20 +83,11 @@ export function InstanceDetailPage() {
   }
   if (service.isError) {
     return (
-      <Alert variant="destructive">
-        <AlertTitle>Could not load the instance</AlertTitle>
-        <AlertDescription>
-          <p>{describeError(service.error)}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="mt-2"
-            onClick={() => void service.refetch()}
-          >
-            Try again
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <QueryErrorAlert
+        title="Could not load the instance"
+        error={service.error}
+        onRetry={() => void service.refetch()}
+      />
     );
   }
   if (!instance) {
@@ -114,11 +104,7 @@ export function InstanceDetailPage() {
     );
   }
 
-  const host = instance.host_ip
-    ? instance.host_port
-      ? `${instance.host_ip}:${instance.host_port}`
-      : instance.host_ip
-    : undefined;
+  const host = instanceHost(instance);
   const mono = (value: string | undefined) =>
     value ? (
       <span className="inline-flex items-center gap-1">
@@ -127,11 +113,9 @@ export function InstanceDetailPage() {
       </span>
     ) : undefined;
   const { tone: statusTone } = describeStatus(instance.status);
-  // A running instance keeps its last scheduler message; shown next to the badge it contradicts it.
-  const problem =
-    instance.status_detail && statusTone !== 'success' ? instance.status_detail : undefined;
+  const problem = instanceProblem(instance);
   const measured = hasMetrics(instance);
-  const canOpenCluster = permissions.hasAnyRole(['Admin', 'Infrastructure_Provider']);
+  const canOpenCluster = permissions.hasAnyRole(INFRASTRUCTURE_ROLES);
   const clusterValue =
     clusterName && instance.cluster_id ? (
       canOpenCluster ? (
