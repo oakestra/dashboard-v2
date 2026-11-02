@@ -10,7 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@eslint/js": "^9.39.5",
+    "@eslint/js": "^10.0.1",
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-boundaries": "^7.4.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
