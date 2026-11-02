@@ -5,26 +5,27 @@ prefix `[addons]`, and crashing contributions with `[addon:<name>]`.
 
 ## Quick reference
 
-| Symptom                                                            | Likely cause                                                                | Fix                                                                                                               |
-| ------------------------------------------------------------------ | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Addon page says "No dashboard UI for ..."                          | The addon is not in `/ui-addons` (not active, no `ui` block, invalid entry) | Check `/ui-addons` and the console for `[addons] ignoring invalid /ui-addons entry`                               |
-| Addon page says "Addons unavailable"                               | `/ui-addons` failed (no addons manager, HTTP error, no JSON)                | Check the addons manager and `ADDONS_MANAGER_ADDRESS`. For local work use the dev override                        |
-| Addon page says "Addon not compatible"                             | The shell's SDK version is outside the addon's `sdk` range                  | Fix `ui.sdk` in the definition, or rebuild against this SDK. See [states](#addon-states)                          |
-| Addon page says "Addon failed to load"                             | Files not reachable, or the definition is invalid                           | Read the error under the message. See [states](#addon-states) and [definition errors](#invalid-definition-errors) |
-| Addon page says "Addon disabled"                                   | The addon left `/ui-addons` during this session                             | Enable or reinstall it, then reload                                                                               |
-| Addon page says "Page not found"                                   | The addon loaded, but no addon route matches the URL                        | Check route `path`s (relative, no leading `/`) and links (build them with `useAddonPath()`)                       |
-| `useHostContext() was called outside the Oakestra dashboard shell` | The addon has its own copy of the SDK                                       | See [below](#usehostcontext-was-called-outside-the-oakestra-dashboard-shell)                                      |
-| "Invalid hook call" or hooks behave strangely                      | Two copies of React                                                         | See [duplicate React](#duplicate-react-or-invalid-hook-call)                                                      |
-| Addon renders without styles                                       | `addon.css` not imported, or classes outside the scanned folder             | See [styles](#styles-missing-or-shell-styles-broken)                                                              |
-| The whole dashboard looks different after the addon loads          | The addon loaded a second Tailwind preflight                                | See [styles](#styles-missing-or-shell-styles-broken)                                                              |
-| A red box "... from addon "<name>" failed to render."              | That component threw an error                                               | See [a contribution crashes](#a-contribution-crashes)                                                             |
-| Nav item, widget or tab does not appear                            | `roles` or `visible()` hides it, or the addon is not `loaded`               | Log in with a role that matches; check the addon state                                                            |
-| Application tab does not appear                                    | Same as above. Without any contributed tab, the page shows no tabs at all   | Check that the addon is `loaded` and the tab is not hidden by `roles`                                             |
-| Cluster widget does not appear                                     | The cluster page is only for `Admin` and `Infrastructure_Provider`          | Log in with one of these roles                                                                                    |
-| Users still see the old version                                    | No reload yet, `version` unchanged, or caching                              | See [old version](#old-version-still-served)                                                                      |
-| `?addon-override=...` has no effect                                | Production build of the shell, or a wrong URL                               | See [dev override](#dev-override-not-applied)                                                                     |
-| CORS errors or 404s for chunks from `localhost:5173` in dev        | Dev server CORS or `origin` setting                                         | See [CORS](#cors-errors-on-the-dev-server)                                                                        |
-| `Port 5174 is already in use` when starting the dev server         | `strictPort: true` and another addon (or the example) uses the port         | Give each addon its own port in `vite.config.ts`                                                                  |
+| Symptom                                                              | Likely cause                                                                | Fix                                                                                                               |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Addon page says "No dashboard UI for ..."                            | The addon is not in `/ui-addons` (not active, no `ui` block, invalid entry) | Check `/ui-addons` and the console for `[addons] ignoring invalid /ui-addons entry`                               |
+| Addon page says "Addons unavailable"                                 | `/ui-addons` failed (no addons manager, HTTP error, no JSON)                | Check the addons manager and `ADDONS_MANAGER_ADDRESS`. For local work use the dev override                        |
+| Addon page says "Addon not compatible"                               | The shell's SDK version is outside the addon's `sdk` range                  | Fix `ui.sdk` in the definition, or rebuild against this SDK. See [states](#addon-states)                          |
+| Addon page says "Addon failed to load"                               | Files not reachable, or the definition is invalid                           | Read the error under the message. See [states](#addon-states) and [definition errors](#invalid-definition-errors) |
+| Addon page says "Addon disabled"                                     | The addon left `/ui-addons` during this session                             | Enable or reinstall it, then reload                                                                               |
+| Addon page says "Page not found"                                     | The addon loaded, but no addon route matches the URL                        | Check route `path`s (relative, no leading `/`) and links (build them with `useAddonPath()`)                       |
+| `useHostContext() was called outside the Oakestra dashboard shell`   | The addon has its own copy of the SDK                                       | See [below](#usehostcontext-was-called-outside-the-oakestra-dashboard-shell)                                      |
+| "Invalid hook call" or hooks behave strangely                        | Two copies of React                                                         | See [duplicate React](#duplicate-react-or-invalid-hook-call)                                                      |
+| Addon renders without styles                                         | `addon.css` not imported, or classes outside the scanned folder             | See [styles](#styles-missing-or-shell-styles-broken)                                                              |
+| The whole dashboard looks different after the addon loads            | The addon loaded a second Tailwind preflight                                | See [styles](#styles-missing-or-shell-styles-broken)                                                              |
+| A red box "... from addon "<name>" failed to render."                | That component threw an error                                               | See [a contribution crashes](#a-contribution-crashes)                                                             |
+| Nav item, widget or tab does not appear                              | `roles` or `visible()` hides it, or the addon is not `loaded`               | Log in with a role that matches; check the addon state                                                            |
+| Application tab does not appear                                      | Same as above. Without any contributed tab, the page shows no tabs at all   | Check that the addon is `loaded` and the tab is not hidden by `roles`                                             |
+| Cluster widget does not appear                                       | The cluster page is only for `Admin` and `Infrastructure_Provider`          | Log in with one of these roles                                                                                    |
+| Users still see the old version                                      | No reload yet, `version` unchanged, or caching                              | See [old version](#old-version-still-served)                                                                      |
+| `?addon-override=...` has no effect                                  | Production build of the shell, or a wrong URL                               | See [dev override](#dev-override-not-applied)                                                                     |
+| CORS errors or 404s for chunks from `localhost:5173` in dev          | Dev server CORS or `origin` setting                                         | See [CORS](#cors-errors-on-the-dev-server)                                                                        |
+| `Port 5174 is already in use` when starting the dev server           | `strictPort: true` and another addon (or the example) uses the port         | Give each addon its own `port` in `oakestraAddon()` in `vite.config.ts`                                           |
+| `vite build` fails with `class selector(s) without the addon prefix` | Your CSS contains classes that would override the shell's                   | See [unprefixed classes](#the-build-fails-with-class-selectors-without-the-addon-prefix)                          |
 
 ## Addon states
 
@@ -63,10 +64,10 @@ Common errors:
 | Error text (in the badge tooltip or on the addon page)                  | Cause                                                                                                                                                                                                                                   |
 | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | A Module Federation runtime error about the manifest or a fetch failure | `/addon-assets/<name>/mf-manifest.json` is not reachable. The container is missing, not named `addonui-<name>`, not on the dashboard's network, or not ready. A missing container gives HTTP 502. Open the URL in the browser to check. |
-| `loadRemote("<name>/addon") returned nothing`                           | The remote has no `./addon` expose. Check `exposes` in `vite.config.ts`.                                                                                                                                                                |
+| `loadRemote("<name>/addon") returned nothing`                           | The remote has no `./addon` expose. Check that `vite.config.ts` uses `oakestraAddon()` and its `entry` (default `./src/index.tsx`).                                                                                                     |
 | `./addon has no default export with an addon definition`                | `src/index.tsx` does not `export default defineAddon({...})`.                                                                                                                                                                           |
 | `Invalid addon definition: ...`                                         | See [invalid definition errors](#invalid-definition-errors).                                                                                                                                                                            |
-| `Addon definition id "<a>" does not match the addon name "<b>"`         | `id` in `defineAddon` differs from the name in `/ui-addons`.                                                                                                                                                                            |
+| `Addon definition id "<a>" does not match the addon name "<b>"`         | `id` in `defineAddon` differs from the name in `/ui-addons`. Use `id: ADDON_ID` from `virtual:oakestra-addon` and check `name` in `oakestraAddon()` against the marketplace definition.                                                 |
 
 A failed addon is retried on every poll, because a container can be `active` in the addons
 manager before nginx inside it serves files. The full error is also in the console:
@@ -102,8 +103,8 @@ federation config.`
 The SDK's hooks read a React context that the shell provides. If your addon uses its own copy of
 the SDK module, it reads its own, empty context. Check:
 
-- `vite.config.ts` uses `shared: { ...withoutFallback(sharedDeps) }` from
-  `@oakestra/dashboard-sdk/federation`.
+- `vite.config.ts` uses `oakestraAddon()` from `@oakestra/dashboard-sdk/vite`, which shares the
+  SDK with `withoutFallback(sharedDeps)`, and no second federation plugin of its own.
 - You import the SDK only as `@oakestra/dashboard-sdk`, never as a file path into
   `packages/dashboard-sdk/src`.
 - The component is rendered by the shell (as a page or contribution). The hooks do not work in a
@@ -122,8 +123,8 @@ React hooks fail when a component is rendered by one copy of React and calls hoo
 The same goes for React Router and TanStack Query: a second copy does not see the shell's router
 or `QueryClient` ("No QueryClient set" and similar errors).
 
-- Keep `shared: { ...withoutFallback(sharedDeps) }`. With `import: false`, your build contains no
-  copy of these libraries.
+- Build with `oakestraAddon()`. It shares these libraries with `import: false`, so your build
+  contains no copy of them.
 - Import `react-router`, never `react-router/dom`. The `/dom` entry bundles its own copy of the
   router contexts.
 - Do not import `@oakestra/ui` through deep paths (`@oakestra/ui/src/...`). Use the root or the
@@ -146,16 +147,10 @@ Your addon renders, but without styles:
 
 Parts of the shell disappear or change layout (often the sidebar) once your addon loads:
 
-- Your stylesheet generates unprefixed utilities. It loads after the shell's, so a `.hidden` or
-  `.flex` in it overrides the shell's responsive classes. Check that the `tailwindcss/theme.css`
-  import in `addon.css` has `prefix(...)`. This lists every class selector in your built CSS that
-  lacks your prefix (replace `ex` with yours); it should print nothing:
-
-  ```sh
-  sed 's#/\*[^*]*\*/##g' dist/assets/*.css \
-    | grep -oE '\.([^0-9 {},>()\\]|\\.)([^ {},>()\\]|\\.)*' \
-    | grep -vE '^\.(ex\\:|dark$)' | sort -u
-  ```
+- Your stylesheet contains unprefixed classes. It loads after the shell's, so a `.hidden` or
+  `.flex` in it overrides the shell's responsive classes. `vite build` with `oakestraAddon()`
+  fails in that case, see [below](#the-build-fails-with-class-selectors-without-the-addon-prefix).
+  An addon built without the plugin has no such check.
 
 The whole dashboard changes (fonts, margins, buttons) after your addon loads:
 
@@ -166,6 +161,32 @@ The whole dashboard changes (fonts, margins, buttons) after your addon loads:
 
 Colors look wrong in dark mode: use token classes (`bg-card`, `text-muted-foreground`, ...)
 instead of fixed colors, or add `dark:` variants.
+
+## The build fails with "class selectors without the addon prefix"
+
+`oakestraAddon()` checks every CSS file of the build. A class selector that does not start with
+your prefix (`.ex\:...`) would apply to the shell's markup too and could override its classes,
+so the build stops (the dev server prints the same text as a warning):
+
+```text
+[plugin oakestra-addon]
+RolldownError: assets/src-DYVShKiM.css: 2 class selectors without the addon prefix "ex:":
+  .card-title
+  .ex\:x .hidden
+The addon stylesheet loads after the shell's in the same cascade layer, ...
+```
+
+- **Listed selectors** come from CSS written by hand in `addon.css` (or another stylesheet you
+  import), since Tailwind prefixes the utilities of your code. Write custom classes as
+  `@utility card-title { ... }` in `addon.css` and use them as `ex:card-title`; Tailwind gives
+  them the prefix. Do not import third-party stylesheets with global class names. Only the bare
+  `.dark` class is allowed unprefixed.
+- **`no class selector carries the configured prefix "ex:", all of them start with "ins:"`**:
+  `addon.css` uses `prefix(ins)` but `vite.config.ts` says `prefix: 'ex'`. Use the same prefix in
+  both places, and on every class.
+- **`no class selector carries the prefix "ex:"`**: `addon.css` has no `prefix(...)`, so Tailwind
+  generates plain utilities (also for class-like words in comments). Add it:
+  `@import 'tailwindcss/theme.css' layer(theme) prefix(ex);`, and prefix every class.
 
 ## A contribution crashes
 
@@ -231,9 +252,10 @@ when `/ui-addons` is unreachable, as long as the shell never received a list in 
 The shell runs on `http://localhost:5173`, your addon's dev server on another port. The browser
 therefore needs CORS headers, and asset URLs must point at the dev server:
 
-- Keep `server.cors: true` (and `preview.cors: true`) in `vite.config.ts`.
-- Keep `server.origin` equal to the dev server address (`http://localhost:${port}`). It makes
+- `oakestraAddon()` sets `server.cors` and `preview.cors` to `true`. Do not set them to `false`
+  in `vite.config.ts`.
+- It also sets `server.origin` to the dev server address (`http://localhost:<port>`). It makes
   the URLs of your dev assets absolute. Without it, some URLs are root-relative, and the browser
-  asks the shell on `localhost:5173` for your files, which fails with 404s.
-- If you change `port`, `origin` follows automatically in the example config because both use
-  the same constant. Update the override URL too.
+  asks the shell on `localhost:5173` for your files, which fails with 404s. If you set your own
+  `server.origin` (another host name, for example), it must still point at the dev server.
+- If you change `port`, `origin` follows automatically. Update the override URL too.

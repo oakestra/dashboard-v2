@@ -1,8 +1,9 @@
 /**
  * Proves that an addon builds outside this repository against the packed packages: packs
  * `@oakestra/api`, `@oakestra/dashboard-sdk` and `@oakestra/ui` (prepack builds `dist/`), copies
- * `addons/example` to a directory outside the workspace, points its `@oakestra/*` dependencies at
- * the tarballs, installs, and runs the addon's typecheck, tests and build.
+ * `addons/example` and generates a fresh addon with `pnpm create:addon --dir` (both outside the
+ * workspace), points their `@oakestra/*` dependencies at the tarballs, installs, and runs each
+ * addon's typecheck, tests and build.
  *
  * Usage: `pnpm pack:check [--dir <empty directory outside the repository>]`. Without `--dir` it
  * works in a fresh temp directory, removed again on success and kept on failure for inspection.
@@ -38,7 +39,6 @@ if (args.dir && existsSync(workDir) && readdirSync(workDir).length > 0) {
 }
 
 const tarballDir = join(workDir, 'tarballs');
-const addonDir = join(workDir, 'addon');
 const exampleDir = join(repoRoot, 'addons/example');
 
 function run(command: string, commandArgs: string[], cwd: string): void {
@@ -76,15 +76,47 @@ try {
       throw new Error(`expected one tarball for ${pkg.name}: ${created.join(', ')}`);
     tarballs.set(pkg.name, join(tarballDir, created[0]!));
   }
-  const fileSpec = (name: string) =>
-    `file:${relative(addonDir, tarballs.get(name)!).split(sep).join('/')}`;
-
-  // 2. Copy the example addon without anything installed or built.
-  cpSync(exampleDir, addonDir, {
+  // 2. The example addon, copied without anything installed or built, and a fresh one from the
+  // `pnpm create:addon --dir` template, so the generator cannot rot unnoticed.
+  const exampleCopy = join(workDir, 'addon');
+  cpSync(exampleDir, exampleCopy, {
     recursive: true,
     filter: (source) =>
       !['node_modules', 'dist', '.__mf__temp'].includes(basename(source)) || source === exampleDir,
   });
+  verifyAddon(exampleCopy, tarballs, 'example addon', true);
+
+  const scaffolded = join(workDir, 'scaffolded');
+  run(
+    'node',
+    ['tools/create-addon/src/cli.ts', 'scaffold-check', '--prefix', 'sc', '--dir', scaffolded],
+    repoRoot,
+  );
+  verifyAddon(scaffolded, tarballs, 'scaffolded addon', false);
+
+  succeeded = true;
+  console.log(
+    '\npack-check passed: the example addon and a freshly scaffolded one build against the packed packages.',
+  );
+} finally {
+  if (succeeded && !args.dir) rmSync(workDir, { recursive: true, force: true });
+  else if (!succeeded) console.error(`\npack-check failed; files are kept in ${workDir}`);
+}
+
+/**
+ * Points the addon in `addonDir` at the tarballs, installs it and runs what an addon author runs.
+ * `inlineTsconfig`: the example still extends the private @oakestra/tsconfig; a scaffolded addon
+ * is already self-contained.
+ */
+function verifyAddon(
+  addonDir: string,
+  tarballs: Map<string, string>,
+  label: string,
+  inlineTsconfig: boolean,
+): void {
+  console.log(`\n=== ${label} ===`);
+  const fileSpec = (name: string) =>
+    `file:${relative(addonDir, tarballs.get(name)!).split(sep).join('/')}`;
 
   // 3. Make it standalone. The @oakestra packages come from the tarballs instead of the
   // workspace. @oakestra/tsconfig is private and never published, so its settings are inlined,
@@ -106,21 +138,25 @@ try {
 
   const tsconfigPath = join(addonDir, 'tsconfig.json');
   const tsconfig = readJson<{ extends?: string; compilerOptions?: object }>(tsconfigPath);
-  if (tsconfig.extends !== '@oakestra/tsconfig/react.json') {
-    throw new Error(`unexpected tsconfig extends in addons/example: ${tsconfig.extends}`);
+  if (inlineTsconfig) {
+    if (tsconfig.extends !== '@oakestra/tsconfig/react.json') {
+      throw new Error(`unexpected tsconfig extends in addons/example: ${tsconfig.extends}`);
+    }
+    const sharedConfig = (file: string) =>
+      readJson<{ compilerOptions: object }>(join(repoRoot, 'packages/tsconfig', file))
+        .compilerOptions;
+    const { extends: _extends, ...ownConfig } = tsconfig;
+    writeJson(tsconfigPath, {
+      ...ownConfig,
+      compilerOptions: {
+        ...sharedConfig('base.json'),
+        ...sharedConfig('react.json'),
+        ...tsconfig.compilerOptions,
+      },
+    });
+  } else if (tsconfig.extends) {
+    throw new Error(`a scaffolded addon must not extend anything: ${tsconfig.extends}`);
   }
-  const sharedConfig = (file: string) =>
-    readJson<{ compilerOptions: object }>(join(repoRoot, 'packages/tsconfig', file))
-      .compilerOptions;
-  const { extends: _extends, ...ownConfig } = tsconfig;
-  writeJson(tsconfigPath, {
-    ...ownConfig,
-    compilerOptions: {
-      ...sharedConfig('base.json'),
-      ...sharedConfig('react.json'),
-      ...tsconfig.compilerOptions,
-    },
-  });
 
   // The SDK depends on @oakestra/api by version, which is not on the registry yet, so the
   // override points it at its tarball. The release-age and build-script settings are the
@@ -205,10 +241,4 @@ try {
       throw new Error(`the addon build did not emit ${file}`);
     }
   }
-
-  succeeded = true;
-  console.log('\npack-check passed: the example addon builds against the packed packages.');
-} finally {
-  if (succeeded && !args.dir) rmSync(workDir, { recursive: true, force: true });
-  else if (!succeeded) console.error(`\npack-check failed; files are kept in ${workDir}`);
 }

@@ -755,7 +755,8 @@ context values (`host`, `addon`, `user`, `api`, `notify`, `route`), `TestHostPro
 `createNotifyRecorder()` and `createTestQueryClient()` build the parts.
 
 The example addon has a working setup: `addons/example/vitest.config.ts` (jsdom, `css: false` so
-the Tailwind entry is not processed) and `src/widgets/widgets.test.tsx`.
+the Tailwind entry is not processed, built on `vite.config.ts` so `virtual:oakestra-addon`
+resolves) and `src/widgets/widgets.test.tsx`.
 
 ## What an addon may import
 
@@ -763,17 +764,19 @@ Addons are built and deployed separately from the shell, so they can only use wh
 runtime. The ESLint config (`packages/eslint-config/index.js`) enforces this for every file in
 `addons/**`:
 
-| Import                                                                  | Allowed?                                |
-| ----------------------------------------------------------------------- | --------------------------------------- |
-| Your own files (inside `addons/<your-addon>/`)                          | Yes                                     |
-| `@oakestra/dashboard-sdk`, `@oakestra/dashboard-sdk/federation`         | Yes (`/federation` in `vite.config.ts`) |
-| `@oakestra/dashboard-sdk/testing`                                       | Test files only (`*.test.ts(x)`)        |
-| `@oakestra/ui`, `@oakestra/ui/chart`, `/data-table`, `/command`, `/map` | Yes                                     |
-| `@oakestra/ui/theme.css` (and other `@oakestra/ui/*.css`)               | Yes                                     |
-| `@oakestra/api`                                                         | **Types only** (`import type`)          |
-| Any other `@oakestra/*` package, any `@oakestra/*/src/...` path         | No                                      |
-| Files of the shell or of another addon                                  | No                                      |
-| Third-party npm packages                                                | Not restricted by lint. See below.      |
+| Import                                                                  | Allowed?                                     |
+| ----------------------------------------------------------------------- | -------------------------------------------- |
+| Your own files (inside `addons/<your-addon>/`)                          | Yes                                          |
+| `@oakestra/dashboard-sdk`, `@oakestra/dashboard-sdk/federation`         | Yes (`/federation` in `vite.config.ts`)      |
+| `@oakestra/dashboard-sdk/vite`                                          | `vite.config.ts` and `vitest.config.ts` only |
+| `virtual:oakestra-addon` (`ADDON_ID`, provided by `oakestraAddon()`)    | Yes                                          |
+| `@oakestra/dashboard-sdk/testing`                                       | Test files only (`*.test.ts(x)`)             |
+| `@oakestra/ui`, `@oakestra/ui/chart`, `/data-table`, `/command`, `/map` | Yes                                          |
+| `@oakestra/ui/theme.css` (and other `@oakestra/ui/*.css`)               | Yes                                          |
+| `@oakestra/api`                                                         | **Types only** (`import type`)               |
+| Any other `@oakestra/*` package, any `@oakestra/*/src/...` path         | No                                           |
+| Files of the shell or of another addon                                  | No                                           |
+| Third-party npm packages                                                | Not restricted by lint. See below.           |
 
 Third-party packages:
 
@@ -788,12 +791,14 @@ Third-party packages:
 
 The SDK also exports these. Most addons do not need them.
 
-| Export                                                                                                                                                                                            | Description                                                                              |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `SDK_VERSION`                                                                                                                                                                                     | SDK version string, `'0.1.0'`.                                                           |
-| `EXTENSION_POINT_IDS`                                                                                                                                                                             | Array of all extension point ids.                                                        |
-| `HostContext`, `AddonContext`                                                                                                                                                                     | The React contexts behind the hooks. Use the hooks instead; tests can use the providers. |
-| `HostContextValue`, `AddonContextValue`                                                                                                                                                           | Types of the context values.                                                             |
-| `ExtensionPoints`, `ExtensionPointId`, `RenderablePointId`, `SlotContext`, `Contributions`, `ContributionBase`, `NavItem`, `NavSubItem`, `NavGroup`, `Widget`, `Tab`, `IconProps`, `EmptyContext` | Types for extension points.                                                              |
-| `Permissions`, `Notify`, `NotifyOptions`, `CurrentUser`, `Role`, `KnownRole`, `OakestraApi`                                                                                                       | Types used by the hooks.                                                                 |
-| `@oakestra/dashboard-sdk/federation`: `sharedDeps`, `withoutFallback`                                                                                                                             | Build config, see [packaging](packaging.md#build-configuration).                         |
+| Export                                                                                                                                                                                            | Description                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `SDK_VERSION`                                                                                                                                                                                     | SDK version string, `'0.1.0'`.                                                                    |
+| `EXTENSION_POINT_IDS`                                                                                                                                                                             | Array of all extension point ids.                                                                 |
+| `HostContext`, `AddonContext`                                                                                                                                                                     | The React contexts behind the hooks. Use the hooks instead; tests can use the providers.          |
+| `HostContextValue`, `AddonContextValue`                                                                                                                                                           | Types of the context values.                                                                      |
+| `ExtensionPoints`, `ExtensionPointId`, `RenderablePointId`, `SlotContext`, `Contributions`, `ContributionBase`, `NavItem`, `NavSubItem`, `NavGroup`, `Widget`, `Tab`, `IconProps`, `EmptyContext` | Types for extension points.                                                                       |
+| `Permissions`, `Notify`, `NotifyOptions`, `CurrentUser`, `Role`, `KnownRole`, `OakestraApi`                                                                                                       | Types used by the hooks.                                                                          |
+| `@oakestra/dashboard-sdk/vite`: `oakestraAddon`, `OakestraAddonOptions`                                                                                                                           | The Vite plugin for addons, see [packaging](packaging.md#build-configuration).                    |
+| `@oakestra/dashboard-sdk/vite/client`                                                                                                                                                             | Types of `virtual:oakestra-addon`, for `compilerOptions.types` in `tsconfig.json`.                |
+| `@oakestra/dashboard-sdk/federation`: `sharedDeps`, `withoutFallback`                                                                                                                             | The shared config that `oakestraAddon()` uses, see [packaging](packaging.md#shared-dependencies). |

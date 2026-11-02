@@ -1,12 +1,14 @@
 import { renderInHost } from '@oakestra/dashboard-sdk/testing';
 import { screen } from '@testing-library/react';
+import { ADDON_ID } from 'virtual:oakestra-addon';
 import { describe, expect, it } from 'vitest';
 
 import { ClusterWidget, HelloWidget } from './widgets';
 
 describe('HelloWidget', () => {
   it('links to the addon root below its base path', () => {
-    renderInHost(<HelloWidget />, { addon: { addonId: 'example' } });
+    // ADDON_ID comes from oakestraAddon() through vite.config.ts, which vitest.config.ts extends.
+    renderInHost(<HelloWidget />, { addon: { addonId: ADDON_ID } });
     expect(screen.getByRole('link', { name: 'Open it' }).getAttribute('href')).toBe(
       '/addons/example',
     );

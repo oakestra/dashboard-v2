@@ -1,36 +1,14 @@
-import { federation } from '@module-federation/vite';
-import { sharedDeps, withoutFallback } from '@oakestra/dashboard-sdk/federation';
+import { oakestraAddon } from '@oakestra/dashboard-sdk/vite';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-const port = 5174;
-
-export default defineConfig(({ command }) => ({
-  // Relative asset URLs: in production the addon is served below /addon-assets/example/, in
-  // development straight from this dev server.
-  base: command === 'build' ? './' : '/',
-  build: { target: 'esnext' },
+export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    federation({
-      // Must equal the addon name in /ui-addons and the `id` in the addon definition.
-      name: 'example',
-      filename: 'remoteEntry.js',
-      exposes: { './addon': './src/index.tsx' },
-      // The addon only ever runs inside the shell, so it never ships its own React, SDK, etc.
-      shared: { ...withoutFallback(sharedDeps) },
-      manifest: true,
-      publicPath: 'auto',
-      dts: false,
-    }),
+    // `name` is the addon name in /ui-addons and the definition id (ADDON_ID); `prefix` the one of
+    // prefix(ex) in src/addon.css.
+    oakestraAddon({ name: 'example', prefix: 'ex', port: 5174 }),
   ],
-  server: {
-    port,
-    strictPort: true,
-    origin: `http://localhost:${port}`,
-    cors: true,
-  },
-  preview: { port, strictPort: true, cors: true },
-}));
+});

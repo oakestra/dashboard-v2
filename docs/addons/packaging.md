@@ -17,63 +17,78 @@ Contents:
 
 ## Build configuration
 
-An addon is a Vite project with the `@module-federation/vite` plugin. This is
-`addons/example/vite.config.ts`:
+An addon is a Vite project. The `oakestraAddon()` plugin from `@oakestra/dashboard-sdk/vite`
+holds everything the shell expects from the build; next to it you only add React and Tailwind.
+This is `addons/example/vite.config.ts`:
 
 ```ts
-import { federation } from '@module-federation/vite';
-import { sharedDeps, withoutFallback } from '@oakestra/dashboard-sdk/federation';
+import { oakestraAddon } from '@oakestra/dashboard-sdk/vite';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-const port = 5174;
-
-export default defineConfig(({ command }) => ({
-  // Relative asset URLs: in production the addon is served below /addon-assets/example/, in
-  // development straight from this dev server.
-  base: command === 'build' ? './' : '/',
-  build: { target: 'esnext' },
+export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    federation({
-      // Must equal the addon name in /ui-addons and the `id` in the addon definition.
-      name: 'example',
-      filename: 'remoteEntry.js',
-      exposes: { './addon': './src/index.tsx' },
-      // The addon only ever runs inside the shell, so it never ships its own React, SDK, etc.
-      shared: { ...withoutFallback(sharedDeps) },
-      manifest: true,
-      publicPath: 'auto',
-      dts: false,
-    }),
+    // `name` is the addon name in /ui-addons and the definition id (ADDON_ID); `prefix` the one of
+    // prefix(ex) in src/addon.css.
+    oakestraAddon({ name: 'example', prefix: 'ex', port: 5174 }),
   ],
-  server: {
-    port,
-    strictPort: true,
-    origin: `http://localhost:${port}`,
-    cors: true,
-  },
-  preview: { port, strictPort: true, cors: true },
-}));
+});
 ```
 
-What each setting does and whether you may change it:
+The options:
 
-| Setting                                      | Purpose                                                                                                                            | Change?                                        |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `name`                                       | Module Federation container name. The shell loads `<name>/addon`.                                                                  | Set to your addon name                         |
-| `exposes: { './addon': './src/index.tsx' }`  | The module the shell loads. Its default export must be your `defineAddon({...})`.                                                  | Keep the key `./addon`; the file path is yours |
-| `shared: { ...withoutFallback(sharedDeps) }` | Take React, React Router, TanStack Query, the SDK and `@oakestra/ui` from the shell. See below.                                    | Keep                                           |
-| `manifest: true`                             | Emits `mf-manifest.json`. The shell loads addons by this manifest.                                                                 | Keep                                           |
-| `filename: 'remoteEntry.js'`                 | Name of the remote entry file. The container's nginx config marks it `no-cache` by this name.                                      | Keep                                           |
-| `publicPath: 'auto'`                         | Chunk URLs are resolved relative to the manifest URL, so the same build works under `/addon-assets/<name>/` and from a dev server. | Keep                                           |
-| `base: command === 'build' ? './' : '/'`     | Relative asset URLs in the production build, for the same reason.                                                                  | Keep                                           |
-| `build.target: 'esnext'`                     | The federation runtime uses top-level `await`.                                                                                     | Keep                                           |
-| `dts: false`                                 | No type generation for remotes; the SDK provides the types.                                                                        | Keep                                           |
-| `server.port`, `server.origin`               | Dev server address. `origin` makes asset URLs absolute, so the shell (on another port) fetches them from the dev server.           | Port: yes, keep `origin` in sync               |
-| `server.cors`, `preview.cors`                | The shell runs on another origin (`localhost:5173`) and needs CORS to load your files in development.                              | Keep                                           |
+| Option   | Default             | Meaning                                                                                                                                                                                   |
+| -------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`   | required            | The addon name: Module Federation container name (the shell loads `<name>/addon`), the name in `/ui-addons` and the container suffix `addonui-<name>`. Lowercase letters, digits and `-`. |
+| `prefix` | required            | Your Tailwind prefix, the same as `prefix(...)` in `addon.css`. Lowercase letters only. See [styling](#styling).                                                                          |
+| `entry`  | `'./src/index.tsx'` | The module the shell loads. Its default export must be your `defineAddon({...})`.                                                                                                         |
+| `port`   | `5174`              | Port of the dev server and of `vite preview`. Give every addon its own.                                                                                                                   |
+
+Invalid values fail when Vite loads the config, with a message that names the option.
+
+What the plugin sets up:
+
+| Setting                                      | Purpose                                                                                                                            |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `exposes: { './addon': entry }`              | The module the shell loads. The key `./addon` is fixed.                                                                            |
+| `shared: { ...withoutFallback(sharedDeps) }` | Take React, React Router, TanStack Query, the SDK and `@oakestra/ui` from the shell. See below.                                    |
+| `manifest: true`                             | Emits `mf-manifest.json`. The shell loads addons by this manifest.                                                                 |
+| `filename: 'remoteEntry.js'`                 | Name of the remote entry file. The container's nginx config marks it `no-cache` by this name.                                      |
+| `publicPath: 'auto'`                         | Chunk URLs are resolved relative to the manifest URL, so the same build works under `/addon-assets/<name>/` and from a dev server. |
+| `dts: false`                                 | No type generation for remotes; the SDK provides the types.                                                                        |
+| `base: './'` in builds, `'/'` in dev         | Relative asset URLs in the production build, for the same reason.                                                                  |
+| `build.target: 'esnext'`                     | The federation runtime uses top-level `await`.                                                                                     |
+| `server.port`, `server.strictPort`           | `port`. A port in use is an error instead of a silent switch to another port, which would break the override URL.                  |
+| `server.origin: http://localhost:<port>`     | Makes dev asset URLs absolute, so the shell (on another port) fetches them from the dev server.                                    |
+| `server.cors`, `preview.cors`, preview port  | The shell runs on another origin (`localhost:5173`) and needs CORS to load your files.                                             |
+
+The federation options (the first six rows) are the contract with the shell and cannot be
+changed. The others are defaults: a value in your own `vite.config.ts` wins, for example
+`server: { host: true }` or another `base`.
+
+The plugin also does two checks for you:
+
+- **Prefix check.** `vite build` fails when the CSS it emits contains a class selector without
+  your prefix, and `vite` (dev) prints the same message as a warning. See [styling](#styling).
+- **One addon name.** Source files import the name instead of repeating it, so the definition id
+  cannot differ from `name`:
+
+  ```ts
+  import { ADDON_ID } from 'virtual:oakestra-addon';
+
+  export default defineAddon({ id: ADDON_ID /* ... */ });
+  ```
+
+  For the types, `tsconfig.json` lists `"@oakestra/dashboard-sdk/vite/client"` in
+  `compilerOptions.types`. Tests that import it need the plugin as well: the example's
+  `vitest.config.ts` extends `vite.config.ts` (Module Federation switches itself off under
+  Vitest).
+
+`vite`, `@module-federation/vite` and `@tailwindcss/vite` are dev dependencies of the addon. The
+first two are optional peer dependencies of the SDK, needed only for `@oakestra/dashboard-sdk/vite`.
 
 ### Shared dependencies
 
@@ -138,10 +153,18 @@ Rules:
   would win over the shell's own responsive classes and could hide the sidebar. With a prefix,
   your classes never match shell markup and the shell's never match yours. Unprefixed classes in
   your code are not generated at all, so a missing prefix shows up right away as missing styles.
-- **Pick a prefix of your own.** Tailwind accepts lowercase letters only (`a-z`, no digits or
-  hyphens). Two addons with the same prefix can override each other's responsive classes, so use
-  something unique: your addon name without the other characters is a safe choice (`ex` is the
-  example's).
+- **Pick a prefix of your own** and pass the same one to `oakestraAddon({ prefix })` in
+  `vite.config.ts`. Tailwind accepts lowercase letters only (`a-z`, no digits or hyphens). Two
+  addons with the same prefix can override each other's responsive classes, so use something
+  unique: your addon name without the other characters is a safe choice (`ex` is the example's).
+- **The build checks it.** `vite build` fails when the emitted CSS contains a class selector
+  without your prefix, and lists the selectors and the file. The only exception is the bare
+  `.dark` theme class, which the `dark:` variant refers to (`.ex\:dark\:x:is(.dark *)`). With
+  the prefix in `addon.css`, such selectors come from CSS written by hand or imported: define
+  custom classes with `@utility card-title { ... }` in `addon.css` and use them as
+  `ex:card-title` (Tailwind prefixes them too), and do not import stylesheets with global class
+  names. When no class has your prefix at all, the error says whether `addon.css` uses another
+  prefix or none. `vite` (dev) prints the same message as a warning.
 - **Prefix classes you pass to `@oakestra/ui` components too** (`<Button className="ex:w-full">`).
   `cn()` keeps both your class and the component's conflicting one (it does not know your
   prefix); yours usually wins because your stylesheet loads after the shell's. It still loses to
@@ -156,7 +179,7 @@ Rules:
   follow light and dark mode automatically. Dark mode is the `.dark` class on the page; use the
   `dark:` variant for anything extra.
 - **Your CSS is global.** Prefixed utilities are safe, but any custom CSS you write applies to the
-  whole dashboard, so keep it rare and scope it to your own class names.
+  whole dashboard, so keep it rare and use `@utility` for your own classes.
 - Classes used inside `@oakestra/ui` components are generated by the shell, not by your build.
 - If you keep class names outside `src/`, add another `@source` line for them.
 
@@ -219,8 +242,8 @@ COPY addons/example/docker/nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 ```
 
-For your addon, replace `@oakestra/addon-example` with your package name and `addons/example`
-with your folder (four places). Build with:
+`pnpm create:addon` writes this file for your addon. By hand, replace `@oakestra/addon-example`
+with your package name and `addons/example` with your folder (four places). Build with:
 
 ```sh
 docker build -f addons/insights/Dockerfile -t addon-insights-ui .
@@ -272,8 +295,9 @@ An addon is described by a definition in the marketplace: name, description, ser
 | `ui.service` | The `service_name` of the service that serves the UI. Must be one of the addon's `services`. |
 | `ui.sdk`     | Semver range of the dashboard SDK the UI was built against, for example `^0.1.0`.            |
 
-The definition `name` is the addon name. It must match the federation `name` and the
-`defineAddon` `id`, and it gives the container name `addonui-<name>`.
+The definition `name` is the addon name. It must match `name` in `oakestraAddon()` (and thereby
+the `defineAddon` `id`, see [build configuration](#build-configuration)), and it gives the
+container name `addonui-<name>`.
 
 The dashboard's addon manager (`/addon-manager/marketplace`, Admin only) can register such a
 definition. Its form checks that `ui.service` is one of the services and that `ui.sdk` is a valid
@@ -445,13 +469,20 @@ in its own repository:
 - Install `@oakestra/dashboard-sdk` and `@oakestra/ui` from npm, in the versions of the dashboard
   you target. `@oakestra/api` comes with the SDK; add it yourself only if you import its types.
 - Install the peer dependencies as well: `react`, `react-dom`, `react-router`,
-  `@tanstack/react-query` and `tailwindcss`, plus `@testing-library/react` if your tests use
+  `@tanstack/react-query` and `tailwindcss`, `vite` and `@module-federation/vite` for
+  `@oakestra/dashboard-sdk/vite`, plus `@testing-library/react` if your tests use
   `@oakestra/dashboard-sdk/testing`.
 - `@oakestra/tsconfig` is internal to this repository and not published. Replace the `extends`
   in `tsconfig.json` with the compiler options of `packages/tsconfig/base.json` and
   `packages/tsconfig/react.json`.
 - The Dockerfile builds the addon from its own directory (`pnpm install --frozen-lockfile`, then
   `pnpm build`) instead of filtering the workspace.
+
+`pnpm create:addon <name> --dir <path>` does all of this for a new addon: it writes the addon
+outside the repository with `@oakestra/*` as semver ranges of the current package versions, a
+self-contained `tsconfig.json`, a Dockerfile that builds from the addon's own directory and a
+short README. The packages must be on npm before `pnpm install` works there; `pnpm pack:check`
+builds such a generated addon against the packed tarballs on every CI run.
 
 `vite.config.ts`, `src/addon.css` and the code stay as they are: they import the same
 specifiers. To try this before the first release, `pnpm pack:check --dir <dir>` (an empty

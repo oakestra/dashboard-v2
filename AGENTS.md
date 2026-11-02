@@ -1,8 +1,6 @@
 # Oakestra Dashboard v2
 
-React shell that loads addon UIs at runtime through Module Federation. `MF_PLAN.md` is the
-architecture; read it before changing anything under `apps/shell/src/core/addons`,
-`packages/dashboard-sdk` or the nginx/Docker files. Do not edit `MF_PLAN.md`.
+React shell that loads addon UIs at runtime through Module Federation.
 
 ## Layout
 
@@ -10,7 +8,10 @@ architecture; read it before changing anything under `apps/shell/src/core/addons
   theme, extension registry, addon runtime), `src/features/<name>` are built-in feature modules,
   `src/app` wires them together, `src/test` holds the test helpers.
 - `packages/dashboard-sdk`: the public, semver'd contract addons build against. Entries: the root,
-  `./federation` (Node only, loaded from vite configs) and `./testing` (test only: `renderInHost`,
+  `./federation` (Node only, loaded from vite configs), `./vite` (Node only: `oakestraAddon()`,
+  the Vite plugin addons build with; `vite` and `@module-federation/vite` are optional peers),
+  `./vite/client` (hand-written `vite-client.d.ts` typing `virtual:oakestra-addon`; a plain string
+  export, so it has no API report) and `./testing` (test only: `renderInHost`,
   `createTestHost`, `TestHostProvider`, `createMockApi`, `createNotifyRecorder`; not in
   `sharedDeps`, `@testing-library/react` is an optional peer; it must import the contexts from
   `./context` so dist keeps one `createContext`).
@@ -27,7 +28,13 @@ architecture; read it before changing anything under `apps/shell/src/core/addons
 - `tools/mock-system-manager`: the `@oakestra/mocks` backend served over HTTP for the e2e stack.
 - `tools/package-checks`: `pnpm api:check` / `pnpm api:update` (API Extractor reports, one per
   public entry, in `packages/*/api-report/`) and `pnpm pack:check` (packs the three public
-  packages and builds a copy of `addons/example` outside the workspace against the tarballs).
+  packages and builds a copy of `addons/example` and a freshly scaffolded addon outside the
+  workspace against the tarballs).
+- `tools/create-addon`: `pnpm create:addon <name> [--prefix] [--label] [--port] [--dir]` generates
+  a new addon (`addons/<name>`, or a standalone one outside the repo with `--dir`). The template is
+  real files in `template/{common,workspace,standalone}` with `__NAME__`-style placeholders,
+  excluded from ESLint, Prettier and tsc. Changes to the example's build setup or the SDK Vite
+  plugin must be mirrored there; `pnpm pack:check` builds an addon generated from it.
 - `e2e`: Playwright suite against `docker-compose.dev.yml`.
 - `docs`: documentation for people, linked from `README.md`: the demo walkthrough (`demo.md`) and
   the addon developer guide (`addons/`). Keep `docs/addons/` in sync with changes to the SDK,
@@ -298,14 +305,19 @@ in `data-table.tsx`); the v8 `useReactTable` API does not exist there.
 ## Module Federation rules
 
 - `sharedDeps` in `packages/dashboard-sdk/src/federation.ts` is the single source of the shared
-  config for shell and addons. Addons use `withoutFallback(sharedDeps)` (`import: false`).
+  config for shell and addons. Addons build with `oakestraAddon()` from
+  `@oakestra/dashboard-sdk/vite`, which applies `withoutFallback(sharedDeps)` (`import: false`)
+  and fixes the federation options (`./addon` expose, `remoteEntry.js`, manifest,
+  `publicPath: 'auto'`). Addon source gets its name as `ADDON_ID` from `virtual:oakestra-addon`, so
+  the definition id cannot drift from the federation name; the example's `vitest.config.ts` merges
+  `vite.config.ts` so it resolves in tests (Module Federation switches itself off under Vitest).
 - Anything holding React context or global state must be in `sharedDeps`. Import `@oakestra/ui`
   only from its root entry or the heavy-component subpaths listed below: other deep imports would
   bypass the share and duplicate component contexts.
 - Import `RouterProvider` from `react-router`, not `react-router/dom`: the `/dom` entry bundles its
   own copy of the router contexts, which addons (sharing only `react-router`) would not see.
-- `federation.ts` is loaded by Node from `vite.config.ts`, so it imports nothing browser-only and
-  uses explicit `.ts` extensions on relative imports.
+- `federation.ts`, `vite.ts` and `css-prefix.ts` are loaded by Node from `vite.config.ts`, so they
+  import nothing browser-only and use explicit `.ts` extensions on relative imports.
 - The `@oakestra/ui` ranges in `sharedDeps` are `^` plus the ui version resolved from the
   consuming project (`resolveUiVersion`), falling back to `UI_VERSION_FALLBACK` with a warning.
   `federation.test.ts` keeps the fallback equal to `packages/ui/package.json`: bump both together.
@@ -329,7 +341,9 @@ the same layer, so an unprefixed `.hidden` in it (Tailwind also scans comments) 
 shell's responsive classes and hide the sidebar. A lower cascade layer for addons was rejected: the
 shell's base utilities would then beat the addon's own variants on addon elements. Every class in
 addon code and in doc samples gets the prefix, including `className` passed to `@oakestra/ui`
-components; an e2e test checks the example's CSS has no unprefixed class selector.
+components. `oakestraAddon({ prefix })` fails `vite build` when an emitted CSS asset has a class
+selector without the prefix (bare `.dark` exempt) and warns in dev; `prefix` must equal the one in
+`addon.css`. An e2e test in `addon-runtime.spec.ts` applies the same rule to the deployed example.
 
 To add a shadcn component: run `pnpm dlx shadcn@4 add <name>` in `packages/ui`, rewrite its
 `@oakestra/ui/...` and `cn` imports to relative paths, drop any `next-themes` usage, and export it
@@ -355,7 +369,8 @@ covered by `packages/eslint-config/boundaries.test.js`:
 - `addons/*` import only their own files, `@oakestra/dashboard-sdk`, `@oakestra/ui` and types from
   `@oakestra/api`. Addons ship as separate containers; anything else would not exist at runtime.
   `@oakestra/dashboard-sdk/testing` is allowed in addon `*.test.ts(x)` only, never in addon
-  runtime code or shell production code.
+  runtime code or shell production code; `@oakestra/dashboard-sdk/vite` only in addon
+  `vite.config.ts` and `vitest.config.ts`.
 - `features/*` use `core`, the shared `src/components` and `src/lib`, the packages and their own files; another feature only via its
   `index.ts`. `core` never imports features.
 - `packages/ui` never imports the SDK, and the SDK never imports the shell or `ui` sources. The

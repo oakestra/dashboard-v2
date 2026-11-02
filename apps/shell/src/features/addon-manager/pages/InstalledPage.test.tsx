@@ -31,6 +31,17 @@ const rowOf = async (name: string) => {
   return cell.closest('tr')!;
 };
 
+/**
+ * Waits until the row of `name` shows `status`. The row is looked up on every retry: a status
+ * change re-renders the table, and a cell found before that is detached, so its closest('tr') is
+ * null.
+ */
+const waitForStatus = (name: string, status: string) =>
+  waitFor(() => {
+    const row = screen.getByText(name, { selector: 'td span' }).closest('tr');
+    expect(within(row!).getByText(status)).toBeVisible();
+  });
+
 describe('<InstalledPage>', () => {
   it('lists the installed addons with status badges and the dashboard UI column', async () => {
     const { services } = renderInstalled();
@@ -119,8 +130,7 @@ describe('<InstalledPage>', () => {
     expect(dialog).toHaveTextContent('containers of this addon are stopped');
     await user.click(within(dialog).getByRole('button', { name: 'Disable addon' }));
 
-    const row = await rowOf('example');
-    await waitFor(() => expect(within(row).getByText('Disabled')).toBeVisible());
+    await waitForStatus('example', 'Disabled');
     expect(mockAddons.state.installed.find((a) => a.name === 'example')?.status).toBe('disabled');
     expect(invalidate).toHaveBeenCalledWith({ queryKey: uiAddonsQueryKey });
     // Disabled addons offer removal, not another disable.
@@ -165,7 +175,7 @@ describe('<InstalledPage>', () => {
     example.status_details = { failed_services: ['example-worker'] };
     example.logs = 'Container example-worker exited with code 1';
 
-    await waitFor(() => expect(within(row).getByText('Failed')).toBeVisible());
+    await waitForStatus('example', 'Failed');
   });
 
   it('polls fast only while an addon is changing, and slowly once it is stuck', async () => {
@@ -208,8 +218,7 @@ describe('<InstalledPage>', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Disable anyway' }));
 
     await waitFor(() => expect(remove).toHaveBeenCalledWith(idOf('analytics')));
-    const row = await rowOf('analytics');
-    await waitFor(() => expect(within(row).getByText('Disabled')).toBeVisible());
+    await waitForStatus('analytics', 'Disabled');
   });
 
   it('does not delete an addon that was disabled since the list was loaded', async () => {

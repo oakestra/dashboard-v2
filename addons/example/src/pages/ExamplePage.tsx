@@ -8,6 +8,7 @@ import {
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@oakestra/ui';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
+import { ADDON_ID } from 'virtual:oakestra-addon';
 
 import { useSingletonProbe } from '../debug';
 
@@ -18,7 +19,7 @@ export function ExamplePage() {
   const basePath = useAddonBasePath();
   const addonPath = useAddonPath();
   const greeting = useQuery({
-    queryKey: addonQueryKey('example', 'greeting'),
+    queryKey: addonQueryKey(ADDON_ID, 'greeting'),
     queryFn: () => Promise.resolve(`Hello ${user?.username ?? 'stranger'}`),
   });
 

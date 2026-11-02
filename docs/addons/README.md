@@ -142,70 +142,52 @@ Addons currently live inside this monorepo, under `addons/`. The SDK and `@oakes
 published to npm yet. Once they are, an addon can live in its own repository instead (see
 [packaging](packaging.md#current-limitation-addons-live-in-this-repository)).
 
-### Step 1: copy the example addon
-
-`addons/example` is the reference addon. Copy it without its build output and dependencies:
+### Step 1: create the addon
 
 ```sh
-mkdir addons/insights
-cp -R addons/example/src addons/example/docker addons/example/Dockerfile \
-  addons/example/index.html addons/example/package.json addons/example/tsconfig.json \
-  addons/example/vite.config.ts addons/insights/
+pnpm create:addon insights --prefix ins
 ```
 
-Delete the parts of the example that only exist for its tests:
+This creates `addons/insights` from a minimal template (one page, one home widget, a test, the
+Dockerfile and a marketplace definition) and runs `pnpm install`, so the lockfile picks up the new
+workspace package. Options: `--label <text>` (display name, default `Insights`), `--port <n>`
+(default: the next free dev port after the other addons) and `--no-install`. The command refuses
+to touch an existing `addons/<name>`, and a prefix that another addon already uses.
 
-- `src/debug.ts` is a probe for the end-to-end tests. Delete it, and remove the
-  `useSingletonProbe()` call and its import from `src/pages/ExamplePage.tsx`.
-- `ThrowingWidget` in `src/widgets/widgets.tsx` crashes on purpose. Remove it and its entry in
-  `src/index.tsx`.
-
-### Step 2: rename the addon
+### Step 2: what must match
 
 The addon name connects several places. **All of them must use the same name**, otherwise the
-shell cannot find or accept your addon. Use lowercase letters and digits (the shell also allows
-`-`).
+shell cannot find or accept your addon. The generator fills them in for you:
 
-| Where                                    | Change                                                                                     |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `package.json`                           | `"name": "@oakestra/addon-insights"` (the package name; must be unique in the workspace)   |
-| `vite.config.ts`                         | `federation({ name: 'insights', ... })`                                                    |
-| `src/index.tsx`                          | `defineAddon({ id: 'insights', ... })`                                                     |
-| `Dockerfile`                             | `--filter "@oakestra/addon-insights..."`, `--filter @oakestra/addon-insights build`, `/repo/addons/insights/dist`, `addons/insights/docker/nginx.conf` |
-| `addonQueryKey(...)` calls               | `'insights'` instead of `'example'`                                                        |
-| The marketplace definition               | `"name": "insights"` (this becomes the `name` in `/ui-addons`)                             |
-| The container                            | `addonui-insights`                                                                          |
+| Where                          | Value                                                                   |
+| ------------------------------ | ----------------------------------------------------------------------- |
+| `vite.config.ts`               | `oakestraAddon({ name: 'insights', prefix: 'ins', port: 5175 })`        |
+| `package.json`                 | `@oakestra/addon-insights` (the npm package name, the only one that differs) |
+| `Dockerfile`                   | the package name and `addons/insights/...` paths                        |
+| `marketplace-definition.json`  | `"name": "insights"` (this becomes the `name` in `/ui-addons`)          |
+| The container                  | `addonui-insights`                                                      |
+| `index.html`                   | the override hint with the dev port                                     |
 
-The package name is the only one that differs: it is the npm package name, not the addon name.
-The federation `name`, the definition `id`, the `/ui-addons` name and the container suffix are
-the same string.
-
-Also change these, so the new addon can run next to the example:
-
-- `vite.config.ts`: `const port = 5175;` (the example uses 5174).
-- `index.html`: the override hint text (`?addon-override=insights=http://localhost:5175/mf-manifest.json`).
-- The comment in `vite.config.ts` that mentions `/addon-assets/example/`.
-- `src/addon.css`: `prefix(ex)` becomes `prefix(ins)`, and every `ex:` in the class names under
-  `src/` becomes `ins:` (classes with the old prefix are no longer generated). Every class in your
-  addon starts with this prefix (`ins:text-sm`), so the shell's styles and yours never collide.
-  Lowercase letters only; see [styling](packaging.md#styling).
-
-Then run `pnpm install` at the repository root, so pnpm links the new workspace package and adds
-it to `pnpm-lock.yaml`. The Docker build uses `--frozen-lockfile`, so commit the updated lockfile.
-
-Keep the name in one constant so you cannot mistype it:
+Your source files never repeat the name: the `oakestraAddon()` plugin provides it as `ADDON_ID`,
+which the template passes to `defineAddon({ id: ADDON_ID })` and `addonQueryKey(ADDON_ID, ...)`:
 
 ```ts
-// src/constants.ts
-// Must equal the federation `name` in vite.config.ts and the addon name in /ui-addons.
-export const ADDON_ID = 'insights';
+import { ADDON_ID } from 'virtual:oakestra-addon';
 ```
+
+The **prefix** (`ins`) is the other value that must agree: `prefix` in `oakestraAddon(...)`,
+`prefix(ins)` in `src/addon.css` and the `ins:` in front of every Tailwind class under `src/`
+(`ins:text-sm`). The shell's styles and yours then never collide. The build fails when the two
+prefixes differ or a class lacks the prefix. See [styling](packaging.md#styling).
+
+`oakestraAddon()` sets up Module Federation and the dev server the way the shell expects, see
+[build configuration](packaging.md#build-configuration).
 
 ### Step 3: define the addon
 
-`src/index.tsx` is the module the shell loads (`exposes: { './addon': './src/index.tsx' }` in
-`vite.config.ts`). Its **default export** must be the result of `defineAddon()`. Replace the
-example content with this:
+`src/index.tsx` is the module the shell loads (the `entry` of `oakestraAddon()`, this file by
+default). Its **default export** must be the result of `defineAddon()`. Replace the
+template content with this:
 
 ```tsx
 // src/index.tsx
@@ -213,8 +195,8 @@ import './addon.css';
 
 import { defineAddon } from '@oakestra/dashboard-sdk';
 import { ChartLineIcon } from 'lucide-react';
+import { ADDON_ID } from 'virtual:oakestra-addon';
 
-import { ADDON_ID } from './constants';
 import { ActiveClustersWidget } from './contributions/ActiveClustersWidget';
 import { ApplicationInsightsTab } from './contributions/ApplicationInsightsTab';
 import { ClusterPage } from './pages/ClusterPage';
@@ -258,7 +240,7 @@ export default defineAddon({
 Keep `import './addon.css';` as the first line. It loads your Tailwind styles together with the
 module (see [packaging](packaging.md#styling)).
 
-The next steps create the imported files. Delete the example's `src/pages` and `src/widgets`
+The next steps create the imported files. Delete the template's `src/pages` and `src/widgets`
 files when you no longer need them.
 
 ### Step 4: fetch data
@@ -275,8 +257,7 @@ collide with the shell or with other addons.
 // src/queries.ts
 import { addonQueryKey, type OakestraApi } from '@oakestra/dashboard-sdk';
 import { queryOptions } from '@tanstack/react-query';
-
-import { ADDON_ID } from './constants';
+import { ADDON_ID } from 'virtual:oakestra-addon';
 
 // The element type of api.clusters.list(), without a dependency on @oakestra/api.
 export type Cluster = Awaited<ReturnType<OakestraApi['clusters']['list']>>[number];

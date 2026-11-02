@@ -153,6 +153,15 @@ const policies = [
 
 const SDK_TESTING_ENTRY = '@oakestra/dashboard-sdk/testing';
 
+/**
+ * The SDK's Vite plugin runs in Node and pulls in Vite and Module Federation, so it belongs in the
+ * build config only. Its own pattern, so the config files can drop it and keep the rest.
+ */
+const sdkVitePattern = {
+  group: ['@oakestra/dashboard-sdk/vite', '@oakestra/dashboard-sdk/vite/*'],
+  message: 'The SDK Vite plugin is for vite.config.ts and vitest.config.ts only.',
+};
+
 /** Workspace packages that addons may import by name. `@oakestra/api` only for types (M2). */
 const addonImportRestrictions = {
   patterns: [
@@ -178,6 +187,7 @@ const addonImportRestrictions = {
       group: ['@oakestra/*/src', '@oakestra/*/src/**'],
       message: 'Import packages by their public entry points.',
     },
+    sdkVitePattern,
   ],
   paths: [
     {
@@ -204,6 +214,11 @@ const addonTestImportRestrictions = {
     },
     ...addonImportRestrictions.patterns.slice(1),
   ],
+};
+
+const addonConfigImportRestrictions = {
+  ...addonImportRestrictions,
+  patterns: addonImportRestrictions.patterns.filter((pattern) => pattern !== sdkVitePattern),
 };
 
 /**
@@ -253,6 +268,12 @@ export function importBoundaries({ rootDir }) {
     {
       files: ['addons/**/*.test.{ts,tsx}'],
       rules: { '@typescript-eslint/no-restricted-imports': ['error', addonTestImportRestrictions] },
+    },
+    {
+      files: ['addons/*/vite.config.ts', 'addons/*/vitest.config.ts'],
+      rules: {
+        '@typescript-eslint/no-restricted-imports': ['error', addonConfigImportRestrictions],
+      },
     },
     {
       // Mock data and the mock login (password = username) must never reach a production bundle.
@@ -320,6 +341,9 @@ export function createConfig({ rootDir }) {
         '**/.__mf__temp/**',
         'e2e/test-results/**',
         'e2e/playwright-report/**',
+        // Placeholders (`port: __PORT__`) make it unparsable and outside every tsconfig; the pack
+        // check generates an addon from it and runs typecheck, tests and build on that.
+        'tools/create-addon/template/**',
       ],
     },
     js.configs.recommended,

@@ -1,9 +1,16 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, mergeConfig } from 'vitest/config';
 
-export default defineConfig({
-  test: {
-    environment: 'jsdom',
-    // The Tailwind entry is built by the Vite plugin in vite.config.ts; tests do not need styles.
-    css: false,
-  },
-});
+import viteConfig from './vite.config.ts';
+
+// Built on vite.config.ts so `virtual:oakestra-addon` resolves in tests too. Module Federation
+// switches itself off under Vitest.
+export default mergeConfig(
+  viteConfig,
+  defineConfig({
+    test: {
+      environment: 'jsdom',
+      // The Tailwind entry is built by the Vite plugin; tests do not need styles.
+      css: false,
+    },
+  }),
+);

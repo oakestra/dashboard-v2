@@ -1,0 +1,10 @@
+{
+  "extends": "@oakestra/tsconfig/node.json",
+  "compilerOptions": {
+    // Node runs these files directly with type stripping, so only erasable syntax is allowed.
+    "erasableSyntaxOnly": true
+  },
+  // The template is not TypeScript of this package: it holds placeholders (`port: __PORT__`) and
+  // is only valid after generation. The pack check builds a generated addon instead.
+  "include": ["src", "vitest.config.ts"]
+}

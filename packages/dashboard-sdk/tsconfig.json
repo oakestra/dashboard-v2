@@ -7,5 +7,5 @@
     "stableTypeOrdering": true,
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "vitest.config.ts", "tsdown.config.ts"]
+  "include": ["src", "vite-client.d.ts", "vitest.config.ts", "tsdown.config.ts"]
 }

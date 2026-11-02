@@ -2,6 +2,7 @@ import './addon.css';
 
 import { defineAddon } from '@oakestra/dashboard-sdk';
 import { FlaskConicalIcon } from 'lucide-react';
+import { ADDON_ID } from 'virtual:oakestra-addon';
 
 import { AboutPage } from './pages/AboutPage';
 import { DetailsPage } from './pages/DetailsPage';
@@ -16,7 +17,7 @@ import {
 } from './widgets/widgets';
 
 export default defineAddon({
-  id: 'example',
+  id: ADDON_ID,
   label: 'Example',
   routes: [
     { index: true, Component: ExamplePage },

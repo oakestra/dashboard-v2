@@ -29,6 +29,19 @@ describe('import boundaries', () => {
       "import { renderInHost } from '@oakestra/dashboard-sdk/testing';",
     ],
     ['addons/example/src/x.ts', "import '@oakestra/ui/theme.css';"],
+    [
+      'addons/example/vite.config.ts',
+      "import { oakestraAddon } from '@oakestra/dashboard-sdk/vite';",
+    ],
+    [
+      'addons/example/vitest.config.ts',
+      "import { oakestraAddon } from '@oakestra/dashboard-sdk/vite';",
+    ],
+    [
+      'addons/example/vite.config.ts',
+      "import { sharedDeps } from '@oakestra/dashboard-sdk/federation';",
+    ],
+    ['addons/example/src/x.ts', "import { ADDON_ID } from 'virtual:oakestra-addon';"],
     ['addons/example/src/x.ts', "import { ExamplePage } from './pages/ExamplePage';"],
     ['addons/example/src/x.ts', "import type { Paths } from '@oakestra/api';"],
     ['apps/shell/src/features/other/x.ts', "import { overviewModule } from '../overview';"],
@@ -87,6 +100,26 @@ describe('import boundaries', () => {
       'apps/shell/src/features/overview/x.ts',
       "import { renderInHost } from '@oakestra/dashboard-sdk/testing';",
       'no-restricted-imports',
+    ],
+    [
+      'addons/example/src/x.ts',
+      "import { oakestraAddon } from '@oakestra/dashboard-sdk/vite';",
+      '@typescript-eslint/no-restricted-imports',
+    ],
+    [
+      'addons/example/src/x.test.ts',
+      "import { oakestraAddon } from '@oakestra/dashboard-sdk/vite';",
+      '@typescript-eslint/no-restricted-imports',
+    ],
+    [
+      'addons/example/vite.config.ts',
+      "import { createConfig } from '@oakestra/eslint-config';",
+      '@typescript-eslint/no-restricted-imports',
+    ],
+    [
+      'addons/example/vite.config.ts',
+      "import { renderInHost } from '@oakestra/dashboard-sdk/testing';",
+      '@typescript-eslint/no-restricted-imports',
     ],
     [
       'addons/example/src/x.test.ts',

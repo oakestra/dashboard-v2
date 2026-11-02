@@ -54,9 +54,15 @@ describe('<UsersPage>', () => {
   });
 
   it('keeps "Edit roles" disabled while the roles are loading', async () => {
+    // Held until the test releases it: a fixed delay raced the menu under load, and roles arriving
+    // early rebuild the columns and close the menu before it can be checked.
+    let releaseRoles = () => {};
+    const rolesHeld = new Promise<void>((resolve) => {
+      releaseRoles = resolve;
+    });
     mockServer.use(
       http.get(`${TEST_API_URL}/users/:organizationId`, async () => {
-        await new Promise((resolve) => setTimeout(resolve, 150));
+        await rolesHeld;
         return undefined;
       }),
     );
@@ -69,6 +75,7 @@ describe('<UsersPage>', () => {
       'true',
     );
     await user.keyboard('{Escape}');
+    releaseRoles();
     // The roles arriving rebuilds the columns, which closes an open menu.
     await screen.findByRole('row', { name: /^alice.*Application Provider/ });
     await openActions(user, 'alice');

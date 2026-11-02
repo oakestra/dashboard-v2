@@ -19,6 +19,7 @@
     "gen:api": "pnpm --filter @oakestra/api gen",
     "api:check": "node tools/package-checks/src/api-report.ts",
     "api:update": "node tools/package-checks/src/api-report.ts --update",
+    "create:addon": "node tools/create-addon/src/cli.ts",
     "pack:check": "node tools/package-checks/src/pack-check.ts",
     "changeset": "changeset",
     "version-packages": "changeset version"
