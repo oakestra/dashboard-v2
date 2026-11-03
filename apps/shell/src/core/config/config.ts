@@ -1,13 +1,17 @@
 import { z } from 'zod';
 
 /**
- * Optional absolute URL. The container template renders unset variables as `""`, which means
- * "not configured" rather than "invalid".
+ * The container template renders unset variables as `""`, which means "not configured" rather
+ * than "invalid".
  */
-const optionalUrl = z.preprocess(
-  (value) => (value === '' || value === null ? undefined : value),
-  z.url({ protocol: /^https?$/ }).optional(),
-);
+function emptyAsUnset<T extends z.ZodType>(schema: T) {
+  return z.preprocess(
+    (value) => (value === '' || value === null ? undefined : value),
+    schema.optional(),
+  );
+}
+
+const optionalUrl = emptyAsUnset(z.url({ protocol: /^https?$/ }));
 
 /**
  * Runtime configuration served as `/config.json`.
@@ -27,10 +31,7 @@ export const appConfigSchema = z.object({
   /** Base URL of the marketplace-manager (addon definitions), proxied to `/api/v1/marketplace/addons`. */
   marketplaceUrl: z.string().min(1).default('/marketplace-api'),
   /** Deployment preset (see preset.ts), a same-origin path or a URL. Unset means the defaults. */
-  presetUrl: z.preprocess(
-    (value) => (value === '' || value === null ? undefined : value),
-    z.string().min(1).optional(),
-  ),
+  presetUrl: emptyAsUnset(z.string().min(1)),
 });
 
 export type AppConfig = z.infer<typeof appConfigSchema>;
@@ -39,7 +40,24 @@ export class ConfigError extends Error {
   override name = 'ConfigError';
 }
 
-export async function loadConfig(url = '/config.json'): Promise<AppConfig> {
+/** Parses a runtime file, throwing a ConfigError that names `source` and every problem. */
+export function parseConfigFile<T extends z.ZodType>(
+  schema: T,
+  raw: unknown,
+  source: string,
+): z.output<T> {
+  const result = schema.safeParse(raw);
+  if (!result.success) {
+    throw new ConfigError(`${source} is invalid: ${z.prettifyError(result.error)}`);
+  }
+  return result.data;
+}
+
+/** Fetches and parses a runtime file (config.json, preset.json), bypassing the HTTP cache. */
+export async function fetchConfigFile<T extends z.ZodType>(
+  schema: T,
+  url: string,
+): Promise<z.output<T>> {
   let raw: unknown;
   try {
     const response = await fetch(url, { cache: 'no-store' });
@@ -49,10 +67,9 @@ export async function loadConfig(url = '/config.json'): Promise<AppConfig> {
     if (error instanceof ConfigError) throw error;
     throw new ConfigError(`Could not load ${url}: ${String(error)}`, { cause: error });
   }
+  return parseConfigFile(schema, raw, url);
+}
 
-  const result = appConfigSchema.safeParse(raw);
-  if (!result.success) {
-    throw new ConfigError(`${url} is invalid: ${z.prettifyError(result.error)}`);
-  }
-  return result.data;
+export function loadConfig(url = '/config.json'): Promise<AppConfig> {
+  return fetchConfigFile(appConfigSchema, url);
 }

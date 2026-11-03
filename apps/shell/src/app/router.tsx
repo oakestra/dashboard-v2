@@ -22,6 +22,17 @@ export function ownsIndexRoute(routes: readonly RouteObject[]): boolean {
 /** The parts of the preset that shape the route tree. */
 export type RoutePreset = Pick<Preset, 'home' | 'addons'>;
 
+/** Every addon served at its own top-level path: the linked ones, then preset addons with a mount. */
+export function addonMounts(
+  linked: readonly LinkedAddon[],
+  addons: RoutePreset['addons'],
+): { name: string; mount: string }[] {
+  return [
+    ...linked.map((addon) => ({ name: addon.definition.id, mount: addon.mount })),
+    ...addons.flatMap((addon) => (addon.mount ? [{ name: addon.name, mount: addon.mount }] : [])),
+  ];
+}
+
 /**
  * The route tree for the enabled modules and linked addons. Run the preset through applyPreset
  * first: it guarantees that mounts do not overlap module routes or each other and that `home` is
@@ -33,12 +44,7 @@ export function createAppRoutes(
   linked: readonly LinkedAddon[] = [],
 ): RouteObject[] {
   const forbidden = <ForbiddenPage message={FORBIDDEN_MESSAGE} />;
-  const mounts = [
-    ...linked.map((addon) => ({ name: addon.definition.id, mount: addon.mount })),
-    ...preset.addons.flatMap((addon) =>
-      addon.mount ? [{ name: addon.name, mount: addon.mount }] : [],
-    ),
-  ];
+  const mounts = addonMounts(linked, preset.addons);
   const moduleRoutes = modules.flatMap((module) => module.routes);
   const ownsIndex = ownsIndexRoute(moduleRoutes);
   return [

@@ -6,10 +6,11 @@ import {
 } from '@oakestra/dashboard-sdk';
 
 import type { Preset } from '../../core/config/preset';
-import type {
-  ContributionSource,
-  RegisteredSource,
-  ResolvedContribution,
+import {
+  navItemKey,
+  type ContributionSource,
+  type RegisteredSource,
+  type ResolvedContribution,
 } from '../../core/extensions/registry';
 
 export interface NavSubEntry {
@@ -37,7 +38,7 @@ export function buildNavEntries(
   user: CurrentUser | null,
 ): NavEntry[] {
   return items.map(({ item, source }) => {
-    const key = `${source.kind}:${source.id}:${item.id}`;
+    const key = navItemKey(source, item.id);
     const children = (item.children ?? [])
       .map((child, index) => ({ child, index }))
       .filter(({ child }) => hasAnyRole(user, child.roles))
@@ -95,7 +96,7 @@ export function unknownCoreNavKeys(
   const known = new Set<string>();
   for (const { source, contributions } of Object.values(sources)) {
     if (source.kind !== 'core') continue;
-    for (const item of contributions['nav.items'] ?? []) known.add(`core:${source.id}:${item.id}`);
+    for (const item of contributions['nav.items'] ?? []) known.add(navItemKey(source, item.id));
   }
   return Object.keys(overrides).filter((key) => key.startsWith('core:') && !known.has(key));
 }

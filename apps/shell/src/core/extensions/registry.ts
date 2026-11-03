@@ -41,6 +41,14 @@ export function sourceKey(source: Pick<ContributionSource, 'kind' | 'id'>): stri
   return `${source.kind}:${source.id}`;
 }
 
+/** The key a preset's `nav.items` uses for a top-level nav item, e.g. `core:settings:settings`. */
+export function navItemKey(
+  source: Pick<ContributionSource, 'kind' | 'id'>,
+  itemId: string,
+): string {
+  return `${sourceKey(source)}:${itemId}`;
+}
+
 export function createContributionRegistry(): ContributionRegistry {
   let sequence = 0;
   return createStore<ContributionRegistryState>()((set) => ({

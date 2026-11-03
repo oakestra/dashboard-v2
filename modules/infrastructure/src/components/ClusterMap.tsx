@@ -1,8 +1,15 @@
 import { parseClusterLocation, type Cluster } from '@oakestra/api';
 import { useAddonPath } from '@oakestra/dashboard-sdk';
 import { plural } from '@oakestra/ui';
-import { LocationMap, toMapLocation } from '@oakestra/ui/location-map';
+import { LocationMap, toMapLocation, type MarkerLinkProps } from '@oakestra/ui/location-map';
+import { useMemo } from 'react';
 import { Link } from 'react-router';
+
+// Client-side navigation: a plain anchor would reload the app. Module scope, so the markers keep
+// a stable prop across renders.
+function renderLink({ href, label, className }: MarkerLinkProps) {
+  return <Link to={href} aria-label={label} className={className} />;
+}
 
 /** Map of the clusters with a usable location; says how many had to be left out. */
 export function ClusterMap({
@@ -18,21 +25,26 @@ export function ClusterMap({
   linkToDetail?: boolean;
 }) {
   const addonPath = useAddonPath();
-  const locations = clusters.flatMap((cluster) => {
-    const location = toMapLocation(
-      cluster.active ? cluster.cluster_name : `${cluster.cluster_name} (inactive)`,
-      parseClusterLocation(cluster.cluster_location),
-    );
-    if (!location) return [];
-    return [
-      {
-        ...location,
-        // Same meaning as the amber Inactive badge in the table next to the map.
-        tone: cluster.active ? ('default' as const) : ('warning' as const),
-        ...(linkToDetail ? { href: addonPath('clusters', cluster._id) } : {}),
-      },
-    ];
-  });
+  // Memoized because the map refits its bounds whenever `locations` changes identity.
+  const locations = useMemo(
+    () =>
+      clusters.flatMap((cluster) => {
+        const location = toMapLocation(
+          cluster.active ? cluster.cluster_name : `${cluster.cluster_name} (inactive)`,
+          parseClusterLocation(cluster.cluster_location),
+        );
+        if (!location) return [];
+        return [
+          {
+            ...location,
+            // Same meaning as the amber Inactive badge in the table next to the map.
+            tone: cluster.active ? ('default' as const) : ('warning' as const),
+            ...(linkToDetail ? { href: addonPath('clusters', cluster._id) } : {}),
+          },
+        ];
+      }),
+    [clusters, linkToDetail, addonPath],
+  );
   const skipped = clusters.length - locations.length;
 
   return (
@@ -42,10 +54,7 @@ export function ClusterMap({
           locations={locations}
           className={className}
           ariaLabel={ariaLabel}
-          // Client-side navigation: a plain anchor would reload the app.
-          renderLink={({ href, label, className }) => (
-            <Link to={href} aria-label={label} className={className} />
-          )}
+          renderLink={renderLink}
         />
       ) : (
         <p className="text-muted-foreground text-sm">No cluster reports a usable location.</p>

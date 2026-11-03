@@ -181,7 +181,7 @@ function joinPath(base: string, relative: string): string {
   return trimmed ? `${base}/${trimmed}` : base;
 }
 
-function errorMessage(error: unknown): string {
+export function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return String(error);
 }

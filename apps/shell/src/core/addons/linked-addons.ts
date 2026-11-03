@@ -3,7 +3,7 @@ import { SDK_VERSION, type AddonDefinition } from '@oakestra/dashboard-sdk';
 import type { ContributionRegistry } from '../extensions/registry';
 import { setEntry, type AddonRegistry } from './addon-registry';
 import { parseAddonDefinition } from './definition';
-import { resolveAddonContributions } from './loader';
+import { errorMessage, resolveAddonContributions } from './loader';
 import { addonSource, type ResolvedAddon } from './ui-addons';
 
 /**
@@ -54,11 +54,7 @@ export function registerLinkedAddons(
       setEntry(registries.addons, { ...resolved, state: 'loaded', definition });
     } catch (error) {
       console.error(`[addons] linked addon "${resolved.name}" is invalid`, error);
-      setEntry(registries.addons, {
-        ...resolved,
-        state: 'failed',
-        error: error instanceof Error ? error.message : String(error),
-      });
+      setEntry(registries.addons, { ...resolved, state: 'failed', error: errorMessage(error) });
     }
   }
 }

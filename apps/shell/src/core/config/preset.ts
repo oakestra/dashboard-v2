@@ -1,23 +1,14 @@
-import type { NavGroup } from '@oakestra/dashboard-sdk';
 import { z } from 'zod';
 
+import { navGroupSchema } from '../addons/definition';
 import { ADDON_NAME_PATTERN, uiAddonSchema } from '../addons/ui-addons';
-import { ConfigError } from './config';
+import { fetchConfigFile, parseConfigFile } from './config';
 
 /**
  * Plain static segments only: a mount becomes a react-router path, where `:x` or `*` would turn
  * it into a pattern, and the collision check against module routes assumes literal segments.
  */
 const MOUNT_PATTERN = /^\/[a-z0-9-]+(?:\/[a-z0-9-]+)*$/;
-
-const NAV_GROUPS = [
-  'main',
-  'management',
-  'addons',
-  'footer',
-] as const satisfies readonly NavGroup[];
-
-const navGroupSchema = z.enum(NAV_GROUPS);
 
 const DUMMY_ORIGIN = 'http://preset.invalid';
 
@@ -38,9 +29,10 @@ function parseLocalPath(value: string): URL | undefined {
 /** Same-origin paths or absolute http(s) URLs. */
 const entrySchema = z.string().refine((value) => {
   if (parseLocalPath(value)) return true;
+  if (!/^https?:\/\//.test(value)) return false;
   try {
-    const { protocol } = new URL(value);
-    return /^https?:\/\//.test(value) && (protocol === 'http:' || protocol === 'https:');
+    new URL(value);
+    return true;
   } catch {
     return false;
   }
@@ -151,24 +143,10 @@ export type NavOverride = z.infer<typeof navOverrideSchema>;
 export const DEFAULT_PRESET: Preset = presetSchema.parse({});
 
 export function parsePreset(raw: unknown, source = 'preset'): Preset {
-  const result = presetSchema.safeParse(raw);
-  if (!result.success) {
-    throw new ConfigError(`${source} is invalid: ${z.prettifyError(result.error)}`);
-  }
-  return result.data;
+  return parseConfigFile(presetSchema, raw, source);
 }
 
 /** Loads the preset `config.presetUrl` points at, or the default when none is configured. */
 export async function loadPreset(url: string | undefined): Promise<Preset> {
-  if (!url) return DEFAULT_PRESET;
-  let raw: unknown;
-  try {
-    const response = await fetch(url, { cache: 'no-store' });
-    if (!response.ok) throw new ConfigError(`${url} returned HTTP ${response.status}`);
-    raw = await response.json();
-  } catch (error) {
-    if (error instanceof ConfigError) throw error;
-    throw new ConfigError(`Could not load ${url}: ${String(error)}`, { cause: error });
-  }
-  return parsePreset(raw, url);
+  return url ? fetchConfigFile(presetSchema, url) : DEFAULT_PRESET;
 }

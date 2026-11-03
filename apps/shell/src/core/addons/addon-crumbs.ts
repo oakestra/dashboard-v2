@@ -4,6 +4,7 @@ import type { RouteObject, UIMatch } from 'react-router';
 import { useStore } from 'zustand';
 
 import type { Preset } from '../config/preset';
+import { navItemKey } from '../extensions/registry';
 import { usePreset } from '../config/preset-context';
 import type { Crumb } from '../router/route-handle';
 import { AddonCrumbLabel } from './AddonCrumbLabel';
@@ -93,7 +94,7 @@ export function navOverrideLabel(
   if (entry.state !== 'loaded') return undefined;
   const items = entry.definition.contributions?.['nav.items'] ?? [];
   const root = items.find((item) => item.path.replace(/^\.?\/?/, '') === '');
-  return root ? overrides[`addon:${addonId}:${root.id}`]?.label : undefined;
+  return root ? overrides[navItemKey({ kind: 'addon', id: addonId }, root.id)]?.label : undefined;
 }
 
 export function addonCrumbs(

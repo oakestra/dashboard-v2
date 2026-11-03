@@ -46,6 +46,11 @@ export function useAddonSync(): void {
   const overrides = useMemo(() => getDevOverrides(), []);
   const presetAddons = useMemo(() => resolvePresetAddons(preset), [preset]);
   const discovery = preset.addonDiscovery;
+  // Preset addons and dev overrides, which load without the addons manager.
+  const localAddons = useMemo(
+    () => resolveAddons([], overrides, { preset: presetAddons }),
+    [overrides, presetAddons],
+  );
 
   // Addon UIs only render behind requireAuth, so the login and password reset pages neither poll
   // nor run addon code next to the password field.
@@ -82,41 +87,24 @@ export function useAddonSync(): void {
     // manager are the usual local dev setup). Once a list was received, the effect above owns the
     // sync and an outage keeps the last known state (see AddonsAvailability). Every failed poll
     // syncs again, which retries failed loads like a successful poll does.
-    if (data || (presetAddons.length === 0 && Object.keys(overrides).length === 0)) return;
-    void loader.sync(resolveAddons([], overrides, { preset: presetAddons }));
-  }, [
-    authenticated,
-    discovery,
-    isError,
-    errorUpdatedAt,
-    data,
-    loader,
-    overrides,
-    presetAddons,
-    addons,
-  ]);
+    if (data || localAddons.length === 0) return;
+    void loader.sync(localAddons);
+  }, [authenticated, discovery, isError, errorUpdatedAt, data, loader, localAddons, addons]);
 
   // Without discovery nothing polls, so a preset addon whose server was down at load time (or a
   // dev override) would stay failed until a page reload. Retry on the poll interval, but only while
-  // something is failed, so a healthy deployment makes no requests at all.
+  // something is failed, so a healthy deployment makes no requests at all. A failed linked addon
+  // does not count: its definition is compiled in and invalid, so no sync could ever fix it.
   const hasFailedLocal = useStore(addons, (state) =>
     Object.values(state.entries).some(
-      (entry) => entry.state === 'failed' && entry.origin !== 'manager',
+      (entry) => entry.state === 'failed' && (entry.origin === 'preset' || entry.origin === 'dev'),
     ),
   );
   useEffect(() => {
     if (!authenticated || discovery || !hasFailedLocal) return;
     const timer = setInterval(() => {
-      void loader.sync(resolveAddons([], overrides, { preset: presetAddons }));
+      void loader.sync(localAddons);
     }, config.addonsPollIntervalMs);
     return () => clearInterval(timer);
-  }, [
-    authenticated,
-    discovery,
-    hasFailedLocal,
-    loader,
-    overrides,
-    presetAddons,
-    config.addonsPollIntervalMs,
-  ]);
+  }, [authenticated, discovery, hasFailedLocal, loader, localAddons, config.addonsPollIntervalMs]);
 }

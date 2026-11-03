@@ -2,9 +2,9 @@ import type { QueryClient, QueryKey } from '@tanstack/react-query';
 
 /**
  * Finds an item in the cached lists under `listKey` and returns it as `initialData` for its
- * detail query, dated like the freshest list that holds it. Route loaders that `ensureQueryData`
- * a detail then resolve at once when the person came from a list, instead of holding the
- * navigation for a round trip; the page's own query still refetches once that data is stale.
+ * detail query, dated like the freshest list that holds it. Spread into the detail's query options,
+ * a page reached from a list renders at once instead of waiting for a round trip; the query still
+ * refetches once that data is stale.
  * Only valid where list and detail endpoints return the same parsed model.
  */
 export function seedFromLists<T>(

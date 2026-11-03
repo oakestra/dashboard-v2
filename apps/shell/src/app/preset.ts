@@ -5,7 +5,7 @@ import { ConfigError } from '../core/config/config';
 import type { Preset } from '../core/config/preset';
 import type { CoreModule } from '../core/modules';
 import { ALWAYS_ENABLED_MODULES, selectLinkedAddons, selectModules } from './modules';
-import { createAppRoutes, ownsIndexRoute } from './router';
+import { addonMounts, createAppRoutes, ownsIndexRoute } from './router';
 
 export interface AppliedPreset {
   /** The enabled modules, for the services and the router. */
@@ -65,12 +65,7 @@ export function applyPreset(
   }
 
   const paths = routePaths(createAppRoutes(modules, { ...preset, addons: [] }));
-  const mounts = [
-    ...linked.map((addon) => ({ name: addon.definition.id, mount: addon.mount })),
-    ...preset.addons.flatMap((addon) =>
-      addon.mount ? [{ name: addon.name, mount: addon.mount }] : [],
-    ),
-  ];
+  const mounts = addonMounts(linked, preset.addons);
   mounts.forEach(({ name, mount }, index) => {
     const taken = paths.find((path) => overlaps(mount, path));
     if (taken) {

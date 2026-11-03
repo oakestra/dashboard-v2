@@ -1,5 +1,6 @@
 import { CopyButton } from '@oakestra/ui';
 import type { AddonEntry } from '../../../core/addons/addon-registry';
+import { navItemKey } from '../../../core/extensions/registry';
 
 /**
  * The keys a deployment preset uses in `nav.items` to rename, move or hide the sidebar items of a
@@ -9,8 +10,8 @@ import type { AddonEntry } from '../../../core/addons/addon-registry';
  */
 export function navItemKeys(entry: AddonEntry | undefined): string[] {
   if (entry?.state !== 'loaded') return [];
-  return (entry.definition.contributions?.['nav.items'] ?? []).map(
-    (item) => `addon:${entry.name}:${item.id}`,
+  return (entry.definition.contributions?.['nav.items'] ?? []).map((item) =>
+    navItemKey({ kind: 'addon', id: entry.name }, item.id),
   );
 }
 

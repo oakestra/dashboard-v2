@@ -1,15 +1,11 @@
 import type { Application, Service } from '@oakestra/api';
-import {
-  applicationsQuery,
-  profileQuery,
-  servicesByApplicationQuery,
-  useCurrentUser,
-  useOakestraApi,
-} from '@oakestra/dashboard-sdk';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { servicesByApplicationQuery, useOakestraApi } from '@oakestra/dashboard-sdk';
+import { useQueries, type UseQueryResult } from '@tanstack/react-query';
+import { useCallback } from 'react';
 
 import { applicationHealth, type ApplicationHealth } from '../applications/health';
 import { summarizeStatuses, type StatusSummary } from '../services/status';
+import { useMyApplications } from '../use-my-applications';
 import { attentionItems, type AttentionItem } from './attention';
 
 export interface OverviewData {
@@ -27,41 +23,15 @@ export interface OverviewData {
   retry: () => void;
 }
 
-/**
- * Data for all overview widgets of this package. Each widget calls it on its own; the queries are
- * the platform ones the application pages use, so together they cost one round of requests.
- */
-export function useOverviewData(): OverviewData {
-  const user = useCurrentUser();
-  const api = useOakestraApi();
+const NO_APPLICATIONS: readonly Application[] = [];
 
-  // The overview is behind the login, so the user is always set; `enabled` only satisfies types.
-  const profile = useQuery({
-    ...profileQuery(api, user?.username ?? ''),
-    enabled: user !== null,
-  });
-  const userId = profile.data?._id;
-  const applications = useQuery({
-    ...applicationsQuery(api, userId ?? ''),
-    enabled: userId !== undefined,
-  });
-  // The API has no "all my services" endpoint for non-admins, so fetch per application.
-  const serviceQueries = useQueries({
-    queries: (applications.data ?? []).map((application) =>
-      servicesByApplicationQuery(api, application._id),
-    ),
-  });
-
-  const list = applications.data ?? [];
+function summarize(list: readonly Application[], serviceQueries: UseQueryResult<Service[]>[]) {
   const entries = list.map((application, index) => ({
     application,
     services: serviceQueries[index]?.data ?? [],
   }));
   const services = entries.flatMap((entry) => entry.services);
-  const applicationsLoading = profile.isPending || applications.isPending;
-
   return {
-    applications: list,
     services,
     instances: summarizeStatuses(
       services.flatMap((service) => service.instance_list.map((instance) => instance.status)),
@@ -70,12 +40,40 @@ export function useOverviewData(): OverviewData {
     healthById: new Map(
       list.map((application, index) => {
         const data = serviceQueries[index]?.data;
-        return [application._id, data ? applicationHealth(data) : undefined];
+        return [application._id, data ? applicationHealth(data) : undefined] as const;
       }),
     ),
-    applicationsLoading,
-    servicesLoading: applicationsLoading || serviceQueries.some((query) => query.isPending),
-    error: profile.error ?? applications.error,
-    retry: () => void (profile.isError ? profile.refetch() : applications.refetch()),
+    servicesPending: serviceQueries.some((query) => query.isPending),
+  };
+}
+
+/**
+ * Data for all overview widgets of this package. Each widget calls it on its own; the queries are
+ * the platform ones the application pages use, so together they cost one round of requests.
+ */
+export function useOverviewData(): OverviewData {
+  const api = useOakestraApi();
+  const { applications, isPending, error, retry } = useMyApplications();
+  const list = applications.data ?? NO_APPLICATIONS;
+
+  // `combine` reruns only when a services query or `list` changes, not on every render of each
+  // widget, which matters once there are many applications with many instances.
+  const combine = useCallback(
+    (results: UseQueryResult<Service[]>[]) => summarize(list, results),
+    [list],
+  );
+  // The API has no "all my services" endpoint for non-admins, so fetch per application.
+  const { servicesPending, ...summary } = useQueries({
+    queries: list.map((application) => servicesByApplicationQuery(api, application._id)),
+    combine,
+  });
+
+  return {
+    applications: list,
+    ...summary,
+    applicationsLoading: isPending,
+    servicesLoading: isPending || servicesPending,
+    error,
+    retry,
   };
 }

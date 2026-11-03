@@ -1,10 +1,7 @@
 import type { Application } from '@oakestra/api';
 import {
-  applicationsQuery,
-  profileQuery,
   servicesByApplicationQuery,
   useAddonPath,
-  useCurrentUser,
   useOakestraApi,
   useSearchParam,
 } from '@oakestra/dashboard-sdk';
@@ -26,6 +23,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 import { newestFirst } from '../../queries';
+import { useMyApplications } from '../../use-my-applications';
 import { ApplicationFormDialog } from '../components/ApplicationFormDialog';
 import { applicationHealth, describeServiceCounts } from '../health';
 import { RowMenu } from '../components/RowMenu';
@@ -56,8 +54,6 @@ function HealthCell({ application, part }: { application: Application; part: 'ba
 }
 
 export function ApplicationsPage() {
-  const user = useCurrentUser()!;
-  const api = useOakestraApi();
   const navigate = useNavigate();
   const addonPath = useAddonPath();
   const [search, setSearch] = useSearchParam('q');
@@ -65,12 +61,7 @@ export function ApplicationsPage() {
   const [editing, setEditing] = useState<Application | null>(null);
   const [deleting, setDeleting] = useState<Application | null>(null);
 
-  const profile = useQuery(profileQuery(api, user.username));
-  const userId = profile.data?._id;
-  const applications = useQuery({
-    ...applicationsQuery(api, userId ?? ''),
-    enabled: userId !== undefined,
-  });
+  const { applications, error, retry } = useMyApplications();
 
   // A new application is on top.
   const rows = useMemo(() => newestFirst(applications.data ?? []), [applications.data]);
@@ -131,7 +122,6 @@ export function ApplicationsPage() {
     [addonPath],
   );
 
-  const error = profile.error ?? applications.error;
   return (
     <div className="space-y-6">
       <PageHeader
@@ -145,11 +135,7 @@ export function ApplicationsPage() {
       />
 
       {error ? (
-        <QueryErrorAlert
-          title="Could not load your applications"
-          error={error}
-          onRetry={() => void (profile.isError ? profile.refetch() : applications.refetch())}
-        />
+        <QueryErrorAlert title="Could not load your applications" error={error} onRetry={retry} />
       ) : (
         <DataTable
           label="Applications"

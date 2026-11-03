@@ -3,6 +3,7 @@ import {
   type AddonDefinition,
   type AddonRoute,
   type ExtensionPointId,
+  type NavGroup,
   type WidgetSize,
 } from '@oakestra/dashboard-sdk';
 import { z } from 'zod';
@@ -61,11 +62,18 @@ const navSubItem = contributionBase.extend({
   path: relativeNavPath,
 });
 
+export const navGroupSchema = z.enum([
+  'main',
+  'management',
+  'addons',
+  'footer',
+] as const satisfies readonly NavGroup[]);
+
 const navItem = contributionBase.extend({
   label: z.string().min(1),
   path: relativeNavPath,
   icon: reactComponent.optional(),
-  group: z.enum(['main', 'management', 'addons', 'footer']).optional(),
+  group: navGroupSchema.optional(),
   children: z.array(navSubItem).superRefine(uniqueIds).optional(),
 });
 
