@@ -13,15 +13,16 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  CopyButton,
 } from '@oakestra/ui';
 import { PowerOffIcon, Trash2Icon } from 'lucide-react';
 
 import type { AddonEntry } from '../../../core/addons/addon-registry';
-import { CopyButton } from '../../../components/CopyButton';
 import { addonAction, type AddonAction } from '../addon-action';
 import { AddonStatusBadge } from './AddonStatusBadge';
 import { DashboardUiBadge, dashboardUiProblem } from './DashboardUiBadge';
 import { DefinitionDetails } from './DefinitionDetails';
+import { navItemKeys, NavItemKeys } from './NavItemKeys';
 
 interface AddonDetailSheetProps {
   addon: InstalledAddon | undefined;
@@ -65,6 +66,14 @@ export function AddonDetailSheet({
                   <dd>
                     <DashboardUiBadge entry={uiEntry} />
                   </dd>
+                  {navItemKeys(uiEntry).length > 0 ? (
+                    <>
+                      <dt className="text-muted-foreground self-start">Nav item keys</dt>
+                      <dd className="min-w-0">
+                        <NavItemKeys entry={uiEntry} />
+                      </dd>
+                    </>
+                  ) : null}
                   <dt className="text-muted-foreground">Marketplace id</dt>
                   <dd className="flex min-w-0 items-center gap-1">
                     <code className="truncate font-mono text-xs">{addon.marketplace_id}</code>

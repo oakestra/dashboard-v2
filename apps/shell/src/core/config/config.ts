@@ -26,6 +26,11 @@ export const appConfigSchema = z.object({
   addonsManagerUrl: z.string().min(1).default('/addons-api'),
   /** Base URL of the marketplace-manager (addon definitions), proxied to `/api/v1/marketplace/addons`. */
   marketplaceUrl: z.string().min(1).default('/marketplace-api'),
+  /** Deployment preset (see preset.ts), a same-origin path or a URL. Unset means the defaults. */
+  presetUrl: z.preprocess(
+    (value) => (value === '' || value === null ? undefined : value),
+    z.string().min(1).optional(),
+  ),
 });
 
 export type AppConfig = z.infer<typeof appConfigSchema>;

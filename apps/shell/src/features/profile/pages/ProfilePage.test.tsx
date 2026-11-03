@@ -1,10 +1,10 @@
+import { ROLE_OPTIONS } from '@oakestra/dashboard-sdk';
 import { http, HttpResponse } from '@oakestra/mocks';
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { mockServer, mockStore, TEST_API_URL } from '../../../test/msw';
 import { renderApp } from '../../../test/render';
-import { ROLE_OPTIONS } from '../../users';
 import { profileModule } from '../index';
 
 function renderProfile(user?: Parameters<typeof renderApp>[0]['user']) {

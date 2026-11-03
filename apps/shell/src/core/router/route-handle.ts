@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { UIMatch } from 'react-router';
 
 /**
@@ -6,7 +7,8 @@ import type { UIMatch } from 'react-router';
  */
 export interface Crumb {
   id: string;
-  label: string;
+  /** Text, or an element for addon crumbs that render their label themselves. */
+  label: ReactNode;
   /** Where the crumb links to: the matched pathname of its route. */
   to: string;
 }

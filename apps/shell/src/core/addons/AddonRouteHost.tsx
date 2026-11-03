@@ -1,22 +1,35 @@
 import { Button, EmptyState, Skeleton } from '@oakestra/ui';
 import { CloudOffIcon, PowerOffIcon, PuzzleIcon, TriangleAlertIcon } from 'lucide-react';
 import { useMemo, type ReactNode } from 'react';
-import { Link, useParams, useRoutes } from 'react-router';
+import { Link, Navigate, useLocation, useParams, useRoutes } from 'react-router';
 import { useStore } from 'zustand';
 
+import { useModuleEnabled } from '../modules';
 import { ContributionBoundary } from '../extensions/ContributionBoundary';
 import { addonLabel, type AddonEntry } from './addon-registry';
 import { useAddonRegistry } from './addon-registry-context';
 import { AddonForbiddenContext, addonRouteObjects, useSessionUser } from './addon-routes';
-import { addonSource } from './ui-addons';
+import { addonBasePath, addonSource } from './ui-addons';
+
+interface AddonRouteHostProps {
+  forbidden: ReactNode;
+  /** Renders this addon instead of the one named by the `:addonId` param (mount routes). */
+  addonId?: string;
+}
 
 /**
- * Renders `/addons/:addonId/*`. Addon routes are resolved here with useRoutes instead of being
- * patched into the data router, so addons can come and go at runtime and every state (still
- * loading, failed, removed) gets a proper page instead of a router 404.
+ * Renders `/addons/:addonId/*`, or the mount of one preset addon when `addonId` is given. Addon
+ * routes are resolved here with useRoutes instead of being patched into the data router, so addons
+ * can come and go at runtime and every state (still loading, failed, removed) gets its own page
+ * instead of a router 404.
+ *
+ * The registry entry is checked before the addons manager's availability: preset addons do not
+ * depend on it and render while it is down or switched off.
  */
-export function AddonRouteHost({ forbidden }: { forbidden: ReactNode }) {
-  const { addonId = '' } = useParams();
+export function AddonRouteHost({ forbidden, addonId: fixedId }: AddonRouteHostProps) {
+  const params = useParams();
+  const { pathname, search, hash } = useLocation();
+  const addonId = fixedId ?? params.addonId ?? '';
   const registry = useAddonRegistry();
   const entry = useStore(registry, (state) => state.entries[addonId]);
   const wasRemoved = useStore(registry, (state) => state.removed[addonId] === true);
@@ -31,6 +44,7 @@ export function AddonRouteHost({ forbidden }: { forbidden: ReactNode }) {
       );
     }
     if (availability === 'pending') return <AddonPageSkeleton />;
+    // With discovery off an unknown addon is just unknown: there is no service to blame.
     if (availability === 'unavailable') {
       return (
         <AddonMessage
@@ -51,6 +65,16 @@ export function AddonRouteHost({ forbidden }: { forbidden: ReactNode }) {
         This addon is not active or does not ship a dashboard page.
       </AddonMessage>
     );
+  }
+
+  // A mounted addon has one canonical address. Its nav links already point there, but old
+  // bookmarks and hand-typed /addons/<name> URLs would otherwise render a second copy of the pages
+  // whose links (useAddonPath) lead to the mount anyway.
+  if (fixedId === undefined && entry.basePath !== addonBasePath(addonId)) {
+    // From the raw pathname: the decoded splat would turn an encoded %2F, %3F or %23 into a
+    // segment, a query or a hash.
+    const rest = pathname.replace(/^\/addons\/[^/]*/i, '').replace(/\/$/, '');
+    return <Navigate to={`${entry.basePath}${rest}${search}${hash}`} replace />;
   }
 
   switch (entry.state) {
@@ -137,6 +161,8 @@ function AddonMessage({
   children?: ReactNode;
 }) {
   const isAdmin = useSessionUser()?.roles.includes('Admin') ?? false;
+  const hasAddonManager = useModuleEnabled('addon-manager');
+  const canManage = isAdmin && hasAddonManager;
   return (
     <EmptyState
       data-testid={testId}
@@ -155,10 +181,11 @@ function AddonMessage({
       }
       action={
         <div className="flex flex-wrap justify-center gap-2">
+          {/* Not "overview": `/` leads to the preset's start page, which may be another one. */}
           <Button asChild variant="outline">
-            <Link to="/">Back to overview</Link>
+            <Link to="/">Back to start</Link>
           </Button>
-          {isAdmin ? (
+          {canManage ? (
             <Button asChild variant="outline">
               <Link to="/addon-manager/installed">Manage addons</Link>
             </Button>

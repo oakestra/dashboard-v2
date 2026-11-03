@@ -59,7 +59,8 @@ test.describe('addon lifecycle', () => {
     await expect(page.getByTestId('example-banner')).toBeVisible();
     await expect
       .poll(() => page.evaluate(() => window.__OAK_DEBUG__?.addonStates()))
-      .toEqual({ example: 'loaded' });
+      // Linked addons (help) are in the registry too.
+      .toMatchObject({ example: 'loaded' });
     await expect(toast).toHaveCount(0);
   });
 

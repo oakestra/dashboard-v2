@@ -4,5 +4,6 @@
   "addonsPollIntervalMs": ${ADDONS_POLL_INTERVAL_MS},
   "grafanaUrl": "${GRAFANA_URL}",
   "addonsManagerUrl": "${ADDONS_MANAGER_URL}",
-  "marketplaceUrl": "${MARKETPLACE_URL}"
+  "marketplaceUrl": "${MARKETPLACE_URL}",
+  "presetUrl": "${PRESET_URL}"
 }

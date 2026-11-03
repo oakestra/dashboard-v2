@@ -22,6 +22,13 @@ export type SlotProps<P extends RenderablePointId> = {
   render?: (item: ExtensionPoints[P], content: ReactNode, source: ContributionSource) => ReactNode;
   /** Rendered when nothing is contributed (or nothing is visible to the current user). */
   empty?: ReactNode;
+  /** Wraps all rendered contributions together, only when there is at least one. */
+  wrap?: (children: ReactNode) => ReactNode;
+  /**
+   * Renders only the contributions it accepts, for a page that lays one point out in several
+   * places (the overview by widget size). Shell only: the SDK's Slot has no such prop.
+   */
+  filter?: (item: ExtensionPoints[P]) => boolean;
 } & ContextProp<P>;
 
 // Shared so a slot without context passes the same object every render; a fresh `{}` would
@@ -39,32 +46,30 @@ function labelOf(item: object): string {
 }
 
 export function Slot<P extends RenderablePointId>(props: SlotProps<P>) {
-  const { point, render, empty = null } = props;
+  const { point, render, empty = null, wrap, filter } = props;
   const context = props.context ?? NO_CONTEXT;
-  const contributions = useContributions(point, context);
+  const all = useContributions(point, context);
+  const contributions = filter ? all.filter(({ item }) => filter(item)) : all;
 
   if (contributions.length === 0) return <>{empty}</>;
 
-  return (
-    <>
-      {contributions.map(({ item, source }) => {
-        // Every renderable point has a `component` taking that point's context. TypeScript cannot
-        // follow that through the generic union, hence the cast.
-        const { id, component: Contribution } = item as {
-          id: string;
-          component: ComponentType<object>;
-        };
-        const content = (
-          <ContributionBoundary source={source} label={labelOf(item)}>
-            <Contribution {...context} />
-          </ContributionBoundary>
-        );
-        return (
-          <Fragment key={`${source.kind}:${source.id}:${id}`}>
-            {render ? render(item, content, source) : content}
-          </Fragment>
-        );
-      })}
-    </>
-  );
+  const rendered = contributions.map(({ item, source }) => {
+    // Every renderable point has a `component` taking that point's context. TypeScript cannot
+    // follow that through the generic union, hence the cast.
+    const { id, component: Contribution } = item as {
+      id: string;
+      component: ComponentType<object>;
+    };
+    const content = (
+      <ContributionBoundary source={source} label={labelOf(item)}>
+        <Contribution {...context} />
+      </ContributionBoundary>
+    );
+    return (
+      <Fragment key={`${source.kind}:${source.id}:${id}`}>
+        {render ? render(item, content, source) : content}
+      </Fragment>
+    );
+  });
+  return <>{wrap ? wrap(rendered) : rendered}</>;
 }

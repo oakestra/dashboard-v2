@@ -27,6 +27,17 @@ describe('settings', () => {
     expect(router.state.location.pathname).toBe('/addon-manager/installed');
   });
 
+  it('keeps the old addon page on settings when the addon manager is disabled', async () => {
+    const { router } = renderApp({
+      modules: [settingsModule, addonManagerModule],
+      route: '/settings/addons',
+      preset: { modules: ['settings'], home: '/settings' },
+    });
+
+    expect(await screen.findByText('Appearance')).toBeVisible();
+    expect(router.state.location.pathname).toBe('/settings');
+  });
+
   it('sends non-admins from the old addon page to the refusal', async () => {
     renderApp({
       modules: [settingsModule, addonManagerModule],

@@ -21,9 +21,13 @@ describe('loadConfig', () => {
   });
 
   it('treats empty optional links as unset and validates the others', async () => {
-    mockFetch(Response.json({ apiUrl: '/api', grafanaUrl: '' }));
+    mockFetch(Response.json({ apiUrl: '/api', grafanaUrl: '', presetUrl: '' }));
     const config = await loadConfig();
     expect(config.grafanaUrl).toBeUndefined();
+    expect(config.presetUrl).toBeUndefined();
+
+    mockFetch(Response.json({ apiUrl: '/api', presetUrl: '/preset.json' }));
+    await expect(loadConfig()).resolves.toMatchObject({ presetUrl: '/preset.json' });
 
     mockFetch(Response.json({ apiUrl: '/api', grafanaUrl: 'javascript:alert(1)' }));
     await expect(loadConfig()).rejects.toThrow(/grafanaUrl/);

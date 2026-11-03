@@ -1,5 +1,13 @@
+import { useSearchParam } from '@oakestra/dashboard-sdk';
 import { isTransitionalAddonStatus, type InstalledAddon } from '@oakestra/api';
-import { Button, ConfirmDialog, EmptyState, useIsMobile } from '@oakestra/ui';
+import {
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  useIsMobile,
+  QueryErrorAlert,
+  plural,
+} from '@oakestra/ui';
 import { createDataTableColumnHelper, DataTable } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
 import { PowerOffIcon, PuzzleIcon, StoreIcon, Trash2Icon } from 'lucide-react';
@@ -9,9 +17,6 @@ import { useStore } from 'zustand';
 
 import { useAddonRegistry } from '../../../core/addons/addon-registry-context';
 import { useAddonsAdminApi } from '../../../core/addons/addons-admin';
-import { QueryErrorAlert } from '../../../components/QueryErrorAlert';
-import { plural } from '../../../lib/format';
-import { useSearchParam } from '../../../lib/use-search-param';
 import { addonAction, type AddonAction } from '../addon-action';
 import { useDisableAddon, useRemoveAddon } from '../api/mutations';
 import { installedAddonsQuery, useStuckAddonIds } from '../api/queries';
@@ -81,9 +86,12 @@ export function InstalledPage() {
     // Wait for the list: before it arrives every UI would look unmatched.
     if (!addons) return [];
     const names = new Set(addons.map((addon) => addon.name));
-    return Object.values(uiEntries)
-      .filter((entry) => !names.has(entry.name))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    return (
+      Object.values(uiEntries)
+        // Linked addons are part of the shell build, like core modules, so not addons to manage.
+        .filter((entry) => entry.origin !== 'linked' && !names.has(entry.name))
+        .sort((a, b) => a.name.localeCompare(b.name))
+    );
   }, [addons, uiEntries]);
 
   const columns = useMemo(

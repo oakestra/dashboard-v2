@@ -10,7 +10,7 @@ import {
 import { Fragment } from 'react';
 import { Link, useMatches } from 'react-router';
 
-import { ADDON_PAGE_ROUTE_ID, useAddonCrumbs } from '../../core/addons/addon-crumbs';
+import { isAddonPageMatch, useAddonCrumbs } from '../../core/addons/addon-crumbs';
 import { crumbOf, type Crumb } from '../../core/router/route-handle';
 
 /**
@@ -19,7 +19,7 @@ import { crumbOf, type Crumb } from '../../core/router/route-handle';
  */
 export function Breadcrumbs() {
   const matches = useMatches();
-  const addonMatch = matches.find((match) => match.id === ADDON_PAGE_ROUTE_ID);
+  const addonMatch = matches.find(isAddonPageMatch);
   const addonCrumbs = useAddonCrumbs(addonMatch);
   const crumbs = matches.flatMap((match): Crumb[] => {
     if (match === addonMatch) return addonCrumbs;

@@ -84,6 +84,8 @@ export const sharedDeps: SharedDependencies = {
   '@oakestra/ui/data-table': { singleton: true, requiredVersion: uiRange },
   '@oakestra/ui/command': { singleton: true, requiredVersion: uiRange },
   '@oakestra/ui/map': { singleton: true, requiredVersion: uiRange },
+  // The lazy LocationMap wrapper. Its own module so importing it does not pull in `ui/map`.
+  '@oakestra/ui/location-map': { singleton: true, requiredVersion: uiRange },
 };
 
 /**

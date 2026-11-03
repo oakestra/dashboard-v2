@@ -2,6 +2,7 @@ packages:
   - apps/*
   - packages/*
   - addons/*
+  - modules/*
   - tools/*
   - e2e
 minimumReleaseAgeExclude:

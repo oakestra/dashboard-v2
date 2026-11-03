@@ -208,6 +208,17 @@ function verifyAddon(
       }
     }
     console.log(`${name}: ${Object.keys(exports ?? {}).length} exports, all files present`);
+
+    // The map subpath is a shared singleton. If the packed lazy wrapper pointed at its sibling
+    // file instead, a host built from the tarball would get a second copy of MapLibre.
+    if (name === '@oakestra/ui') {
+      const impl = readFileSync(join(dir, 'dist/components/location-map-impl.js'), 'utf8');
+      if (!/from\s+["']@oakestra\/ui\/map["']/.test(impl)) {
+        throw new Error(
+          '@oakestra/ui: dist/components/location-map-impl.js must import "@oakestra/ui/map" by its package name',
+        );
+      }
+    }
   }
 
   // The addon's own typecheck skips declaration files (skipLibCheck) and only sees the entries

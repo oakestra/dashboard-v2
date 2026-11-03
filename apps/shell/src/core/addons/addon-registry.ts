@@ -21,8 +21,10 @@ export type AddonEntry =
  * - `available`: the last request succeeded.
  * - `unavailable`: the addons manager is not reachable (or not installed). Existing entries are
  *   kept, because a short outage should not rip addon pages out from under the user.
+ * - `disabled`: the preset turned discovery off, so only preset addons and dev overrides exist and
+ *   an unknown addon does not exist.
  */
-export type AddonsAvailability = 'pending' | 'available' | 'unavailable';
+export type AddonsAvailability = 'pending' | 'available' | 'unavailable' | 'disabled';
 
 export interface AddonRegistryState {
   entries: Readonly<Record<string, AddonEntry>>;

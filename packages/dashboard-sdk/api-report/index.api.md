@@ -7,7 +7,15 @@
 import { ComponentType } from 'react';
 import { Context } from 'react';
 import { describeError } from '@oakestra/api';
+import { JSX } from 'react';
 import { OakestraEndpoints } from '@oakestra/api';
+import { OmitKeyof } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { QueryFunction } from '@tanstack/react-query';
+import { QueryKey } from '@tanstack/react-query';
+import { QueryKeyWithDataTag } from '@tanstack/react-query';
+import { ReactNode } from 'react';
+import { UseQueryOptions } from '@tanstack/react-query';
 
 // @public (undocumented)
 export const AddonContext: Context<AddonContextValue | null>;
@@ -19,6 +27,11 @@ export interface AddonContextValue {
     readonly basePath: string;
     // (undocumented)
     readonly version: string;
+}
+
+// @public
+export interface AddonCrumbProps {
+    readonly params: Readonly<Record<string, string | undefined>>;
 }
 
 // @public (undocumented)
@@ -40,7 +53,7 @@ export interface AddonRoute {
     children?: readonly AddonRoute[];
     // (undocumented)
     Component?: ComponentType;
-    crumb?: string;
+    crumb?: string | ComponentType<AddonCrumbProps>;
     fullWidth?: boolean;
     // (undocumented)
     index?: boolean;
@@ -54,11 +67,207 @@ export interface ApplicationContext {
     applicationId: string;
 }
 
+// @public
+export function applicationsQuery(api: OakestraApi, userId: string): OmitKeyof<UseQueryOptions<    {
+[x: string]: unknown;
+_id: string;
+applicationID: string | undefined;
+application_name: string;
+application_namespace: string;
+application_desc: string;
+microservices: string[];
+userId: string | undefined;
+}[], Error, {
+[x: string]: unknown;
+_id: string;
+applicationID: string | undefined;
+application_name: string;
+application_namespace: string;
+application_desc: string;
+microservices: string[];
+userId: string | undefined;
+}[], readonly ["platform", "applications", "list", string]>, "queryFn"> & {
+    queryFn?: QueryFunction<    {
+    [x: string]: unknown;
+    _id: string;
+    applicationID: string | undefined;
+    application_name: string;
+    application_namespace: string;
+    application_desc: string;
+    microservices: string[];
+    userId: string | undefined;
+    }[], readonly ["platform", "applications", "list", string], never> | undefined;
+} & QueryKeyWithDataTag<readonly ["platform", "applications", "list", string], {
+[x: string]: unknown;
+_id: string;
+applicationID: string | undefined;
+application_name: string;
+application_namespace: string;
+application_desc: string;
+microservices: string[];
+userId: string | undefined;
+}[], Error>;
+
+// @public
+export const CLUSTER_REFETCH_MS = 30000;
+
 // @public (undocumented)
 export interface ClusterContext {
     // (undocumented)
     clusterId: string;
 }
+
+// @public
+export function clustersQuery(api: OakestraApi): OmitKeyof<UseQueryOptions<    {
+[x: string]: unknown;
+_id: string;
+cluster_name: string;
+cluster_location: string | undefined;
+active: boolean;
+active_nodes?: number | undefined;
+aggregated_cpu_percent?: number | undefined;
+cpu_percent?: number | undefined;
+memory_percent?: number | undefined;
+memory_in_mb?: number | undefined;
+total_cpu_cores?: number | undefined;
+total_gpu_cores?: number | undefined;
+gpu_percent?: number | undefined;
+gpu_temp?: number | undefined;
+vram?: number | undefined;
+vram_percent?: number | undefined;
+vcpus?: number | undefined;
+ip: string | undefined;
+port: string | undefined;
+virtualization: string[];
+csi_drivers: string[];
+gpu_drivers: string[];
+supported_addons: string[];
+cpu_history: {
+[x: string]: unknown;
+timestamp: Date;
+value: number;
+}[];
+memory_history: {
+[x: string]: unknown;
+timestamp: Date;
+value: number;
+}[];
+last_modified_timestamp?: Date | undefined;
+}[], Error, {
+[x: string]: unknown;
+_id: string;
+cluster_name: string;
+cluster_location: string | undefined;
+active: boolean;
+active_nodes?: number | undefined;
+aggregated_cpu_percent?: number | undefined;
+cpu_percent?: number | undefined;
+memory_percent?: number | undefined;
+memory_in_mb?: number | undefined;
+total_cpu_cores?: number | undefined;
+total_gpu_cores?: number | undefined;
+gpu_percent?: number | undefined;
+gpu_temp?: number | undefined;
+vram?: number | undefined;
+vram_percent?: number | undefined;
+vcpus?: number | undefined;
+ip: string | undefined;
+port: string | undefined;
+virtualization: string[];
+csi_drivers: string[];
+gpu_drivers: string[];
+supported_addons: string[];
+cpu_history: {
+[x: string]: unknown;
+timestamp: Date;
+value: number;
+}[];
+memory_history: {
+[x: string]: unknown;
+timestamp: Date;
+value: number;
+}[];
+last_modified_timestamp?: Date | undefined;
+}[], readonly ["platform", "clusters"]>, "queryFn"> & {
+    queryFn?: QueryFunction<    {
+    [x: string]: unknown;
+    _id: string;
+    cluster_name: string;
+    cluster_location: string | undefined;
+    active: boolean;
+    active_nodes?: number | undefined;
+    aggregated_cpu_percent?: number | undefined;
+    cpu_percent?: number | undefined;
+    memory_percent?: number | undefined;
+    memory_in_mb?: number | undefined;
+    total_cpu_cores?: number | undefined;
+    total_gpu_cores?: number | undefined;
+    gpu_percent?: number | undefined;
+    gpu_temp?: number | undefined;
+    vram?: number | undefined;
+    vram_percent?: number | undefined;
+    vcpus?: number | undefined;
+    ip: string | undefined;
+    port: string | undefined;
+    virtualization: string[];
+    csi_drivers: string[];
+    gpu_drivers: string[];
+    supported_addons: string[];
+    cpu_history: {
+    [x: string]: unknown;
+    timestamp: Date;
+    value: number;
+    }[];
+    memory_history: {
+    [x: string]: unknown;
+    timestamp: Date;
+    value: number;
+    }[];
+    last_modified_timestamp?: Date | undefined;
+    }[], readonly ["platform", "clusters"], never> | undefined;
+} & QueryKeyWithDataTag<readonly ["platform", "clusters"], {
+[x: string]: unknown;
+_id: string;
+cluster_name: string;
+cluster_location: string | undefined;
+active: boolean;
+active_nodes?: number | undefined;
+aggregated_cpu_percent?: number | undefined;
+cpu_percent?: number | undefined;
+memory_percent?: number | undefined;
+memory_in_mb?: number | undefined;
+total_cpu_cores?: number | undefined;
+total_gpu_cores?: number | undefined;
+gpu_percent?: number | undefined;
+gpu_temp?: number | undefined;
+vram?: number | undefined;
+vram_percent?: number | undefined;
+vcpus?: number | undefined;
+ip: string | undefined;
+port: string | undefined;
+virtualization: string[];
+csi_drivers: string[];
+gpu_drivers: string[];
+supported_addons: string[];
+cpu_history: {
+[x: string]: unknown;
+timestamp: Date;
+value: number;
+}[];
+memory_history: {
+[x: string]: unknown;
+timestamp: Date;
+value: number;
+}[];
+last_modified_timestamp?: Date | undefined;
+}[], Error>;
+
+// @public (undocumented)
+type ContextProp<P extends RenderablePointId> = EmptyContext extends SlotContext<P> ? {
+    context?: SlotContext<P>;
+} : {
+    context: SlotContext<P>;
+};
 
 // @public (undocumented)
 export interface ContributionBase {
@@ -117,11 +326,18 @@ export const HostContext: Context<HostContextValue | null>;
 export interface HostContextValue {
     // (undocumented)
     readonly api: OakestraApi;
+    readonly isFeatureEnabled: (id: string) => boolean;
+    readonly links?: HostLinks;
     // (undocumented)
     readonly notify: Notify;
     readonly sdkVersion: string;
     // (undocumented)
     readonly user: CurrentUser | null;
+}
+
+// @public
+export interface HostLinks {
+    readonly grafanaUrl?: string;
 }
 
 // @public (undocumented)
@@ -181,6 +397,47 @@ export interface OakestraApi extends OakestraEndpoints {
     fetch(path: string, init?: RequestInit): Promise<Response>;
 }
 
+// @public
+export function organizationsQuery(api: OakestraApi): OmitKeyof<UseQueryOptions<    {
+[x: string]: unknown;
+_id: string;
+name: string;
+member: {
+[x: string]: unknown;
+user_id: string;
+roles: string[];
+}[];
+}[], Error, {
+[x: string]: unknown;
+_id: string;
+name: string;
+member: {
+[x: string]: unknown;
+user_id: string;
+roles: string[];
+}[];
+}[], readonly ["platform", "organizations", "list"]>, "queryFn"> & {
+    queryFn?: QueryFunction<    {
+    [x: string]: unknown;
+    _id: string;
+    name: string;
+    member: {
+    [x: string]: unknown;
+    user_id: string;
+    roles: string[];
+    }[];
+    }[], readonly ["platform", "organizations", "list"], never> | undefined;
+} & QueryKeyWithDataTag<readonly ["platform", "organizations", "list"], {
+[x: string]: unknown;
+_id: string;
+name: string;
+member: {
+[x: string]: unknown;
+user_id: string;
+roles: string[];
+}[];
+}[], Error>;
+
 // @public (undocumented)
 interface Permissions_2 {
     // (undocumented)
@@ -191,6 +448,54 @@ interface Permissions_2 {
     readonly roles: readonly Role[];
 }
 export { Permissions_2 as Permissions }
+
+// @public
+export const platformQueryKeys: {
+    all: readonly ["platform"];
+    clusters: () => readonly ["platform", "clusters"];
+    user: (username: string) => readonly ["platform", "user", string];
+    users: () => readonly ["platform", "users"];
+    organizationUsers: (organizationId: string) => readonly ["platform", "users", "organization", string];
+    organizations: () => readonly ["platform", "organizations"];
+    applications: () => readonly ["platform", "applications"];
+    application: (applicationId: string) => readonly ["platform", "applications", "detail", string];
+    services: () => readonly ["platform", "services"];
+    servicesByApplication: (applicationId: string) => readonly ["platform", "services", "application", string];
+    service: (serviceId: string) => readonly ["platform", "services", "detail", string];
+};
+
+// @public
+export function profileQuery(api: OakestraApi, username: string): OmitKeyof<UseQueryOptions<    {
+_id: string;
+name: string;
+email: string;
+created_at: string | undefined;
+roles?: string[] | undefined;
+organization_id: string | undefined;
+}, Error, {
+_id: string;
+name: string;
+email: string;
+created_at: string | undefined;
+roles?: string[] | undefined;
+organization_id: string | undefined;
+}, readonly ["platform", "user", string]>, "queryFn"> & {
+    queryFn?: QueryFunction<    {
+    _id: string;
+    name: string;
+    email: string;
+    created_at: string | undefined;
+    roles?: string[] | undefined;
+    organization_id: string | undefined;
+    }, readonly ["platform", "user", string], never> | undefined;
+} & QueryKeyWithDataTag<readonly ["platform", "user", string], {
+_id: string;
+name: string;
+email: string;
+created_at: string | undefined;
+roles?: string[] | undefined;
+organization_id: string | undefined;
+}, Error>;
 
 // @public (undocumented)
 interface RenderableContribution<C extends object> extends ContributionBase {
@@ -208,7 +513,29 @@ export type RenderablePointId = { [P in ExtensionPointId]: ExtensionPoints[P] ex
 export type Role = KnownRole | (string & {});
 
 // @public
+export const ROLE_OPTIONS: readonly RoleOption[];
+
+// @public
+export function roleLabel(role: string): string;
+
+// @public (undocumented)
+export interface RoleOption {
+    // (undocumented)
+    description: string;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    value: KnownRole;
+}
+
+// @public
 export const SDK_VERSION = "0.1.0";
+
+// @public
+export function seedFromLists<T>(queryClient: QueryClient, listKey: QueryKey, match: (item: T) => boolean): {
+    initialData: T;
+    initialDataUpdatedAt: number;
+} | undefined;
 
 // @public (undocumented)
 export interface ServiceContext {
@@ -219,7 +546,356 @@ export interface ServiceContext {
 }
 
 // @public
+export function servicesByApplicationQuery(api: OakestraApi, applicationId: string): OmitKeyof<UseQueryOptions<    {
+[x: string]: unknown;
+_id: string;
+microserviceID: string | undefined;
+microservice_name: string;
+microservice_namespace: string;
+applicationID: string | undefined;
+app_name: string | undefined;
+app_ns: string | undefined;
+job_name: string | undefined;
+virtualization: string | undefined;
+code: string | undefined;
+image: string | undefined;
+state: string | undefined;
+port: string | undefined;
+memory?: number | undefined;
+vcpus?: number | undefined;
+vgpus?: number | undefined;
+vtpus?: number | undefined;
+storage?: number | undefined;
+bandwidth_in?: number | undefined;
+bandwidth_out?: number | undefined;
+cmd: string[];
+args: string[];
+environment: string[];
+added_files: string[];
+status: string | undefined;
+status_detail: string | undefined;
+addresses?: {
+[x: string]: unknown;
+rr_ip: string | undefined;
+rr_ip_v6: string | undefined;
+RR_ip: string | undefined;
+closest_ip: string | undefined;
+closest_ip_v6: string | undefined;
+instances: {
+[x: string]: unknown;
+from: string | undefined;
+to: string | undefined;
+start: string | undefined;
+}[];
+} | undefined;
+RR_ip: string | undefined;
+RR_ip_v6: string | undefined;
+constraints: {
+[x: string]: unknown;
+type: string;
+}[];
+connectivity: {
+[x: string]: unknown;
+target_microservice_id: string;
+}[];
+instance_list: {
+[x: string]: unknown;
+instance_number: number;
+status: string | undefined;
+status_detail: string | undefined;
+cluster_id: string | undefined;
+cluster_location: string | undefined;
+worker_id: string | undefined;
+publicip: string | undefined;
+host_ip: string | undefined;
+host_port?: number | undefined;
+cpu_percent?: number | undefined;
+memory_percent?: number | undefined;
+disk?: number | undefined;
+cpu_history: {
+[x: string]: unknown;
+timestamp: Date;
+value: number;
+}[];
+memory_history: {
+[x: string]: unknown;
+timestamp: Date;
+value: number;
+}[];
+logs: string | undefined;
+last_modified_timestamp?: Date | undefined;
+}[];
+next_instance_progressive_number?: number | undefined;
+}[], Error, {
+[x: string]: unknown;
+_id: string;
+microserviceID: string | undefined;
+microservice_name: string;
+microservice_namespace: string;
+applicationID: string | undefined;
+app_name: string | undefined;
+app_ns: string | undefined;
+job_name: string | undefined;
+virtualization: string | undefined;
+code: string | undefined;
+image: string | undefined;
+state: string | undefined;
+port: string | undefined;
+memory?: number | undefined;
+vcpus?: number | undefined;
+vgpus?: number | undefined;
+vtpus?: number | undefined;
+storage?: number | undefined;
+bandwidth_in?: number | undefined;
+bandwidth_out?: number | undefined;
+cmd: string[];
+args: string[];
+environment: string[];
+added_files: string[];
+status: string | undefined;
+status_detail: string | undefined;
+addresses?: {
+[x: string]: unknown;
+rr_ip: string | undefined;
+rr_ip_v6: string | undefined;
+RR_ip: string | undefined;
+closest_ip: string | undefined;
+closest_ip_v6: string | undefined;
+instances: {
+[x: string]: unknown;
+from: string | undefined;
+to: string | undefined;
+start: string | undefined;
+}[];
+} | undefined;
+RR_ip: string | undefined;
+RR_ip_v6: string | undefined;
+constraints: {
+[x: string]: unknown;
+type: string;
+}[];
+connectivity: {
+[x: string]: unknown;
+target_microservice_id: string;
+}[];
+instance_list: {
+[x: string]: unknown;
+instance_number: number;
+status: string | undefined;
+status_detail: string | undefined;
+cluster_id: string | undefined;
+cluster_location: string | undefined;
+worker_id: string | undefined;
+publicip: string | undefined;
+host_ip: string | undefined;
+host_port?: number | undefined;
+cpu_percent?: number | undefined;
+memory_percent?: number | undefined;
+disk?: number | undefined;
+cpu_history: {
+[x: string]: unknown;
+timestamp: Date;
+value: number;
+}[];
+memory_history: {
+[x: string]: unknown;
+timestamp: Date;
+value: number;
+}[];
+logs: string | undefined;
+last_modified_timestamp?: Date | undefined;
+}[];
+next_instance_progressive_number?: number | undefined;
+}[], readonly ["platform", "services", "application", string]>, "queryFn"> & {
+    queryFn?: QueryFunction<    {
+    [x: string]: unknown;
+    _id: string;
+    microserviceID: string | undefined;
+    microservice_name: string;
+    microservice_namespace: string;
+    applicationID: string | undefined;
+    app_name: string | undefined;
+    app_ns: string | undefined;
+    job_name: string | undefined;
+    virtualization: string | undefined;
+    code: string | undefined;
+    image: string | undefined;
+    state: string | undefined;
+    port: string | undefined;
+    memory?: number | undefined;
+    vcpus?: number | undefined;
+    vgpus?: number | undefined;
+    vtpus?: number | undefined;
+    storage?: number | undefined;
+    bandwidth_in?: number | undefined;
+    bandwidth_out?: number | undefined;
+    cmd: string[];
+    args: string[];
+    environment: string[];
+    added_files: string[];
+    status: string | undefined;
+    status_detail: string | undefined;
+    addresses?: {
+    [x: string]: unknown;
+    rr_ip: string | undefined;
+    rr_ip_v6: string | undefined;
+    RR_ip: string | undefined;
+    closest_ip: string | undefined;
+    closest_ip_v6: string | undefined;
+    instances: {
+    [x: string]: unknown;
+    from: string | undefined;
+    to: string | undefined;
+    start: string | undefined;
+    }[];
+    } | undefined;
+    RR_ip: string | undefined;
+    RR_ip_v6: string | undefined;
+    constraints: {
+    [x: string]: unknown;
+    type: string;
+    }[];
+    connectivity: {
+    [x: string]: unknown;
+    target_microservice_id: string;
+    }[];
+    instance_list: {
+    [x: string]: unknown;
+    instance_number: number;
+    status: string | undefined;
+    status_detail: string | undefined;
+    cluster_id: string | undefined;
+    cluster_location: string | undefined;
+    worker_id: string | undefined;
+    publicip: string | undefined;
+    host_ip: string | undefined;
+    host_port?: number | undefined;
+    cpu_percent?: number | undefined;
+    memory_percent?: number | undefined;
+    disk?: number | undefined;
+    cpu_history: {
+    [x: string]: unknown;
+    timestamp: Date;
+    value: number;
+    }[];
+    memory_history: {
+    [x: string]: unknown;
+    timestamp: Date;
+    value: number;
+    }[];
+    logs: string | undefined;
+    last_modified_timestamp?: Date | undefined;
+    }[];
+    next_instance_progressive_number?: number | undefined;
+    }[], readonly ["platform", "services", "application", string], never> | undefined;
+} & QueryKeyWithDataTag<readonly ["platform", "services", "application", string], {
+[x: string]: unknown;
+_id: string;
+microserviceID: string | undefined;
+microservice_name: string;
+microservice_namespace: string;
+applicationID: string | undefined;
+app_name: string | undefined;
+app_ns: string | undefined;
+job_name: string | undefined;
+virtualization: string | undefined;
+code: string | undefined;
+image: string | undefined;
+state: string | undefined;
+port: string | undefined;
+memory?: number | undefined;
+vcpus?: number | undefined;
+vgpus?: number | undefined;
+vtpus?: number | undefined;
+storage?: number | undefined;
+bandwidth_in?: number | undefined;
+bandwidth_out?: number | undefined;
+cmd: string[];
+args: string[];
+environment: string[];
+added_files: string[];
+status: string | undefined;
+status_detail: string | undefined;
+addresses?: {
+[x: string]: unknown;
+rr_ip: string | undefined;
+rr_ip_v6: string | undefined;
+RR_ip: string | undefined;
+closest_ip: string | undefined;
+closest_ip_v6: string | undefined;
+instances: {
+[x: string]: unknown;
+from: string | undefined;
+to: string | undefined;
+start: string | undefined;
+}[];
+} | undefined;
+RR_ip: string | undefined;
+RR_ip_v6: string | undefined;
+constraints: {
+[x: string]: unknown;
+type: string;
+}[];
+connectivity: {
+[x: string]: unknown;
+target_microservice_id: string;
+}[];
+instance_list: {
+[x: string]: unknown;
+instance_number: number;
+status: string | undefined;
+status_detail: string | undefined;
+cluster_id: string | undefined;
+cluster_location: string | undefined;
+worker_id: string | undefined;
+publicip: string | undefined;
+host_ip: string | undefined;
+host_port?: number | undefined;
+cpu_percent?: number | undefined;
+memory_percent?: number | undefined;
+disk?: number | undefined;
+cpu_history: {
+[x: string]: unknown;
+timestamp: Date;
+value: number;
+}[];
+memory_history: {
+[x: string]: unknown;
+timestamp: Date;
+value: number;
+}[];
+logs: string | undefined;
+last_modified_timestamp?: Date | undefined;
+}[];
+next_instance_progressive_number?: number | undefined;
+}[], Error>;
+
+// @public
+export function Slot<P extends RenderablePointId>(props: SlotProps<P>): JSX.Element;
+
+// @public
 export type SlotContext<P extends RenderablePointId> = ExtensionPoints[P] extends RenderableContribution<infer C> ? C : never;
+
+// @public (undocumented)
+export type SlotProps<P extends RenderablePointId> = {
+    point: P;
+    render?: (item: ExtensionPoints[P], content: ReactNode, source: SlotSource) => ReactNode;
+    empty?: ReactNode;
+    wrap?: (children: ReactNode) => ReactNode;
+} & ContextProp<P>;
+
+// @public
+export const SlotRendererContext: Context<ComponentType<SlotProps<RenderablePointId>> | null>;
+
+// @public
+export interface SlotSource {
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    kind: 'core' | 'addon';
+    // (undocumented)
+    label: string;
+}
 
 // @public (undocumented)
 export interface Tab<C extends object> extends RenderableContribution<C> {
@@ -239,8 +915,14 @@ export function useAddonPath(): (...segments: readonly (string | number)[]) => s
 // @public (undocumented)
 export function useCurrentUser(): CurrentUser | null;
 
+// @public
+export function useFeatureEnabled(id: string): boolean;
+
 // @public (undocumented)
 export function useHostContext(): HostContextValue;
+
+// @public
+export function useHostLinks(): HostLinks;
 
 // @public (undocumented)
 export function useNotify(): Notify;
@@ -251,11 +933,51 @@ export function useOakestraApi(): OakestraApi;
 // @public (undocumented)
 export function usePermissions(): Permissions_2;
 
+// @public
+export function usersQuery(api: OakestraApi): OmitKeyof<UseQueryOptions<    {
+_id: string;
+name: string;
+email: string;
+created_at: string | undefined;
+roles?: string[] | undefined;
+organization_id: string | undefined;
+}[], Error, {
+_id: string;
+name: string;
+email: string;
+created_at: string | undefined;
+roles?: string[] | undefined;
+organization_id: string | undefined;
+}[], readonly ["platform", "users", "list"]>, "queryFn"> & {
+    queryFn?: QueryFunction<    {
+    _id: string;
+    name: string;
+    email: string;
+    created_at: string | undefined;
+    roles?: string[] | undefined;
+    organization_id: string | undefined;
+    }[], readonly ["platform", "users", "list"], never> | undefined;
+} & QueryKeyWithDataTag<readonly ["platform", "users", "list"], {
+_id: string;
+name: string;
+email: string;
+created_at: string | undefined;
+roles?: string[] | undefined;
+organization_id: string | undefined;
+}[], Error>;
+
+// @public
+export function useSearchParam(key: string, fallback?: string): [value: string, setValue: (value: string) => void];
+
 // @public (undocumented)
 export interface Widget<C extends object = EmptyContext> extends RenderableContribution<C> {
+    size?: WidgetSize;
     // (undocumented)
     title: string;
 }
+
+// @public
+export type WidgetSize = 'stat' | 'card' | 'wide';
 
 // (No @packageDocumentation comment for this package)
 

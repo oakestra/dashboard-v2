@@ -7,7 +7,9 @@ React shell that loads addon UIs at runtime through Module Federation.
 - `apps/shell`: the host. `src/core/*` is the platform (config, auth, API client, query client,
   theme, extension registry, addon runtime), `src/features/<name>` are built-in feature modules,
   `src/app` wires them together, `src/test` holds the test helpers.
-- `packages/dashboard-sdk`: the public, semver'd contract addons build against. Entries: the root,
+- `packages/dashboard-sdk`: the public, semver'd contract addons build against. The root also
+  exports `Slot`, so an addon can host extension points (the shell injects its renderer through
+  `SlotRendererContext`; outside a shell it renders `empty`). Entries: the root,
   `./federation` (Node only, loaded from vite configs), `./vite` (Node only: `oakestraAddon()`,
   the Vite plugin addons build with; `vite` and `@module-federation/vite` are optional peers),
   `./vite/client` (hand-written `vite-client.d.ts` typing `virtual:oakestra-addon`; a plain string
@@ -23,6 +25,9 @@ React shell that loads addon UIs at runtime through Module Federation.
   responses. Used by unit tests, `pnpm dev:mock` and `tools/mock-system-manager`.
 - `addons/example`: reference addon and e2e fixture, with its own vitest setup showing the testing
   entry.
+- `modules/<name>` (`@oakestra/module-<name>`, private): features as addon packages written
+  against the SDK only, linked into the shell (`linkedAddons` in `src/app/modules.ts`). `help` is
+  the reference. See "Module packages".
 - `tools/mock-addons-manager`: one server mocking the addons-manager, the marketplace-manager and
   `GET /api/v1/ui-addons` (see "Mock addons manager"), with a `/__test` control API.
 - `tools/mock-system-manager`: the `@oakestra/mocks` backend served over HTTP for the e2e stack.
@@ -134,11 +139,11 @@ features/<name>/
   `requireAuth`); use `lazy: () => import('./pages/X').then((m) => ({ Component: m.X }))`.
   `publicRoutes` are for pages without a session (only the `auth` module needs them).
 - **Route nesting:** react-router needs exactly one route object per path, so a path prefix has a
-  single owner. `applications/:appId` belongs to the applications module; the services and SLA
-  features export plain `RouteObject` arrays (`createServiceRoutes`, `newServiceRoutes`,
-  `duplicateServiceRoutes`) that it nests, and have no `CoreModule` of their own. Never declare a
-  second `applications/:appId` object: which one matches then depends on module order.
-  `app/routes.test.tsx` builds the router from the real `coreModules` and checks every URL.
+  single owner (one module, or one linked package's mount). Never declare a second object for a
+  path another module owns: which one matches then depends on module order. Pages that belong
+  below another feature's path are part of that feature (services and SLA forms live in the
+  applications package, nested below `:appId`). `app/routes.test.tsx` builds the router from the
+  real `coreModules` and `linkedAddons` and checks every URL.
 - **Route options:** `handle: { crumb: 'Label' } satisfies RouteHandle` (or a function of the
   match) feeds the breadcrumbs; `loader: requireRole('Admin', ...)` restricts a page (403 page
   inside the layout). Hide the nav item with `roles` on the contribution as well.
@@ -154,25 +159,36 @@ features/<name>/
 - **Query keys:** one factory per feature, rooted at the feature id, and `queryOptions` factories
   that pages, prefetches and tests share. Another feature's keys are imported through its
   `index.ts` only, with one exception: a dependency-free `features/<name>/keys.ts` holding the key
-  factory (re-exported from `index.ts`), for features that invalidate each other's caches. It
-  keeps those imports from forming a cycle through the `index.ts` files (applications nests
-  services routes while services invalidates application keys). Clusters have one shared query,
-  `clustersQuery` from `infrastructure`; overview, services and SLA use it instead of their own.
-  Users and organizations list each other's data, so mutations on either invalidate both
-  `userKeys.all` and `organizationKeys.all`. Loaders that `ensureQueryData` a detail spread
-  `seedFromLists(queryClient, keys.lists(), match)` (`core/query/seed-from-lists.ts`) into the
-  options, so coming from a list does not wait for a round trip (applications and services).
+  factory (re-exported from `index.ts`), for features that invalidate each other's caches, so
+  those imports do not form a cycle through the `index.ts` files (`addon-manager/keys.ts`).
+  Clusters and the current user's
+  account have one shared query each, `clustersQuery(api)` and `profileQuery(api, username)` from
+  the SDK (keys `platformQueryKeys`, shared with addon packages); `profile` re-exports its
+  query, and nobody fetches clusters or `/user/{name}` under another key.
+  Users and organizations (packages `modules/users`, `modules/organizations`) list each other's
+  data and cannot import each other, so their queries are SDK platform queries (`usersQuery`,
+  `organizationsQuery`; the members of one organization sit under `platformQueryKeys.users()`),
+  and mutations on either side invalidate `platformQueryKeys.users()` and
+  `platformQueryKeys.organizations()`. Role names and descriptions (`ROLE_OPTIONS`, `roleLabel`)
+  are SDK exports; each package builds its role picker from `CheckboxGroup` in `@oakestra/ui`.
+  Applications and services (package `modules/applications`) are platform queries too, so other
+  packages and addons can share their cache entries: `applicationsQuery(api, userId)` and
+  `servicesByApplicationQuery(api, applicationId)`. Their whole key tree, the package's detail
+  keys included, is `platformQueryKeys.applications()` / `.services()`, so invalidating one prefix
+  refreshes lists and details together. A detail query that a list may already hold spreads
+  `seedFromLists(queryClient, listPrefix, match)` (SDK root) into its options, so coming from a
+  list does not wait for a round trip.
 
   ```ts
-  export const appKeys = {
-    all: ['applications'] as const,
-    list: (userId: string) => [...appKeys.all, 'list', userId] as const,
-    detail: (id: string) => [...appKeys.all, 'detail', id] as const,
+  export const installedKeys = {
+    all: ['addon-manager'] as const,
+    list: () => [...installedKeys.all, 'installed'] as const,
+    detail: (id: string) => [...installedKeys.all, 'installed', id] as const,
   };
-  export const appQuery = (api: OakestraApi, id: string) =>
+  export const installedAddonQuery = (manager: AddonsManagerEndpoints, id: string) =>
     queryOptions({
-      queryKey: appKeys.detail(id),
-      queryFn: ({ signal }) => api.applications.get(id, { signal }),
+      queryKey: installedKeys.detail(id),
+      queryFn: ({ signal }) => manager.get(id, { signal }),
     });
   ```
 
@@ -181,7 +197,10 @@ features/<name>/
 - **Mutations:** a hook per action in `api/mutations.ts`. Set `meta.errorMessage` (toast title;
   the global MutationCache toasts every failure) or `meta: { silent: true }` when the component
   shows the error itself (forms). In `onSuccess`, `await queryClient.invalidateQueries(...)` with
-  the narrowest key that covers what changed, and `notify.success(...)`.
+  the narrowest key that covers what changed, and `notify.success(...)`. After a delete, use
+  `invalidateAfterDelete` (`modules/applications/src/queries.ts`): the deleted entity's queries
+  are marked stale without a refetch (its page is still mounted and would 404 on the way out;
+  `removeQueries` does not help, mounted observers refetch at once), the rest refreshes.
 - **Errors in pages:** render loading and error states inline (`isPending`, `isError` with a
   retry). The QueryCache only toasts when a refetch fails while data is shown; `meta.silent`
   disables that too.
@@ -189,8 +208,9 @@ features/<name>/
   `@oakestra/ui`. Reuse `@oakestra/api` schemas where they exist (`loginRequestSchema`,
   `slaV2Schema`). Submit with `onSubmit={(event) => void form.handleSubmit(onValid)(event)}`.
 - **Slots:** render extension points with `<Slot point="..." context={...} />` from
-  `core/extensions/Slot` (optional `render` wrapper and `empty` state). Each contribution is
-  isolated in its own error boundary.
+  `core/extensions/Slot` (optional `render` wrapper and `empty` state; the shell-only `filter`
+  renders a subset, which is how the overview splits `home.widgets` by `size`). Each contribution
+  is isolated in its own error boundary.
 - **Tests:** `renderApp()` from `src/test/render` renders the real router, layout and guards
   against the MSW backend:
 
@@ -209,10 +229,10 @@ features/<name>/
 
 ## Shared components
 
-Cross-feature presentational components live in `apps/shell/src/components`, helpers in
-`apps/shell/src/lib`. Features may import both (never the other way round); anything that knows
-about a single feature stays in that feature. Generic building blocks without shell knowledge go
-in `@oakestra/ui` instead.
+Generic building blocks go in `@oakestra/ui`: feature packages may import only the SDK,
+`@oakestra/ui` and `@oakestra/api` types, so shell-local helpers are not the default. `apps/shell/src/components` and `src/lib` are only for things that need shell internals;
+features may import both (never the other way round); anything that knows about a single feature
+stays in that feature.
 
 `@oakestra/ui` (import from the package root, except the subpath exports below):
 
@@ -263,23 +283,37 @@ copy of small stateless pieces (`cn`, `Button`, `Table`), which is harmless.
   page section, action top right. With plain `Card`, put actions in `CardAction` inside
   `CardHeader` (a grid; `flex-row` on it does nothing).
 
-`apps/shell/src/components`:
+Also in `@oakestra/ui` root (generic helpers that feature packages must be able to import):
 
-- `LocationMap`: lazy map (mapcn on MapLibre, `@oakestra/ui/map`) of `{ lat, lng, radiusKm?, label }[]`. Build entries with
-  `toMapLocation(name, parseClusterLocation(cluster.cluster_location))`. `LazyLocationMap` is the
-  bare `React.lazy` component for callers with their own Suspense. Without WebGL2 it shows a
-  notice instead of the map.
-- `TimeSeriesChart`: line or area chart of `{ timestamp: Date, value: number }[]` with `unit`
-  (`percent`, `bytes`, `number` or a formatter) and an accessible `title`.
 - `CopyButton`, `JsonViewer` (pretty-printed, collapsible, copy, optional `downloadAs`).
 - `QueryErrorAlert` (`title`, `error`, `onRetry`, optional extra text as children): the inline
   error state of a failed query, with a "Try again" button. Use it instead of building the alert.
+  It reads `error.message` itself (same text as `describeError`), because `@oakestra/ui` cannot
+  import `@oakestra/api`.
+- `format.ts` helpers (`formatBytes`, `formatMegabytes`, `formatPercent`, `formatRelativeTime`,
+  `plural`, `formatDate(Time)`, `parseLegacyDate`/`formatLegacyDate`) and `downloadJson(filename,
+data)` / `downloadText`.
 
-`apps/shell/src/lib`: `format.ts` (`formatBytes`, `formatMegabytes`, `formatPercent`,
-`formatRelativeTime`, `plural`, `parseLegacyDate`/`formatLegacyDate`), `download.ts`
-(`downloadJson(filename, data)`, `downloadText`), `use-search-param.ts` (`useSearchParam(key,
-fallback)`, one search param as state, replacing the history entry) and `zod-issues.ts`
-(`formatIssue`, Zod issues worded for people who write JSON by hand).
+`@oakestra/ui/chart` also has `TimeSeriesChart`: line or area chart of `{ timestamp: Date, value:
+number }[]` with `unit` (`percent`, `bytes`, `number` or a formatter) and an accessible `title`.
+
+`@oakestra/ui/location-map` has `LocationMap`: lazy map of `{ lat, lng, radiusKm?, label, tone?, href? }[]`.
+Build entries with `toMapLocation(name, parseClusterLocation(cluster.cluster_location))`
+(`parseClusterLocation` stays in `@oakestra/api`; `toMapLocation` takes the structural
+`GeoLocation`). `LazyLocationMap` is the bare `React.lazy` component for callers with their own
+Suspense. Marker `href`s render as plain anchors unless the host passes `renderLink` (the shell
+passes a router `Link`, since `@oakestra/ui` has no router). Without WebGL2 it shows a notice
+instead of the map. It is its own subpath, not part of `./map`, so a page that only imports it
+does not load MapLibre until a map renders; its implementation imports `@oakestra/ui/map` by
+package name (never `./map`), so the shared map module stays the only MapLibre copy.
+
+`@oakestra/dashboard-sdk` root also exports `seedFromLists` and `useSearchParam(key, fallback)` (one
+search param as state, replacing the history entry).
+
+`apps/shell/src/lib` keeps `zod-issues.ts` (`formatIssue`, Zod issues worded for people who write
+JSON by hand) for the addon manager's register dialog; the applications package has its own copy
+for SLA imports (`modules/applications/src/lib/zod-issues.ts`). `apps/shell/src/components` holds
+`OakestraLogo`.
 
 TanStack Table is on v9 (`useTable`, `tableFeatures`, row models registered once at module scope
 in `data-table.tsx`); the v8 `useReactTable` API does not exist there.
@@ -310,6 +344,114 @@ in `data-table.tsx`); the v8 `useReactTable` API does not exist there.
 - `@oakestra/api` models are loose (`z.looseObject`), so new backend fields pass through. The
   exception is `userSchema`, which strips unknown keys to keep password hashes out of the app.
 
+## Deployment presets
+
+A runtime `preset.json` (`config.presetUrl`) picks the built-in modules, adds addons that ship with
+the deployment and adjusts the sidebar; no preset means every module. User
+docs: `docs/addons/presets.md`; examples: `apps/shell/presets/` (validated by
+`src/app/example-presets.test.ts`).
+
+- The schema is `presetSchema` in `core/config/preset.ts` (strict objects). `preset.schema.json`
+  is generated from it and compared by `preset.test.ts`; regenerate with
+  `pnpm --filter @oakestra/shell test -u`. Cross-checks that need the modules (unknown ids,
+  addon named like a module, `home` without overview, mount overlap) live in `app/preset.ts`
+  (`applyPreset`) because `core` cannot import features.
+- Module ids (the `id` of each `CoreModule` and the name of each linked addon) are a public
+  contract, like nav ids and the SDK: renaming one is a breaking change. They share a
+  namespace with addon names. `auth` is always on. `modules` selects core modules and linked
+  addons alike; a preset addon named like a core module is rejected, one named like a linked
+  addon replaces it (inheriting its mount unless it sets one). `applyPreset` returns the selected
+  `modules` and `linked` and the preset with inherited mounts, and checks every mount (linked and
+  preset) against module routes and each other.
+- Guard every link from one module's UI to another module's page with `useModuleEnabled(id)`
+  (`core/modules.ts`; packages use the SDK's `useFeatureEnabled(id)`, which the shell answers
+  from the same function), so a disabled module leaves no dead link. Importing its code (queries, keys)
+  is unaffected, everything stays bundled. `hidden` nav items are only hidden, the routes stay.
+- Nav overrides are keyed `kind:sourceId:itemId` (`core:settings:settings`,
+  `addon:applications:applications`, `addon:example:main`), top-level items only; unknown keys warn instead of failing since addons
+  load late. A `label` on an addon's root item (path `''`) also becomes its first crumb
+  (`navOverrideLabel` in `core/addons/addon-crumbs.ts`).
+- A preset addon with `mount` is routed at `${mount}/*` with route id `addon-mount:<name>`
+  (route ids must be unique), and `isAddonPageMatch` recognizes both it and
+  `ADDON_PAGE_ROUTE_ID` so `Breadcrumbs` and `useAddonCrumbs` stay the single expander. Its
+  `basePath`, and so `useAddonPath()` and nav links, is the mount. `/addons/<name>` redirects
+  there. Preset addons win over `/ui-addons` entries of the same name (dev override wins over
+  both) and load even when discovery is off or unavailable.
+
+## Module packages
+
+Features move out of the shell into `modules/<name>` one by one. Each is an addon written against the SDK only and linked into the shell, so it can later be built
+as a remote or replaced by a company's own addon under the same URL. `modules/help` is the
+reference; copy its shape.
+
+```
+modules/<name>/
+  package.json      @oakestra/module-<name>, private, exports "." -> ./src/index.ts
+  src/index.ts      default export defineAddon({ id: '<name>', label, routes, contributions })
+  src/pages/        route components (React.lazy in index.ts), tests next to them
+  vitest.config.ts  + vitest.setup.ts (jsdom, jest-dom, cleanup), tsconfig.json
+```
+
+- **Wire it up:** add the package to `apps/shell/package.json`, then
+  `{ definition, mount: '/<name>' }` to `linkedAddons` in `src/app/modules.ts`, and remove the
+  `CoreModule`. The id stays the old module id (presets name it). `registerLinkedAddons`
+  (`core/addons/linked-addons.ts`) validates it with `parseAddonDefinition` and registers it as
+  `loaded` (`origin: 'linked'`) before the first render, so its nav items exist like core ones;
+  an invalid definition becomes a `failed` entry. The loader never loads, replaces or removes a
+  linked entry; `/ui-addons` entries and dev overrides with its name are ignored with a warning.
+  Linked addons are hidden from the addon manager.
+- **One mount per package.** Routes and nav `path`s are relative to it (`''` is the mount); links
+  inside the package use `useAddonPath()`. A feature that owned several top-level paths gets one
+  mount and redirects for the old URLs. The mount is routed at `${mount}/*` like a preset mount,
+  `/addons/<name>` redirects there. Nav keys change from `core:<id>:<item>` to
+  `addon:<id>:<item>` (update `docs/addons/presets.md` and `apps/shell/presets/`); nav test ids
+  (`nav-<sourceId>-<itemId>`) stay the same when the item id does.
+- **No loaders.** `requireRole` becomes `roles` on the route (a parent guards its children; hide the
+  nav item with `roles` too). Data comes from `useQuery` in the page, keyed with
+  `addonQueryKey('<name>', ...)`; a detail page reached from a list passes
+  `initialData`/`initialDataUpdatedAt` from `seedFromLists(...)` (SDK) instead of a loader. A
+  missing entity (404, or `null` from a `select`) renders inline (an `EmptyState` with a link
+  back), not a route error.
+- **Crumbs:** the addon `label` is the first crumb and links to the mount, so the index route
+  usually has none. A crumb that needs data is a named component
+  (`function ClusterCrumb({ params }: AddonCrumbProps)`, `crumb: ClusterCrumb`) running its own
+  `useQuery` with the page's options, so both share one cache entry. It renders in the header
+  with the addon context and its own error boundary; failing or suspended, it shows the last path
+  segment.
+- **Cross-package data:** use the SDK platform queries (`clustersQuery`, `profileQuery`, `usersQuery`,
+  `organizationsQuery`, `applicationsQuery`, `servicesByApplicationQuery`, `platformQueryKeys`)
+  instead of the shell's feature queries. Add a new one
+  to `packages/dashboard-sdk/src/platform-queries.ts` only when two packages (or a package and the
+  shell) really need the same cache entry; the shell then re-exports it.
+- **Cross-package links:** plain absolute paths (`/infrastructure/clusters/...`) guarded with
+  `useFeatureEnabled('<id>')`. Never import another package; a constant both need (such as
+  `INFRASTRUCTURE_ROLES`) is repeated with a comment naming the original.
+- **Slots:** `Slot` from the SDK, like remote addons. Chrome that must only exist when something
+  is contributed (a tab list whose only tab would be the page's own) goes in `wrap`, the page
+  without it in `empty`; see `ApplicationDetailPage` in `modules/applications`.
+- **Overview widgets:** `features/overview` is only the greeting, an empty state and the layout;
+  every tile and section is a `home.widgets` contribution of the package that owns the data
+  (`modules/applications/src/overview`, `ClustersTile` in `modules/infrastructure`), so a package a
+  preset leaves out takes its tiles along. `size` places a widget (SDK `WidgetSize`, parsed in
+  `core/addons/definition.ts`, an unknown value falls back to `card`): `stat` tiles in the summary
+  row and `wide` sections draw their own frame (`StatCard`, `SectionCard`), `card` widgets get the
+  shell's card with `title`. Orders go in steps of 100 per size (stats: applications 100, services
+  200, instances 300, clusters 400; wide: needs attention 100, recent applications 200) so
+  deployments can slot their own in between; the table in `docs/addons/reference.md` lists them.
+  A widget that has nothing to say returns `null`, the shell hides its empty wrapper.
+- **Host links:** external links from the runtime config reach packages through `useHostLinks()`
+  (SDK, `HostContextValue.links`, filled by `hostLinksFromConfig` in `core/host/host-context.ts`);
+  add a field there instead of reading the shell's config. Today: `grafanaUrl` (the infrastructure
+  page's "Open Grafana").
+- **Styling:** plain Tailwind classes, no prefix (the shell scans `modules/*/src`). No CSS imports.
+- **Tests:** unit tests in the package with `renderInHost` from `@oakestra/dashboard-sdk/testing`
+  (`api` mocks, `user`, `features`, `links`, `addon: { addonId, basePath: mount }`,
+  `route`/`path`). Page
+  tests against the real router, layout, guards and MSW backend go to `apps/shell/src/linked/`
+  and render with `renderApp({ linked: linkedAddons, route, user })` (`modules` is optional
+  there); `mockStore` and `mockServer.use()` work as in feature tests. `app/routes.test.tsx`
+  includes `linkedAddons`, so add the package's URLs to its cases.
+
 ## Module Federation rules
 
 - `sharedDeps` in `packages/dashboard-sdk/src/federation.ts` is the single source of the shared
@@ -338,7 +480,11 @@ in `data-table.tsx`); the v8 `useReactTable` API does not exist there.
 
 ## Styling
 
-The shell imports `@oakestra/ui/styles.css` once (preflight, token values, component utilities).
+The shell imports `@oakestra/ui/styles.css` once, through `apps/shell/src/styles.css` (preflight,
+token values, component utilities), which also adds `modules/*/src` as a Tailwind source: Tailwind
+only detects classes below the Vite root, and linked module packages have no stylesheet or prefix
+of their own. Keep that `@source` a file glob (`**/*.{ts,tsx}`); a glob ending in a directory
+matches nothing, silently.
 Addons import only `tailwindcss/theme.css`, `tailwindcss/utilities.css` and `@oakestra/ui/theme.css`
 (see `addons/example/src/addon.css`). `theme.css` holds only the `@theme inline` mapping, never
 values, so the shell stays the one owner of the variables.
@@ -379,6 +525,10 @@ covered by `packages/eslint-config/boundaries.test.js`:
   `@oakestra/dashboard-sdk/testing` is allowed in addon `*.test.ts(x)` only, never in addon
   runtime code or shell production code; `@oakestra/dashboard-sdk/vite` only in addon
   `vite.config.ts` and `vitest.config.ts`.
+- `modules/*` follow the addon rules (own files, SDK, `@oakestra/ui` root and subpaths, types of
+  `@oakestra/api`, the SDK testing entry in tests), minus `@oakestra/ui/*.css`,
+  `/federation` and `virtual:oakestra-addon`. They never import each other or the shell. Only the
+  shell's `src/app` (and the tests in `src/linked`) import them.
 - `features/*` use `core`, the shared `src/components` and `src/lib`, the packages and their own files; another feature only via its
   `index.ts`. `core` never imports features.
 - `packages/ui` never imports the SDK, and the SDK never imports the shell or `ui` sources. The
@@ -398,7 +548,10 @@ covered by `packages/eslint-config/boundaries.test.js`:
 - The entrypoint renders `config.json` from env. `API_URL` wins; `API_ADDRESS` (host:port, as used
   by the Angular dashboard) maps to `http://<API_ADDRESS>/api`. `GRAFANA_URL` and
   `ADDONS_MANAGER_URL` (`/addons-api`) and `MARKETPLACE_URL` (`/marketplace-api`) are config
-  fields; `GRAFANA_URL` is optional and becomes an external nav link.
+  fields; `GRAFANA_URL` is optional and becomes an external nav link. `PRESET_URL` (empty: no
+  preset; `/preset.json` for a mounted file) becomes `presetUrl`. nginx serves `/preset.json`
+  (`no-cache`) and `/bundled-addons/<name>/` from the html
+  root (only `assets/` is immutable, everything else `no-cache` plus `frame-ancestors 'none'`), where derived images copy a preset and addon `dist/` folders.
 - `/addons-api/*` and `/marketplace-api/*` are rewritten by nginx to `/api/v1/addons/*` and
   `/api/v1/marketplace/addons/*` of the upstreams below (`no-store`, 502 while they are missing).
 - Those two and `/ui-addons` serve backend bodies on the dashboard origin, and the addons-manager

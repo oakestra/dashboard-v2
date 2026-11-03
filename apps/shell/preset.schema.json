@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "modules": {
+      "description": "Built-in modules to enable, by id. Omitted means all of them; auth is always on.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      }
+    },
+    "home": {
+      "description": "Where / redirects when no enabled module owns the start page (overview).",
+      "type": "string"
+    },
+    "addonDiscovery": {
+      "default": true,
+      "description": "false stops polling /ui-addons, for deployments without the addons-manager.",
+      "type": "boolean"
+    },
+    "addons": {
+      "default": [],
+      "description": "Addons that ship with the deployment, loaded without the addons-manager.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sdk": {
+            "type": "string"
+          },
+          "entry": {
+            "type": "string",
+            "description": "Manifest URL (mf-manifest.json) of the addon's remote."
+          },
+          "mount": {
+            "description": "Top-level path to serve the addon at instead of /addons/<name>, e.g. /billing.",
+            "type": "string",
+            "pattern": "^\\/[a-z0-9-]+(?:\\/[a-z0-9-]+)*$"
+          }
+        },
+        "required": [
+          "name",
+          "version",
+          "sdk",
+          "entry"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "nav": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "groupLabels": {
+          "default": {},
+          "description": "Labels of the sidebar groups, e.g. { \"main\": \"Workloads\" }.",
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "enum": [
+              "main",
+              "management",
+              "addons",
+              "footer"
+            ]
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "items": {
+          "default": {},
+          "description": "Overrides of top-level nav items, keyed kind:sourceId:itemId, e.g. core:settings:settings.",
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "order": {
+                "type": "number"
+              },
+              "group": {
+                "type": "string",
+                "enum": [
+                  "main",
+                  "management",
+                  "addons",
+                  "footer"
+                ]
+              },
+              "hidden": {
+                "description": "Hides the link only. The pages stay reachable; leave out the module to remove it.",
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

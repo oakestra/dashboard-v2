@@ -74,10 +74,24 @@ export function createAddonLoader(deps: AddonLoaderDeps): AddonLoader {
 
       if (currentLoads.has(addon.name)) continue;
 
+      // Compiled into the shell and registered at startup (registerLinkedAddons). A preset that
+      // wants another build under that name replaces the linked addon before it is registered, so
+      // a list entry here is the manager or a dev override, and neither can swap shell code.
+      if (existing?.origin === 'linked') {
+        warnShadowedByLinked(addon.name);
+        continue;
+      }
+
       if (existing?.state === 'loaded') {
         // A loaded federation module cannot be swapped out of a running React tree, so a new
-        // version only takes effect after a reload. Ask once per version.
-        if (existing.version !== addon.version && existing.availableVersion !== addon.version) {
+        // version only takes effect after a reload. Ask once per version. A dev override has no
+        // version of its own (the early sync before /ui-addons answers uses a placeholder), and
+        // its server always serves the latest build, so it never has an upgrade to offer.
+        if (
+          addon.origin !== 'dev' &&
+          existing.version !== addon.version &&
+          existing.availableVersion !== addon.version
+        ) {
           setEntry(addons, { ...existing, availableVersion: addon.version });
           deps.onUpgradeAvailable(existing, addon);
         }
@@ -108,7 +122,10 @@ export function createAddonLoader(deps: AddonLoaderDeps): AddonLoader {
   }
 
   function removeMissing(listed: ReadonlySet<string>): void {
-    const missing = Object.keys(addons.getState().entries).filter((name) => !listed.has(name));
+    // Linked addons are never in the list: they exist for the whole page load.
+    const missing = Object.entries(addons.getState().entries)
+      .filter(([name, entry]) => !listed.has(name) && entry.origin !== 'linked')
+      .map(([name]) => name);
     for (const name of missing) {
       currentLoads.delete(name);
       unregisterContributions(name);
@@ -117,6 +134,15 @@ export function createAddonLoader(deps: AddonLoaderDeps): AddonLoader {
   }
 
   return { sync };
+}
+
+const reportedShadowed = new Set<string>();
+
+/** Once per name and page load: the list is synced on every poll. */
+function warnShadowedByLinked(name: string): void {
+  if (reportedShadowed.has(name)) return;
+  reportedShadowed.add(name);
+  console.warn(`[addons] ignoring "${name}" from /ui-addons or a dev override: it is linked`);
 }
 
 type FailedEntry = Extract<AddonEntry, { state: 'failed' }>;
@@ -132,7 +158,10 @@ function sameFailure(current: AddonEntry | undefined, next: FailedEntry): boolea
 }
 
 /** Addon nav paths are written relative to the addon; the registry stores absolute paths. */
-function resolveAddonContributions(definition: AddonDefinition, basePath: string): Contributions {
+export function resolveAddonContributions(
+  definition: AddonDefinition,
+  basePath: string,
+): Contributions {
   const contributions = definition.contributions ?? {};
   const navItems = contributions['nav.items'];
   if (!navItems) return contributions;

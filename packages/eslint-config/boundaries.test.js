@@ -50,15 +50,18 @@ describe('import boundaries', () => {
       "import { OverviewPage } from './pages/OverviewPage';",
     ],
     ['apps/shell/src/app/x.ts', "import { overviewModule } from '../features/overview';"],
-    ['apps/shell/src/features/other/x.ts', "import { userKeys } from '../users/keys';"],
+    ['apps/shell/src/features/other/x.ts', "import { appKeys } from '../applications/keys';"],
     ['apps/shell/src/core/x.ts', "import { Slot } from './extensions/Slot';"],
-    ['apps/shell/src/features/overview/x.ts', "import { formatBytes } from '../../lib/format';"],
     [
       'apps/shell/src/features/overview/x.ts',
-      "import { JsonViewer } from '../../components/JsonViewer';",
+      "import { formatIssue } from '../../lib/zod-issues';",
+    ],
+    [
+      'apps/shell/src/features/overview/x.ts',
+      "import { OakestraLogo } from '../../components/OakestraLogo';",
     ],
     ['apps/shell/src/components/x.ts', "import { notify } from '../core/notify/notify';"],
-    ['apps/shell/src/app/x.ts', "import { formatBytes } from '../lib/format';"],
+    ['apps/shell/src/app/x.ts', "import { formatIssue } from '../lib/zod-issues';"],
     ['apps/shell/src/features/overview/x.ts', "import { createOakestraApi } from '@oakestra/api';"],
     ['apps/shell/src/features/overview/x.test.ts', "import { http } from '@oakestra/mocks';"],
     ['apps/shell/src/test/x.ts', "import { createMockServer } from '@oakestra/mocks/node';"],
@@ -66,11 +69,71 @@ describe('import boundaries', () => {
     ['packages/mocks/src/x.ts', "import { slaV2Schema } from '@oakestra/api';"],
     ['packages/dashboard-sdk/src/x.ts', "import type { OakestraEndpoints } from '@oakestra/api';"],
     ['tools/mock-system-manager/src/x.ts', "import { createHandlers } from '@oakestra/mocks';"],
+    ['modules/help/src/x.ts', "import { defineAddon } from '@oakestra/dashboard-sdk';"],
+    ['modules/help/src/x.ts', "import { Button } from '@oakestra/ui';"],
+    ['modules/help/src/x.ts', "import { DataTable } from '@oakestra/ui/data-table';"],
+    ['modules/help/src/x.ts', "import type { Cluster } from '@oakestra/api';"],
+    ['modules/help/src/x.ts', "import { parseClusterLocation } from '@oakestra/api';"],
+    ['modules/help/src/x.ts', "import { HelpPage } from './pages/HelpPage';"],
+    [
+      'modules/help/src/pages/x.test.tsx',
+      "import { renderInHost } from '@oakestra/dashboard-sdk/testing';",
+    ],
+    ['apps/shell/src/app/modules.ts', "import help from '@oakestra/module-help';"],
+    ['apps/shell/src/linked/help.test.tsx', "import help from '@oakestra/module-help';"],
+    ['apps/shell/src/linked/help.test.tsx', "import { renderApp } from '../test/render';"],
+    ['apps/shell/src/linked/help.test.tsx', "import { linkedAddons } from '../app/modules';"],
+    ['apps/shell/src/linked/help.test.tsx', "import { http } from '@oakestra/mocks';"],
   ])('allows %s: %s', async (file, code) => {
     expect(await violations(file, code)).toEqual([]);
   });
 
   it.each([
+    [
+      'modules/help/src/x.ts',
+      "import { Slot } from '../../../apps/shell/src/core/extensions/Slot';",
+      'boundaries/dependencies',
+    ],
+    [
+      'modules/help/src/x.ts',
+      "import example from '../../../addons/example/src/index';",
+      'boundaries/dependencies',
+    ],
+    [
+      'modules/help/src/x.ts',
+      "import { renderInHost } from '@oakestra/dashboard-sdk/testing';",
+      '@typescript-eslint/no-restricted-imports',
+    ],
+    [
+      'modules/help/src/x.ts',
+      "import { createOakestraApi } from '@oakestra/api';",
+      '@typescript-eslint/no-restricted-imports',
+    ],
+    [
+      'modules/help/src/x.ts',
+      "import { http } from '@oakestra/mocks';",
+      '@typescript-eslint/no-restricted-imports',
+    ],
+    [
+      'modules/help/src/x.ts',
+      "import '@oakestra/ui/theme.css';",
+      '@typescript-eslint/no-restricted-imports',
+    ],
+    [
+      'modules/help/src/x.ts',
+      "import { ADDON_ID } from 'virtual:oakestra-addon';",
+      '@typescript-eslint/no-restricted-imports',
+    ],
+    [
+      'apps/shell/src/features/overview/x.ts',
+      "import help from '@oakestra/module-help';",
+      'boundaries/dependencies',
+    ],
+    [
+      'apps/shell/src/core/x.ts',
+      "import help from '@oakestra/module-help';",
+      'boundaries/dependencies',
+    ],
     [
       'apps/shell/src/components/x.ts',
       "import { overviewModule } from '../features/overview';",
@@ -78,7 +141,7 @@ describe('import boundaries', () => {
     ],
     [
       'apps/shell/src/core/x.ts',
-      "import { formatBytes } from '../lib/format';",
+      "import { formatIssue } from '../lib/zod-issues';",
       'boundaries/dependencies',
     ],
     [
@@ -163,7 +226,7 @@ describe('import boundaries', () => {
     ],
     [
       'apps/shell/src/features/other/x.ts',
-      "import { allUsersQuery } from '../users/api/queries';",
+      "import { profileQuery } from '../profile/api/queries';",
       'boundaries/dependencies',
     ],
     [

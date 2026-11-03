@@ -1,0 +1,7 @@
+{
+  "extends": "@oakestra/tsconfig/react.json",
+  "compilerOptions": {
+    "types": ["vite/client", "@testing-library/jest-dom/vitest"]
+  },
+  "include": ["src", "vitest.config.ts", "vitest.setup.ts"]
+}

@@ -5,6 +5,7 @@ import {
   HostContext,
   type AddonContextValue,
   type HostContextValue,
+  type HostLinks,
 } from './context';
 import { hasAnyRole } from './permissions';
 import type { CurrentUser, Notify, OakestraApi, Role } from './types';
@@ -32,6 +33,27 @@ export function useCurrentUser(): CurrentUser | null {
 
 export function useNotify(): Notify {
   return useHostContext().notify;
+}
+
+/**
+ * Whether the deployment enables the feature `id`, e.g. `useFeatureEnabled('applications')`.
+ * Feature ids are the ids of built-in modules and the names of addons; a deployment preset can
+ * leave any of them out. Guard every link into another feature with it, so a missing feature
+ * leaves no dead link. It answers from the deployment's configuration only, so addons the
+ * addons-manager installs at runtime are not covered.
+ */
+export function useFeatureEnabled(id: string): boolean {
+  return useHostContext().isFeatureEnabled(id);
+}
+
+const NO_LINKS: HostLinks = Object.freeze({});
+
+/**
+ * External links the deployment configures, e.g. `useHostLinks().grafanaUrl`. Every field is
+ * optional: render the link only when it is set.
+ */
+export function useHostLinks(): HostLinks {
+  return useHostContext().links ?? NO_LINKS;
 }
 
 export interface Permissions {

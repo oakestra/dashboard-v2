@@ -1,8 +1,7 @@
 import { useCurrentUser, useOakestraApi } from '@oakestra/dashboard-sdk';
-import { PageHeader, SectionCard, Skeleton } from '@oakestra/ui';
+import { PageHeader, SectionCard, Skeleton, QueryErrorAlert } from '@oakestra/ui';
 import { useQuery } from '@tanstack/react-query';
 
-import { QueryErrorAlert } from '../../../components/QueryErrorAlert';
 import { profileQuery } from '../api/queries';
 import { AccountCard } from '../components/AccountCard';
 import { ChangePasswordDialog } from '../components/ChangePasswordDialog';

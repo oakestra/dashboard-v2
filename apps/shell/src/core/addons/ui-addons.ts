@@ -17,10 +17,19 @@ export const uiAddonsQueryKey = ['ui-addons'] as const;
 /** One entry of `GET /ui-addons`: an active addon that ships a UI. */
 export type UiAddon = z.infer<typeof uiAddonSchema>;
 
-/** A /ui-addons entry plus the manifest URL it will be loaded from. */
+/**
+ * Where an addon came from: the addons-manager (`/ui-addons`), the deployment preset, a dev
+ * override pointing at a local dev server, or a package compiled into the shell (`linked`).
+ */
+export type AddonOrigin = 'manager' | 'preset' | 'dev' | 'linked';
+
+/** An addon to load: a /ui-addons entry plus where it is loaded from and served at. */
 export interface ResolvedAddon extends UiAddon {
-  /** Manifest URL the remote was (or is being) loaded from. */
+  /** Manifest URL the remote was (or is being) loaded from. Empty for linked addons. */
   entry: string;
+  origin: AddonOrigin;
+  /** Where the addon's pages live: `/addons/<name>`, or the preset's `mount`. */
+  basePath: string;
 }
 
 /** The addons manager is missing (addons disabled) or down. Not an error worth showing users. */
@@ -84,12 +93,12 @@ export function addonBasePath(name: string): string {
 
 /** The source an addon's contributions and pages are registered and isolated under. */
 export function addonSource(
-  addon: Pick<UiAddon, 'name' | 'version'>,
+  addon: Pick<ResolvedAddon, 'name' | 'version' | 'basePath'>,
 ): Extract<ContributionSource, { kind: 'addon' }> {
   return {
     kind: 'addon',
     id: addon.name,
     label: `addon "${addon.name}"`,
-    addon: { addonId: addon.name, version: addon.version, basePath: addonBasePath(addon.name) },
+    addon: { addonId: addon.name, version: addon.version, basePath: addon.basePath },
   };
 }

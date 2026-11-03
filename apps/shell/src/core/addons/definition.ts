@@ -3,6 +3,7 @@ import {
   type AddonDefinition,
   type AddonRoute,
   type ExtensionPointId,
+  type WidgetSize,
 } from '@oakestra/dashboard-sdk';
 import { z } from 'zod';
 
@@ -11,6 +12,11 @@ const reactComponent = z.custom<NonNullable<AddonRoute['Component']>>(
   (value) =>
     typeof value === 'function' ||
     (typeof value === 'object' && value !== null && '$$typeof' in value),
+  'must be a React component',
+);
+
+const crumbComponent = z.custom<Extract<NonNullable<AddonRoute['crumb']>, object>>(
+  (value) => reactComponent.safeParse(value).success,
   'must be a React component',
 );
 
@@ -63,7 +69,17 @@ const navItem = contributionBase.extend({
   children: z.array(navSubItem).superRefine(uniqueIds).optional(),
 });
 
-const widget = renderable.extend({ title: z.string().min(1) });
+// A size this shell does not know (from a newer SDK minor) falls back to the default card instead
+// of failing the addon: the hint only moves the widget around, it never makes it unrenderable.
+const widgetSize = z
+  .enum(['stat', 'card', 'wide'] as const satisfies readonly WidgetSize[])
+  .optional()
+  .catch(({ input }) => {
+    console.warn('[addons] unknown widget size, rendering it as a card', input);
+    return undefined;
+  });
+
+const widget = renderable.extend({ title: z.string().min(1), size: widgetSize });
 const tab = renderable.extend({ label: z.string().min(1) });
 
 const pointSchemas = {
@@ -93,7 +109,8 @@ const routeSchema: z.ZodType<AddonRoute> = z.lazy(() =>
     Component: reactComponent.optional(),
     children: z.array(routeSchema).optional(),
     roles: z.array(z.string()).optional(),
-    crumb: z.string().min(1).optional(),
+    // A label, or a component that renders one from the route params (e.g. a fetched name).
+    crumb: z.union([z.string().min(1), crumbComponent]).optional(),
     fullWidth: z.boolean().optional(),
   }),
 );

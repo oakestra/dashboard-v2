@@ -168,6 +168,19 @@ describe('createTestHost', () => {
     expect(testHost.addon.basePath).toBe('/addons/a');
     expect(testHost.host.notify).toBe(testHost.notify);
   });
+
+  it('enables every feature unless the test lists them', () => {
+    expect(createTestHost().host.isFeatureEnabled('help')).toBe(true);
+    const narrowed = createTestHost({ features: ['applications'] });
+    expect(narrowed.host.isFeatureEnabled('applications')).toBe(true);
+    expect(narrowed.host.isFeatureEnabled('help')).toBe(false);
+  });
+
+  it('provides no host links unless the test sets them', () => {
+    expect(createTestHost().host.links).toEqual({});
+    const grafanaUrl = 'https://grafana.example';
+    expect(createTestHost({ links: { grafanaUrl } }).host.links).toEqual({ grafanaUrl });
+  });
 });
 
 describe('createNotifyRecorder', () => {

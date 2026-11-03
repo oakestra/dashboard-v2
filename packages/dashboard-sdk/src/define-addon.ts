@@ -3,6 +3,12 @@ import type { ComponentType } from 'react';
 import type { Contributions } from './extension-points';
 import type { Role } from './types';
 
+/** Props of a component `crumb`. */
+export interface AddonCrumbProps {
+  /** Params of the matched addon route, e.g. `{ clusterId: '...' }` for `clusters/:clusterId`. */
+  readonly params: Readonly<Record<string, string | undefined>>;
+}
+
 /**
  * A page of an addon, mounted below `/addons/<id>/`.
  *
@@ -22,10 +28,13 @@ export interface AddonRoute {
    */
   roles?: readonly Role[];
   /**
-   * Breadcrumb label for this route, shown after the addon's own crumb and linking to the
-   * matched path. Routes without one add no crumb.
+   * Breadcrumb for this route, shown after the addon's own crumb and linking to the matched path.
+   * Routes without one add no crumb. A component renders a label that depends on the URL, e.g. a
+   * cluster name fetched with `useQuery`: it gets the route params and renders in the header,
+   * outside the page, so it must not rely on anything the page provides. While it suspends or
+   * after it throws, the shell shows the last matched path segment instead.
    */
-  crumb?: string;
+  crumb?: string | ComponentType<AddonCrumbProps>;
   /**
    * Lets the page use the whole width next to the sidebar instead of the shell's centered column,
    * for pages that are mostly a canvas, editor or split view. Applies to the route's children

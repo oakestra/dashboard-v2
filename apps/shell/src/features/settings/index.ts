@@ -1,6 +1,4 @@
 import { SettingsIcon } from 'lucide-react';
-import { redirect } from 'react-router';
-
 import type { CoreModule } from '../../core/modules';
 import type { RouteHandle } from '../../core/router/route-handle';
 
@@ -24,7 +22,11 @@ export const settingsModule: CoreModule = {
           // The addon status page moved into the addon manager, where the Dashboard UI column
           // replaces it. Old bookmarks keep working.
           path: 'addons',
-          loader: () => redirect('/addon-manager/installed'),
+          // Only redirects when the preset keeps the addon manager; otherwise there is no target.
+          lazy: () =>
+            import('./pages/LegacyAddonsRedirect').then((m) => ({
+              Component: m.LegacyAddonsRedirect,
+            })),
         },
       ],
     },

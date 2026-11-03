@@ -14,7 +14,7 @@ import { useCurrentUser } from '@oakestra/dashboard-sdk';
 import { Suspense } from 'react';
 import { Link, Outlet, useMatches } from 'react-router';
 
-import { ADDON_PAGE_ROUTE_ID, useAddonFullWidth } from '../../core/addons/addon-crumbs';
+import { isAddonPageMatch, useAddonFullWidth } from '../../core/addons/addon-crumbs';
 import { pageFullWidth, type RouteHandle } from '../../core/router/route-handle';
 
 import { OakestraLogo } from '../../components/OakestraLogo';
@@ -26,7 +26,7 @@ import { UserMenu } from './UserMenu';
 /** Whether the current page asked for the full width, with an addon page's own routes included. */
 function useFullWidth(): boolean {
   const matches = useMatches();
-  const addonMatch = matches.find((match) => match.id === ADDON_PAGE_ROUTE_ID);
+  const addonMatch = matches.find(isAddonPageMatch);
   const addonValues = useAddonFullWidth(addonMatch);
   return pageFullWidth(
     matches.flatMap((match) =>

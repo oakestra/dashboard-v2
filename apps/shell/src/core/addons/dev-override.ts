@@ -1,4 +1,10 @@
-import { ADDON_NAME_PATTERN, addonEntryUrl, type ResolvedAddon, type UiAddon } from './ui-addons';
+import {
+  ADDON_NAME_PATTERN,
+  addonBasePath,
+  addonEntryUrl,
+  type ResolvedAddon,
+  type UiAddon,
+} from './ui-addons';
 
 /** Addon name -> manifest URL of a local dev server. */
 export type AddonOverrides = Readonly<Record<string, string>>;
@@ -69,24 +75,60 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
+export interface ResolveAddonsOptions {
+  /** Addons of the deployment preset (see resolvePresetAddons). */
+  preset?: readonly ResolvedAddon[];
+  entryUrl?: (name: string) => string;
+}
+
+// A manager entry shadowed by the preset is reported once per page load, not on every poll.
+const reportedShadowed = new Set<string>();
+
 /**
- * Resolves manifest URLs for the /ui-addons list. Overridden addons point at the dev server, and
- * overrides for addons the backend does not know yet are added, so a brand new addon can be
- * developed without installing it first.
+ * Merges the /ui-addons list with the preset's addons and the dev overrides. Precedence is dev
+ * override > preset > /ui-addons: the preset pins the addons a deployment ships, so the manager
+ * cannot swap them for another build, while a developer can still point any of them at a local dev
+ * server. Overrides for addons nobody lists are added, so a brand new addon can be developed
+ * without installing it first.
  */
 export function resolveAddons(
   addons: readonly UiAddon[],
   overrides: AddonOverrides,
-  entryUrl: (name: string) => string = addonEntryUrl,
+  { preset = [], entryUrl = addonEntryUrl }: ResolveAddonsOptions = {},
 ): ResolvedAddon[] {
-  const resolved = addons.map((addon) => ({
-    ...addon,
-    entry: overrides[addon.name] ?? entryUrl(addon.name),
-  }));
-  for (const [name, entry] of Object.entries(overrides)) {
-    if (!addons.some((addon) => addon.name === name)) {
-      resolved.push({ name, version: '0.0.0-dev', sdk: '*', entry });
+  const resolved = new Map<string, ResolvedAddon>();
+  for (const addon of addons) {
+    if (preset.some((pinned) => pinned.name === addon.name)) {
+      if (!reportedShadowed.has(addon.name)) {
+        reportedShadowed.add(addon.name);
+        console.warn(`[addons] ignoring /ui-addons entry "${addon.name}": the preset pins it`);
+      }
+      continue;
     }
+    resolved.set(addon.name, {
+      ...addon,
+      entry: entryUrl(addon.name),
+      origin: 'manager',
+      basePath: addonBasePath(addon.name),
+    });
   }
-  return resolved;
+  for (const addon of preset) resolved.set(addon.name, addon);
+  for (const [name, entry] of Object.entries(overrides)) {
+    const listed = resolved.get(name);
+    resolved.set(
+      name,
+      listed
+        ? // Keeps the base path, so an overridden preset addon stays at its mount.
+          { ...listed, entry, origin: 'dev' }
+        : {
+            name,
+            version: '0.0.0-dev',
+            sdk: '*',
+            entry,
+            origin: 'dev',
+            basePath: addonBasePath(name),
+          },
+    );
+  }
+  return [...resolved.values()];
 }

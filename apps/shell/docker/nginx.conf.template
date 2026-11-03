@@ -89,6 +89,42 @@ server {
     add_header X-Content-Type-Options nosniff always;
   }
 
+  # Optional preset mounted by the operator. Revalidated like config.json so an edit applies on
+  # the next load; a missing file is a plain 404 instead of the SPA fallback (which would hand
+  # index.html to a JSON parser).
+  location = /preset.json {
+    add_header Cache-Control "no-cache" always;
+    add_header X-Content-Type-Options nosniff always;
+    try_files $uri =404;
+  }
+
+  # Addon remotes baked into derived images at /usr/share/nginx/html/bundled-addons/<name>/. Only
+  # the content-hashed files under assets/ are immutable; everything else in an addon's dist
+  # (entry files, index.html, mf-stats.json, .vite/manifest.json) keeps its name across releases
+  # and must be revalidated. Regex locations are tried in order, so the entry files win over
+  # assets/ and both win over the prefix location below.
+  location ~ ^/bundled-addons/.+/(mf-manifest\.json|remoteEntry\.js)$ {
+    add_header Cache-Control "no-cache" always;
+    add_header X-Content-Type-Options nosniff always;
+    try_files $uri =404;
+  }
+
+  location ~ ^/bundled-addons/[a-z0-9-]+/assets/ {
+    add_header Cache-Control "public, max-age=31536000, immutable" always;
+    add_header X-Content-Type-Options nosniff always;
+    # A missing file must be a 404, not index.html served as JavaScript.
+    try_files $uri =404;
+  }
+
+  # A dist folder is copied as it is, so an addon's own index.html is served too. It is not an
+  # entry point of this dashboard, so it only gets the anti-framing directive of index.html.
+  location /bundled-addons/ {
+    add_header Cache-Control "no-cache" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Content-Security-Policy "frame-ancestors 'none'" always;
+    try_files $uri =404;
+  }
+
   # Content-hashed build output.
   location /assets/ {
     add_header Cache-Control "public, max-age=31536000, immutable" always;

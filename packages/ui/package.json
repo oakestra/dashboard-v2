@@ -12,6 +12,7 @@
     "./data-table": "./src/data-table.ts",
     "./command": "./src/command.ts",
     "./map": "./src/map.ts",
+    "./location-map": "./src/location-map.ts",
     "./styles.css": "./src/styles/styles.css",
     "./theme.css": "./src/styles/theme.css",
     "./package.json": "./package.json"
@@ -40,6 +41,10 @@
       "./map": {
         "types": "./dist/map.d.ts",
         "default": "./dist/map.js"
+      },
+      "./location-map": {
+        "types": "./dist/location-map.d.ts",
+        "default": "./dist/location-map.js"
       },
       "./styles.css": "./dist/styles/styles.css",
       "./theme.css": "./dist/styles/theme.css",

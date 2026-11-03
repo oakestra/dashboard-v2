@@ -9,6 +9,7 @@ import { AreaChart } from 'recharts';
 import { Bar } from 'recharts';
 import { BarChart } from 'recharts';
 import { CartesianGrid } from 'recharts';
+import { JSX } from 'react';
 import { Line } from 'recharts';
 import { LineChart } from 'recharts';
 import * as React_2 from 'react';
@@ -105,6 +106,35 @@ const THEMES: {
     readonly light: "";
     readonly dark: ".dark";
 };
+
+// @public (undocumented)
+export function TimeSeriesChart(input: TimeSeriesChartProps): JSX.Element;
+
+// @public (undocumented)
+interface TimeSeriesChartProps {
+    // (undocumented)
+    className?: string;
+    color?: string;
+    // (undocumented)
+    data: readonly TimeSeriesPoint[];
+    // (undocumented)
+    showTitle?: boolean;
+    title: string;
+    unit?: TimeSeriesUnit | ((value: number) => string);
+    // (undocumented)
+    variant?: 'line' | 'area';
+}
+
+// @public (undocumented)
+export interface TimeSeriesPoint {
+    // (undocumented)
+    timestamp: Date;
+    // (undocumented)
+    value: number;
+}
+
+// @public (undocumented)
+export type TimeSeriesUnit = 'percent' | 'bytes' | 'number';
 
 // @public (undocumented)
 interface TooltipEntry {

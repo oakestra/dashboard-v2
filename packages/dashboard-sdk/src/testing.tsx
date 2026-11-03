@@ -9,15 +9,29 @@
 import type { OakestraEndpoints } from '@oakestra/api';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, type RenderOptions, type RenderResult } from '@testing-library/react';
-import { createContext, useContext, useState, type ReactElement, type ReactNode } from 'react';
+import {
+  createContext,
+  Fragment,
+  useContext,
+  useMemo,
+  useState,
+  type ComponentType,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 
 import {
   AddonContext,
   HostContext,
+  SlotRendererContext,
   type AddonContextValue,
   type HostContextValue,
+  type HostLinks,
 } from './context';
+import type { Contributions, RenderablePointId } from './extension-points';
+import { hasAnyRole } from './permissions';
+import type { SlotProps, SlotSource } from './slot';
 import type { CurrentUser, Notify, NotifyOptions, OakestraApi } from './types';
 import { SDK_VERSION } from './version';
 
@@ -138,6 +152,18 @@ export interface TestHostOptions {
    * no named params.
    */
   path?: string;
+  /**
+   * What other addons or the shell contribute to the slots the component hosts with `<Slot>`.
+   * Without it every slot renders its `empty` fallback.
+   */
+  contributions?: Contributions;
+  /**
+   * The features the deployment enables, for useFeatureEnabled(). Defaults to all of them, like a
+   * shell without a preset.
+   */
+  features?: readonly string[];
+  /** What useHostLinks() returns. Defaults to no links. */
+  links?: HostLinks;
 }
 
 export interface TestHost {
@@ -148,6 +174,7 @@ export interface TestHost {
   readonly notify: NotifyRecorder;
   readonly route: string;
   readonly path: string;
+  readonly contributions: Contributions;
 }
 
 /** The context values `TestHostProvider` provides, for tests that assemble their own providers. */
@@ -165,14 +192,23 @@ export function createTestHost(options: TestHostOptions = {}): TestHost {
   };
   const api = createMockApi(options.api);
   const notify = createNotifyRecorder();
+  const features = options.features;
   return {
-    host: { sdkVersion: SDK_VERSION, user, api, notify },
+    host: {
+      sdkVersion: SDK_VERSION,
+      user,
+      api,
+      notify,
+      isFeatureEnabled: (id) => features?.includes(id) ?? true,
+      links: options.links ?? {},
+    },
     addon,
     user,
     api,
     notify,
     route: options.route ?? addon.basePath,
     path: options.path ?? '*',
+    contributions: options.contributions ?? {},
   };
 }
 
@@ -195,6 +231,49 @@ function TestChildren() {
   return <>{useContext(TestChildrenContext)}</>;
 }
 
+type AnySlotItem = {
+  id: string;
+  order?: number;
+  roles?: readonly string[];
+  visible?: (context: object, user: CurrentUser | null) => boolean;
+  component: ComponentType<object>;
+};
+
+/**
+ * A stand-in for the shell's slot renderer: roles, `visible` and `order` behave like in the shell,
+ * but there are no error boundaries and no registry.
+ */
+function createTestSlotRenderer(testHost: TestHost): ComponentType<SlotProps<RenderablePointId>> {
+  return function TestSlot({ point, context, render, empty = null, wrap }) {
+    const ctx: object = context ?? {};
+    const items = (
+      (testHost.contributions as Record<string, readonly AnySlotItem[] | undefined>)[point] ?? []
+    )
+      .map((item, index) => ({ item, index }))
+      .filter(
+        ({ item }) =>
+          hasAnyRole(testHost.user, item.roles) && (item.visible?.(ctx, testHost.user) ?? true),
+      )
+      .sort((a, b) => (a.item.order ?? Infinity) - (b.item.order ?? Infinity) || a.index - b.index);
+    if (items.length === 0) return <>{empty}</>;
+    const source = {
+      kind: 'addon',
+      id: testHost.addon.addonId,
+      label: testHost.addon.addonId,
+    } as const;
+    const rendered = items.map(({ item }) => {
+      const content = <item.component {...ctx} />;
+      return (
+        <Fragment key={item.id}>
+          {render ? (render as AnyRender)(item, content, source) : content}
+        </Fragment>
+      );
+    });
+    return <>{wrap ? wrap(rendered) : rendered}</>;
+  };
+}
+type AnyRender = (item: object, content: ReactNode, source: SlotSource) => ReactNode;
+
 export function TestHostProvider({ testHost, queryClient, children }: TestHostProviderProps) {
   // Created lazily and kept for the provider's lifetime; a new client per render would drop the cache.
   const [fallbackClient] = useState(createTestQueryClient);
@@ -205,13 +284,16 @@ export function TestHostProvider({ testHost, queryClient, children }: TestHostPr
       initialEntries: [testHost.route],
     }),
   );
+  const slotRenderer = useMemo(() => createTestSlotRenderer(testHost), [testHost]);
   return (
     <QueryClientProvider client={queryClient ?? fallbackClient}>
       <HostContext.Provider value={testHost.host}>
         <AddonContext.Provider value={testHost.addon}>
-          <TestChildrenContext.Provider value={children}>
-            <RouterProvider router={router} />
-          </TestChildrenContext.Provider>
+          <SlotRendererContext.Provider value={slotRenderer}>
+            <TestChildrenContext.Provider value={children}>
+              <RouterProvider router={router} />
+            </TestChildrenContext.Provider>
+          </SlotRendererContext.Provider>
         </AddonContext.Provider>
       </HostContext.Provider>
     </QueryClientProvider>

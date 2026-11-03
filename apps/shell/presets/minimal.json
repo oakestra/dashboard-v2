@@ -1,0 +1,5 @@
+{
+  "$schema": "../preset.schema.json",
+  "modules": ["overview", "applications", "infrastructure", "profile", "settings", "help"],
+  "addonDiscovery": false
+}

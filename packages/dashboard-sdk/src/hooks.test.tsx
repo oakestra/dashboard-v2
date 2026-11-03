@@ -8,7 +8,9 @@ import {
   useAddonBasePath,
   useAddonPath,
   useCurrentUser,
+  useFeatureEnabled,
   useHostContext,
+  useHostLinks,
   usePermissions,
 } from './hooks';
 import { hasAnyRole } from './permissions';
@@ -27,6 +29,7 @@ function host(overrides: Partial<HostContextValue> = {}): HostContextValue {
     // The hooks only hand the object through; none of its endpoints are called here.
     api: { baseUrl: 'http://api', fetch: vi.fn() } as unknown as OakestraApi,
     notify: { success: vi.fn(), info: vi.fn(), warning: vi.fn(), error: vi.fn() },
+    isFeatureEnabled: () => true,
     ...overrides,
   };
 }
@@ -49,6 +52,27 @@ describe('host hooks', () => {
   it('expose the current user', () => {
     const { result } = renderHook(() => useCurrentUser(), { wrapper: withHost(host()) });
     expect(result.current).toBe(user);
+  });
+
+  it('ask the shell which features are enabled', () => {
+    const isFeatureEnabled = (id: string) => id === 'applications';
+    const wrapper = withHost(host({ isFeatureEnabled }));
+    expect(renderHook(() => useFeatureEnabled('applications'), { wrapper }).result.current).toBe(
+      true,
+    );
+    expect(renderHook(() => useFeatureEnabled('help'), { wrapper }).result.current).toBe(false);
+  });
+
+  it('hand out the links the deployment configures', () => {
+    const wrapper = withHost(host({ links: { grafanaUrl: 'https://grafana.example' } }));
+    expect(renderHook(() => useHostLinks(), { wrapper }).result.current).toEqual({
+      grafanaUrl: 'https://grafana.example',
+    });
+  });
+
+  it('answer with no links from a shell that does not provide them', () => {
+    const { result } = renderHook(() => useHostLinks(), { wrapper: withHost(host()) });
+    expect(result.current).toEqual({});
   });
 
   it('derive permissions from the user roles', () => {

@@ -1,13 +1,12 @@
+import { useSearchParam } from '@oakestra/dashboard-sdk';
 import type { MarketplaceAddon } from '@oakestra/api';
-import { Button, ConfirmDialog, EmptyState, Input, Skeleton } from '@oakestra/ui';
+import { Button, ConfirmDialog, EmptyState, Input, Skeleton, QueryErrorAlert } from '@oakestra/ui';
 import { useQuery } from '@tanstack/react-query';
 import { PlusIcon, SearchIcon, StoreIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { QueryErrorAlert } from '../../../components/QueryErrorAlert';
 import { useAddonsAdminApi } from '../../../core/addons/addons-admin';
-import { useSearchParam } from '../../../lib/use-search-param';
 import { useDeleteDefinition, useInstallAddon } from '../api/mutations';
 import { installedAddonsQuery, marketplaceAddonsQuery } from '../api/queries';
 import { MarketplaceCard } from '../components/MarketplaceCard';

@@ -144,6 +144,11 @@ export {
   AlertDialogTrigger,
 } from './components/alert-dialog';
 export { Checkbox } from './components/checkbox';
+export {
+  CheckboxGroup,
+  type CheckboxGroupOption,
+  type CheckboxGroupProps,
+} from './components/checkbox-group';
 export { Collapsible, CollapsibleContent, CollapsibleTrigger } from './components/collapsible';
 export { ConfirmDialog, type ConfirmDialogProps } from './components/confirm-dialog';
 export { EmptyState, type EmptyStateProps } from './components/empty-state';
@@ -191,3 +196,19 @@ export { cn } from './lib/utils';
 // Lives in the root export so the host can configure maps at startup without loading the map
 // subpath (and its stylesheet) on every page.
 export { setMapWorkerUrl } from './lib/map-worker';
+export { CopyButton } from './components/copy-button';
+export { JsonViewer } from './components/json-viewer';
+export { QueryErrorAlert } from './components/query-error-alert';
+export { downloadJson, downloadText } from './lib/download';
+export {
+  BYTES_PER_MB,
+  formatBytes,
+  formatDate,
+  formatDateTime,
+  formatLegacyDate,
+  formatMegabytes,
+  formatPercent,
+  formatRelativeTime,
+  parseLegacyDate,
+  plural,
+} from './lib/format';

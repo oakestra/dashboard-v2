@@ -1,18 +1,3 @@
-import type { OakestraApi } from '@oakestra/dashboard-sdk';
-import { queryOptions } from '@tanstack/react-query';
-
-/**
- * Query keys of this feature. Every key starts with the feature id, so
- * `invalidateQueries({ queryKey: profileKeys.all })` reaches all of them and nothing else.
- */
-export const profileKeys = {
-  all: ['profile'] as const,
-  user: (username: string) => [...profileKeys.all, 'user', username] as const,
-};
-
-export function profileQuery(api: OakestraApi, username: string) {
-  return queryOptions({
-    queryKey: profileKeys.user(username),
-    queryFn: ({ signal }) => api.users.get(username, { signal }),
-  });
-}
+// The account query is shared with addon packages (they need the user's `_id` too), so it lives
+// in the SDK with its key, `platformQueryKeys.user(username)`.
+export { profileQuery } from '@oakestra/dashboard-sdk';
