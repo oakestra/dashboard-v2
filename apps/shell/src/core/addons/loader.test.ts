@@ -34,6 +34,8 @@ const addon = (name: string, version = '1.0.0', sdk = '^0.1.0'): ResolvedAddon =
   version,
   sdk,
   entry: `http://shell/addon-assets/${name}/mf-manifest.json`,
+  origin: 'manager',
+  basePath: `/addons/${name}`,
 });
 
 function deferred<T>() {
@@ -86,6 +88,15 @@ describe('addon loader', () => {
       '/addons/flops/jobs/failed',
     ]);
     expect(nav?.source).toMatchObject({ kind: 'addon', addon: { basePath: '/addons/flops' } });
+  });
+
+  it('resolves nav paths and the source against a mounted base path', async () => {
+    const { loader, navPaths, contributions } = setup();
+    await loader.sync([{ ...addon('flops'), origin: 'preset', basePath: '/ml/flops' }]);
+
+    expect(navPaths()).toEqual(['/ml/flops', '/ml/flops/jobs']);
+    const [nav] = selectContributions(contributions.getState().sources, 'nav.items', null);
+    expect(nav?.source).toMatchObject({ addon: { basePath: '/ml/flops' } });
   });
 
   it('marks the addon as loading while the remote is fetched', async () => {
@@ -239,5 +250,15 @@ describe('addon loader', () => {
 
     await loader.sync([addon('flops', '1.2.0')]);
     expect(onUpgradeAvailable).toHaveBeenCalledTimes(2);
+  });
+
+  it('never offers an upgrade for a dev override, whatever version the list reports later', async () => {
+    const { loader, entry, onUpgradeAvailable } = setup();
+    const dev = (version: string): ResolvedAddon => ({ ...addon('flops', version), origin: 'dev' });
+    await loader.sync([dev('0.0.0-dev')]);
+    await loader.sync([dev('1.4.0')]);
+
+    expect(onUpgradeAvailable).not.toHaveBeenCalled();
+    expect(entry('flops')).toMatchObject({ state: 'loaded', version: '0.0.0-dev' });
   });
 });

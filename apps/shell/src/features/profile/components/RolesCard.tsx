@@ -1,6 +1,5 @@
+import { ROLE_OPTIONS, roleLabel } from '@oakestra/dashboard-sdk';
 import { Badge, SectionCard } from '@oakestra/ui';
-
-import { ROLE_OPTIONS, roleLabel } from '../../users';
 
 /** Same labels and descriptions as the role picker on the Users page, so the wording never drifts. */
 export function RolesCard({ roles }: { roles: readonly string[] }) {

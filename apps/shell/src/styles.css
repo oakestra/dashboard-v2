@@ -1,0 +1,11 @@
+/*
+ * The shell's one stylesheet: @oakestra/ui's global styles plus the sources Tailwind cannot find
+ * on its own. Tailwind detects classes below the Vite root (apps/shell) only, and the linked addon
+ * packages in modules/ are compiled into the shell without a stylesheet or class prefix of their
+ * own, so their classes have to come from here.
+ */
+@import '@oakestra/ui/styles.css';
+
+/* Has to be a file glob: a glob that ends in a directory matches nothing. */
+@source '../../../modules/*/src/**/*.{ts,tsx}';
+@source not '../../../modules/*/src/**/*.test.tsx';

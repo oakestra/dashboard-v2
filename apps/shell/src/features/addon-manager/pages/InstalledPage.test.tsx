@@ -19,7 +19,7 @@ vi.mock('../api/polling', () => ({
   REVIEW_SLOW_AFTER_MS: 500,
 }));
 
-const base = { sdk: '^0.1.0', entry: 'http://x/mf-manifest.json' };
+const base = { sdk: '^0.1.0', entry: 'http://x/mf-manifest.json', origin: 'manager' as const };
 
 function renderInstalled(options: Partial<Parameters<typeof renderApp>[0]> = {}) {
   return renderApp({
@@ -52,6 +52,7 @@ describe('<InstalledPage>', () => {
       setEntry(services.addons, {
         ...base,
         name: 'example',
+        basePath: '/addons/example',
         version: '0.1.0',
         state: 'loaded',
         definition: { id: 'example' },
@@ -76,6 +77,7 @@ describe('<InstalledPage>', () => {
       setEntry(services.addons, {
         ...base,
         name: 'example',
+        basePath: '/addons/example',
         version: '0.1.0',
         state: 'failed',
         error: 'manifest 502',
@@ -83,6 +85,7 @@ describe('<InstalledPage>', () => {
       setEntry(services.addons, {
         ...base,
         name: 'analytics',
+        basePath: '/addons/analytics',
         version: '1.0.0',
         sdk: '^9.0.0',
         state: 'incompatible',
@@ -297,6 +300,7 @@ describe('<InstalledPage>', () => {
       setEntry(services.addons, {
         ...base,
         name: 'local-dev',
+        basePath: '/addons/local-dev',
         version: '0.0.1',
         state: 'loaded',
         definition: { id: 'local-dev', label: 'Local dev' },
@@ -308,6 +312,58 @@ describe('<InstalledPage>', () => {
     // The UI's own label, with the addon name it was registered under.
     expect(row).toHaveTextContent('Local devlocal-dev');
     expect(screen.queryByTestId('unmatched-ui-example')).not.toBeInTheDocument();
+  });
+
+  it('labels preset addons as part of the deployment and lists their nav item keys', async () => {
+    const { services } = renderInstalled();
+    act(() => {
+      setEntry(services.addons, {
+        ...base,
+        name: 'acme-billing',
+        origin: 'preset',
+        basePath: '/billing',
+        version: '2.0.0',
+        state: 'loaded',
+        definition: {
+          id: 'acme-billing',
+          label: 'Billing',
+          contributions: {
+            'nav.items': [{ id: 'billing', label: 'Billing', path: '/', order: 1 }],
+          },
+        },
+      });
+    });
+
+    const card = await screen.findByTestId('preset-uis');
+    expect(card).toHaveTextContent('Part of this deployment');
+    expect(within(card).getByTestId('unmatched-ui-acme-billing')).toHaveTextContent(
+      'addon:acme-billing:billing',
+    );
+    expect(within(card).queryByRole('button', { name: /disable|remove/i })).toBeNull();
+    expect(screen.queryByTestId('unmatched-uis')).not.toBeInTheDocument();
+  });
+
+  it('shows the nav item keys of an installed addon in its detail sheet', async () => {
+    const { user, services } = renderInstalled();
+    await rowOf('example');
+    act(() => {
+      setEntry(services.addons, {
+        ...base,
+        name: 'example',
+        basePath: '/addons/example',
+        version: '1.0.0',
+        state: 'loaded',
+        definition: {
+          id: 'example',
+          contributions: { 'nav.items': [{ id: 'home', label: 'Example', path: '/' }] },
+        },
+      });
+    });
+    await user.click(await rowOf('example'));
+
+    expect(
+      await within(await screen.findByTestId('addon-detail')).findByTestId('nav-item-keys'),
+    ).toHaveTextContent('addon:example:home');
   });
 
   it('points to the marketplace when nothing is installed', async () => {

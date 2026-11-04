@@ -15,6 +15,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  plural,
 } from '@oakestra/ui';
 import {
   DownloadIcon,
@@ -27,7 +28,6 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router';
 
-import { plural } from '../../../lib/format';
 import { installedAddonLink } from '../paths';
 import { AddonStatusBadge } from './AddonStatusBadge';
 

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { RouterProvider } from 'react-router';
 
+import type { LinkedAddon } from '../core/addons/linked-addons';
 import { useAddonSync } from '../core/addons/use-addon-sync';
 import type { AppConfig } from '../core/config/config';
 import { watchThemeInOtherTabs } from '../core/theme/theme';
-import { coreModules } from './modules';
+import type { CoreModule } from '../core/modules';
 import { Providers } from './providers';
 import { createAppRouter } from './router';
 import type { AppServices } from './services';
@@ -15,9 +16,18 @@ function AddonRuntime() {
   return null;
 }
 
-export function App({ config, services }: { config: AppConfig; services: AppServices }) {
+interface AppProps {
+  config: AppConfig;
+  /** The modules the preset enables (applyPreset). */
+  modules: readonly CoreModule[];
+  /** The linked addons the preset enables (applyPreset), already registered in `services`. */
+  linked: readonly LinkedAddon[];
+  services: AppServices;
+}
+
+export function App({ config, modules, linked, services }: AppProps) {
   const [router] = useState(() =>
-    createAppRouter(coreModules, {
+    createAppRouter(modules, services.preset, linked, {
       auth: services.auth,
       api: services.api,
       addonsAdmin: services.addonsAdmin,

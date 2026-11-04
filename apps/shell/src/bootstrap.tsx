@@ -1,4 +1,4 @@
-import '@oakestra/ui/styles.css';
+import './styles.css';
 
 import { useHostContext } from '@oakestra/dashboard-sdk';
 import { setMapWorkerUrl } from '@oakestra/ui';
@@ -11,9 +11,11 @@ import { createRoot } from 'react-dom/client';
 
 import { App } from './app/App';
 import { ConfigErrorPage } from './app/errors/ConfigErrorPage';
-import { coreModules } from './app/modules';
+import { coreModules, linkedAddons } from './app/modules';
+import { applyPreset } from './app/preset';
 import { createAppServices } from './app/services';
 import { loadConfig } from './core/config/config';
+import { loadPreset } from './core/config/preset';
 import { installDebugHook } from './core/debug/debug';
 
 setMapWorkerUrl(maplibreWorkerUrl);
@@ -22,13 +24,18 @@ const root = createRoot(document.getElementById('root')!);
 
 try {
   const config = await loadConfig();
+  const { modules, linked, preset } = applyPreset(
+    coreModules,
+    linkedAddons,
+    await loadPreset(config.presetUrl),
+  );
   // `pnpm dev:mock`: the system-manager is replaced by MSW in the browser. Both conditions are
   // constants at build time, so production bundles contain neither MSW nor the fixtures.
   if (import.meta.env.DEV && import.meta.env.MODE === 'mock') {
     const { startMockApi } = await import('./mock-api');
     await startMockApi(config);
   }
-  const services = createAppServices(coreModules, config);
+  const services = createAppServices(modules, config, { preset, linked });
   // Installed before the first render, so addons can report to it from their first effect.
   installDebugHook(
     {
@@ -41,7 +48,7 @@ try {
   );
   root.render(
     <StrictMode>
-      <App config={config} services={services} />
+      <App config={config} modules={modules} linked={linked} services={services} />
     </StrictMode>,
   );
 } catch (error) {

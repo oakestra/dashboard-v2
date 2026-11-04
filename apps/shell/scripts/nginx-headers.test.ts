@@ -41,4 +41,32 @@ describe('nginx proxy locations that serve backend bodies', () => {
     expect(body).toContain('frame-ancestors');
     expect(body).toContain('X-Content-Type-Options');
   });
+
+  it.each([
+    ['= /preset.json', 'no-cache'],
+    ['~ ^/bundled-addons/.+/(mf-manifest\\.json|remoteEntry\\.js)$', 'no-cache'],
+    ['~ ^/bundled-addons/[a-z0-9-]+/assets/', 'public, max-age=31536000, immutable'],
+    ['/bundled-addons/', 'no-cache'],
+  ])(
+    'static location %s repeats the nosniff header and never falls back to the SPA',
+    (selector, cache) => {
+      const body = locationBody(selector);
+      expect(body).toContain(`add_header Cache-Control "${cache}" always;`);
+      expect(body).toContain('add_header X-Content-Type-Options nosniff always;');
+      expect(body).toContain('try_files $uri =404;');
+    },
+  );
+
+  it('revalidates everything bundled addons serve outside assets/, and refuses framing', () => {
+    const body = locationBody('/bundled-addons/');
+    expect(body).not.toContain('immutable');
+    expect(body).toContain(`add_header Content-Security-Policy "frame-ancestors 'none'" always;`);
+  });
+
+  it('marks only content-hashed build output immutable', () => {
+    const immutable = [...template.matchAll(/location ([^{]*)\{([^}]*)\}/g)]
+      .filter(([, , body]) => String(body).includes('immutable'))
+      .map(([, selector]) => String(selector).trim());
+    expect(immutable).toEqual(['~ ^/bundled-addons/[a-z0-9-]+/assets/', '/assets/']);
+  });
 });

@@ -4,6 +4,7 @@
 
 ```ts
 
+import { ComponentType } from 'react';
 import { JSX } from 'react';
 import { OakestraEndpoints } from '@oakestra/api';
 import { QueryClient } from '@tanstack/react-query';
@@ -20,6 +21,28 @@ interface AddonContextValue {
     // (undocumented)
     readonly version: string;
 }
+
+// @public (undocumented)
+interface ApplicationContext {
+    // (undocumented)
+    applicationId: string;
+}
+
+// @public (undocumented)
+interface ClusterContext {
+    // (undocumented)
+    clusterId: string;
+}
+
+// @public (undocumented)
+interface ContributionBase {
+    id: string;
+    order?: number;
+    roles?: readonly Role[];
+}
+
+// @public (undocumented)
+type Contributions = { readonly [P in ExtensionPointId]?: readonly ExtensionPoints[P][]; };
 
 // @public
 export function createMockApi(implementation?: MockApiImplementation): OakestraApi;
@@ -43,14 +66,47 @@ interface CurrentUser {
 }
 
 // @public
+type EmptyContext = Record<never, never>;
+
+// @public (undocumented)
+type ExtensionPointId = keyof ExtensionPoints;
+
+// @public
+interface ExtensionPoints {
+    // (undocumented)
+    'application.detail.tabs': Tab<ApplicationContext>;
+    // (undocumented)
+    'cluster.widgets': Widget<ClusterContext>;
+    // (undocumented)
+    'home.widgets': Widget;
+    // (undocumented)
+    'nav.items': NavItem;
+    // (undocumented)
+    'service.detail.tabs': Tab<ServiceContext>;
+}
+
+// @public
 interface HostContextValue {
     // (undocumented)
     readonly api: OakestraApi;
+    readonly isFeatureEnabled: (id: string) => boolean;
+    readonly links: HostLinks;
     // (undocumented)
     readonly notify: Notify;
     readonly sdkVersion: string;
     // (undocumented)
     readonly user: CurrentUser | null;
+}
+
+// @public
+interface HostLinks {
+    readonly grafanaUrl?: string;
+}
+
+// @public (undocumented)
+interface IconProps {
+    // (undocumented)
+    className?: string;
 }
 
 // @public
@@ -61,6 +117,29 @@ export type MockApiImplementation = { [Group in keyof OakestraEndpoints]?: Parti
     baseUrl?: string;
     fetch?: OakestraApi['fetch'];
 };
+
+// @public
+type NavGroup = 'main' | 'management' | 'addons' | 'footer';
+
+// @public (undocumented)
+interface NavItem extends ContributionBase {
+    children?: readonly NavSubItem[];
+    // (undocumented)
+    group?: NavGroup;
+    // (undocumented)
+    icon?: ComponentType<IconProps>;
+    // (undocumented)
+    label: string;
+    path: string;
+}
+
+// @public
+interface NavSubItem extends ContributionBase {
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    path: string;
+}
 
 // @public (undocumented)
 interface Notify {
@@ -108,6 +187,13 @@ interface OakestraApi extends OakestraEndpoints {
     fetch(path: string, init?: RequestInit): Promise<Response>;
 }
 
+// @public (undocumented)
+interface RenderableContribution<C extends object> extends ContributionBase {
+    // (undocumented)
+    component: ComponentType<C>;
+    visible?: (context: C, user: CurrentUser | null) => boolean;
+}
+
 // @public
 export function renderInHost(ui: ReactElement, options?: RenderInHostOptions): RenderInHostResult;
 
@@ -128,11 +214,27 @@ export type RenderInHostResult = RenderResult & Pick<TestHost, 'user' | 'api' | 
 type Role = KnownRole | (string & {});
 
 // @public (undocumented)
+interface ServiceContext {
+    // (undocumented)
+    applicationId: string;
+    // (undocumented)
+    serviceId: string;
+}
+
+// @public (undocumented)
+interface Tab<C extends object> extends RenderableContribution<C> {
+    // (undocumented)
+    label: string;
+}
+
+// @public (undocumented)
 export interface TestHost {
     // (undocumented)
     readonly addon: AddonContextValue;
     // (undocumented)
     readonly api: OakestraApi;
+    // (undocumented)
+    readonly contributions: Contributions;
     // (undocumented)
     readonly host: HostContextValue;
     // (undocumented)
@@ -150,6 +252,9 @@ export interface TestHostOptions {
     // (undocumented)
     addon?: Partial<AddonContextValue>;
     api?: MockApiImplementation;
+    contributions?: Contributions;
+    features?: readonly string[];
+    links?: HostLinks;
     path?: string;
     route?: string;
     user?: (Partial<CurrentUser> & {
@@ -168,6 +273,16 @@ export interface TestHostProviderProps {
     // (undocumented)
     testHost: TestHost;
 }
+
+// @public (undocumented)
+interface Widget<C extends object = EmptyContext> extends RenderableContribution<C> {
+    size?: WidgetSize;
+    // (undocumented)
+    title: string;
+}
+
+// @public
+type WidgetSize = 'stat' | 'card' | 'wide';
 
 // (No @packageDocumentation comment for this package)
 

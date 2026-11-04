@@ -53,8 +53,25 @@ interface RenderableContribution<C extends object> extends ContributionBase {
   visible?: (context: C, user: CurrentUser | null) => boolean;
 }
 
+/**
+ * Where a widget goes on the overview page (`home.widgets`):
+ *
+ * - `stat`: a tile in the summary row at the top. The component draws the whole tile itself,
+ *   usually a `StatCard`; `title` only names it in error messages.
+ * - `wide`: a full-width section below the summary row. The component draws its own frame,
+ *   usually a `SectionCard`, so it can have a description and actions; `title` only names it.
+ * - `card` (the default): a cell of the widget grid at the bottom, inside a card titled `title`.
+ *
+ * Other slots that take widgets (`cluster.widgets`) ignore it and render every widget as a card.
+ * So do shells that predate it (they drop fields they do not know), and a shell that gets a value
+ * it does not know renders a `card`: draw a `stat` or `wide` widget so it still reads inside one.
+ */
+export type WidgetSize = 'stat' | 'card' | 'wide';
+
 export interface Widget<C extends object = EmptyContext> extends RenderableContribution<C> {
   title: string;
+  /** Layout hint for the overview page, see `WidgetSize`. Defaults to `card`. */
+  size?: WidgetSize;
 }
 
 export interface Tab<C extends object> extends RenderableContribution<C> {

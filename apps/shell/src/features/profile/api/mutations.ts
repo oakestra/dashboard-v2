@@ -1,8 +1,6 @@
 import type { PasswordChange } from '@oakestra/api';
-import { useNotify, useOakestraApi } from '@oakestra/dashboard-sdk';
+import { platformQueryKeys, useNotify, useOakestraApi } from '@oakestra/dashboard-sdk';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-
-import { profileKeys } from './queries';
 
 export function useUpdateEmail(username: string) {
   const api = useOakestraApi();
@@ -15,7 +13,7 @@ export function useUpdateEmail(username: string) {
     onSuccess: async () => {
       notify.success('Email address updated');
       // Returning the promise keeps the mutation pending until the page shows the new value.
-      await queryClient.invalidateQueries({ queryKey: profileKeys.user(username) });
+      await queryClient.invalidateQueries({ queryKey: platformQueryKeys.user(username) });
     },
   });
 }

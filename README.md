@@ -89,10 +89,11 @@ the container starts:
 | ------------------------- | --------------------------- | --------------------------------------------------------------------------- |
 | `API_URL`                 |                             | URL of the system-manager API as the browser sees it, e.g. `https://oakestra.example/api` |
 | `API_ADDRESS`             |                             | Alternative to `API_URL`: `host:port` of the system-manager, becomes `http://<API_ADDRESS>/api` |
-| `GRAFANA_URL`             |                             | Optional. Adds a Grafana link to the sidebar                                |
+| `GRAFANA_URL`             |                             | Optional. Adds a Grafana link to the sidebar and the infrastructure page   |
 | `ADDONS_MANAGER_ADDRESS`  | `root_addons_manager:11101` | Addons manager, reached by nginx (`/ui-addons`, `/addons-api/`)             |
 | `MARKETPLACE_ADDRESS`     | `marketplace_manager:11102` | Marketplace manager, reached by nginx (`/marketplace-api/`)                 |
 | `ADDONS_POLL_INTERVAL_MS` | `15000`                     | How often the dashboard checks for added or removed addon UIs, in milliseconds (at least `1000`) |
+| `PRESET_URL`              |                             | Optional. URL of a [deployment preset](docs/addons/presets.md), e.g. `/preset.json` for a mounted file |
 | `DNS_RESOLVER`            | `127.0.0.11`                | DNS server nginx uses for the upstreams above (Docker's by default)         |
 
 Either `API_URL` or `API_ADDRESS` is required. Example:
@@ -216,7 +217,8 @@ pnpm pack:check   # packs the three packages, copies addons/example out of the r
 ```text
 apps/shell                  The dashboard (host app)
   src/core                  Platform: config, auth, API client, theme, extension registry, addon runtime
-  src/features/<name>       Built-in features: applications, infrastructure, users, addon-manager, ...
+  src/features/<name>       Built-in features: overview, addon-manager, profile, ...
+modules/<name>              Features as addon packages linked into the shell: applications, infrastructure, ...
 packages/dashboard-sdk      The public contract addons build against (@oakestra/dashboard-sdk)
 packages/ui                 Shared UI components and Tailwind theme (@oakestra/ui)
 packages/api                Typed client for the Oakestra system-manager API (@oakestra/api)
@@ -236,4 +238,5 @@ docs                        Documentation
 - [Building addon UIs](docs/addons/README.md): concepts and a step-by-step tutorial.
 - [SDK reference](docs/addons/reference.md): `defineAddon`, extension points, hooks and components.
 - [Packaging an addon](docs/addons/packaging.md): build, container, marketplace entry and versioning.
+- [Deployment presets](docs/addons/presets.md): pick built-in features, rename sidebar items and bundle addons per deployment.
 - [Troubleshooting addons](docs/addons/troubleshooting.md): common problems and how to fix them.

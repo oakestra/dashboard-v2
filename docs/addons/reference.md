@@ -42,15 +42,15 @@ completion. The object must be the **default export** of the module your build e
 
 ### `AddonRoute`
 
-| Field       | Type                    | Description                                                                                                                                                         |
-| ----------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `path`      | `string`                | Relative to the addon base path. Must not start with `/`. Omit it for an index route.                                                                               |
-| `index`     | `boolean`               | `true` for the index route (the page at `/addons/<id>`).                                                                                                            |
-| `Component` | `ComponentType`         | The page component. Without one, the route renders its children.                                                                                                    |
-| `children`  | `readonly AddonRoute[]` | Nested routes. The parent component renders them with `<Outlet />` from `react-router`.                                                                             |
-| `roles`     | `readonly Role[]`       | Optional. Only users with at least one of these roles may open the route and its children; others get the shell's "Access denied" page. Empty or missing: everyone. |
-| `crumb`     | `string`                | Optional. Breadcrumb label of the route, linking to its matched path. Routes without one add no breadcrumb.                                                         |
-| `fullWidth` | `boolean`               | Optional. `true` lets the page fill the width next to the sidebar instead of the shell's centered column. Inherited by children; a child can set `false` again.     |
+| Field       | Type                                       | Description                                                                                                                                                         |
+| ----------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`      | `string`                                   | Relative to the addon base path. Must not start with `/`. Omit it for an index route.                                                                               |
+| `index`     | `boolean`                                  | `true` for the index route (the page at `/addons/<id>`).                                                                                                            |
+| `Component` | `ComponentType`                            | The page component. Without one, the route renders its children.                                                                                                    |
+| `children`  | `readonly AddonRoute[]`                    | Nested routes. The parent component renders them with `<Outlet />` from `react-router`.                                                                             |
+| `roles`     | `readonly Role[]`                          | Optional. Only users with at least one of these roles may open the route and its children; others get the shell's "Access denied" page. Empty or missing: everyone. |
+| `crumb`     | `string \| ComponentType<AddonCrumbProps>` | Optional. Breadcrumb of the route, linking to its matched path: a label, or a component that renders one (see below). Routes without one add no breadcrumb.         |
+| `fullWidth` | `boolean`                                  | Optional. `true` lets the page fill the width next to the sidebar instead of the shell's centered column. Inherited by children; a child can set `false` again.     |
 
 How addon routes behave:
 
@@ -66,6 +66,23 @@ How addon routes behave:
 - The breadcrumb trail is `Home`, then the addon's `label` (its `id` while the addon is loading,
   failed or has no label), then the `crumb` of every matched route that has one, outermost first.
   On `/addons/flops/jobs/7` with the routes below, that is `Home > FLOps > Jobs > Job`.
+- A `crumb` component shows a label that depends on the URL, such as the name of the cluster a
+  page is about. It gets `{ params }` (the matched route params) and renders in the header, not
+  inside your page, so it fetches on its own, typically with the same query the page uses (one
+  cache entry, no extra request). The SDK hooks work in it. While it suspends or after it throws,
+  the crumb shows the last path segment.
+
+  ```tsx
+  function ClusterCrumb({ params }: AddonCrumbProps) {
+    const { data } = useQuery({
+      ...clustersQuery(useOakestraApi()),
+      select: (clusters) => clusters.find((c) => c._id === params.clusterId)?.cluster_name,
+    });
+    return data ?? params.clusterId;
+  }
+  // { path: 'clusters/:clusterId', crumb: ClusterCrumb, Component: ClusterPage }
+  ```
+
 - `roles` on a route is checked by the shell against the current user. It also guards every child
   route, and a child can restrict further. A denied page shows the same "Access denied" page as
   core pages; the sidebar and breadcrumbs stay. For a denied child, it appears in the parent's
@@ -133,7 +150,8 @@ fails, the addon gets the state `failed` and nothing of it is shown. It is rejec
 - `id` is missing, empty or differs from the name in `/ui-addons`, or `label` is set but empty,
 - a route `path` starts with `/`, or `Component` is not a React component (a function or a
   `memo`/`lazy`/`forwardRef` object; a JSX element is not caught here and fails when it renders),
-- a route's `roles` is not a list of strings, its `crumb` is not a non-empty string, or its
+- a route's `roles` is not a list of strings, its `crumb` is neither a non-empty string nor a
+  React component, or its
   `fullWidth` is not a boolean,
 - a contribution misses a required field (`id`, `label`/`title`, `component`, `path`), or a field
   has the wrong type (for example `order` that is not a finite number),
@@ -157,7 +175,7 @@ type Contributions = {
 | Point id                  | Item type                 | Context props                  | Rendered at                                                                                                               |
 | ------------------------- | ------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
 | `nav.items`               | `NavItem`                 | none (not a component)         | Sidebar                                                                                                                   |
-| `home.widgets`            | `Widget`                  | `{}`                           | Overview page `/`, widget grid                                                                                            |
+| `home.widgets`            | `Widget`                  | `{}`                           | Overview page `/`: summary row, sections or widget grid, by [`size`](#widget-sizes-on-the-overview)                       |
 | `application.detail.tabs` | `Tab<ApplicationContext>` | `{ applicationId }`            | `/applications/:appId`, tab list after "Services"                                                                         |
 | `service.detail.tabs`     | `Tab<ServiceContext>`     | `{ applicationId, serviceId }` | `/applications/:appId/services/:serviceId`, tab list after "JSON"                                                         |
 | `cluster.widgets`         | `Widget<ClusterContext>`  | `{ clusterId }`                | `/infrastructure/clusters/:clusterId`, bottom of the page (only `Admin` and `Infrastructure_Provider` can open this page) |
@@ -284,11 +302,45 @@ extension points` and shows no panel.
 
 ### `Widget<C>` (`home.widgets`, `cluster.widgets`)
 
-| Field       | Type                                                 | Description                                       |
-| ----------- | ---------------------------------------------------- | ------------------------------------------------- |
-| `title`     | `string`                                             | Required. The shell renders it as the card title. |
-| `component` | `ComponentType<C>`                                   | Required. Rendered inside the card.               |
-| `visible`   | `(context: C, user: CurrentUser \| null) => boolean` | Optional. See [`visible`](#visible).              |
+| Field       | Type                                                 | Description                                                                                   |
+| ----------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `title`     | `string`                                             | Required. The card title, and the name in error messages.                                     |
+| `component` | `ComponentType<C>`                                   | Required. Rendered inside the card (or on its own, see `size`).                               |
+| `size`      | `'stat' \| 'card' \| 'wide'`                         | Optional, `home.widgets` only. Where the overview puts the widget, default `card`. See below. |
+| `visible`   | `(context: C, user: CurrentUser \| null) => boolean` | Optional. See [`visible`](#visible).                                                          |
+
+#### Widget sizes on the overview
+
+The overview page lays `home.widgets` out in three places, top to bottom, each sorted by `order`
+on its own:
+
+| `size`           | Where                                                  | Frame                                                                                     |
+| ---------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| `stat`           | Summary row at the top (2 columns, 4 on large screens) | None: render the whole tile, usually a `StatCard` from `@oakestra/ui`. It fills the cell. |
+| `wide`           | Full-width sections below the summary row              | None: render your own section, usually a `SectionCard` (title, description, actions).     |
+| `card` (default) | Grid at the bottom (2 columns from `md`, 3 from `xl`)  | A card with `title` as its heading.                                                       |
+
+A `stat` or `wide` widget that renders nothing (`return null`) takes no space. `cluster.widgets`
+ignores `size` and renders every widget as a card. A shell older than the field, or one that gets
+a value it does not know, renders a `card` (an unknown value is logged, not rejected), so draw a
+`stat` tile that still reads inside a card.
+
+The built-in tiles and sections come from the linked feature packages the same way, so a
+deployment that leaves a package out loses its tiles. Their ids (`<addon>:<widget>`, as in the
+`data-widget-id` attribute of each widget's wrapper) and orders leave room for your own:
+
+| Widget                             | `size` | `order` | Visible to                                                             |
+| ---------------------------------- | ------ | ------- | ---------------------------------------------------------------------- |
+| `applications:applications`        | `stat` | 100     | everyone                                                               |
+| `applications:services`            | `stat` | 200     | everyone                                                               |
+| `applications:instances`           | `stat` | 300     | everyone                                                               |
+| `infrastructure:clusters`          | `stat` | 400     | everyone (links to the page for `Admin` and `Infrastructure_Provider`) |
+| `applications:needs-attention`     | `wide` | 100     | everyone with services (hidden for someone without any)                |
+| `applications:recent-applications` | `wide` | 200     | everyone (first steps for someone without applications)                |
+
+A quota tile between instances and clusters is `{ id: 'quota', title: 'Quota', size: 'stat',
+order: 350, component: QuotaTile }`. Presets cannot hide or move single widgets; leave the
+package out, or replace it with your own addon under its name (see [presets](presets.md)).
 
 ### `Tab<C>` (`application.detail.tabs`, `service.detail.tabs`)
 
@@ -310,6 +362,33 @@ extension points` and shows no panel.
 The shell spreads the context into your component's props: `<YourComponent {...context} />`.
 TypeScript checks that the component accepts the context of its point. `SlotContext<P>` gives
 the context type of a point, for example `SlotContext<'cluster.widgets'>`.
+
+### Hosting a slot with `<Slot>`
+
+An addon page can host an extension point itself, so the shell and other addons can contribute
+to it:
+
+```tsx
+import { Slot } from '@oakestra/dashboard-sdk';
+
+<Slot
+  point="application.detail.tabs"
+  context={{ applicationId }}
+  empty={<p>No extensions installed.</p>}
+  render={(item, content, source) => <Card title={item.label}>{content}</Card>}
+/>;
+```
+
+- `point` is any extension point except `nav.items`. `context` is required unless the point's
+  context is empty, and is spread into each contributed component.
+- `render` wraps each contribution; `content` is already inside an error boundary. `source` is
+  `{ kind: 'core' | 'addon'; id: string; label: string }` (`SlotSource`).
+- `empty` renders when nothing is contributed or nothing is visible to the user. It also renders
+  outside a host, e.g. in a plain unit test.
+- `wrap(children)` wraps all rendered contributions together and only runs when there is at
+  least one, for chrome that must not appear for an empty slot. The applications package uses it
+  for its tab list: without contributed tabs, `empty` shows the page without tabs.
+- `roles`, `visible` and `order` apply exactly as for the shell's own slots.
 
 ### `visible`
 
@@ -388,7 +467,9 @@ All hooks read React context that the shell provides. They only work inside the 
 | `useAddonContext()`                | `AddonContextValue`            | addon pages and addon contributions | `{ addonId, version, basePath }` of the addon the component belongs to.                                           |
 | `useAddonBasePath()`               | `string`                       | addon pages and addon contributions | `basePath` from `useAddonContext()`, for example `/addons/insights`.                                              |
 | `useAddonPath()`                   | `(...segments) => string`      | addon pages and addon contributions | Builds links below the base path, see below.                                                                      |
-| `useHostContext()`                 | `HostContextValue`             | anywhere in the shell               | Everything at once: `{ sdkVersion, user, api, notify }`. `sdkVersion` is the shell's SDK version.                 |
+| `useFeatureEnabled(id)`            | `boolean`                      | anywhere in the shell               | Whether the deployment enables the feature `id` (a built-in module id or addon name), see below.                  |
+| `useHostLinks()`                   | `HostLinks`                    | anywhere in the shell               | Links to services next to the dashboard the deployment configures: `{ grafanaUrl? }`. See below.                  |
+| `useHostContext()`                 | `HostContextValue`             | anywhere in the shell               | Everything at once: `{ sdkVersion, user, api, notify, ... }`. `sdkVersion` is the shell's SDK version.            |
 | `addonQueryKey(addonId, ...parts)` | `['addon', addonId, ...parts]` | anywhere (plain function)           | Query key prefix, see [Data fetching rules](#data-fetching-rules).                                                |
 | `hasAnyRole(user, roles)`          | `boolean`                      | anywhere (plain function)           | `true` if `roles` is empty or missing, or the user has one of them. `false` for `null` user and a non-empty list. |
 | `describeError(error)`             | `string`                       | anywhere (plain function)           | A sentence for a toast or an inline error, see [The API client](#the-api-client).                                 |
@@ -401,6 +482,25 @@ the Oakestra dashboard shell...` when it finds no shell. Inside the shell this m
 - `useAddonContext()` throws `useAddonContext() can only be used inside UI contributed by an
 addon.` outside addon pages and contributions. Nav item icons are rendered outside this
   context, so do not call it in an icon.
+
+`useFeatureEnabled(id)` answers from the deployment's [preset](presets.md): `true` for a built-in
+module or linked module the preset enables (all of them without a preset) and for its own addons,
+`false` otherwise. Guard every link into another feature with it, so a deployment without that
+feature shows no dead link: `useFeatureEnabled('applications') && <Link to="/applications">`.
+Addons installed through the addons manager are not covered.
+
+`useHostLinks()` returns the external links of the deployment's runtime config, today
+`grafanaUrl` (the shell's `GRAFANA_URL`). Every field is optional, so render the link only when it
+is set:
+
+```tsx
+const { grafanaUrl } = useHostLinks();
+grafanaUrl ? (
+  <a href={grafanaUrl} target="_blank" rel="noreferrer">
+    Open Grafana
+  </a>
+) : null;
+```
 
 `useAddonPath()` returns `addonPath(...segments: (string | number)[]): string`. Every argument is
 one path segment and is URI-encoded, so ids with `/`, `?` or spaces stay one segment and
@@ -647,7 +747,21 @@ export function ScaleUpTab({ serviceId }: ServiceContext) {
 }
 ```
 
-Invalidate your own keys. The shell's query keys are not part of the SDK contract.
+Invalidate your own keys. The shell's query keys are not part of the SDK contract, with one
+exception: the **platform queries** the SDK exports, which the shell uses itself. Use them instead
+of fetching the same data under your own key, so the page shares the shell's cache entry and poll:
+
+| Export                                           | Data                                                                                                                                                                                                        |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `clustersQuery(api)`                             | `GET /clusters/`, every cluster, polled every `CLUSTER_REFETCH_MS` (30s). Add `select` for one.                                                                                                             |
+| `profileQuery(api, username)`                    | `GET /user/{name}` of the current user (`useCurrentUser().username`), the only source of `_id`.                                                                                                             |
+| `applicationsQuery(api, userId)`                 | The applications of one user (`userId` is the `_id` from `profileQuery`).                                                                                                                                   |
+| `servicesByApplicationQuery(api, applicationId)` | The services of one application.                                                                                                                                                                            |
+| `platformQueryKeys`                              | Their keys (`all`, `clusters()`, `user(username)`, `applications()`, `services()`, ...), for `invalidateQueries`. A change to an application or its services invalidates `applications()` and `services()`. |
+
+```tsx
+const clusters = useQuery(clustersQuery(useOakestraApi()));
+```
 
 ## `@oakestra/ui`
 
@@ -672,12 +786,13 @@ by color.
 
 **Subpath entries**, each a separate shared chunk that is only downloaded by pages that import it:
 
-| Import                    | Contents                                                                                                                                                                                                                                                               |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@oakestra/ui/chart`      | `ChartContainer`, `ChartTooltip`, `ChartTooltipContent`, `ChartLegend`, `ChartLegendContent`, `ChartStyle`, `type ChartConfig`, and the Recharts parts `LineChart`, `AreaChart`, `BarChart`, `Line`, `Area`, `Bar`, `XAxis`, `YAxis`, `CartesianGrid`, `ReferenceLine` |
-| `@oakestra/ui/data-table` | `DataTable`, `createDataTableColumnHelper`, types `DataTableColumnDef`, `DataTableColumnMeta`, `DataTableProps` (TanStack Table v9)                                                                                                                                    |
-| `@oakestra/ui/command`    | `Command`, `CommandDialog`, `CommandInput`, `CommandList`, `CommandItem`, ... (cmdk)                                                                                                                                                                                   |
-| `@oakestra/ui/map`        | `Map`, `MapMarker`, `MarkerTooltip`, `MapControls`, `MapGeoJSON`, `useMap`, ... (MapLibre GL)                                                                                                                                                                          |
+| Import                      | Contents                                                                                                                                                                                                                                                               |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@oakestra/ui/chart`        | `ChartContainer`, `ChartTooltip`, `ChartTooltipContent`, `ChartLegend`, `ChartLegendContent`, `ChartStyle`, `type ChartConfig`, and the Recharts parts `LineChart`, `AreaChart`, `BarChart`, `Line`, `Area`, `Bar`, `XAxis`, `YAxis`, `CartesianGrid`, `ReferenceLine` |
+| `@oakestra/ui/data-table`   | `DataTable`, `createDataTableColumnHelper`, types `DataTableColumnDef`, `DataTableColumnMeta`, `DataTableProps` (TanStack Table v9)                                                                                                                                    |
+| `@oakestra/ui/command`      | `Command`, `CommandDialog`, `CommandInput`, `CommandList`, `CommandItem`, ... (cmdk)                                                                                                                                                                                   |
+| `@oakestra/ui/map`          | `Map`, `MapMarker`, `MarkerTooltip`, `MapControls`, `MapGeoJSON`, `useMap`, ... (MapLibre GL)                                                                                                                                                                          |
+| `@oakestra/ui/location-map` | `LocationMap`, `toMapLocation` (markers and radius circles; MapLibre loads only when a map renders)                                                                                                                                                                    |
 
 Import charts from `@oakestra/ui/chart`, never from `recharts` directly:
 
@@ -752,8 +867,15 @@ it('shows the cluster names', async () => {
   afterwards.
 - `api` is a partial `OakestraApi`: give only the endpoints the component calls. Calling anything
   else throws `api.<group>.<method>() was called, but this test did not mock it`.
+- `contributions` fills the slots the component hosts with `<Slot>` (same shape as
+  `AddonDefinition.contributions`); roles, `visible` and `order` are applied, but there are no
+  error boundaries. Without it every `<Slot>` renders its `empty`.
 - `notify` records its calls (`notify.calls`, `{ level, message, options? }`; `notify.clear()`),
   independent of the test runner.
+- `features` lists the features `useFeatureEnabled()` reports as enabled. Without it every
+  feature counts as enabled.
+- `links` is what `useHostLinks()` returns, e.g. `{ grafanaUrl: 'https://grafana.example' }`.
+  Without it there are no links.
 
 For your own render function there are smaller pieces: `createTestHost(options)` returns the
 context values (`host`, `addon`, `user`, `api`, `notify`, `route`), `TestHostProvider` renders them
@@ -770,19 +892,19 @@ Addons are built and deployed separately from the shell, so they can only use wh
 runtime. The ESLint config (`packages/eslint-config/index.js`) enforces this for every file in
 `addons/**`:
 
-| Import                                                                  | Allowed?                                     |
-| ----------------------------------------------------------------------- | -------------------------------------------- |
-| Your own files (inside `addons/<your-addon>/`)                          | Yes                                          |
-| `@oakestra/dashboard-sdk`, `@oakestra/dashboard-sdk/federation`         | Yes (`/federation` in `vite.config.ts`)      |
-| `@oakestra/dashboard-sdk/vite`                                          | `vite.config.ts` and `vitest.config.ts` only |
-| `virtual:oakestra-addon` (`ADDON_ID`, provided by `oakestraAddon()`)    | Yes                                          |
-| `@oakestra/dashboard-sdk/testing`                                       | Test files only (`*.test.ts(x)`)             |
-| `@oakestra/ui`, `@oakestra/ui/chart`, `/data-table`, `/command`, `/map` | Yes                                          |
-| `@oakestra/ui/theme.css` (and other `@oakestra/ui/*.css`)               | Yes                                          |
-| `@oakestra/api`                                                         | **Types only** (`import type`)               |
-| Any other `@oakestra/*` package, any `@oakestra/*/src/...` path         | No                                           |
-| Files of the shell or of another addon                                  | No                                           |
-| Third-party npm packages                                                | Not restricted by lint. See below.           |
+| Import                                                                                   | Allowed?                                     |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Your own files (inside `addons/<your-addon>/`)                                           | Yes                                          |
+| `@oakestra/dashboard-sdk`, `@oakestra/dashboard-sdk/federation`                          | Yes (`/federation` in `vite.config.ts`)      |
+| `@oakestra/dashboard-sdk/vite`                                                           | `vite.config.ts` and `vitest.config.ts` only |
+| `virtual:oakestra-addon` (`ADDON_ID`, provided by `oakestraAddon()`)                     | Yes                                          |
+| `@oakestra/dashboard-sdk/testing`                                                        | Test files only (`*.test.ts(x)`)             |
+| `@oakestra/ui`, `@oakestra/ui/chart`, `/data-table`, `/command`, `/map`, `/location-map` | Yes                                          |
+| `@oakestra/ui/theme.css` (and other `@oakestra/ui/*.css`)                                | Yes                                          |
+| `@oakestra/api`                                                                          | **Types only** (`import type`)               |
+| Any other `@oakestra/*` package, any `@oakestra/*/src/...` path                          | No                                           |
+| Files of the shell or of another addon                                                   | No                                           |
+| Third-party npm packages                                                                 | Not restricted by lint. See below.           |
 
 Third-party packages:
 
@@ -797,14 +919,17 @@ Third-party packages:
 
 The SDK also exports these. Most addons do not need them.
 
-| Export                                                                                                                                                                                            | Description                                                                                       |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `SDK_VERSION`                                                                                                                                                                                     | SDK version string, `'0.1.0'`.                                                                    |
-| `EXTENSION_POINT_IDS`                                                                                                                                                                             | Array of all extension point ids.                                                                 |
-| `HostContext`, `AddonContext`                                                                                                                                                                     | The React contexts behind the hooks. Use the hooks instead; tests can use the providers.          |
-| `HostContextValue`, `AddonContextValue`                                                                                                                                                           | Types of the context values.                                                                      |
-| `ExtensionPoints`, `ExtensionPointId`, `RenderablePointId`, `SlotContext`, `Contributions`, `ContributionBase`, `NavItem`, `NavSubItem`, `NavGroup`, `Widget`, `Tab`, `IconProps`, `EmptyContext` | Types for extension points.                                                                       |
-| `Permissions`, `Notify`, `NotifyOptions`, `CurrentUser`, `Role`, `KnownRole`, `OakestraApi`                                                                                                       | Types used by the hooks.                                                                          |
-| `@oakestra/dashboard-sdk/vite`: `oakestraAddon`, `OakestraAddonOptions`                                                                                                                           | The Vite plugin for addons, see [packaging](packaging.md#build-configuration).                    |
-| `@oakestra/dashboard-sdk/vite/client`                                                                                                                                                             | Types of `virtual:oakestra-addon`, for `compilerOptions.types` in `tsconfig.json`.                |
-| `@oakestra/dashboard-sdk/federation`: `sharedDeps`, `withoutFallback`                                                                                                                             | The shared config that `oakestraAddon()` uses, see [packaging](packaging.md#shared-dependencies). |
+| Export                                                                                                                                                                                                          | Description                                                                                                       |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `SDK_VERSION`                                                                                                                                                                                                   | SDK version string, `'0.1.0'`.                                                                                    |
+| `EXTENSION_POINT_IDS`                                                                                                                                                                                           | Array of all extension point ids.                                                                                 |
+| `HostContext`, `AddonContext`                                                                                                                                                                                   | The React contexts behind the hooks. Use the hooks instead; tests can use the providers.                          |
+| `Slot`, `SlotProps`, `SlotSource`, `SlotRendererContext`                                                                                                                                                        | Host an extension point (see above). `SlotRendererContext` is how the shell provides the renderer; do not use it. |
+| `HostContextValue`, `AddonContextValue`, `HostLinks`                                                                                                                                                            | Types of the context values.                                                                                      |
+| `AddonCrumbProps`                                                                                                                                                                                               | Props of a `crumb` component: `{ params }`.                                                                       |
+| `ExtensionPoints`, `ExtensionPointId`, `RenderablePointId`, `SlotContext`, `Contributions`, `ContributionBase`, `NavItem`, `NavSubItem`, `NavGroup`, `Widget`, `WidgetSize`, `Tab`, `IconProps`, `EmptyContext` | Types for extension points.                                                                                       |
+| `seedFromLists`, `useSearchParam`                                                                                                                                                                               | Query-cache seeding for route-less detail pages and one URL search param as state. See the API report.            |
+| `Permissions`, `Notify`, `NotifyOptions`, `CurrentUser`, `Role`, `KnownRole`, `OakestraApi`                                                                                                                     | Types used by the hooks.                                                                                          |
+| `@oakestra/dashboard-sdk/vite`: `oakestraAddon`, `OakestraAddonOptions`                                                                                                                                         | The Vite plugin for addons, see [packaging](packaging.md#build-configuration).                                    |
+| `@oakestra/dashboard-sdk/vite/client`                                                                                                                                                                           | Types of `virtual:oakestra-addon`, for `compilerOptions.types` in `tsconfig.json`.                                |
+| `@oakestra/dashboard-sdk/federation`: `sharedDeps`, `withoutFallback`                                                                                                                                           | The shared config that `oakestraAddon()` uses, see [packaging](packaging.md#shared-dependencies).                 |

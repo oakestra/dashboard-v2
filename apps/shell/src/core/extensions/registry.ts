@@ -41,6 +41,14 @@ export function sourceKey(source: Pick<ContributionSource, 'kind' | 'id'>): stri
   return `${source.kind}:${source.id}`;
 }
 
+/** The key a preset's `nav.items` uses for a top-level nav item, e.g. `core:settings:settings`. */
+export function navItemKey(
+  source: Pick<ContributionSource, 'kind' | 'id'>,
+  itemId: string,
+): string {
+  return `${sourceKey(source)}:${itemId}`;
+}
+
 export function createContributionRegistry(): ContributionRegistry {
   let sequence = 0;
   return createStore<ContributionRegistryState>()((set) => ({
@@ -63,6 +71,11 @@ export function createContributionRegistry(): ContributionRegistry {
 
 const UNORDERED = Number.MAX_SAFE_INTEGER;
 
+/** Items without an `order` go last. `sort` is stable, so ties keep their position. */
+export function compareOrder(a: number | undefined, b: number | undefined): number {
+  return (a ?? UNORDERED) - (b ?? UNORDERED);
+}
+
 /**
  * Flattens all contributions to `point`, drops the ones the user may not see and sorts the rest.
  *
@@ -82,9 +95,7 @@ export function selectContributions<P extends ExtensionPointId>(
       result.push({ item, source, sequence });
     }
   }
-  result.sort(
-    (a, b) => (a.item.order ?? UNORDERED) - (b.item.order ?? UNORDERED) || a.sequence - b.sequence,
-  );
+  result.sort((a, b) => compareOrder(a.item.order, b.item.order) || a.sequence - b.sequence);
   return result.map(({ item, source }) => ({ item, source }));
 }
 

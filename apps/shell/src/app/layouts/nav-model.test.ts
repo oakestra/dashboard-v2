@@ -2,7 +2,7 @@ import type { CurrentUser, NavItem } from '@oakestra/dashboard-sdk';
 import { describe, expect, it } from 'vitest';
 
 import type { ResolvedContribution } from '../../core/extensions/registry';
-import { buildNavEntries, findActiveKey } from './nav-model';
+import { applyNavOverrides, buildNavEntries, findActiveKey } from './nav-model';
 
 const source = { kind: 'core', id: 'demo', label: 'Demo' } as const;
 const resolve = (...items: NavItem[]): ResolvedContribution<'nav.items'>[] =>
@@ -74,5 +74,61 @@ describe('findActiveKey', () => {
   it('matches "/" only exactly and does not match path prefixes of other segments', () => {
     expect(findActiveKey(entries, '/')).toBe('core:demo:home');
     expect(findActiveKey(entries, '/addons/xy')).toBeUndefined();
+  });
+});
+
+describe('applyNavOverrides', () => {
+  const entries = buildNavEntries(
+    resolve(
+      { id: 'a', label: 'A', path: '/a', order: 1 },
+      {
+        id: 'b',
+        label: 'B',
+        path: '/b',
+        order: 2,
+        children: [{ id: 'c', label: 'C', path: '/b/c' }],
+      },
+      { id: 'c', label: 'C', path: '/c' },
+      { id: 'd', label: 'D', path: '/d' },
+    ),
+    null,
+  );
+  const labels = (list: ReturnType<typeof applyNavOverrides>) => list.map((e) => e.item.label);
+
+  it('returns the entries untouched without overrides', () => {
+    expect(applyNavOverrides(entries, {})).toEqual(entries);
+  });
+
+  it('replaces label, order and group, and keeps the key and the sub-items', () => {
+    const result = applyNavOverrides(entries, {
+      'core:demo:b': { label: 'Bee', order: 0, group: 'management' },
+    });
+    expect(labels(result)).toEqual(['Bee', 'A', 'C', 'D']);
+    expect(result[0]).toMatchObject({ key: 'core:demo:b', item: { group: 'management' } });
+    expect(result[0]?.children.map((child) => child.key)).toEqual(['core:demo:b/c']);
+  });
+
+  it('drops hidden entries', () => {
+    expect(labels(applyNavOverrides(entries, { 'core:demo:a': { hidden: true } }))).toEqual([
+      'B',
+      'C',
+      'D',
+    ]);
+  });
+
+  it('keeps the current position among items with the same order', () => {
+    // C and D are unordered and stay in registration order; giving D the same order as A puts it
+    // right behind A rather than in front.
+    const result = applyNavOverrides(entries, { 'core:demo:d': { order: 1 } });
+    expect(labels(result)).toEqual(['A', 'D', 'B', 'C']);
+  });
+
+  it('ignores keys that match nothing', () => {
+    expect(labels(applyNavOverrides(entries, { 'core:demo:nope': { hidden: true } }))).toEqual([
+      'A',
+      'B',
+      'C',
+      'D',
+    ]);
   });
 });

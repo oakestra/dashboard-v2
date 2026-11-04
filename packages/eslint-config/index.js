@@ -17,11 +17,15 @@ const elements = [
   // Presentational components and helpers shared by several features; no feature knowledge.
   { type: 'shell-shared', pattern: ['apps/shell/src/components', 'apps/shell/src/lib'] },
   { type: 'shell-test', pattern: 'apps/shell/src/test' },
+  // Shell-level tests of the linked addon packages (real router, layout, MSW backend).
+  { type: 'shell-linked-test', pattern: 'apps/shell/src/linked' },
   { type: 'sdk', pattern: 'packages/dashboard-sdk' },
   { type: 'ui', pattern: 'packages/ui' },
   { type: 'api', pattern: 'packages/api' },
   { type: 'mocks', pattern: 'packages/mocks' },
   { type: 'addon', pattern: 'addons/*', capture: ['addon'] },
+  // Addon packages linked into the shell: written against the SDK only, like addons/*.
+  { type: 'module', pattern: 'modules/*', capture: ['module'] },
   { type: 'tool', pattern: 'tools/*', capture: ['tool'] },
   { type: 'e2e', pattern: 'e2e' },
 ];
@@ -44,6 +48,8 @@ const policies = [
     'shell-shared',
     'shell-feature',
     'shell-test',
+    // app/modules.ts links the addon packages into the shell.
+    'module',
     ...shellShared,
   ),
   // Core is the platform features build on; it must not depend on any feature. `mocks` is for
@@ -51,6 +57,16 @@ const policies = [
   allow('shell-core', 'shell-core', 'shell-test', 'mocks', ...shellShared),
   // The test helpers render the real app (providers, router, layouts) around what is tested.
   allow('shell-test', 'shell-core', 'shell-app', 'mocks', ...shellShared),
+  allow(
+    'shell-linked-test',
+    'shell-linked-test',
+    'shell-test',
+    'shell-app',
+    'shell-core',
+    'module',
+    'mocks',
+    ...shellShared,
+  ),
   // Shared components sit between core and features: they may use the platform, not features.
   allow('shell-shared', 'shell-shared', 'shell-core', ...shellShared),
   // Features may use core, shared components and their own files. Other features only through
@@ -90,6 +106,17 @@ const policies = [
   },
   // `api` for types only, see addonImportRestrictions.
   allow('addon', 'sdk', 'ui', 'api'),
+  // Module packages follow the addon rules, so any of them can later be built as a remote. They
+  // never import each other: cross-package links go through URLs and useFeatureEnabled().
+  {
+    from: { element: { type: 'module' } },
+    allow: {
+      to: {
+        element: { type: 'module', captured: { module: '{{ from.element.captured.module }}' } },
+      },
+    },
+  },
+  allow('module', 'sdk', 'ui', 'api'),
   {
     from: { element: { type: 'tool' } },
     allow: {
@@ -132,6 +159,7 @@ const addonImportRestrictions = {
         '!@oakestra/ui/data-table',
         '!@oakestra/ui/command',
         '!@oakestra/ui/map',
+        '!@oakestra/ui/location-map',
         '!@oakestra/ui/*.css',
         '!@oakestra/api',
       ],
@@ -174,6 +202,46 @@ const addonConfigImportRestrictions = {
 };
 
 /**
+ * Module packages (modules/*) get the addon rules minus what only a remote build has: no
+ * stylesheet (the shell's Tailwind scans them, without a prefix), no federation config and no
+ * `virtual:oakestra-addon`, which only the SDK's Vite plugin provides.
+ */
+const moduleOnlyPatterns = [
+  {
+    group: ['@oakestra/ui/*.css', '@oakestra/dashboard-sdk/federation', 'virtual:oakestra-addon'],
+    message:
+      'Linked module packages have no stylesheet, federation config or virtual:oakestra-addon; write the addon id as a literal.',
+  },
+];
+// Unlike remote addons, linked packages may use @oakestra/api at runtime (schemas,
+// parseClusterLocation): it is stateless, so the copy a later remote build would bundle is
+// harmless. The API client itself still comes from useOakestraApi(), so the factories stay banned.
+const moduleApiPaths = [
+  {
+    name: '@oakestra/api',
+    importNames: [
+      'createOakestraApi',
+      'createOakestraClient',
+      'createAddonsClient',
+      'createAddonsManagerApi',
+      'createMarketplaceApi',
+    ],
+    allowTypeImports: true,
+    message: 'Linked packages get the API client from useOakestraApi(), never build their own.',
+  },
+];
+const moduleImportRestrictions = {
+  ...addonImportRestrictions,
+  patterns: [...addonImportRestrictions.patterns, ...moduleOnlyPatterns],
+  paths: moduleApiPaths,
+};
+const moduleTestImportRestrictions = {
+  ...addonTestImportRestrictions,
+  patterns: [...addonTestImportRestrictions.patterns, ...moduleOnlyPatterns],
+  paths: moduleApiPaths,
+};
+
+/**
  * Import boundary rules on their own, so they can be tested without type-aware linting.
  *
  * @param {{ rootDir: string }} options
@@ -186,7 +254,14 @@ export function importBoundaries({ rootDir }) {
       settings: {
         'boundaries/root-path': rootDir,
         'boundaries/elements': elements,
-        'boundaries/include': ['apps/**', 'packages/**', 'addons/**', 'tools/**', 'e2e/**'],
+        'boundaries/include': [
+          'apps/**',
+          'packages/**',
+          'addons/**',
+          'modules/**',
+          'tools/**',
+          'e2e/**',
+        ],
         'import/resolver': {
           typescript: {
             alwaysTryTypes: true,
@@ -195,6 +270,7 @@ export function importBoundaries({ rootDir }) {
               'apps/*/tsconfig.json',
               'packages/*/tsconfig.json',
               'addons/*/tsconfig.json',
+              'modules/*/tsconfig.json',
               'tools/*/tsconfig.json',
               'e2e/tsconfig.json',
             ],
@@ -220,6 +296,19 @@ export function importBoundaries({ rootDir }) {
     {
       files: ['addons/**/*.test.{ts,tsx}'],
       rules: { '@typescript-eslint/no-restricted-imports': ['error', addonTestImportRestrictions] },
+    },
+    {
+      files: ['modules/*/src/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': 'off',
+        '@typescript-eslint/no-restricted-imports': ['error', moduleImportRestrictions],
+      },
+    },
+    {
+      files: ['modules/*/src/**/*.test.{ts,tsx}'],
+      rules: {
+        '@typescript-eslint/no-restricted-imports': ['error', moduleTestImportRestrictions],
+      },
     },
     {
       files: ['addons/*/vite.config.ts', 'addons/*/vitest.config.ts'],

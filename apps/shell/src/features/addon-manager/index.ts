@@ -58,7 +58,8 @@ export const addonManagerModule: CoreModule = {
         path: '/addon-manager',
         icon: PuzzleIcon,
         group: 'management',
-        order: 20,
+        // See the Management ordering note in modules/infrastructure/src/index.ts.
+        order: 40,
         roles: ['Admin'],
         children: [
           { id: 'installed', label: 'Installed', path: INSTALLED_PATH },

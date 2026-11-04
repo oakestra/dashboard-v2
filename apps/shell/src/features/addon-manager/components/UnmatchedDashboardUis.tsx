@@ -14,22 +14,54 @@ import {
 
 import { addonLabel, type AddonEntry } from '../../../core/addons/addon-registry';
 import { DashboardUiBadge, dashboardUiProblem } from './DashboardUiBadge';
+import { NavItemKeys } from './NavItemKeys';
 
 /**
- * Addon UIs the shell runs that no installed addon explains, e.g. a dev override pointing at a
- * local Vite server. Without this section they would appear nowhere in the addon manager.
+ * Addon UIs the shell runs that no installed addon explains. Two kinds: UIs the deployment preset
+ * ships (not managed here, so there is nothing to disable or remove) and everything else, e.g. a
+ * dev override pointing at a local Vite server. Without this section they would appear nowhere in
+ * the addon manager.
  */
 export function UnmatchedDashboardUis({ entries }: { entries: readonly AddonEntry[] }) {
+  const shipped = entries.filter((entry) => entry.origin === 'preset');
+  const others = entries.filter((entry) => entry.origin !== 'preset');
+
+  return (
+    <>
+      <UiTable
+        entries={shipped}
+        testId="preset-uis"
+        title="Part of this deployment"
+        description="These UIs ship with this deployment's preset. They are not installed through the addons manager, so they cannot be disabled or removed here. Use the nav item keys in the preset's nav.items to rename, move or hide their sidebar entries."
+      />
+      <UiTable
+        entries={others}
+        testId="unmatched-uis"
+        title="Dashboard UIs without an installed addon"
+        description="These UIs are loaded in this browser tab but no installed addon belongs to them, for example a dev override."
+      />
+    </>
+  );
+}
+
+function UiTable({
+  entries,
+  testId,
+  title,
+  description,
+}: {
+  entries: readonly AddonEntry[];
+  testId: string;
+  title: string;
+  description: string;
+}) {
   if (entries.length === 0) return null;
 
   return (
-    <Card data-testid="unmatched-uis">
+    <Card data-testid={testId}>
       <CardHeader>
-        <CardTitle>Dashboard UIs without an installed addon</CardTitle>
-        <CardDescription>
-          These UIs are loaded in this browser tab but no installed addon belongs to them, for
-          example a dev override.
-        </CardDescription>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
@@ -60,6 +92,7 @@ export function UnmatchedDashboardUis({ entries }: { entries: readonly AddonEntr
                 <TableCell className="font-mono text-xs">{entry.sdk}</TableCell>
                 <TableCell className="text-muted-foreground max-w-xs text-sm break-words whitespace-normal">
                   {dashboardUiProblem(entry) ?? ''}
+                  <NavItemKeys entry={entry} />
                 </TableCell>
               </TableRow>
             ))}

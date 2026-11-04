@@ -32,6 +32,22 @@ describe('<UserMenu> theme picker', () => {
     expect(screen.getByRole('menu')).toBeVisible();
   });
 
+  it('lists the profile link, and drops it when a preset disables the profile module', async () => {
+    const { user, unmount } = renderApp({ modules, route: '/' });
+    await user.click(await screen.findByTestId('user-menu'));
+    expect(await screen.findByRole('menuitem', { name: 'Profile' })).toBeVisible();
+    unmount();
+
+    const second = renderApp({
+      modules,
+      route: '/',
+      preset: { modules: ['demo'], home: '/demo' },
+    });
+    await second.user.click(await screen.findByTestId('user-menu'));
+    await screen.findByRole('menu');
+    expect(screen.queryByRole('menuitem', { name: 'Profile' })).not.toBeInTheDocument();
+  });
+
   it('is reachable with the keyboard like the other menu items', async () => {
     const { user } = renderApp({ modules, route: '/' });
 

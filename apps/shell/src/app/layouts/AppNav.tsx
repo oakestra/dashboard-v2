@@ -20,9 +20,15 @@ import { useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 
 import { useAppConfig } from '../../core/config/config-context';
+import { usePreset } from '../../core/config/preset-context';
 import { ErrorBoundary } from '../../core/extensions/ErrorBoundary';
 import { useContributions } from '../../core/extensions/use-contributions';
-import { buildNavEntries, findActiveKey, type NavEntry as NavEntryModel } from './nav-model';
+import {
+  applyNavOverrides,
+  buildNavEntries,
+  findActiveKey,
+  type NavEntry as NavEntryModel,
+} from './nav-model';
 
 /** Groups listed in the scrolling part of the sidebar, in this order, under these headings. */
 const GROUPS: readonly { id: Exclude<NavGroup, 'footer'>; label: string }[] = [
@@ -60,7 +66,11 @@ function useNav() {
   // and addons; buildNavEntries applies it to the sub-items.
   const items = useContributions('nav.items');
   const user = useCurrentUser();
-  const entries = useMemo(() => buildNavEntries(items, user), [items, user]);
+  const { nav } = usePreset();
+  const entries = useMemo(
+    () => applyNavOverrides(buildNavEntries(items, user), nav.items),
+    [items, user, nav.items],
+  );
   const externalLinks = useExternalLinks();
   const { pathname } = useLocation();
   // Computed over every entry, footer included, so exactly one link in the sidebar is active.
@@ -75,12 +85,13 @@ function useNav() {
 /** The labelled groups in the scrolling part of the sidebar. */
 export function AppNav() {
   const { activeKey, inGroup } = useNav();
+  const { nav } = usePreset();
   return GROUPS.map((group) => {
     const { entries, links } = inGroup(group.id);
     if (entries.length === 0 && links.length === 0) return null;
     return (
       <SidebarGroup key={group.id}>
-        <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+        <SidebarGroupLabel>{nav.groupLabels[group.id] ?? group.label}</SidebarGroupLabel>
         <SidebarGroupContent>
           <NavMenu entries={entries} links={links} activeKey={activeKey} />
         </SidebarGroupContent>

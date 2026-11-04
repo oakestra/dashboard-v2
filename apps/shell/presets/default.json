@@ -1,0 +1,17 @@
+{
+  "$schema": "../preset.schema.json",
+  "modules": [
+    "overview",
+    "applications",
+    "infrastructure",
+    "users",
+    "organizations",
+    "addon-manager",
+    "profile",
+    "settings",
+    "help"
+  ],
+  "addonDiscovery": true,
+  "addons": [],
+  "nav": { "groupLabels": {}, "items": {} }
+}

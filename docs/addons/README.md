@@ -7,6 +7,8 @@ More pages:
 
 - [SDK reference](reference.md): every type, extension point and hook.
 - [Packaging and shipping](packaging.md): build setup, styling, the container, versions.
+- [Deployment presets](presets.md): choose built-in features, rename sidebar items and ship
+  addons with a deployment.
 - [Troubleshooting](troubleshooting.md): symptoms, causes and fixes.
 
 ## What is an addon UI?
@@ -51,7 +53,7 @@ An addon UI can:
 | Extension point           | What you add                         | Where it shows up                                                                    |
 | ------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------ |
 | `nav.items`               | A link in the sidebar, optionally with nested sub-items | Sidebar, in the "Addons" group by default ("Platform", "Management" or the bottom of the sidebar on request) |
-| `home.widgets`            | A card with a title and your content | Overview page (`/`), in a widget grid at the bottom of the page                      |
+| `home.widgets`            | A card with a title and your content, or a stat tile or full-width section (`size`) | Overview page (`/`): widget grid at the bottom, summary row or sections above it |
 | `application.detail.tabs` | A tab                                | Application page (`/applications/:appId`), next to the "Services" tab                |
 | `service.detail.tabs`     | A tab                                | Service page (`/applications/:appId/services/:serviceId`), after "Overview", "Instances", "JSON" |
 | `cluster.widgets`         | A card with a title and your content | Cluster page (`/infrastructure/clusters/:clusterId`), at the bottom                  |
@@ -463,7 +465,9 @@ export function SettingsPage() {
 ### Step 7: add a home widget
 
 A widget is a component. The shell puts it in a card and renders your `title` as the card
-title. Keep widgets small; link to your page for details.
+title. Keep widgets small; link to your page for details. With `size: 'stat'` it becomes a tile in
+the summary row at the top of the overview instead, and with `size: 'wide'` a full-width section;
+both draw their own frame (see [widget sizes](reference.md#widget-sizes-on-the-overview)).
 
 ```tsx
 // src/contributions/ActiveClustersWidget.tsx

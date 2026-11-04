@@ -18,6 +18,7 @@ import {
 import { LogOutIcon, MonitorIcon, MoonIcon, SunIcon, UserIcon } from 'lucide-react';
 import { Link } from 'react-router';
 
+import { useModuleEnabled } from '../../core/modules';
 import { useAuthSession } from '../../core/auth/auth-context';
 import type { ThemePreference } from '../../core/theme/theme';
 import { useTheme } from '../../core/theme/theme-context';
@@ -32,6 +33,7 @@ export function UserMenu() {
   const user = useCurrentUser();
   const auth = useAuthSession();
   const theme = useTheme();
+  const profileEnabled = useModuleEnabled('profile');
   if (!user) return null;
 
   return (
@@ -54,15 +56,19 @@ export function UserMenu() {
           </p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link to="/profile">
-              <UserIcon aria-hidden />
-              Profile
-            </Link>
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
+        {profileEnabled ? (
+          <>
+            <DropdownMenuGroup>
+              <DropdownMenuItem asChild>
+                <Link to="/profile">
+                  <UserIcon aria-hidden />
+                  Profile
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+          </>
+        ) : null}
         <DropdownMenuGroup>
           <DropdownMenuLabel className="text-muted-foreground py-1 text-xs font-normal">
             Theme

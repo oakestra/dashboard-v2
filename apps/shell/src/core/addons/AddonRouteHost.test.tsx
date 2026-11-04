@@ -5,13 +5,22 @@ import { describe, expect, it } from 'vitest';
 import { createStore } from 'zustand/vanilla';
 
 import { AuthSessionContext } from '../auth/auth-context';
+import { PresetContext } from '../config/preset-context';
+import { presetSchema } from '../config/preset';
 import type { AuthSession } from '../auth/session';
 
 import { createAddonRegistry, deleteEntries, setEntry, type AddonRegistry } from './addon-registry';
 import { AddonRegistryContext } from './addon-registry-context';
 import { AddonRouteHost } from './AddonRouteHost';
 
-const base = { name: 'flops', version: '1.0.0', sdk: '^0.1.0', entry: 'http://x/mf-manifest.json' };
+const base = {
+  name: 'flops',
+  version: '1.0.0',
+  sdk: '^0.1.0',
+  entry: 'http://x/mf-manifest.json',
+  origin: 'manager' as const,
+  basePath: '/addons/flops',
+};
 
 function Index() {
   return <p>flops home at {useAddonBasePath()}</p>;
@@ -74,7 +83,7 @@ describe('<AddonRouteHost>', () => {
 
     act(() => registry.setState({ availability: 'available' }));
     expect(screen.getByTestId('addon-not-found')).toHaveTextContent('No dashboard UI for "flops"');
-    expect(screen.getByRole('link', { name: 'Back to overview' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'Back to start' })).toHaveAttribute('href', '/');
     // Not signed in as an admin here, so no link into the admin-only addon manager.
     expect(screen.queryByRole('link', { name: 'Manage addons' })).toBeNull();
   });
@@ -88,6 +97,123 @@ describe('<AddonRouteHost>', () => {
     });
     renderAt('/addons/flops', registry);
     expect(await screen.findByText('flops home at /addons/flops')).toBeInTheDocument();
+  });
+
+  it('renders a fixed addon at its mount with the mount as base path', async () => {
+    const registry = createAddonRegistry();
+    setEntry(registry, {
+      ...base,
+      origin: 'preset',
+      basePath: '/flops',
+      state: 'loaded',
+      definition: { id: 'flops', routes: [{ index: true, Component: Index }] },
+    });
+    const router = createMemoryRouter(
+      [{ path: '/flops/*', element: <AddonRouteHost addonId="flops" forbidden={null} /> }],
+      { initialEntries: ['/flops'] },
+    );
+    render(
+      <AddonRegistryContext.Provider value={registry}>
+        <RouterProvider router={router} />
+      </AddonRegistryContext.Provider>,
+    );
+    expect(await screen.findByText('flops home at /flops')).toBeInTheDocument();
+  });
+
+  it('redirects /addons/<name> to the mount, keeping the rest of the path and the search', async () => {
+    const registry = createAddonRegistry();
+    setEntry(registry, {
+      ...base,
+      origin: 'preset',
+      basePath: '/flops',
+      state: 'loaded',
+      definition: { id: 'flops', routes: [{ path: 'jobs/:id', Component: Index }] },
+    });
+    const router = createMemoryRouter(
+      [
+        { path: '/addons/:addonId/*', element: <AddonRouteHost forbidden={null} /> },
+        { path: '/flops/*', element: <AddonRouteHost addonId="flops" forbidden={null} /> },
+      ],
+      { initialEntries: ['/addons/flops/jobs/7?tab=logs'] },
+    );
+    render(
+      <AddonRegistryContext.Provider value={registry}>
+        <RouterProvider router={router} />
+      </AddonRegistryContext.Provider>,
+    );
+    expect(await screen.findByText('flops home at /flops')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/flops/jobs/7');
+    expect(router.state.location.search).toBe('?tab=logs');
+  });
+
+  it('keeps encoded characters of the rest of the path when redirecting to the mount', async () => {
+    const registry = createAddonRegistry();
+    setEntry(registry, {
+      ...base,
+      origin: 'preset',
+      basePath: '/flops',
+      state: 'loaded',
+      definition: { id: 'flops', routes: [{ path: 'jobs/:id', Component: Index }] },
+    });
+    const router = createMemoryRouter(
+      [
+        { path: '/addons/:addonId/*', element: <AddonRouteHost forbidden={null} /> },
+        { path: '/flops/*', element: <AddonRouteHost addonId="flops" forbidden={null} /> },
+      ],
+      { initialEntries: ['/addons/flops/jobs/a%3Fb%23c%2Fd?tab=1#top'] },
+    );
+    render(
+      <AddonRegistryContext.Provider value={registry}>
+        <RouterProvider router={router} />
+      </AddonRegistryContext.Provider>,
+    );
+    await screen.findByText('flops home at /flops');
+    expect(router.state.location.pathname).toBe('/flops/jobs/a%3Fb%23c%2Fd');
+    expect(router.state.location.search).toBe('?tab=1');
+    expect(router.state.location.hash).toBe('#top');
+  });
+
+  it('says an unknown addon is not found, not unreachable, when discovery is off', () => {
+    const registry = createAddonRegistry();
+    registry.setState({ availability: 'disabled' });
+    renderAt('/addons/nope', registry);
+    expect(screen.getByTestId('addon-not-found')).toBeVisible();
+    expect(screen.queryByTestId('addons-unavailable')).toBeNull();
+  });
+
+  it('only links to the addon manager when the preset keeps it', () => {
+    const registry = createAddonRegistry();
+    registry.setState({ availability: 'available' });
+    const { unmount } = renderAt('/addons/flops', registry, admin);
+    expect(screen.getByRole('link', { name: 'Manage addons' })).toBeVisible();
+    unmount();
+
+    const preset = presetSchema.parse({ modules: ['overview'] });
+    const router = createMemoryRouter(
+      [{ path: '/addons/:addonId/*', element: <AddonRouteHost forbidden={null} /> }],
+      { initialEntries: ['/addons/flops'] },
+    );
+    const session = { store: createStore(() => ({ user: admin })) } as unknown as AuthSession;
+    render(
+      <PresetContext.Provider value={preset}>
+        <AuthSessionContext.Provider value={session}>
+          <AddonRegistryContext.Provider value={registry}>
+            <RouterProvider router={router} />
+          </AddonRegistryContext.Provider>
+        </AuthSessionContext.Provider>
+      </PresetContext.Provider>,
+    );
+    expect(screen.getByTestId('addon-not-found')).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Manage addons' })).toBeNull();
+  });
+
+  it('renders a known addon while the addons manager is unavailable', async () => {
+    const registry = createAddonRegistry();
+    registry.setState({ availability: 'unavailable' });
+    loaded(registry, [{ index: true, Component: Index }]);
+    renderAt('/addons/flops', registry);
+    expect(await screen.findByText(/flops home/)).toBeInTheDocument();
+    expect(screen.queryByTestId('addons-unavailable')).toBeNull();
   });
 
   it('shows a not-found page for unknown addon subpaths', async () => {

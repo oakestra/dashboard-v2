@@ -19,3 +19,8 @@ export {
   YAxis,
   type ChartConfig,
 } from './components/chart';
+export {
+  TimeSeriesChart,
+  type TimeSeriesPoint,
+  type TimeSeriesUnit,
+} from './components/time-series-chart';

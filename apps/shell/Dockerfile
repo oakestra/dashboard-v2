@@ -33,6 +33,7 @@ ENV API_URL="" \
     GRAFANA_URL="" \
     ADDONS_MANAGER_URL="/addons-api" \
     MARKETPLACE_URL="/marketplace-api" \
+    PRESET_URL="" \
     ADDONS_MANAGER_ADDRESS="root_addons_manager:11101" \
     MARKETPLACE_ADDRESS="marketplace_manager:11102" \
     DNS_RESOLVER="127.0.0.11"

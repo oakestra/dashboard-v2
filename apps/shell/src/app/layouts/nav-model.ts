@@ -5,7 +5,13 @@ import {
   type NavSubItem,
 } from '@oakestra/dashboard-sdk';
 
-import type { ContributionSource, ResolvedContribution } from '../../core/extensions/registry';
+import type { Preset } from '../../core/config/preset';
+import {
+  compareOrder,
+  navItemKey,
+  type ContributionSource,
+  type ResolvedContribution,
+} from '../../core/extensions/registry';
 
 export interface NavSubEntry {
   key: string;
@@ -20,8 +26,6 @@ export interface NavEntry {
   children: NavSubEntry[];
 }
 
-const UNORDERED = Number.MAX_SAFE_INTEGER;
-
 /**
  * Attaches the visible, sorted sub-items to each nav item. Top-level items were already filtered
  * and sorted by the registry; sub-items follow the same rules (`roles`, then `order`, then
@@ -32,16 +36,43 @@ export function buildNavEntries(
   user: CurrentUser | null,
 ): NavEntry[] {
   return items.map(({ item, source }) => {
-    const key = `${source.kind}:${source.id}:${item.id}`;
+    const key = navItemKey(source, item.id);
     const children = (item.children ?? [])
-      .map((child, index) => ({ child, index }))
-      .filter(({ child }) => hasAnyRole(user, child.roles))
-      .sort(
-        (a, b) => (a.child.order ?? UNORDERED) - (b.child.order ?? UNORDERED) || a.index - b.index,
-      )
-      .map(({ child }) => ({ key: `${key}/${child.id}`, item: child }));
+      .filter((child) => hasAnyRole(user, child.roles))
+      .sort((a, b) => compareOrder(a.order, b.order))
+      .map((child) => ({ key: `${key}/${child.id}`, item: child }));
     return { key, item, source, children };
   });
+}
+
+type NavOverrides = Preset['nav']['items'];
+
+/**
+ * Applies the deployment preset's `nav.items` to the top-level entries: label, order and group
+ * are replaced, hidden entries dropped, and the result is sorted again with the registry's rules
+ * (`order`, then the current position) so an overridden `order` takes effect. The key stays the
+ * original one, because it is what the preset (and the active-link logic) refers to. Sub-items
+ * follow their parent.
+ */
+export function applyNavOverrides(
+  entries: readonly NavEntry[],
+  overrides: NavOverrides,
+): NavEntry[] {
+  if (Object.keys(overrides).length === 0) return [...entries];
+  return entries
+    .flatMap((entry) => {
+      const override = overrides[entry.key];
+      if (!override) return [entry];
+      if (override.hidden) return [];
+      const item: NavItem = {
+        ...entry.item,
+        ...(override.label !== undefined ? { label: override.label } : {}),
+        ...(override.order !== undefined ? { order: override.order } : {}),
+        ...(override.group !== undefined ? { group: override.group } : {}),
+      };
+      return [{ ...entry, item }];
+    })
+    .sort((a, b) => compareOrder(a.item.order, b.item.order));
 }
 
 /**

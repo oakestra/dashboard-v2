@@ -11,6 +11,7 @@ import { Checkbox as Checkbox_2 } from 'radix-ui';
 import { ClassProp } from 'class-variance-authority/types';
 import { ClassValue } from 'clsx';
 import { Collapsible as Collapsible_2 } from 'radix-ui';
+import { ComponentProps } from 'react';
 import { Dialog as Dialog_2 } from 'radix-ui';
 import { DropdownMenu as DropdownMenu_2 } from 'radix-ui';
 import { JSX } from 'react';
@@ -19,6 +20,7 @@ import { Popover as Popover_2 } from 'radix-ui';
 import { Progress as Progress_2 } from 'radix-ui';
 import { RadioGroup as RadioGroup_2 } from 'radix-ui';
 import * as React_2 from 'react';
+import { ReactNode } from 'react';
 import { ScrollArea as ScrollArea_2 } from 'radix-ui';
 import { Select as Select_2 } from 'radix-ui';
 import { Separator as Separator_2 } from 'radix-ui';
@@ -155,6 +157,9 @@ export const buttonVariants: (props?: ({
 } & ClassProp) | undefined) => string;
 
 // @public (undocumented)
+export const BYTES_PER_MB: number;
+
+// @public (undocumented)
 export function Card(input: React_2.ComponentProps<'div'>): React_2.JSX.Element;
 
 // @public (undocumented)
@@ -177,6 +182,33 @@ export function CardTitle(input: React_2.ComponentProps<'div'>): React_2.JSX.Ele
 
 // @public (undocumented)
 export function Checkbox(input: React_2.ComponentProps<typeof Checkbox_2.Root>): React_2.JSX.Element;
+
+// @public
+export function CheckboxGroup(input: CheckboxGroupProps): JSX.Element;
+
+// @public (undocumented)
+export interface CheckboxGroupOption {
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    value: string;
+}
+
+// @public (undocumented)
+export interface CheckboxGroupProps {
+    // (undocumented)
+    disabled?: boolean;
+    // (undocumented)
+    legend: string;
+    // (undocumented)
+    onChange: (value: string[]) => void;
+    // (undocumented)
+    options: readonly CheckboxGroupOption[];
+    // (undocumented)
+    value: readonly string[];
+}
 
 // @public (undocumented)
 export function cn(...inputs: ClassValue[]): string;
@@ -214,6 +246,23 @@ export interface ConfirmDialogProps {
 }
 
 // @public (undocumented)
+export function CopyButton(input: CopyButtonProps): JSX.Element;
+
+// @public (undocumented)
+interface CopyButtonProps {
+    // (undocumented)
+    className?: string;
+    label?: string;
+    // (undocumented)
+    size?: 'icon' | 'icon-sm' | 'icon-xs' | 'sm';
+    text?: string;
+    // (undocumented)
+    value: string;
+    // (undocumented)
+    variant?: 'ghost' | 'outline' | 'secondary';
+}
+
+// @public (undocumented)
 export function Dialog(input: React_2.ComponentProps<typeof Dialog_2.Root>): React_2.JSX.Element;
 
 // @public (undocumented)
@@ -246,6 +295,12 @@ export function DialogTitle(input: React_2.ComponentProps<typeof Dialog_2.Title>
 
 // @public (undocumented)
 export function DialogTrigger(input: React_2.ComponentProps<typeof Dialog_2.Trigger>): React_2.JSX.Element;
+
+// @public
+export function downloadJson(filename: string, data: unknown): void;
+
+// @public
+export function downloadText(filename: string, text: string, type?: string): void;
 
 // @public (undocumented)
 export function DropdownMenu(input: React_2.ComponentProps<typeof DropdownMenu_2.Root>): React_2.JSX.Element;
@@ -356,8 +411,46 @@ const fieldVariants: (props?: ({
     orientation?: "horizontal" | "responsive" | "vertical" | null | undefined;
 } & ClassProp) | undefined) => string;
 
+// @public
+export function formatBytes(bytes: number | null | undefined, fractionDigits?: number): string;
+
+// @public
+export function formatDate(date: Date): string;
+
+// @public
+export function formatDateTime(date: Date): string;
+
+// @public
+export function formatLegacyDate(date: Date): string;
+
+// @public
+export function formatMegabytes(mb: number | null | undefined, fractionDigits?: number): string;
+
+// @public
+export function formatPercent(value: number | null | undefined, fractionDigits?: number): string;
+
+// @public
+export function formatRelativeTime(date: Date | string | number | null | undefined, now?: Date | number): string;
+
 // @public (undocumented)
 export function Input(input: React_2.ComponentProps<'input'>): React_2.JSX.Element;
+
+// @public (undocumented)
+export function JsonViewer(input: JsonViewerProps): JSX.Element;
+
+// @public (undocumented)
+interface JsonViewerProps {
+    // (undocumented)
+    className?: string;
+    // (undocumented)
+    data: unknown;
+    // (undocumented)
+    defaultOpen?: boolean;
+    downloadAs?: string;
+    maxHeightClassName?: string;
+    // (undocumented)
+    title?: string;
+}
 
 // @public (undocumented)
 export function Label(input: React_2.ComponentProps<typeof Label_2.Root>): React_2.JSX.Element;
@@ -400,6 +493,12 @@ export function PaginationNext(input: React_2.ComponentProps<typeof PaginationLi
 // @public (undocumented)
 export function PaginationPrevious(input: React_2.ComponentProps<typeof PaginationLink>): React_2.JSX.Element;
 
+// @public
+export function parseLegacyDate(value: string | null | undefined): Date | undefined;
+
+// @public
+export function plural(count: number, singular: string, pluralForm?: string): string;
+
 // @public (undocumented)
 export function Popover(input: React_2.ComponentProps<typeof Popover_2.Root>): React_2.JSX.Element;
 
@@ -414,6 +513,20 @@ export function PopoverTrigger(input: React_2.ComponentProps<typeof Popover_2.Tr
 
 // @public (undocumented)
 export function Progress(input: React_2.ComponentProps<typeof Progress_2.Root>): React_2.JSX.Element;
+
+// @public
+export function QueryErrorAlert(input: QueryErrorAlertProps): JSX.Element;
+
+// @public (undocumented)
+interface QueryErrorAlertProps extends Omit<ComponentProps<typeof Alert>, 'title' | 'children'> {
+    children?: ReactNode;
+    // (undocumented)
+    error: unknown;
+    // (undocumented)
+    onRetry: () => void;
+    // (undocumented)
+    title: ReactNode;
+}
 
 // @public (undocumented)
 export function RadioGroup(input: React_2.ComponentProps<typeof RadioGroup_2.Root>): React_2.JSX.Element;

@@ -16,6 +16,7 @@ describe('sharedDeps', () => {
         '@oakestra/ui/chart',
         '@oakestra/ui/command',
         '@oakestra/ui/data-table',
+        '@oakestra/ui/location-map',
         '@oakestra/ui/map',
         '@tanstack/react-query',
         'react',
@@ -95,7 +96,7 @@ describe('@oakestra/ui range', () => {
     const uiEntries = Object.entries(sharedDeps).filter(([name]) =>
       name.startsWith('@oakestra/ui'),
     );
-    expect(uiEntries).toHaveLength(5);
+    expect(uiEntries).toHaveLength(6);
     for (const [, config] of uiEntries) {
       expect(config.requiredVersion).toBe(`^${uiPkg.version}`);
     }

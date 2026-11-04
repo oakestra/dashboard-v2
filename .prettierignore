@@ -11,3 +11,5 @@ packages/api/src/generated/
 packages/*/api-report/
 # Placeholders (`port: __PORT__`) make the template invalid until it is generated.
 tools/create-addon/template/
+# Written by preset.test.ts (`vitest -u`), which compares it byte for byte.
+apps/shell/preset.schema.json

@@ -80,6 +80,43 @@ describe('<AppLayout>', () => {
     expect(screen.getByText('Management')).toBeVisible();
   });
 
+  it('applies the preset nav overrides and group labels', async () => {
+    renderApp({
+      modules,
+      route: '/infra',
+      preset: {
+        modules: ['demo'],
+        home: '/infra',
+        nav: {
+          groupLabels: { main: 'Workloads' },
+          items: {
+            'core:demo:apps': { label: 'Apps', group: 'management', order: 1 },
+            'core:demo:support': { hidden: true },
+          },
+        },
+      },
+    });
+
+    // Moved into "management" and renamed; the "main" group is empty, so its label is gone.
+    expect(await screen.findByTestId('nav-demo-apps')).toHaveTextContent('Apps');
+    expect(screen.queryByText('Workloads')).not.toBeInTheDocument();
+    expect(screen.getByText('Management')).toBeVisible();
+    expect(screen.queryByTestId('nav-demo-support')).not.toBeInTheDocument();
+    const management = screen.getByText('Management').closest('[data-slot="sidebar-group"]')!;
+    const links = within(management as HTMLElement).getAllByRole('link');
+    expect(links.map((link) => link.textContent)).toEqual(['Apps', 'Infrastructure']);
+  });
+
+  it('uses the preset label of a group that still has items', async () => {
+    renderApp({
+      modules,
+      route: '/infra',
+      preset: { modules: ['demo'], home: '/infra', nav: { groupLabels: { main: 'Workloads' } } },
+    });
+    expect(await screen.findByText('Workloads')).toBeVisible();
+    expect(screen.queryByText('Platform')).not.toBeInTheDocument();
+  });
+
   it('pins footer items to the bottom of the sidebar, outside the labelled groups', async () => {
     renderApp({ modules, route: '/infra' });
     const support = await screen.findByTestId('nav-demo-support');
@@ -191,6 +228,8 @@ describe('<AppLayout>', () => {
           version: '1.0.0',
           sdk: '^0.1.0',
           entry: 'http://x/mf-manifest.json',
+          origin: 'manager',
+          basePath: '/addons/flops',
           state: 'loaded',
           definition: {
             id: 'flops',
@@ -271,6 +310,8 @@ describe('<AppLayout>', () => {
           version: '1.0.0',
           sdk: '^0.1.0',
           entry: 'http://x/mf-manifest.json',
+          origin: 'manager',
+          basePath: '/addons/canvas',
           state: 'loaded',
           definition: {
             id: 'canvas',

@@ -18,6 +18,8 @@ const host: HostContextValue = {
   // Slots never call the API.
   api: {} as OakestraApi,
   notify: { success: vi.fn(), info: vi.fn(), warning: vi.fn(), error: vi.fn() },
+  isFeatureEnabled: () => true,
+  links: {},
 };
 
 function wrapper(registry: ContributionRegistry) {
@@ -103,5 +105,54 @@ describe('<Slot>', () => {
       />,
     );
     expect(screen.getByRole('region', { name: 'Title X' })).toHaveTextContent('body');
+  });
+
+  it('wraps all contributions once, and only when there are any', () => {
+    const registry = createContributionRegistry();
+    const slot = (
+      <Slot
+        point="home.widgets"
+        empty={<p>nothing</p>}
+        wrap={(children) => <ul aria-label="All widgets">{children}</ul>}
+        render={(_widget, content) => <li>{content}</li>}
+      />
+    );
+    const { rerender } = render(slot, { wrapper: wrapper(registry) });
+    expect(screen.queryByRole('list')).not.toBeInTheDocument();
+    expect(screen.getByText('nothing')).toBeInTheDocument();
+
+    registry.getState().register(
+      { kind: 'core', id: 'c', label: 'c' },
+      {
+        'home.widgets': [
+          { id: 'a', title: 'A', component: () => <span>one</span> },
+          { id: 'b', title: 'B', component: () => <span>two</span> },
+        ],
+      },
+    );
+    rerender(slot);
+    expect(screen.getAllByRole('list')).toHaveLength(1);
+    expect(screen.getByRole('list', { name: 'All widgets' })).toHaveTextContent('onetwo');
+  });
+  it('renders only the contributions the filter accepts, and empty when it accepts none', () => {
+    const registry = createContributionRegistry();
+    registry.getState().register(
+      { kind: 'core', id: 'c', label: 'c' },
+      {
+        'home.widgets': [
+          { id: 'a', title: 'A', size: 'stat', component: () => <span>stat</span> },
+          { id: 'b', title: 'B', component: () => <span>card</span> },
+        ],
+      },
+    );
+    const { rerender } = render(
+      <Slot point="home.widgets" filter={(widget) => widget.size === 'stat'} />,
+      { wrapper: wrapper(registry) },
+    );
+    expect(screen.getByText('stat')).toBeInTheDocument();
+    expect(screen.queryByText('card')).not.toBeInTheDocument();
+
+    rerender(<Slot point="home.widgets" filter={() => false} empty={<p>nothing</p>} />);
+    expect(screen.getByText('nothing')).toBeInTheDocument();
   });
 });

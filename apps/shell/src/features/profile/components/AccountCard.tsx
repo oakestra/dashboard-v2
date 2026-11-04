@@ -1,9 +1,8 @@
 import type { User } from '@oakestra/api';
 import { ROOT_ORGANIZATION_NAME } from '@oakestra/api';
 import { usePermissions, type CurrentUser } from '@oakestra/dashboard-sdk';
-import { SectionCard } from '@oakestra/ui';
+import { SectionCard, formatDate, formatDateTime, parseLegacyDate } from '@oakestra/ui';
 
-import { formatDate, formatDateTime, parseLegacyDate } from '../../../lib/format';
 import { EmailField } from './EmailField';
 
 export function AccountCard({ profile, user }: { profile: User; user: CurrentUser }) {

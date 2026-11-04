@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { getDevOverrides, readOverrides, resolveAddons } from './dev-override';
+import type { ResolvedAddon } from './ui-addons';
 
 const STORAGE_KEY = 'oakestra.addon-overrides';
 const manifest = 'http://localhost:5174/mf-manifest.json';
@@ -52,10 +53,25 @@ describe('readOverrides', () => {
 
 describe('resolveAddons', () => {
   const entryUrl = (name: string) => `/addon-assets/${name}/mf-manifest.json`;
+  const pinned: ResolvedAddon = {
+    name: 'a',
+    version: '2',
+    sdk: '^0.1.0',
+    entry: 'https://cdn.example/a/mf-manifest.json',
+    origin: 'preset',
+    basePath: '/apps-a',
+  };
 
   it('uses the nginx path by default', () => {
-    expect(resolveAddons([{ name: 'a', version: '1', sdk: '*' }], {}, entryUrl)).toEqual([
-      { name: 'a', version: '1', sdk: '*', entry: '/addon-assets/a/mf-manifest.json' },
+    expect(resolveAddons([{ name: 'a', version: '1', sdk: '*' }], {}, { entryUrl })).toEqual([
+      {
+        name: 'a',
+        version: '1',
+        sdk: '*',
+        entry: '/addon-assets/a/mf-manifest.json',
+        origin: 'manager',
+        basePath: '/addons/a',
+      },
     ]);
   });
 
@@ -63,11 +79,46 @@ describe('resolveAddons', () => {
     const result = resolveAddons(
       [{ name: 'a', version: '1', sdk: '^0.1.0' }],
       { a: manifest, b: manifest },
-      entryUrl,
+      { entryUrl },
     );
     expect(result).toEqual([
-      { name: 'a', version: '1', sdk: '^0.1.0', entry: manifest },
-      { name: 'b', version: '0.0.0-dev', sdk: '*', entry: manifest },
+      {
+        name: 'a',
+        version: '1',
+        sdk: '^0.1.0',
+        entry: manifest,
+        origin: 'dev',
+        basePath: '/addons/a',
+      },
+      {
+        name: 'b',
+        version: '0.0.0-dev',
+        sdk: '*',
+        entry: manifest,
+        origin: 'dev',
+        basePath: '/addons/b',
+      },
+    ]);
+  });
+
+  it('lets the preset win over a /ui-addons entry of the same name, with one warning', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const list = [
+      { name: 'a', version: '1', sdk: '*' },
+      { name: 'c', version: '1', sdk: '*' },
+    ];
+    expect(resolveAddons(list, {}, { preset: [pinned], entryUrl }).map((a) => a.name)).toEqual([
+      'c',
+      'a',
+    ]);
+    expect(resolveAddons(list, {}, { preset: [pinned], entryUrl })).toContainEqual(pinned);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]![0]).toMatch(/"a".*preset pins it/);
+  });
+
+  it('keeps the mount of a preset addon that a dev override points elsewhere', () => {
+    expect(resolveAddons([], { a: manifest }, { preset: [pinned], entryUrl })).toEqual([
+      { ...pinned, entry: manifest, origin: 'dev' },
     ]);
   });
 });

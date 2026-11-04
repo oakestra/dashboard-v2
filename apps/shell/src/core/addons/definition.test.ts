@@ -24,6 +24,30 @@ describe('parseAddonDefinition', () => {
     expect(parsed.contributions?.['home.widgets']?.[0]?.component).toBe(Page);
   });
 
+  it('keeps a known widget size and renders an unknown one as a card', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const parsed = parseAddonDefinition(
+      {
+        default: {
+          id: 'flops',
+          contributions: {
+            'home.widgets': [
+              { id: 'stat', title: 'S', component: Page, size: 'stat' },
+              { id: 'huge', title: 'H', component: Page, size: 'huge' },
+              { id: 'plain', title: 'P', component: Page },
+            ],
+          },
+        },
+      },
+      'flops',
+    );
+    expect(parsed.contributions?.['home.widgets']?.map((widget) => widget.size)).toEqual([
+      'stat',
+      undefined,
+      undefined,
+    ]);
+  });
+
   it('rejects a module without a definition', () => {
     expect(() => parseAddonDefinition({ default: undefined }, 'flops')).toThrow(
       AddonDefinitionError,
@@ -154,6 +178,17 @@ describe('parseAddonDefinition', () => {
     expect(parsed.routes?.[0]?.children?.[0]?.fullWidth).toBe(false);
   });
 
+  it('accepts a component as crumb', () => {
+    const Crumb = () => 'B';
+    const parsed = parseAddonDefinition(
+      {
+        default: { id: 'flops', routes: [{ path: 'a', children: [{ path: 'b', crumb: Crumb }] }] },
+      },
+      'flops',
+    );
+    expect(parsed.routes?.[0]?.children?.[0]?.crumb).toBe(Crumb);
+  });
+
   it.each([
     ['an empty label', { label: '' }, /label/],
     ['a label that is not a string', { label: 42 }, /label/],
@@ -165,8 +200,8 @@ describe('parseAddonDefinition', () => {
       /fullWidth/,
     ],
     [
-      'a crumb function',
-      { routes: [{ path: 'a', children: [{ path: 'b', crumb: () => 'B' }] }] },
+      'a crumb that is neither text nor a component',
+      { routes: [{ path: 'a', crumb: 42 }] },
       /crumb/,
     ],
   ])('rejects %s', (_case, fields, message) => {

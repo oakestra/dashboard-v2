@@ -18,7 +18,7 @@ case "${ADDONS_POLL_INTERVAL_MS}" in
 esac
 
 # Explicit variable lists: nginx's own $variables in the template must survive untouched.
-envsubst '${API_URL} ${UI_ADDONS_URL} ${ADDONS_POLL_INTERVAL_MS} ${GRAFANA_URL} ${ADDONS_MANAGER_URL} ${MARKETPLACE_URL}' \
+envsubst '${API_URL} ${UI_ADDONS_URL} ${ADDONS_POLL_INTERVAL_MS} ${GRAFANA_URL} ${ADDONS_MANAGER_URL} ${MARKETPLACE_URL} ${PRESET_URL}' \
   < /etc/oakestra/config.json.template > /usr/share/nginx/html/config.json
 envsubst '${ADDONS_MANAGER_ADDRESS} ${MARKETPLACE_ADDRESS} ${DNS_RESOLVER}' \
   < /etc/oakestra/nginx.conf.template > /etc/nginx/conf.d/default.conf

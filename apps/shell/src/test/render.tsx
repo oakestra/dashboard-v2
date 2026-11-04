@@ -4,18 +4,26 @@ import userEvent, { type UserEvent } from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { createMemoryRouter, RouterProvider, type RouteObject } from 'react-router';
 
+import { selectLinkedAddons, selectModules } from '../app/modules';
 import { Providers } from '../app/providers';
 import { SessionWatcher } from '../app/SessionWatcher';
 import { createAppRoutes } from '../app/router';
 import { createAppServices, type AppServices } from '../app/services';
+import type { LinkedAddon } from '../core/addons/linked-addons';
 import { appConfigSchema, type AppConfig } from '../core/config/config';
+import { DEFAULT_PRESET, presetSchema, type Preset, type PresetInput } from '../core/config/preset';
 import type { CoreModule } from '../core/modules';
 import { createRouterContext } from '../core/router/app-context';
 import { mockStore, TEST_ADDONS_MANAGER_URL, TEST_API_URL, TEST_MARKETPLACE_URL } from './msw';
 
 export interface RenderAppOptions {
   /** Feature modules to mount, e.g. `[profileModule]`. The routes run through the real guards. */
-  modules: readonly CoreModule[];
+  modules?: readonly CoreModule[];
+  /**
+   * Linked addon packages to mount, e.g. `linkedAddons` from app/modules or
+   * `[{ definition: help, mount: '/help' }]`. Registered at startup like in production.
+   */
+  linked?: readonly LinkedAddon[];
   /** Initial URL. */
   route?: string;
   /**
@@ -25,6 +33,11 @@ export interface RenderAppOptions {
    */
   user?: MockSessionOptions | null;
   config?: Partial<AppConfig>;
+  /**
+   * Deployment preset (`preset.json` contents). `modules` narrows the mounted modules like in
+   * production and drives useModuleEnabled; `home` and mounted `addons` shape the route tree.
+   */
+  preset?: PresetInput;
 }
 
 export interface RenderAppResult extends RenderResult {
@@ -50,8 +63,29 @@ export function createTestConfig(overrides: Partial<AppConfig> = {}): AppConfig 
  *   await user.click(await screen.findByRole('button', { name: 'Save' }));
  */
 export function renderApp(options: RenderAppOptions): RenderAppResult {
+  const preset = options.preset ? presetSchema.parse(options.preset) : DEFAULT_PRESET;
+  // Selection only, without applyPreset's checks: tests mount a few modules, against which most
+  // presets would name unknown ones.
+  return renderShell(
+    selectModules(options.modules ?? [], preset),
+    selectLinkedAddons(options.linked ?? [], preset),
+    preset,
+    options,
+  );
+}
+
+function renderShell(
+  modules: readonly CoreModule[],
+  linked: readonly LinkedAddon[],
+  preset: Preset,
+  options: Omit<RenderAppOptions, 'modules' | 'linked'>,
+): RenderAppResult {
   const config = createTestConfig(options.config);
-  const services = createAppServices(options.modules, config, { storage: window.localStorage });
+  const services = createAppServices(modules, config, {
+    storage: window.localStorage,
+    preset,
+    linked,
+  });
   // Tests should fail on the first error instead of waiting for a retry.
   services.queryClient.setDefaultOptions({
     ...services.queryClient.getDefaultOptions(),
@@ -67,7 +101,7 @@ export function renderApp(options: RenderAppOptions): RenderAppResult {
     );
   }
 
-  const router = createMemoryRouter(createAppRoutes(options.modules), {
+  const router = createMemoryRouter(createAppRoutes(modules, preset, linked), {
     initialEntries: [options.route ?? '/'],
     getContext: createRouterContext({
       auth: services.auth,
@@ -93,12 +127,13 @@ export function renderApp(options: RenderAppOptions): RenderAppResult {
  */
 export function renderWithProviders(
   ui: ReactNode,
-  options: Omit<RenderAppOptions, 'modules'> & { path?: string } = {},
+  options: Omit<RenderAppOptions, 'modules' | 'linked'> & { path?: string } = {},
 ): RenderAppResult {
   const route: RouteObject = { path: options.path ?? '*', element: ui };
-  return renderApp({
+  const preset = options.preset ? presetSchema.parse(options.preset) : DEFAULT_PRESET;
+  // Not run through selectModules: the preset only tells the component which modules exist.
+  return renderShell([{ id: 'test', label: 'Test', routes: [route] }], [], preset, {
     ...options,
     route: options.route ?? '/',
-    modules: [{ id: 'test', label: 'Test', routes: [route] }],
   });
 }

@@ -4,7 +4,14 @@ import { defineConfig } from 'tsdown';
 // (package.json `exports`); `publishConfig` swaps in `dist/` when the package is packed.
 export default defineConfig({
   // The subpaths stay separate entries: each is its own lazily loaded shared module.
-  entry: ['src/index.ts', 'src/chart.ts', 'src/data-table.ts', 'src/command.ts', 'src/map.ts'],
+  entry: [
+    'src/index.ts',
+    'src/chart.ts',
+    'src/data-table.ts',
+    'src/command.ts',
+    'src/map.ts',
+    'src/location-map.ts',
+  ],
   format: 'esm',
   platform: 'neutral',
   // One output file per source file, so subpaths share component modules instead of each
@@ -13,7 +20,13 @@ export default defineConfig({
   // Declarations come from tsc with this package's tsconfig.json, which sets stableTypeOrdering.
   dts: true,
   fixedExtension: false,
-  deps: { onlyBundle: [] },
+  deps: {
+    onlyBundle: [],
+    // location-map-impl imports the map subpath by its package name, so the host's shared module
+    // (and its one MapLibre copy) serves it. Resolved through the package's own exports, tsdown
+    // would turn it into a relative `./map.js` and a tarball-built host would load a second map.
+    neverBundle: ['@oakestra/ui/map'],
+  },
   // Kept at `dist/styles/` so the relative `@source '../components'` in styles.css points at the
   // built components, just as it points at the sources in the monorepo.
   copy: [{ from: 'src/styles/*.css', to: 'dist/styles' }],
