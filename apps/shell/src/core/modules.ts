@@ -22,6 +22,11 @@ export interface CoreModule {
   contributions?: Contributions;
 }
 
+/** Whether the preset's `modules` list covers `id`. No list means every module. */
+export function isModuleSelected(preset: Pick<Preset, 'modules'>, id: string): boolean {
+  return preset.modules === undefined || preset.modules.includes(id);
+}
+
 /**
  * Whether the deployment preset enables the module `id`: a core module or linked addon it selects,
  * or one of its own addons (which may replace a linked addon of that name). Module ids are plain
@@ -30,11 +35,7 @@ export interface CoreModule {
  * useFeatureEnabled answers from this too.
  */
 export function isModuleEnabled(preset: Pick<Preset, 'modules' | 'addons'>, id: string): boolean {
-  return (
-    preset.modules === undefined ||
-    preset.modules.includes(id) ||
-    preset.addons.some((addon) => addon.name === id)
-  );
+  return isModuleSelected(preset, id) || preset.addons.some((addon) => addon.name === id);
 }
 
 /** Guard for links into another module, which a preset may have left out. */

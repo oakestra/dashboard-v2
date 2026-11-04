@@ -19,6 +19,7 @@ const host: HostContextValue = {
   api: {} as OakestraApi,
   notify: { success: vi.fn(), info: vi.fn(), warning: vi.fn(), error: vi.fn() },
   isFeatureEnabled: () => true,
+  links: {},
 };
 
 function wrapper(registry: ContributionRegistry) {

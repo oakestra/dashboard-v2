@@ -3,6 +3,7 @@ import type { RouteObject } from 'react-router';
 import type { LinkedAddon } from '../core/addons/linked-addons';
 import { ConfigError } from '../core/config/config';
 import type { Preset } from '../core/config/preset';
+import { navItemKey } from '../core/extensions/registry';
 import type { CoreModule } from '../core/modules';
 import { ALWAYS_ENABLED_MODULES, selectLinkedAddons, selectModules } from './modules';
 import { addonMounts, createAppRoutes, ownsIndexRoute } from './router';
@@ -49,9 +50,10 @@ export function applyPreset(
     }
   }
 
-  // The replacement takes over the linked addon's URL, so links and bookmarks keep working.
   const preset: Preset = {
     ...rawPreset,
+    modules: rawPreset.modules && [...new Set([...ALWAYS_ENABLED_MODULES, ...rawPreset.modules])],
+    // The replacement takes over the linked addon's URL, so links and bookmarks keep working.
     addons: rawPreset.addons.map((addon) => {
       const linked = linkedByName.get(addon.name);
       return linked && !addon.mount ? { ...addon, mount: linked.mount } : addon;
@@ -71,7 +73,6 @@ export function applyPreset(
     if (taken) {
       problems.push(`mount "${mount}" of addon "${name}" overlaps the route "${taken}"`);
     }
-    // Equal mounts of two preset addons are already rejected by the schema.
     for (const other of mounts.slice(index + 1)) {
       if (overlaps(mount, `${other.mount}/*`)) {
         problems.push(
@@ -84,16 +85,37 @@ export function applyPreset(
   if (problems.length > 0) {
     throw new ConfigError(`The preset is invalid:\n${problems.map((p) => `- ${p}`).join('\n')}`);
   }
-  return {
-    modules,
-    linked,
-    preset: preset.modules
-      ? {
-          ...preset,
-          modules: [...new Set([...ALWAYS_ENABLED_MODULES, ...preset.modules])],
-        }
-      : preset,
-  };
+  for (const key of unknownNavKeys(preset.nav.items, modules, linked)) {
+    console.warn(`[preset] nav.items key "${key}" matches no nav item, ignoring it.`);
+  }
+  return { modules, linked, preset };
+}
+
+/**
+ * Nav override keys that match nothing. Modules and linked addons are all known at startup, so a
+ * miss is a typo or a module the preset left out. Other addons may just not have loaded yet, so
+ * their keys are skipped. Items hidden by roles still count.
+ */
+function unknownNavKeys(
+  overrides: Preset['nav']['items'],
+  modules: readonly CoreModule[],
+  linked: readonly LinkedAddon[],
+): string[] {
+  const sources = [
+    ...modules.map(({ id, contributions }) => ({ kind: 'core', id, contributions }) as const),
+    ...linked.map(
+      ({ definition: { id, contributions } }) => ({ kind: 'addon', id, contributions }) as const,
+    ),
+  ];
+  const known = new Set(
+    sources.flatMap((source) =>
+      (source.contributions?.['nav.items'] ?? []).map((item) => navItemKey(source, item.id)),
+    ),
+  );
+  const checked = ['core:', ...linked.map(({ definition }) => `addon:${definition.id}:`)];
+  return Object.keys(overrides).filter(
+    (key) => checked.some((prefix) => key.startsWith(prefix)) && !known.has(key),
+  );
 }
 
 /** Full path pattern of every route that can render a page, e.g. `/applications/:appId`. */

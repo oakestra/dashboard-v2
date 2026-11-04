@@ -1,7 +1,6 @@
 import { SDK_VERSION } from '@oakestra/dashboard-sdk';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
-import { useStore } from 'zustand';
 
 import { useAuthState } from '../auth/auth-context';
 import { useAppConfig } from '../config/config-context';
@@ -13,7 +12,7 @@ import { getDevOverrides, resolveAddons } from './dev-override';
 import { federationRuntime } from './federation-runtime';
 import { createAddonLoader } from './loader';
 import { resolvePresetAddons } from './preset-addons';
-import { fetchUiAddons, uiAddonsQueryKey } from './ui-addons';
+import { fetchUiAddons, uiAddonsQueryKey, type UiAddon } from './ui-addons';
 
 /**
  * Polls /ui-addons and keeps the addon and contribution registries in sync with it, the preset's
@@ -58,8 +57,11 @@ export function useAddonSync(): void {
 
   const query = useQuery({
     queryKey: uiAddonsQueryKey,
-    queryFn: ({ signal }) => fetchUiAddons(config.uiAddonsUrl, signal),
-    enabled: authenticated && discovery,
+    // With discovery off this never touches the network. It still runs so that a preset addon
+    // whose server was down at load time gets retried on the poll interval.
+    queryFn: ({ signal }) =>
+      discovery ? fetchUiAddons(config.uiAddonsUrl, signal) : Promise.resolve<UiAddon[]>([]),
+    enabled: authenticated,
     refetchInterval: config.addonsPollIntervalMs,
     retry: false,
     // Unavailability is an expected state (addons engine not installed), not an error to toast.
@@ -72,39 +74,21 @@ export function useAddonSync(): void {
 
   useEffect(() => {
     if (!data) return;
-    addons.setState({ availability: 'available' });
+    // With discovery off a missing addon isn't an outage, and pages word the two differently.
+    addons.setState({ availability: discovery ? 'available' : 'disabled' });
     void loader.sync(resolveAddons(data, overrides, { preset: presetAddons }));
-  }, [data, dataUpdatedAt, loader, overrides, presetAddons, addons]);
+  }, [data, dataUpdatedAt, discovery, loader, overrides, presetAddons, addons]);
 
   useEffect(() => {
     if (!authenticated) return;
-    // Without discovery there is no addons manager to wait for, and none to blame for a missing
-    // addon, which is why pages tell it apart from an outage.
-    if (!discovery) addons.setState({ availability: 'disabled' });
-    else if (isError) addons.setState({ availability: 'unavailable' });
+    if (isError) addons.setState({ availability: 'unavailable' });
     // Preset addons and overrides do not need the addons manager, so they load as soon as there is
-    // a session, also while /ui-addons is pending, down or switched off (overrides without a
-    // manager are the usual local dev setup). Once a list was received, the effect above owns the
-    // sync and an outage keeps the last known state (see AddonsAvailability). Every failed poll
-    // syncs again, which retries failed loads like a successful poll does.
-    if (data || localAddons.length === 0) return;
+    // a session, also while /ui-addons is pending or down (overrides without a manager are the
+    // usual local dev setup). Once a list was received, the effect above owns the sync and an
+    // outage keeps the last known state (see AddonsAvailability). Every failed poll syncs again,
+    // which retries failed loads like a successful poll does. With discovery off the query
+    // resolves right away, so the effect above handles it.
+    if (!discovery || data || localAddons.length === 0) return;
     void loader.sync(localAddons);
   }, [authenticated, discovery, isError, errorUpdatedAt, data, loader, localAddons, addons]);
-
-  // Without discovery nothing polls, so a preset addon whose server was down at load time (or a
-  // dev override) would stay failed until a page reload. Retry on the poll interval, but only while
-  // something is failed, so a healthy deployment makes no requests at all. A failed linked addon
-  // does not count: its definition is compiled in and invalid, so no sync could ever fix it.
-  const hasFailedLocal = useStore(addons, (state) =>
-    Object.values(state.entries).some(
-      (entry) => entry.state === 'failed' && (entry.origin === 'preset' || entry.origin === 'dev'),
-    ),
-  );
-  useEffect(() => {
-    if (!authenticated || discovery || !hasFailedLocal) return;
-    const timer = setInterval(() => {
-      void loader.sync(localAddons);
-    }, config.addonsPollIntervalMs);
-    return () => clearInterval(timer);
-  }, [authenticated, discovery, hasFailedLocal, loader, localAddons, config.addonsPollIntervalMs]);
 }

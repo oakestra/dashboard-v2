@@ -73,16 +73,8 @@ describe('presetSchema', () => {
     expect(parsePreset({ home: '/applications?x=1' }).home).toBe('/applications?x=1');
   });
 
-  it('rejects duplicate addon names and mounts', () => {
+  it('rejects duplicate addon names', () => {
     expect(() => parsePreset({ addons: [addon, addon] })).toThrow(/listed twice/);
-    expect(() =>
-      parsePreset({
-        addons: [
-          { ...addon, mount: '/x' },
-          { ...addon, name: 'other', mount: '/x' },
-        ],
-      }),
-    ).toThrow(/used by another addon/);
   });
 
   // Editors complete and check preset.json files against this file. Update it with

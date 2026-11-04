@@ -22,11 +22,8 @@ export interface HostContextValue {
    * Read it through useFeatureEnabled().
    */
   readonly isFeatureEnabled: (id: string) => boolean;
-  /**
-   * Read it through useHostLinks(). Optional because shells built before it existed do not set
-   * it; the hook then answers with no links.
-   */
-  readonly links?: HostLinks;
+  /** Read it through useHostLinks(). */
+  readonly links: HostLinks;
 }
 
 /** Identifies the addon a piece of UI belongs to. Set by the shell around every addon contribution. */

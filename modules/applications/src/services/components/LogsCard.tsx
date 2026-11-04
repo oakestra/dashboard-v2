@@ -8,22 +8,11 @@ import {
   CardTitle,
   EmptyState,
   CopyButton,
+  downloadText,
   formatRelativeTime,
 } from '@oakestra/ui';
 import { DownloadIcon, ScrollTextIcon } from 'lucide-react';
 import { useLayoutEffect, useRef } from 'react';
-
-function downloadText(filename: string, text: string) {
-  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  // Revoking synchronously can cancel the download in some browsers.
-  setTimeout(() => URL.revokeObjectURL(url), 0);
-}
 
 interface LogsCardProps {
   logs: string | undefined;

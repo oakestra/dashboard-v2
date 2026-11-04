@@ -7,9 +7,9 @@ import {
 
 import type { Preset } from '../../core/config/preset';
 import {
+  compareOrder,
   navItemKey,
   type ContributionSource,
-  type RegisteredSource,
   type ResolvedContribution,
 } from '../../core/extensions/registry';
 
@@ -26,8 +26,6 @@ export interface NavEntry {
   children: NavSubEntry[];
 }
 
-const UNORDERED = Number.MAX_SAFE_INTEGER;
-
 /**
  * Attaches the visible, sorted sub-items to each nav item. Top-level items were already filtered
  * and sorted by the registry; sub-items follow the same rules (`roles`, then `order`, then
@@ -40,12 +38,9 @@ export function buildNavEntries(
   return items.map(({ item, source }) => {
     const key = navItemKey(source, item.id);
     const children = (item.children ?? [])
-      .map((child, index) => ({ child, index }))
-      .filter(({ child }) => hasAnyRole(user, child.roles))
-      .sort(
-        (a, b) => (a.child.order ?? UNORDERED) - (b.child.order ?? UNORDERED) || a.index - b.index,
-      )
-      .map(({ child }) => ({ key: `${key}/${child.id}`, item: child }));
+      .filter((child) => hasAnyRole(user, child.roles))
+      .sort((a, b) => compareOrder(a.order, b.order))
+      .map((child) => ({ key: `${key}/${child.id}`, item: child }));
     return { key, item, source, children };
   });
 }
@@ -65,9 +60,9 @@ export function applyNavOverrides(
 ): NavEntry[] {
   if (Object.keys(overrides).length === 0) return [...entries];
   return entries
-    .flatMap((entry, index) => {
+    .flatMap((entry) => {
       const override = overrides[entry.key];
-      if (!override) return [{ entry, index }];
+      if (!override) return [entry];
       if (override.hidden) return [];
       const item: NavItem = {
         ...entry.item,
@@ -75,41 +70,9 @@ export function applyNavOverrides(
         ...(override.order !== undefined ? { order: override.order } : {}),
         ...(override.group !== undefined ? { group: override.group } : {}),
       };
-      return [{ entry: { ...entry, item }, index }];
+      return [{ ...entry, item }];
     })
-    .sort(
-      (a, b) =>
-        (a.entry.item.order ?? UNORDERED) - (b.entry.item.order ?? UNORDERED) || a.index - b.index,
-    )
-    .map(({ entry }) => entry);
-}
-
-/**
- * Override keys that name a core item no module contributes. Only core keys are checked: an addon
- * may legitimately not be loaded (yet), whereas core items are all registered at startup, so a
- * miss there is a typo or a module the preset left out. Items hidden by roles still count as known.
- */
-export function unknownCoreNavKeys(
-  overrides: NavOverrides,
-  sources: Readonly<Record<string, RegisteredSource>>,
-): string[] {
-  const known = new Set<string>();
-  for (const { source, contributions } of Object.values(sources)) {
-    if (source.kind !== 'core') continue;
-    for (const item of contributions['nav.items'] ?? []) known.add(navItemKey(source, item.id));
-  }
-  return Object.keys(overrides).filter((key) => key.startsWith('core:') && !known.has(key));
-}
-
-const warnedKeys = new Set<string>();
-
-/** Warns once per key and page load, since the sidebar re-renders constantly. */
-export function warnUnknownNavKeys(keys: readonly string[]): void {
-  for (const key of keys) {
-    if (warnedKeys.has(key)) continue;
-    warnedKeys.add(key);
-    console.warn(`[preset] nav.items key "${key}" matches no core nav item, ignoring it.`);
-  }
+    .sort((a, b) => compareOrder(a.item.order, b.item.order));
 }
 
 /**

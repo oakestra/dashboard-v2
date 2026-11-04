@@ -1,5 +1,5 @@
 import { act, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { setEntry, type AddonRegistry } from '../../core/addons/addon-registry';
 import type { CoreModule } from '../../core/modules';
@@ -81,7 +81,6 @@ describe('<AppLayout>', () => {
   });
 
   it('applies the preset nav overrides and group labels', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     renderApp({
       modules,
       route: '/infra',
@@ -93,7 +92,6 @@ describe('<AppLayout>', () => {
           items: {
             'core:demo:apps': { label: 'Apps', group: 'management', order: 1 },
             'core:demo:support': { hidden: true },
-            'core:demo:typo-warned-once': { hidden: true },
           },
         },
       },
@@ -107,9 +105,6 @@ describe('<AppLayout>', () => {
     const management = screen.getByText('Management').closest('[data-slot="sidebar-group"]')!;
     const links = within(management as HTMLElement).getAllByRole('link');
     expect(links.map((link) => link.textContent)).toEqual(['Apps', 'Infrastructure']);
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn.mock.calls[0]?.[0]).toContain('core:demo:typo-warned-once');
-    warn.mockRestore();
   });
 
   it('uses the preset label of a group that still has items', async () => {

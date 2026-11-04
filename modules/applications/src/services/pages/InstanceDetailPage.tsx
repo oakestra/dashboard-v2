@@ -116,14 +116,11 @@ export function InstanceDetailPage() {
   }
   if (!instance) {
     return (
-      <EmptyState
+      <NotFound
         title="Instance not found"
         description="It may have been undeployed."
-        action={
-          <Button asChild variant="outline">
-            <Link to={back}>Back to the service</Link>
-          </Button>
-        }
+        back={back}
+        backLabel="Back to the service"
       />
     );
   }

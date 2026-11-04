@@ -15,7 +15,7 @@ export function newestFirst(applications: readonly Application[]): Application[]
   return [...applications].sort((a, b) => b._id.localeCompare(a._id));
 }
 
-export function applicationQuery(api: OakestraApi, applicationId: string) {
+function applicationQuery(api: OakestraApi, applicationId: string) {
   return queryOptions({
     queryKey: platformQueryKeys.application(applicationId),
     queryFn: ({ signal }) => api.applications.get(applicationId, { signal }),
@@ -41,7 +41,7 @@ export function seededApplicationQuery(
   });
 }
 
-export function serviceQuery(api: OakestraApi, serviceId: string) {
+function serviceQuery(api: OakestraApi, serviceId: string) {
   return queryOptions({
     queryKey: platformQueryKeys.service(serviceId),
     queryFn: ({ signal }) => api.services.get(serviceId, { signal }),

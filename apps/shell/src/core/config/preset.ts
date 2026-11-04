@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { navGroupSchema } from '../addons/definition';
-import { ADDON_NAME_PATTERN, uiAddonSchema } from '../addons/ui-addons';
+import { ADDON_NAME_PATTERN, isHttpUrl, uiAddonSchema } from '../addons/ui-addons';
 import { fetchConfigFile, parseConfigFile } from './config';
 
 /**
@@ -26,17 +26,14 @@ function parseLocalPath(value: string): URL | undefined {
   }
 }
 
-/** Same-origin paths or absolute http(s) URLs. */
-const entrySchema = z.string().refine((value) => {
-  if (parseLocalPath(value)) return true;
-  if (!/^https?:\/\//.test(value)) return false;
-  try {
-    new URL(value);
-    return true;
-  } catch {
-    return false;
-  }
-}, 'must be an absolute http(s) URL or a path starting with "/" that stays on this origin');
+/** Same-origin paths or absolute http(s) URLs. The prefix check is for `http:foo`, which parses. */
+const entrySchema = z
+  .string()
+  .refine(
+    (value) =>
+      parseLocalPath(value) !== undefined || (/^https?:\/\//.test(value) && isHttpUrl(value)),
+    'must be an absolute http(s) URL or a path starting with "/" that stays on this origin',
+  );
 
 const presetAddonSchema = z.strictObject({
   ...uiAddonSchema.shape,
@@ -99,7 +96,7 @@ export const presetSchema = z
           .partialRecord(navGroupSchema, z.string().min(1))
           .default({})
           .describe('Labels of the sidebar groups, e.g. { "main": "Workloads" }.'),
-        // Unknown keys only warn (later, in the nav model), since addons load late or not at all.
+        // Unknown keys only warn (in applyPreset), since addons load late or not at all.
         items: z
           .record(z.string(), navOverrideSchema)
           .default({})
@@ -111,7 +108,6 @@ export const presetSchema = z
   })
   .superRefine((preset, ctx) => {
     const names = new Set<string>();
-    const mounts = new Set<string>();
     preset.addons.forEach((addon, index) => {
       if (names.has(addon.name)) {
         ctx.addIssue({
@@ -121,23 +117,11 @@ export const presetSchema = z
         });
       }
       names.add(addon.name);
-      if (!addon.mount) return;
-      // react-router matches case-insensitively, but MOUNT_PATTERN already rules out upper case.
-      if (mounts.has(addon.mount)) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['addons', index, 'mount'],
-          message: `mount "${addon.mount}" is used by another addon`,
-        });
-      }
-      mounts.add(addon.mount);
     });
   });
 
 export type Preset = z.infer<typeof presetSchema>;
 export type PresetInput = z.input<typeof presetSchema>;
-export type PresetAddon = Preset['addons'][number];
-export type NavOverride = z.infer<typeof navOverrideSchema>;
 
 /** No preset: every module, addons from `/ui-addons` only, the sidebar as the modules declare it. */
 export const DEFAULT_PRESET: Preset = presetSchema.parse({});

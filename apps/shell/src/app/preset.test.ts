@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ConfigError } from '../core/config/config';
 import { parsePreset, type PresetInput } from '../core/config/preset';
@@ -123,6 +123,31 @@ describe('applyPreset with linked addons', () => {
     expect(() => apply({ addons: [addon('acme', '/infrastructure/clusters')] })).toThrow(
       /mount "\/infrastructure" of addon "infrastructure" overlaps the mount "\/infrastructure\/clusters"/,
     );
+  });
+
+  it('rejects two addons on one mount', () => {
+    expect(() => apply({ addons: [addon('acme', '/x'), addon('other', '/x')] })).toThrow(
+      /mount "\/x" of addon "acme" overlaps the mount "\/x" of addon "other"/,
+    );
+  });
+
+  it('warns about nav keys no enabled module or linked addon contributes', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    apply({
+      nav: {
+        items: {
+          'core:settings:settings': { hidden: true },
+          'core:settings:typo': { hidden: true },
+          'addon:help:typo': { hidden: true },
+          'addon:not-loaded-yet:home': { hidden: true },
+        },
+      },
+    });
+    expect(warn.mock.calls.map(([message]) => message as string)).toEqual([
+      expect.stringContaining('core:settings:typo'),
+      expect.stringContaining('addon:help:typo'),
+    ]);
+    warn.mockRestore();
   });
 
   it('keeps the mounts of the linked addons clear of module routes', () => {

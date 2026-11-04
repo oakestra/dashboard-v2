@@ -91,6 +91,20 @@ export function addonBasePath(name: string): string {
   return `/addons/${name}`;
 }
 
+/** Strips a leading `./` or `/` from an addon nav path. The addon's root comes out empty. */
+export function relativeAddonPath(path: string): string {
+  return path.replace(/^\.?\/?/, '');
+}
+
+export function isHttpUrl(value: string): boolean {
+  try {
+    const { protocol } = new URL(value);
+    return protocol === 'http:' || protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 /** The source an addon's contributions and pages are registered and isolated under. */
 export function addonSource(
   addon: Pick<ResolvedAddon, 'name' | 'version' | 'basePath'>,

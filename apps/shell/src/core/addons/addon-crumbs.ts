@@ -11,16 +11,18 @@ import { AddonCrumbLabel } from './AddonCrumbLabel';
 import { addonLabel, type AddonEntry } from './addon-registry';
 import { useAddonRegistry } from './addon-registry-context';
 import { matchAddonRoutes, useSessionUser, type AddonRouteHandle } from './addon-routes';
-import { addonBasePath } from './ui-addons';
+import { addonBasePath, relativeAddonPath } from './ui-addons';
 
 /** Id of the `addons/:addonId/*` route, whose crumbs come from the addon instead of `handle`. */
 export const ADDON_PAGE_ROUTE_ID = 'addon-page';
 
-// Route ids must be unique, so every mounted addon gets its own id under this prefix.
-const ADDON_MOUNT_ROUTE_ID_PREFIX = 'addon-mount:';
+interface AddonPage {
+  addonId: string;
+  basePath: string;
+}
 
 interface AddonMountHandle {
-  addonBasePath: string;
+  addonPage: AddonPage;
 }
 
 /**
@@ -29,9 +31,10 @@ interface AddonMountHandle {
  */
 export function addonMountRoute(addonId: string, mount: string, element: ReactNode): RouteObject {
   return {
-    id: `${ADDON_MOUNT_ROUTE_ID_PREFIX}${addonId}`,
+    // Route ids must be unique, so every mounted addon gets its own.
+    id: `addon-mount:${addonId}`,
     path: `${mount.replace(/^\//, '')}/*`,
-    handle: { addonBasePath: mount } satisfies AddonMountHandle,
+    handle: { addonPage: { addonId, basePath: mount } } satisfies AddonMountHandle,
     element,
   };
 }
@@ -41,22 +44,17 @@ export function addonMountRoute(addonId: string, mount: string, element: ReactNo
  * these into the addon's own crumbs and reads their width from the addon's routes.
  */
 export function isAddonPageMatch(match: UIMatch): boolean {
-  return match.id === ADDON_PAGE_ROUTE_ID || match.id.startsWith(ADDON_MOUNT_ROUTE_ID_PREFIX);
+  return match.id === ADDON_PAGE_ROUTE_ID || mountedPageOf(match) !== undefined;
 }
 
-interface AddonPage {
-  addonId: string;
-  basePath: string;
+function mountedPageOf(match: UIMatch): AddonPage | undefined {
+  return (match.handle as Partial<AddonMountHandle> | undefined)?.addonPage;
 }
 
 function addonPageOf(match: UIMatch | undefined): AddonPage | undefined {
   if (!match) return undefined;
-  if (match.id.startsWith(ADDON_MOUNT_ROUTE_ID_PREFIX)) {
-    return {
-      addonId: match.id.slice(ADDON_MOUNT_ROUTE_ID_PREFIX.length),
-      basePath: (match.handle as AddonMountHandle).addonBasePath,
-    };
-  }
+  const mounted = mountedPageOf(match);
+  if (mounted) return mounted;
   const addonId = match.params.addonId;
   return addonId ? { addonId, basePath: addonBasePath(addonId) } : undefined;
 }
@@ -93,7 +91,7 @@ export function navOverrideLabel(
 ): string | undefined {
   if (entry.state !== 'loaded') return undefined;
   const items = entry.definition.contributions?.['nav.items'] ?? [];
-  const root = items.find((item) => item.path.replace(/^\.?\/?/, '') === '');
+  const root = items.find((item) => relativeAddonPath(item.path) === '');
   return root ? overrides[navItemKey({ kind: 'addon', id: addonId }, root.id)]?.label : undefined;
 }
 

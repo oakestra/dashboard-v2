@@ -1,10 +1,14 @@
-import { useCurrentUser, type Widget, type WidgetSize } from '@oakestra/dashboard-sdk';
+import {
+  useCurrentUser,
+  type SlotSource,
+  type Widget,
+  type WidgetSize,
+} from '@oakestra/dashboard-sdk';
 import { Card, CardContent, CardHeader, CardTitle, EmptyState, PageHeader } from '@oakestra/ui';
 import { LayoutDashboardIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { Slot } from '../../../core/extensions/Slot';
-import type { ContributionSource } from '../../../core/extensions/registry';
 import { useContributions } from '../../../core/extensions/use-contributions';
 
 /** `card` unless the widget asks otherwise; the definition parser already dropped unknown sizes. */
@@ -22,7 +26,7 @@ const isCard = isSize('card');
 // children with `gap` (which skips hidden items, unlike `space-y`) they leave no hole behind.
 const HIDE_EMPTY = 'empty:hidden [&>:empty]:hidden';
 
-function frame(widget: Widget, source: ContributionSource, content: ReactNode, className?: string) {
+function frame(widget: Widget, source: SlotSource, content: ReactNode, className?: string) {
   return (
     <div
       data-testid="home-widget"

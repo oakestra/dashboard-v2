@@ -18,7 +18,7 @@ export function createHostContextValue(
   user: CurrentUser | null,
   api: OakestraApi,
   isFeatureEnabled: (id: string) => boolean,
-  links: HostLinks = {},
+  links: HostLinks,
 ): HostContextValue {
   return { sdkVersion: SDK_VERSION, user, api, notify, isFeatureEnabled, links };
 }

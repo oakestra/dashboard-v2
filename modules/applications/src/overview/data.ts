@@ -25,10 +25,12 @@ export interface OverviewData {
 
 const NO_APPLICATIONS: readonly Application[] = [];
 
-function summarize(list: readonly Application[], serviceQueries: UseQueryResult<Service[]>[]) {
+type ServiceLists = readonly (Service[] | undefined)[];
+
+function computeSummary(list: readonly Application[], serviceLists: ServiceLists) {
   const entries = list.map((application, index) => ({
     application,
-    services: serviceQueries[index]?.data ?? [],
+    services: serviceLists[index] ?? [],
   }));
   const services = entries.flatMap((entry) => entry.services);
   return {
@@ -39,12 +41,37 @@ function summarize(list: readonly Application[], serviceQueries: UseQueryResult<
     attention: attentionItems(entries),
     healthById: new Map(
       list.map((application, index) => {
-        const data = serviceQueries[index]?.data;
+        const data = serviceLists[index];
         return [application._id, data ? applicationHealth(data) : undefined] as const;
       }),
     ),
-    servicesPending: serviceQueries.some((query) => query.isPending),
   };
+}
+
+let lastSummary:
+  | {
+      list: readonly Application[];
+      serviceLists: ServiceLists;
+      summary: ReturnType<typeof computeSummary>;
+    }
+  | undefined;
+
+/**
+ * Each widget calls useOverviewData on its own, so without this every finished query would walk
+ * all services five times. The widgets get the same data references, so one result does for all.
+ */
+function summarize(list: readonly Application[], serviceLists: ServiceLists) {
+  const last = lastSummary;
+  if (
+    last?.list === list &&
+    last.serviceLists.length === serviceLists.length &&
+    last.serviceLists.every((services, index) => services === serviceLists[index])
+  ) {
+    return last.summary;
+  }
+  const summary = computeSummary(list, serviceLists);
+  lastSummary = { list, serviceLists, summary };
+  return summary;
 }
 
 /**
@@ -59,7 +86,13 @@ export function useOverviewData(): OverviewData {
   // `combine` reruns only when a services query or `list` changes, not on every render of each
   // widget, which matters once there are many applications with many instances.
   const combine = useCallback(
-    (results: UseQueryResult<Service[]>[]) => summarize(list, results),
+    (results: UseQueryResult<Service[]>[]) => ({
+      ...summarize(
+        list,
+        results.map((query) => query.data),
+      ),
+      servicesPending: results.some((query) => query.isPending),
+    }),
     [list],
   );
   // The API has no "all my services" endpoint for non-admins, so fetch per application.

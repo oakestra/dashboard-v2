@@ -6,7 +6,7 @@ import { deleteEntries, setEntry, type AddonEntry, type AddonRegistry } from './
 import { parseAddonDefinition } from './definition';
 import type { AddonModuleRuntime } from './federation-runtime';
 import { checkSdkCompatibility } from './sdk-compat';
-import { addonSource, type ResolvedAddon, type UiAddon } from './ui-addons';
+import { addonSource, relativeAddonPath, type ResolvedAddon, type UiAddon } from './ui-addons';
 
 export interface AddonLoaderDeps {
   sdkVersion: string;
@@ -177,7 +177,7 @@ export function resolveAddonContributions(
 }
 
 function joinPath(base: string, relative: string): string {
-  const trimmed = relative.replace(/^\.?\/?/, '');
+  const trimmed = relativeAddonPath(relative);
   return trimmed ? `${base}/${trimmed}` : base;
 }
 

@@ -17,18 +17,17 @@ describe('seedFromLists', () => {
     client.setQueryData(['items', 'list', 'b'], [{ id: '1', name: 'new' }], { updatedAt: 200 });
     client.setQueryData(['items', 'list', 'c'], [{ id: '2', name: 'other' }], { updatedAt: 300 });
 
-    expect(seedFromLists(client, ['items', 'list'], byId('1'))).toEqual({
-      initialData: { id: '1', name: 'new' },
-      initialDataUpdatedAt: 200,
-    });
+    const seed = seedFromLists(client, ['items', 'list'], byId('1'));
+    expect(seed.initialData()).toEqual({ id: '1', name: 'new' });
+    expect(seed.initialDataUpdatedAt()).toBe(200);
   });
 
-  it('returns undefined when no cached list has the item', () => {
+  it('seeds nothing when no cached list has the item', () => {
     const client = new QueryClient();
     client.setQueryData(['items', 'list', 'a'], [{ id: '1', name: 'one' }]);
 
-    expect(seedFromLists(client, ['items', 'list'], byId('2'))).toBeUndefined();
-    expect(seedFromLists(client, ['other'], byId('1'))).toBeUndefined();
+    expect(seedFromLists(client, ['items', 'list'], byId('2')).initialData()).toBeUndefined();
+    expect(seedFromLists(client, ['other'], byId('1')).initialData()).toBeUndefined();
   });
 
   it('lets ensureQueryData resolve from the list without fetching', async () => {

@@ -2,6 +2,7 @@ import {
   ADDON_NAME_PATTERN,
   addonBasePath,
   addonEntryUrl,
+  isHttpUrl,
   type ResolvedAddon,
   type UiAddon,
 } from './ui-addons';
@@ -63,15 +64,6 @@ function readStored(storage: Storage): Record<string, string> {
     );
   } catch {
     return {};
-  }
-}
-
-function isHttpUrl(value: string): boolean {
-  try {
-    const { protocol } = new URL(value);
-    return protocol === 'http:' || protocol === 'https:';
-  } catch {
-    return false;
   }
 }
 

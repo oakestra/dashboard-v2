@@ -46,14 +46,12 @@ export function useFeatureEnabled(id: string): boolean {
   return useHostContext().isFeatureEnabled(id);
 }
 
-const NO_LINKS: HostLinks = Object.freeze({});
-
 /**
  * External links the deployment configures, e.g. `useHostLinks().grafanaUrl`. Every field is
  * optional: render the link only when it is set.
  */
 export function useHostLinks(): HostLinks {
-  return useHostContext().links ?? NO_LINKS;
+  return useHostContext().links;
 }
 
 export interface Permissions {

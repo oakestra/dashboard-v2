@@ -90,7 +90,7 @@ interface HostContextValue {
     // (undocumented)
     readonly api: OakestraApi;
     readonly isFeatureEnabled: (id: string) => boolean;
-    readonly links?: HostLinks;
+    readonly links: HostLinks;
     // (undocumented)
     readonly notify: Notify;
     readonly sdkVersion: string;

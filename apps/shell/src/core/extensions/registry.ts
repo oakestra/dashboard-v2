@@ -71,6 +71,11 @@ export function createContributionRegistry(): ContributionRegistry {
 
 const UNORDERED = Number.MAX_SAFE_INTEGER;
 
+/** Items without an `order` go last. `sort` is stable, so ties keep their position. */
+export function compareOrder(a: number | undefined, b: number | undefined): number {
+  return (a ?? UNORDERED) - (b ?? UNORDERED);
+}
+
 /**
  * Flattens all contributions to `point`, drops the ones the user may not see and sorts the rest.
  *
@@ -90,9 +95,7 @@ export function selectContributions<P extends ExtensionPointId>(
       result.push({ item, source, sequence });
     }
   }
-  result.sort(
-    (a, b) => (a.item.order ?? UNORDERED) - (b.item.order ?? UNORDERED) || a.sequence - b.sequence,
-  );
+  result.sort((a, b) => compareOrder(a.item.order, b.item.order) || a.sequence - b.sequence);
   return result.map(({ item, source }) => ({ item, source }));
 }
 

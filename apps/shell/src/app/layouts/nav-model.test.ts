@@ -2,7 +2,7 @@ import type { CurrentUser, NavItem } from '@oakestra/dashboard-sdk';
 import { describe, expect, it } from 'vitest';
 
 import type { ResolvedContribution } from '../../core/extensions/registry';
-import { applyNavOverrides, buildNavEntries, findActiveKey, unknownCoreNavKeys } from './nav-model';
+import { applyNavOverrides, buildNavEntries, findActiveKey } from './nav-model';
 
 const source = { kind: 'core', id: 'demo', label: 'Demo' } as const;
 const resolve = (...items: NavItem[]): ResolvedContribution<'nav.items'>[] =>
@@ -130,29 +130,5 @@ describe('applyNavOverrides', () => {
       'C',
       'D',
     ]);
-  });
-});
-
-describe('unknownCoreNavKeys', () => {
-  const sources = {
-    'core:demo': {
-      source,
-      contributions: { 'nav.items': [{ id: 'a', label: 'A', path: '/a' }] },
-      sequence: 0,
-    },
-  };
-
-  it('reports only core keys without a contributing module', () => {
-    expect(
-      unknownCoreNavKeys(
-        {
-          'core:demo:a': {},
-          'core:demo:missing': {},
-          'core:gone:x': {},
-          'addon:late:home': {},
-        },
-        sources,
-      ),
-    ).toEqual(['core:demo:missing', 'core:gone:x']);
   });
 });

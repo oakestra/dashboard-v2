@@ -327,7 +327,7 @@ export interface HostContextValue {
     // (undocumented)
     readonly api: OakestraApi;
     readonly isFeatureEnabled: (id: string) => boolean;
-    readonly links?: HostLinks;
+    readonly links: HostLinks;
     // (undocumented)
     readonly notify: Notify;
     readonly sdkVersion: string;
@@ -533,9 +533,9 @@ export const SDK_VERSION = "0.1.0";
 
 // @public
 export function seedFromLists<T>(queryClient: QueryClient, listKey: QueryKey, match: (item: T) => boolean): {
-    initialData: T;
-    initialDataUpdatedAt: number;
-} | undefined;
+    initialData: () => T | undefined;
+    initialDataUpdatedAt: () => number | undefined;
+};
 
 // @public (undocumented)
 export interface ServiceContext {

@@ -6,7 +6,7 @@ import infrastructure from '@oakestra/module-infrastructure';
 
 import type { LinkedAddon } from '../core/addons/linked-addons';
 import type { Preset } from '../core/config/preset';
-import type { CoreModule } from '../core/modules';
+import { isModuleSelected, type CoreModule } from '../core/modules';
 import { addonManagerModule } from '../features/addon-manager';
 import { authModule } from '../features/auth';
 import { overviewModule } from '../features/overview';
@@ -43,10 +43,8 @@ export function selectModules(
   modules: readonly CoreModule[],
   preset: Pick<Preset, 'modules'>,
 ): CoreModule[] {
-  const enabled = preset.modules;
-  if (!enabled) return [...modules];
   return modules.filter(
-    (module) => ALWAYS_ENABLED_MODULES.includes(module.id) || enabled.includes(module.id),
+    (module) => ALWAYS_ENABLED_MODULES.includes(module.id) || isModuleSelected(preset, module.id),
   );
 }
 
@@ -57,7 +55,6 @@ export function selectLinkedAddons(
 ): LinkedAddon[] {
   const replaced = new Set(preset.addons.map((addon) => addon.name));
   return linked.filter(
-    ({ definition: { id } }) =>
-      !replaced.has(id) && (preset.modules === undefined || preset.modules.includes(id)),
+    ({ definition: { id } }) => !replaced.has(id) && isModuleSelected(preset, id),
   );
 }

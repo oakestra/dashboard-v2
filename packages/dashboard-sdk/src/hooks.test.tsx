@@ -30,6 +30,7 @@ function host(overrides: Partial<HostContextValue> = {}): HostContextValue {
     api: { baseUrl: 'http://api', fetch: vi.fn() } as unknown as OakestraApi,
     notify: { success: vi.fn(), info: vi.fn(), warning: vi.fn(), error: vi.fn() },
     isFeatureEnabled: () => true,
+    links: {},
     ...overrides,
   };
 }
@@ -68,11 +69,6 @@ describe('host hooks', () => {
     expect(renderHook(() => useHostLinks(), { wrapper }).result.current).toEqual({
       grafanaUrl: 'https://grafana.example',
     });
-  });
-
-  it('answer with no links from a shell that does not provide them', () => {
-    const { result } = renderHook(() => useHostLinks(), { wrapper: withHost(host()) });
-    expect(result.current).toEqual({});
   });
 
   it('derive permissions from the user roles', () => {

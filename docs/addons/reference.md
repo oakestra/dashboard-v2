@@ -491,7 +491,7 @@ Addons installed through the addons manager are not covered.
 
 `useHostLinks()` returns the external links of the deployment's runtime config, today
 `grafanaUrl` (the shell's `GRAFANA_URL`). Every field is optional, so render the link only when it
-is set; a shell that predates the hook answers `{}`:
+is set:
 
 ```tsx
 const { grafanaUrl } = useHostLinks();

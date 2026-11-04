@@ -2,34 +2,20 @@ import type {
   EmptyContext,
   ExtensionPoints,
   RenderablePointId,
-  SlotContext,
+  SlotProps as SdkSlotProps,
 } from '@oakestra/dashboard-sdk';
-import { Fragment, type ComponentType, type ReactNode } from 'react';
+import { Fragment, type ComponentType } from 'react';
 
 import { ContributionBoundary } from './ContributionBoundary';
-import type { ContributionSource } from './registry';
 import { useContributions } from './use-contributions';
 
-type ContextProp<P extends RenderablePointId> =
-  EmptyContext extends SlotContext<P> ? { context?: SlotContext<P> } : { context: SlotContext<P> };
-
-export type SlotProps<P extends RenderablePointId> = {
-  point: P;
-  /**
-   * Wraps each rendered contribution, e.g. in a card or a tab panel. `content` is already isolated
-   * by an error boundary, so a wrapper can never be broken by the contribution it wraps.
-   */
-  render?: (item: ExtensionPoints[P], content: ReactNode, source: ContributionSource) => ReactNode;
-  /** Rendered when nothing is contributed (or nothing is visible to the current user). */
-  empty?: ReactNode;
-  /** Wraps all rendered contributions together, only when there is at least one. */
-  wrap?: (children: ReactNode) => ReactNode;
+export type SlotProps<P extends RenderablePointId> = SdkSlotProps<P> & {
   /**
    * Renders only the contributions it accepts, for a page that lays one point out in several
    * places (the overview by widget size). Shell only: the SDK's Slot has no such prop.
    */
   filter?: (item: ExtensionPoints[P]) => boolean;
-} & ContextProp<P>;
+};
 
 // Shared so a slot without context passes the same object every render; a fresh `{}` would
 // defeat the memo in useContributions.

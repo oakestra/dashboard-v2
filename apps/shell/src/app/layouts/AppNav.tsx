@@ -16,21 +16,17 @@ import {
   useSidebar,
 } from '@oakestra/ui';
 import { ActivityIcon, ChevronRightIcon, ExternalLinkIcon, type LucideIcon } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
-import { useStore } from 'zustand';
+import { useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 
 import { useAppConfig } from '../../core/config/config-context';
 import { usePreset } from '../../core/config/preset-context';
-import { useContributionRegistry } from '../../core/extensions/registry-context';
 import { ErrorBoundary } from '../../core/extensions/ErrorBoundary';
 import { useContributions } from '../../core/extensions/use-contributions';
 import {
   applyNavOverrides,
   buildNavEntries,
   findActiveKey,
-  unknownCoreNavKeys,
-  warnUnknownNavKeys,
   type NavEntry as NavEntryModel,
 } from './nav-model';
 
@@ -71,14 +67,10 @@ function useNav() {
   const items = useContributions('nav.items');
   const user = useCurrentUser();
   const { nav } = usePreset();
-  const sources = useStore(useContributionRegistry(), (state) => state.sources);
   const entries = useMemo(
     () => applyNavOverrides(buildNavEntries(items, user), nav.items),
     [items, user, nav.items],
   );
-  useEffect(() => {
-    warnUnknownNavKeys(unknownCoreNavKeys(nav.items, sources));
-  }, [nav.items, sources]);
   const externalLinks = useExternalLinks();
   const { pathname } = useLocation();
   // Computed over every entry, footer included, so exactly one link in the sidebar is active.
