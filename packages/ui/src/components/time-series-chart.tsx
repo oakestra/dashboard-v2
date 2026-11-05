@@ -46,8 +46,13 @@ const secondFormat = new Intl.DateTimeFormat(undefined, {
   hour: '2-digit',
   minute: '2-digit',
   second: '2-digit',
+  hourCycle: 'h23',
 });
-const minuteFormat = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
+const minuteFormat = new Intl.DateTimeFormat(undefined, {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
 const dayFormat = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
 
 const SECOND = 1000;
@@ -72,6 +77,20 @@ const TICK_STEPS = [
   DAY,
 ];
 const MAX_TICKS = 5;
+
+/**
+ * Axis ticks for byte values on round binary multiples. Recharts rounds in decimal, which comes out
+ * as 1.9 MB, 3.8 MB, 5.7 MB once the labels are formatted in units of 1024.
+ */
+export function byteTicks(max: number): number[] | undefined {
+  if (max <= 0) return undefined;
+  const unit = 1024 ** Math.floor(Math.log(max) / Math.log(1024));
+  const scaled = max / unit;
+  const step = [0.25, 0.5, 1, 2, 5, 10, 25, 50, 100, 250].find((s) => scaled / s <= 4) ?? 250;
+  const ticks = [0];
+  while (ticks.at(-1)! < max) ticks.push(ticks.length * step * unit);
+  return ticks;
+}
 
 /**
  * Ticks on round multiples of one step, with a label precise enough for that step. Letting
@@ -118,6 +137,8 @@ export function TimeSeriesChart({
   const points = data.map((point) => ({ time: point.timestamp.getTime(), value: point.value }));
   const config = { value: { label: title, color } } satisfies ChartConfig;
   const last = points.at(-1);
+  const valueTicks =
+    unit === 'bytes' ? byteTicks(Math.max(...points.map((point) => point.value))) : undefined;
   const { ticks, format: formatTick } = timeTicks(points.at(0)?.time ?? 0, last?.time ?? 0);
 
   const axes = (
@@ -142,6 +163,7 @@ export function TimeSeriesChart({
         axisLine={false}
         tickMargin={4}
         tickFormatter={(value: number) => format(value)}
+        {...(valueTicks ? { ticks: valueTicks, domain: [0, valueTicks.at(-1)!] } : {})}
       />
       <ChartTooltip
         content={

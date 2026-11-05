@@ -28,7 +28,7 @@ export function NotFound({
       title={title}
       description={description}
       action={
-        <Button asChild variant="outline">
+        <Button asChild>
           <Link to={back}>{backLabel}</Link>
         </Button>
       }

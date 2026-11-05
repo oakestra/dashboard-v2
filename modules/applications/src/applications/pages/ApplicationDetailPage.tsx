@@ -149,7 +149,7 @@ export function ApplicationDetailPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title={app.application_name}
         description={
@@ -232,7 +232,7 @@ export function ApplicationDetailPage() {
         )}
         empty={
           <section aria-labelledby="services-heading" className="space-y-3">
-            <h2 id="services-heading" className="text-base font-semibold">
+            <h2 id="services-heading" className="text-sm font-semibold">
               Services
             </h2>
             {servicesPanel}

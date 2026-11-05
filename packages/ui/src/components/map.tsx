@@ -27,6 +27,7 @@ import { X, Minus, Plus, Locate, Maximize, Loader2 } from 'lucide-react';
 // registers its URL with setMapWorkerUrl() (see lib/map-worker.ts for why the import is not here),
 // so the map does not depend on a third-party CDN or a CSP exception for it.
 import { applyMapWorkerUrl, getMapWorkerUrl } from '../lib/map-worker';
+import { getMapStyles } from '../lib/map-styles';
 import { cn } from '../lib/utils';
 
 type MapLibreModule = typeof MapLibreGL;
@@ -49,11 +50,6 @@ function loadMapLibre() {
 }
 
 if (typeof window !== 'undefined') loadMapLibre().catch(() => {});
-
-const defaultStyles = {
-  dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-  light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-};
 
 // A tile-less, dependency-free style with a transparent background. Use it for
 // data visualizations (choropleths, world arcs, dot maps) where you draw your
@@ -217,13 +213,13 @@ type MapProps = {
    * Pass your theme value here.
    */
   theme?: Theme;
-  /** Custom map styles for light and dark themes. Overrides the default Carto styles. */
+  /** Custom map styles for light and dark themes. Overrides the configured styles (`setMapStyles`). */
   styles?: {
     light?: MapStyleOption;
     dark?: MapStyleOption;
   };
   /**
-   * Use a transparent, tile-less basemap instead of the default Carto street
+   * Use a transparent, tile-less basemap instead of the default street
    * basemap — a blank canvas. Used alone it renders nothing; add your own
    * layers on top (`<MapGeoJSON>`, `<MapArc>`, markers, etc.). Ideal for data
    * visualizations (choropleths, arcs, dot maps). Globes get a tinted sphere.
@@ -305,18 +301,19 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
 
   const mapStyles = useMemo(() => {
     // Explicit styles win. Otherwise `blank` opts into the transparent
-    // tile-less basemap; with neither, fall back to the Carto defaults.
+    // tile-less basemap; with neither, use what the deployment configured.
+    const configured = getMapStyles();
     if (stableStyles) {
       return {
-        dark: stableStyles.dark ?? defaultStyles.dark,
-        light: stableStyles.light ?? defaultStyles.light,
+        dark: stableStyles.dark ?? configured.dark,
+        light: stableStyles.light ?? configured.light,
       };
     }
     if (blank) {
       const style = isGlobe ? blankGlobeStyle : blankMapStyle;
       return { dark: style, light: style };
     }
-    return defaultStyles;
+    return configured;
   }, [stableStyles, blank, isGlobe]);
 
   const initOptionsRef = useRef({ props, viewport, resolvedTheme, mapStyles });

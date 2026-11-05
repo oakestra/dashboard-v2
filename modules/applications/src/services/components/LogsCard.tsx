@@ -1,12 +1,7 @@
 import {
   Button,
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   EmptyState,
+  SectionCard,
   CopyButton,
   downloadText,
   formatRelativeTime,
@@ -33,12 +28,12 @@ export function LogsCard({ logs, filename, updatedAt }: LogsCardProps) {
   }, [logs]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Logs</CardTitle>
-        <CardDescription>Updated {formatRelativeTime(updatedAt)}</CardDescription>
-        {logs ? (
-          <CardAction className="flex gap-2">
+    <SectionCard
+      title="Logs"
+      description={`Updated ${formatRelativeTime(updatedAt)}`}
+      action={
+        logs ? (
+          <>
             <CopyButton value={logs} label="Copy logs" text="Copy" variant="outline" />
             <Button
               variant="outline"
@@ -49,33 +44,32 @@ export function LogsCard({ logs, filename, updatedAt }: LogsCardProps) {
               <DownloadIcon aria-hidden />
               Download
             </Button>
-          </CardAction>
-        ) : null}
-      </CardHeader>
-      <CardContent>
-        {logs ? (
-          <pre
-            ref={ref}
-            onScroll={(event) => {
-              const el = event.currentTarget;
-              atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
-            }}
-            // Keyboard users need focus on a scrollable region to scroll it.
-            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-            tabIndex={0}
-            data-testid="instance-logs"
-            className="max-h-96 overflow-auto rounded-md bg-muted/40 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap"
-          >
-            {logs}
-          </pre>
-        ) : (
-          <EmptyState
-            icon={<ScrollTextIcon />}
-            title="No logs yet"
-            description="Output appears here once the instance has written something."
-          />
-        )}
-      </CardContent>
-    </Card>
+          </>
+        ) : undefined
+      }
+    >
+      {logs ? (
+        <pre
+          ref={ref}
+          onScroll={(event) => {
+            const el = event.currentTarget;
+            atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+          }}
+          // Keyboard users need focus on a scrollable region to scroll it.
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+          tabIndex={0}
+          data-testid="instance-logs"
+          className="max-h-96 overflow-auto rounded-md bg-muted/40 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap"
+        >
+          {logs}
+        </pre>
+      ) : (
+        <EmptyState
+          icon={<ScrollTextIcon />}
+          title="No logs yet"
+          description="Output appears here once the instance has written something."
+        />
+      )}
+    </SectionCard>
   );
 }

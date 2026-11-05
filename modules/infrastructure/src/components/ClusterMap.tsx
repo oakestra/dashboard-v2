@@ -48,7 +48,7 @@ export function ClusterMap({
   const skipped = clusters.length - locations.length;
 
   return (
-    <div className="space-y-2">
+    <div>
       {locations.length > 0 ? (
         <LocationMap
           locations={locations}
@@ -57,10 +57,12 @@ export function ClusterMap({
           renderLink={renderLink}
         />
       ) : (
-        <p className="text-muted-foreground text-sm">No cluster reports a usable location.</p>
+        <p className="text-muted-foreground px-4 pb-3.5 text-sm">
+          No cluster reports a usable location.
+        </p>
       )}
       {skipped > 0 && locations.length > 0 ? (
-        <p className="text-muted-foreground text-xs" data-testid="map-skipped">
+        <p className="text-muted-foreground border-t px-4 py-2 text-xs" data-testid="map-skipped">
           {plural(skipped, 'cluster')} not shown: no valid location.
         </p>
       ) : null}

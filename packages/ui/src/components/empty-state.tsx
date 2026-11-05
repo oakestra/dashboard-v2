@@ -14,7 +14,7 @@ function EmptyState({ icon, title, description, action, className, ...props }: E
     <div
       data-slot="empty-state"
       className={cn(
-        'flex flex-col items-center justify-center gap-2 rounded-lg px-6 py-12 text-center',
+        'flex flex-col items-center justify-center gap-1.5 rounded-lg px-6 py-12 text-center',
         className,
       )}
       {...props}
@@ -22,7 +22,7 @@ function EmptyState({ icon, title, description, action, className, ...props }: E
       {icon ? (
         <div
           aria-hidden
-          className="mb-1 flex size-10 items-center justify-center rounded-lg border bg-card text-muted-foreground shadow-xs [&_svg:not([class*='size-'])]:size-5"
+          className="mb-1 text-muted-foreground/70 [&_svg]:stroke-[1.5] [&_svg:not([class*='size-'])]:size-6"
         >
           {icon}
         </div>

@@ -33,10 +33,20 @@ load them:
 Never import from deeper paths such as `@oakestra/ui/components/button`: that would give an addon its
 own copy of the component and its React context.
 
+## Design rule
+
+A screen in its normal state is neutral, so that abnormal states are easy to spot. Use neutrals for
+content, the primary color for interactive elements only, and `warning` and `destructive` for
+abnormal states only. Do not add decorative tints or colored icon
+boxes. Status is also shown by shape (disc, triangle, square, ring, dash), so it never depends on
+color alone. Controls are 32px, panels are separated by hairlines instead of shadows, and text is
+in sentence case.
+
 ## Picking a component
 
 - Page title and actions: **PageHeader**. Titled sections below it: **SectionCard**.
-- Metric tiles in a grid: **StatCard**.
+- Metric tiles: **StatCard**, with related ones joined in a **StatGroup**. Pass `tone` only for an
+  abnormal value.
 - Any state label: **StatusBadge** with a tone. Tones are meanings (`success` healthy, `warning`
   degraded, `info` in progress, `destructive` failed, `neutral` inactive), and each feature maps its
   backend states onto them in one place.

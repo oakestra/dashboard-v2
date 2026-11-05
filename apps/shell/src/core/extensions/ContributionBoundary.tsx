@@ -52,11 +52,11 @@ function ContributionError({
       role="alert"
       data-testid="contribution-error"
       data-source={`${source.kind}:${source.id}`}
-      className="border-destructive/40 bg-destructive/5 text-destructive flex gap-3 rounded-lg border p-4 text-sm"
+      className="border-destructive/40 flex gap-2 rounded-lg border px-4 py-3 text-sm"
     >
-      <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" aria-hidden />
+      <TriangleAlertIcon className="text-destructive mt-0.5 size-4 shrink-0" aria-hidden />
       <div className="min-w-0">
-        <p className="font-medium">
+        <p className="text-destructive font-medium">
           {label} from {source.label} failed to render.
         </p>
         <p className="text-muted-foreground mt-1 break-words">{error.message}</p>

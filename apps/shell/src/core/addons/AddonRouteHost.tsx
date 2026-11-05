@@ -182,7 +182,7 @@ function AddonMessage({
       action={
         <div className="flex flex-wrap justify-center gap-2">
           {/* Not "overview": `/` leads to the preset's start page, which may be another one. */}
-          <Button asChild variant="outline">
+          <Button asChild>
             <Link to="/">Back to start</Link>
           </Button>
           {canManage ? (

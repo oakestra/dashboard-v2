@@ -9,3 +9,23 @@
 /* Has to be a file glob: a glob that ends in a directory matches nothing. */
 @source '../../../modules/*/src/**/*.{ts,tsx}';
 @source not '../../../modules/*/src/**/*.test.tsx';
+
+/* Draws the login tree once on load. Everything else in the app only moves in response to input. */
+@keyframes oak-tree-grow {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .oak-tree-link {
+    stroke-dasharray: 1;
+    animation: oak-tree-grow 700ms ease-out both;
+  }
+  .oak-tree-link-late {
+    animation-delay: 500ms;
+  }
+}

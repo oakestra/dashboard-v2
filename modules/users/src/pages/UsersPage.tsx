@@ -225,10 +225,9 @@ export function UsersPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title="Users"
-        description="Accounts and roles in your organization."
         actions={
           <Button onClick={() => setCreateOpen(true)}>
             <PlusIcon aria-hidden />

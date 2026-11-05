@@ -252,10 +252,15 @@ copy of small stateless pieces (`cn`, `Button`, `Table`), which is harmless.
 - `@oakestra/ui/data-table`: `DataTable`, `createDataTableColumnHelper`, types (see below).
 - `@oakestra/ui/command`: the cmdk-based `Command*` components.
 - `@oakestra/ui/map`: mapcn (`Map`, `MapMarker`, `MarkerTooltip`, `MapGeoJSON`, `MapControls`,
-  `useMap`, ...) on MapLibre GL with CARTO light/dark basemaps that follow the `.dark` class. Two
+  `useMap`, ...) on MapLibre GL with light/dark basemaps that follow the `.dark` class. Three
   local changes to upstream `components/map.tsx`, keep them when updating it: the worker URL comes
-  from `setMapWorkerUrl()` instead of unpkg, and the theme comes from the `.dark` class only (no
-  OS fallback). The shell's `bootstrap.tsx` imports `maplibre-gl/dist/maplibre-gl-worker.mjs?url`
+  from `setMapWorkerUrl()` instead of unpkg, the theme comes from the `.dark` class only (no OS
+  fallback), and the styles come from `getMapStyles()` (`lib/map-styles.ts`) instead of CARTO, which
+  sent every viewer's IP to a US host. The public VersaTiles styles are the default;
+  `MAP_STYLE_URL`/`MAP_STYLE_DARK_URL` replace them through `mapStylesFromConfig`, and one set style
+  serves both themes so a self-hosted deployment never falls back to the public server. The basemap
+  is the only third-party request the dashboard makes: keep it that way, and keep style, tiles,
+  sprites and glyphs of a default on one host. The shell's `bootstrap.tsx` imports `maplibre-gl/dist/maplibre-gl-worker.mjs?url`
   and registers it; never move that `?url` import into `packages/ui`, because Vite's dev
   pre-bundler (which handles the federated shared packages) cannot load `?url` and `pnpm dev`
   dies. The URL is kept on `globalThis` because the root export and the map subpath are separate
@@ -273,12 +278,14 @@ copy of small stateless pieces (`cn`, `Button`, `Table`), which is harmless.
   `className`, `headerClassName` also exist).
 - `EmptyState` (icon, title, description, action), `PageHeader` (title, description, actions),
   `ConfirmDialog` (`destructive`, `pending`; the caller closes it when the mutation settles).
-- `StatusBadge` (`tone`, `dot`, `icon`, `pulse`) and `StatusDot`: soft status labels. Tones are
-  meanings, not backend states: `success` healthy, `warning` degraded, `info` in progress,
-  `destructive` failed, `neutral` inactive or unknown. Features map their states onto tones in one
-  place each; never pick colors per page.
+- `StatusBadge` (`tone`, `dot`, `icon`, `pulse`) and `StatusDot`: status labels with a glyph per
+  tone (disc, triangle, ring, square, dash), so status never rests on color alone; only `warning`
+  and `destructive` get a fill. Tones are meanings, not backend states: `success` healthy,
+  `warning` degraded, `info` in progress, `destructive` failed, `neutral` inactive or unknown.
+  Features map their states onto tones in one place each; never pick colors per page.
 - `StatCard` (`label`, `value`, `icon`, `hint`, `tone`, `loading`, `href`/`onClick`, or `asChild`
-  with a router `Link`): metric tile that fills its grid cell.
+  with a router `Link`): metric tile that fills its grid cell. `StatGroup` joins tiles into one strip
+  (two per row, one shared row from `lg`, so a missing tile leaves no hole).
 - `SectionCard` (`title`, `description`, `action`, `headingLevel`, `flush`, `footer`): a titled
   page section, action top right. With plain `Card`, put actions in `CardAction` inside
   `CardHeader` (a grid; `flex-row` on it does nothing).
@@ -480,6 +487,23 @@ modules/<name>/
 
 ## Styling
 
+The design follows ISA-101 (high-performance HMI) from process control: a screen in its normal
+state is neutral, so that abnormal states are easy to spot. Use neutrals for content, `primary` only
+for interactive elements, and `warning` and `destructive` only for abnormal states (`StatCard`'s
+`tone` colors the value for those two only). No tinted icon
+boxes, gradients, resting shadows on page content, or uppercase eyebrow labels. Group content in
+panels divided by hairlines rather than many separate cards, and related `StatCard`s in a
+`StatGroup`. Radius follows hierarchy: tags `rounded-sm`, controls `rounded-md`, panels
+`rounded-lg`, overlays `rounded-xl`. `font-mono` is for real identifiers and machine values only.
+
+The sidebar and the login panel are dark teal in both themes: what renders there uses the
+`--sidebar-*` tokens and `OakestraLogo surface="inverse"`, page tokens would be dark on dark.
+
+Fonts (Instrument Sans, JetBrains Mono) are self-hosted through `@fontsource-variable` packages
+imported in `styles.css`, because an edge deployment may have no route to a font CDN. `theme.css`
+maps `--font-sans`/`--font-mono` to the shell's `--font-ui`/`--font-code` and shrinks `text-sm` and
+`text-base` a notch, which addons pick up with the theme import.
+
 The shell imports `@oakestra/ui/styles.css` once, through `apps/shell/src/styles.css` (preflight,
 token values, component utilities), which also adds `modules/*/src` as a Tailwind source: Tailwind
 only detects classes below the Vite root, and linked module packages have no stylesheet or prefix
@@ -546,7 +570,7 @@ covered by `packages/eslint-config/boundaries.test.js`:
 - `index.html`, `config.json`, `mf-manifest.json` and the addon's `remoteEntry.js` are `no-cache`;
   only content-hashed `/assets/` are immutable.
 - The entrypoint renders `config.json` from env. `API_URL` wins; `API_ADDRESS` (host:port, as used
-  by the Angular dashboard) maps to `http://<API_ADDRESS>/api`. `GRAFANA_URL` and
+  by the Angular dashboard) maps to `http://<API_ADDRESS>/api`. `GRAFANA_URL`, `MAP_STYLE_URL`, `MAP_STYLE_DARK_URL` and
   `ADDONS_MANAGER_URL` (`/addons-api`) and `MARKETPLACE_URL` (`/marketplace-api`) are config
   fields; `GRAFANA_URL` is optional and becomes an external nav link. `PRESET_URL` (empty: no
   preset; `/preset.json` for a mounted file) becomes `presetUrl`. nginx serves `/preset.json`

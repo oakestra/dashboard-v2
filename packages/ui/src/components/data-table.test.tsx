@@ -134,7 +134,7 @@ describe('DataTable', () => {
 
   it('hides paging controls when everything fits on one page', () => {
     render(<DataTable label="People" columns={columns} data={rows} />);
-    expect(screen.getByText('3 rows')).toBeInTheDocument();
+    expect(screen.queryByText('3 rows')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
   });
 

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { TimeSeriesChart, timeTicks } from './time-series-chart';
+import { TimeSeriesChart, timeTicks, byteTicks } from './time-series-chart';
 
 const data = [
   { timestamp: new Date('2026-03-01T10:00:00Z'), value: 10 },
@@ -49,5 +49,17 @@ describe('TimeSeriesChart', () => {
     expect(new Set(week.ticks.map(week.format)).size).toBe(week.ticks.length);
 
     expect(timeTicks(start, start).ticks).toEqual([start]);
+  });
+});
+
+describe('byteTicks', () => {
+  const MB = 1024 ** 2;
+
+  it('lands on round binary values that cover the maximum', () => {
+    expect(byteTicks(7.4 * MB)).toEqual([0, 2 * MB, 4 * MB, 6 * MB, 8 * MB]);
+  });
+
+  it('leaves an all-zero series to the chart', () => {
+    expect(byteTicks(0)).toBeUndefined();
   });
 });

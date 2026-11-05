@@ -1,5 +1,5 @@
 import { useCurrentUser, useOakestraApi } from '@oakestra/dashboard-sdk';
-import { PageHeader, SectionCard, Skeleton, QueryErrorAlert } from '@oakestra/ui';
+import { PageHeader, Skeleton, QueryErrorAlert } from '@oakestra/ui';
 import { useQuery } from '@tanstack/react-query';
 
 import { profileQuery } from '../api/queries';
@@ -14,14 +14,11 @@ export function ProfilePage() {
   const profile = useQuery(profileQuery(api, user.username));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader title="Profile" description="Your account and what you can do with it." />
 
       {profile.isPending ? (
-        <div className="grid gap-4 lg:grid-cols-2" data-testid="profile-loading">
-          <Skeleton className="h-56 w-full" />
-          <Skeleton className="h-56 w-full" />
-        </div>
+        <Skeleton className="h-72 w-full max-w-3xl" data-testid="profile-loading" />
       ) : profile.isError ? (
         <QueryErrorAlert
           title="Could not load your profile"
@@ -29,22 +26,21 @@ export function ProfilePage() {
           onRetry={() => void profile.refetch()}
         />
       ) : (
-        <>
-          <div className="grid items-start gap-4 lg:grid-cols-2">
-            <AccountCard profile={profile.data} user={user} />
-            <SectionCard title="Security">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="text-sm">
-                  <div className="font-medium">Password</div>
-                  <div className="text-muted-foreground">Change the password you log in with.</div>
-                </div>
-                <ChangePasswordDialog username={user.username} />
+        <div className="bg-card max-w-3xl divide-y rounded-lg border">
+          <AccountCard profile={profile.data} user={user} />
+          <section aria-label="Security" className="py-3">
+            <h2 className="px-4 pb-2 text-sm font-semibold">Security</h2>
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 text-sm">
+              <div>
+                <div>Password</div>
+                <div className="text-muted-foreground">Change the password you log in with.</div>
               </div>
-            </SectionCard>
-          </div>
+              <ChangePasswordDialog username={user.username} />
+            </div>
+          </section>
           {/* Roles from the profile are fresher than the token's, which only change on refresh. */}
           <RolesCard roles={profile.data.roles ?? user.roles} />
-        </>
+        </div>
       )}
     </div>
   );

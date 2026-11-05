@@ -6,26 +6,13 @@ import {
 import {
   Badge,
   Button,
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   plural,
 } from '@oakestra/ui';
-import {
-  DownloadIcon,
-  InfoIcon,
-  LoaderCircleIcon,
-  MoreHorizontalIcon,
-  PuzzleIcon,
-  SettingsIcon,
-  Trash2Icon,
-} from 'lucide-react';
+import { LoaderCircleIcon, MoreHorizontalIcon, Trash2Icon } from 'lucide-react';
 import { Link } from 'react-router';
 
 import { installedAddonLink } from '../paths';
@@ -56,81 +43,64 @@ export function MarketplaceCard({
     installing || (installed !== undefined && isTransitionalAddonStatus(installed.status));
 
   return (
-    <Card data-testid={`marketplace-card-${addon.name}`} className="w-full min-w-0">
-      <CardHeader>
-        <div className="flex items-start gap-3">
-          <div
-            aria-hidden
-            className="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-lg"
-          >
-            <PuzzleIcon className="size-4" />
-          </div>
-          <div className="min-w-0 flex-1 space-y-1">
-            <CardTitle className="flex flex-wrap items-center gap-2 break-all">
-              {addon.name}
-              {addon.ui ? <Badge variant="secondary">Dashboard UI</Badge> : null}
-            </CardTitle>
-            <p className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs tabular-nums">
-              {plural(addon.services.length, 'service')}
-              {installed ? <AddonStatusBadge status={installed.status} /> : null}
-            </p>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                className="-mt-1 -mr-2"
-                aria-label={`More actions for ${addon.name}`}
-              >
-                <MoreHorizontalIcon aria-hidden />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem variant="destructive" onSelect={onDelete}>
-                <Trash2Icon aria-hidden />
-                Delete from marketplace
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+    <div
+      data-testid={`marketplace-card-${addon.name}`}
+      className="flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3"
+    >
+      <div className="min-w-0 flex-1 basis-64 space-y-0.5">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-sm font-medium break-all">{addon.name}</span>
+          {addon.ui ? <Badge variant="secondary">Dashboard UI</Badge> : null}
+          {installed ? <AddonStatusBadge status={installed.status} /> : null}
+          <span className="text-muted-foreground text-xs tabular-nums">
+            {plural(addon.services.length, 'service')}
+          </span>
         </div>
-        <CardDescription className="line-clamp-3">
+        <p className="text-muted-foreground truncate text-sm" title={addon.description}>
           {addon.description || 'No description.'}
-        </CardDescription>
-      </CardHeader>
-      <CardFooter className="mt-auto flex-wrap gap-2 pt-2">
-        {installed ? (
-          <Button size="sm" variant="outline" asChild>
-            <Link to={installedAddonLink(installed._id)} aria-label={`Manage ${addon.name}`}>
-              <SettingsIcon aria-hidden />
-              Manage
-            </Link>
-          </Button>
-        ) : (
-          <Button
-            size="sm"
-            disabled={busy || !canInstall}
-            onClick={onInstall}
-            aria-label={`Install ${addon.name}`}
-          >
-            {installing ? (
-              <LoaderCircleIcon className="animate-spin" aria-hidden />
-            ) : (
-              <DownloadIcon aria-hidden />
-            )}
-            {installing ? 'Installing' : 'Install'}
-          </Button>
-        )}
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
         <Button
           size="sm"
           variant="ghost"
           onClick={onDetails}
           aria-label={`Details of ${addon.name}`}
         >
-          <InfoIcon aria-hidden />
           Details
         </Button>
-      </CardFooter>
-    </Card>
+        {installed ? (
+          <Button size="sm" variant="outline" asChild>
+            <Link to={installedAddonLink(installed._id)} aria-label={`Manage ${addon.name}`}>
+              Manage
+            </Link>
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy || !canInstall}
+            onClick={onInstall}
+            aria-label={`Install ${addon.name}`}
+          >
+            {installing ? <LoaderCircleIcon className="animate-spin" aria-hidden /> : null}
+            {installing ? 'Installing' : 'Install'}
+          </Button>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="icon-sm" variant="ghost" aria-label={`More actions for ${addon.name}`}>
+              <MoreHorizontalIcon aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem variant="destructive" onSelect={onDelete}>
+              <Trash2Icon aria-hidden />
+              Delete from marketplace
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
   );
 }

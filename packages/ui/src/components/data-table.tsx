@@ -361,10 +361,10 @@ function DataTable<TData extends object>({
       {hideSearch && !toolbar ? null : (
         <div className="flex flex-wrap items-center gap-2">
           {hideSearch ? null : (
-            <div className="relative w-full max-w-xs">
+            <div className="relative w-full sm:max-w-xs">
               <SearchIcon
                 aria-hidden
-                className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+                className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
               />
               <Input
                 id={searchId}
@@ -385,7 +385,7 @@ function DataTable<TData extends object>({
 
       <div className="overflow-hidden rounded-lg border bg-card">
         <Table aria-label={label}>
-          <TableHeader className="bg-muted/50">
+          <TableHeader className="bg-muted/60">
             {table.getHeaderGroups().map((group) => (
               <TableRow key={group.id} className="hover:bg-transparent">
                 {group.headers.map((header) => {
@@ -412,7 +412,7 @@ function DataTable<TData extends object>({
                         <button
                           type="button"
                           className={cn(
-                            'group/sort -mx-1.5 inline-flex h-7 items-center gap-1 rounded-md px-1.5 font-medium outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 data-[sorted=true]:text-foreground [&_svg]:size-3.5 [&_svg]:shrink-0',
+                            'group/sort -mx-1.5 inline-flex h-7 items-center gap-1 rounded-md px-1.5 font-medium outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 data-[sorted=true]:text-foreground [&_svg]:size-3.5 [&_svg]:shrink-0',
                             align === 'right' && 'flex-row-reverse',
                           )}
                           data-sorted={sorted !== false}
@@ -443,14 +443,14 @@ function DataTable<TData extends object>({
         </Table>
       </div>
 
-      {!isLoading && filteredCount > 0 ? (
+      {/* Without a filter or more pages, the count only restates the rows on screen. */}
+      {!isLoading && filteredCount > 0 && (filteredCount < total || pageCount > 1) ? (
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm text-muted-foreground">
           <span aria-live="polite" className="tabular-nums">
             {filteredCount === total
               ? `${total} ${total === 1 ? 'row' : 'rows'}`
               : `${filteredCount} of ${total} ${total === 1 ? 'row' : 'rows'}`}
           </span>
-          {/* A single short page needs no paging controls, only the count. */}
           {pageCount > 1 || filteredCount > (pageSizeOptions[0] ?? 10) ? (
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <div className="flex items-center gap-2">

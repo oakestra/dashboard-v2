@@ -123,10 +123,9 @@ export function ApplicationsPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title="Applications"
-        description="Your applications and the services they group."
         actions={
           <Button onClick={() => setCreating(true)}>
             <PlusIcon aria-hidden /> New application

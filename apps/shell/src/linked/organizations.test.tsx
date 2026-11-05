@@ -43,7 +43,8 @@ describe('organizations list', () => {
 
   it('deletes an organization after confirmation', async () => {
     const { user } = renderOrgs();
-    await user.click(await screen.findByRole('button', { name: 'Delete edge-lab' }));
+    await user.click(await screen.findByRole('button', { name: 'Actions for edge-lab' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Delete organization' }));
     await user.click(await screen.findByRole('button', { name: 'Delete organization' }));
 
     await waitFor(() =>
@@ -54,8 +55,8 @@ describe('organizations list', () => {
   it('does not offer deleting the root organization', async () => {
     renderOrgs();
     await screen.findByRole('row', { name: /^root/ });
-    expect(screen.queryByRole('button', { name: 'Delete root' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Delete edge-lab' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Actions for root' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Actions for edge-lab' })).toBeEnabled();
   });
 
   it('refuses users without the Admin role', async () => {
@@ -96,7 +97,8 @@ describe('organization detail', () => {
     const root = orgByName('root');
     const { user } = renderOrgs(`/organizations/${root._id}`);
 
-    await user.click(await screen.findByRole('button', { name: 'Edit roles of alice' }));
+    await user.click(await screen.findByRole('button', { name: 'Actions for alice' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Edit roles' }));
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('checkbox', { name: /Infrastructure Provider/ }));
     await user.click(within(dialog).getByRole('button', { name: 'Save roles' }));
@@ -109,7 +111,8 @@ describe('organization detail', () => {
       ]),
     );
 
-    await user.click(await screen.findByRole('button', { name: 'Remove alice' }));
+    await user.click(await screen.findByRole('button', { name: 'Actions for alice' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Remove member' }));
     await user.click(await screen.findByRole('button', { name: 'Remove member' }));
     await waitFor(() =>
       expect(orgByName('root').member.some((m) => m.user_id === alice._id)).toBe(false),
@@ -199,16 +202,25 @@ describe('organization detail', () => {
   });
 
   it('does not let you remove yourself', async () => {
-    renderOrgs(`/organizations/${orgByName('root')._id}`);
-    expect(await screen.findByRole('button', { name: 'Remove Admin' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Remove alice' })).toBeEnabled();
+    const { user } = renderOrgs(`/organizations/${orgByName('root')._id}`);
+    await user.click(await screen.findByRole('button', { name: 'Actions for Admin' }));
+    expect(await screen.findByRole('menuitem', { name: 'Remove member' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: 'Actions for alice' }));
+    expect(await screen.findByRole('menuitem', { name: 'Remove member' })).not.toHaveAttribute(
+      'aria-disabled',
+    );
   });
 
   it('refuses to demote the last Admin of the root organization', async () => {
     const root = orgByName('root');
     const { user } = renderOrgs(`/organizations/${root._id}`);
 
-    await user.click(await screen.findByRole('button', { name: 'Edit roles of Admin' }));
+    await user.click(await screen.findByRole('button', { name: 'Actions for Admin' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Edit roles' }));
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('checkbox', { name: /^Admin/ }));
 
@@ -222,7 +234,8 @@ describe('organization detail', () => {
     root.member.find((m) => m.user_id === alice._id)!.roles.push('Admin');
     const { user } = renderOrgs(`/organizations/${root._id}`);
 
-    await user.click(await screen.findByRole('button', { name: 'Edit roles of alice' }));
+    await user.click(await screen.findByRole('button', { name: 'Actions for alice' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Edit roles' }));
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('checkbox', { name: /^Admin/ }));
 

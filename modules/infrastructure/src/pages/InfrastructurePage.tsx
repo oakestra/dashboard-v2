@@ -5,6 +5,7 @@ import {
   SectionCard,
   Skeleton,
   StatCard,
+  StatGroup,
   QueryErrorAlert,
   formatBytes,
 } from '@oakestra/ui';
@@ -29,10 +30,9 @@ export function InfrastructurePage() {
   const clusters = useQuery(clustersQuery(api));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title="Infrastructure"
-        description="Clusters registered with this Oakestra deployment."
         actions={
           grafanaUrl ? (
             <Button variant="outline" asChild>
@@ -46,15 +46,15 @@ export function InfrastructurePage() {
       />
 
       {clusters.isPending ? (
-        <div className="space-y-6" data-testid="infrastructure-loading">
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="space-y-4" data-testid="infrastructure-loading">
+          <StatGroup>
             {['Clusters', 'Nodes', 'CPU cores', 'Memory'].map((label) => (
               <StatCard key={label} label={label} value="" hint="active" loading />
             ))}
-          </div>
+          </StatGroup>
           <div className="space-y-2">
             {Array.from({ length: 5 }, (_, index) => (
-              <Skeleton key={index} className="h-10 w-full" />
+              <Skeleton key={index} className="h-8 w-full" />
             ))}
           </div>
           <Skeleton className="h-72 w-full" />
@@ -79,11 +79,8 @@ function Loaded({ clusters }: { clusters: Parameters<typeof clusterTotals>[0] })
   const showGpu = totals.gpuCores > 0;
   return (
     <>
-      <div className="space-y-2">
-        <div
-          className={`grid grid-cols-2 gap-4 ${showGpu ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}
-          data-testid="summary"
-        >
+      <div className="space-y-1.5">
+        <StatGroup data-testid="summary">
           <StatCard
             label="Clusters"
             value={`${totals.activeClusters}/${totals.clusters}`}
@@ -100,13 +97,14 @@ function Loaded({ clusters }: { clusters: Parameters<typeof clusterTotals>[0] })
           {showGpu ? (
             <StatCard label="GPU cores" value={totals.gpuCores} icon={<GpuIcon />} />
           ) : null}
-        </div>
+        </StatGroup>
         <p className="text-muted-foreground text-xs">Capacity counts active clusters only.</p>
       </div>
       <ClusterTable clusters={clusters} />
       <SectionCard
         title="Locations"
         description="Where the clusters sit. Circles show their radius."
+        flush
       >
         <ClusterMap clusters={clusters} className="h-64 w-full sm:h-80" linkToDetail />
       </SectionCard>

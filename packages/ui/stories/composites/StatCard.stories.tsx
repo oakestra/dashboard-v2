@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { AppWindowIcon, BoxesIcon, ServerIcon, TriangleAlertIcon } from 'lucide-react';
 import { fn } from 'storybook/test';
 
-import { StatCard } from '../../src';
+import { StatCard, StatGroup } from '../../src';
 
 const meta = {
   title: 'Composites/StatCard',
@@ -46,14 +46,23 @@ export const AsButton: Story = { args: { onClick: fn() } };
 
 export const AsLink: Story = { args: { href: '#clusters' } };
 
-export const Grid: Story = {
-  parameters: { layout: 'padded', fullWidth: true },
+export const Group: Story = {
+  parameters: {
+    layout: 'padded',
+    fullWidth: true,
+    docs: {
+      description: {
+        story:
+          'Related tiles go in one `StatGroup`, which draws a single frame with hairlines between the cells and wraps by itself. Only the abnormal value is colored.',
+      },
+    },
+  },
   render: () => (
-    // Tiles fill their cell, so a row keeps one height even when only some have a hint.
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    // Cells fill their slot, so a row keeps one height even when only some have a hint.
+    <StatGroup>
       <StatCard label="Applications" value={8} icon={<AppWindowIcon />} />
       <StatCard label="Services" value={21} icon={<BoxesIcon />} hint="17 running" />
-      <StatCard label="Clusters" value={3} icon={<ServerIcon />} tone="success" hint="All active" />
+      <StatCard label="Clusters" value={3} icon={<ServerIcon />} hint="All active" />
       <StatCard
         label="Failed services"
         value={2}
@@ -61,6 +70,20 @@ export const Grid: Story = {
         tone="destructive"
         hint="Needs attention"
       />
-    </div>
+    </StatGroup>
+  ),
+};
+
+export const GroupLoading: Story = {
+  name: 'Group, loading',
+  parameters: { layout: 'padded', fullWidth: true },
+  render: () => (
+    // Same wrapper while loading, so the layout does not jump when the numbers arrive.
+    <StatGroup>
+      <StatCard label="Applications" value={0} loading />
+      <StatCard label="Services" value={0} loading hint="-" />
+      <StatCard label="Clusters" value={0} loading />
+      <StatCard label="Failed services" value={0} loading />
+    </StatGroup>
   ),
 };

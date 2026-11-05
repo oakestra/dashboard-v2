@@ -255,13 +255,18 @@ export function ServiceDetailPage() {
   const deployDisabled = deploy.isPending || waiting;
 
   const deployButton = (
-    <Button disabled={deployDisabled} onClick={() => deploy.mutate(data._id)}>
+    <Button
+      // The alert below explains why deploying will not help yet, so it takes the emphasis.
+      variant={noCapacity ? 'outline' : 'default'}
+      disabled={deployDisabled}
+      onClick={() => deploy.mutate(data._id)}
+    >
       <PlayIcon aria-hidden /> Deploy instance
     </Button>
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title={
           <span className="flex flex-wrap items-center gap-3">
@@ -347,7 +352,7 @@ export function ServiceDetailPage() {
                 disabled={deploy.isPending}
                 onClick={() => deploy.mutate(data._id)}
               >
-                Retry
+                Try again
               </Button>
             </div>
           </AlertDescription>

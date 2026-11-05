@@ -9,7 +9,7 @@ import {
   DEFAULT_RIGIDNESS,
   type ServiceFormValues,
 } from '../model/schema';
-import { count, FormSelect, Section, TextField, useFieldError } from './fields';
+import { FIELD_GAP, count, FormSelect, Section, TextField, useFieldError } from './fields';
 
 interface Target {
   id: string;
@@ -51,8 +51,8 @@ function ConnectivityConstraints({ linkIndex }: { linkIndex: number }) {
             <Button
               type="button"
               variant="ghost"
-              size="icon"
-              className="mt-6"
+              size="icon-sm"
+              className="mt-[1.375rem]"
               aria-label={`Remove connection constraint ${index + 1}`}
               onClick={() => remove(index)}
             >
@@ -90,7 +90,7 @@ function LinkTarget({ index, targets }: { index: number; targets: Target[] }) {
       ? targets
       : [...targets, { id: current, label: current }];
   return (
-    <Field data-invalid={!!error}>
+    <Field data-invalid={!!error} className={FIELD_GAP}>
       <FieldLabel htmlFor={`sla-conn-${index}-target`}>Target service</FieldLabel>
       <FormSelect
         id={`sla-conn-${index}-target`}
@@ -123,9 +123,12 @@ export function ConnectivitySection({ applicationId }: { applicationId: string }
       defaultOpen={fields.length > 0}
       summary={count(fields.length, 'connection')}
     >
-      <div className="space-y-4">
+      <div>
         {fields.map((item, index) => (
-          <div key={item.id} className="space-y-4 rounded-lg border p-4">
+          <div
+            key={item.id}
+            className="space-y-3 border-b py-4 first:pt-0 last:border-b-0 last:pb-0"
+          >
             <div className="flex items-end gap-2">
               <div className="flex-1">
                 <LinkTarget index={index} targets={targets} />
@@ -133,7 +136,7 @@ export function ConnectivitySection({ applicationId }: { applicationId: string }
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
+                size="icon-sm"
                 aria-label={`Remove connection ${index + 1}`}
                 onClick={() => remove(index)}
               >

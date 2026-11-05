@@ -14,12 +14,12 @@ export function NotFoundPage() {
       title="Page not found"
       actions={
         <>
-          <Button variant="outline" onClick={() => void navigate(-1)}>
+          <Button asChild size="sm">
+            <Link to="/">Back to home</Link>
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => void navigate(-1)}>
             <ArrowLeftIcon aria-hidden />
             Go back
-          </Button>
-          <Button asChild>
-            <Link to="/">Back to home</Link>
           </Button>
         </>
       }

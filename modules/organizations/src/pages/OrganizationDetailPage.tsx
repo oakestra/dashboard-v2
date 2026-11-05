@@ -17,6 +17,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   EmptyState,
   PageHeader,
@@ -62,7 +63,7 @@ export function OrganizationDetailPage() {
 
   if (organizations.isPending) {
     return (
-      <div className="space-y-6" data-testid="organization-loading">
+      <div className="space-y-5" data-testid="organization-loading">
         <div className="space-y-2">
           <Skeleton className="h-8 w-56" />
           <Skeleton className="h-4 w-80 max-w-full" />
@@ -199,26 +200,29 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
               row.original.name !== null && row.original.name === selfName,
             );
             return (
-              <div className="flex justify-end gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Edit roles of ${label}`}
-                  onClick={() => setEditing(row.original)}
-                >
-                  <PencilIcon aria-hidden />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Remove ${label}`}
-                  disabled={removeBlock !== null}
-                  title={removeBlock ?? undefined}
-                  onClick={() => setRemoving(row.original)}
-                >
-                  <Trash2Icon aria-hidden />
-                </Button>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${label}`}>
+                    <EllipsisIcon aria-hidden />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
+                  <DropdownMenuItem onSelect={() => setEditing(row.original)}>
+                    <PencilIcon aria-hidden />
+                    Edit roles
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={removeBlock !== null}
+                    title={removeBlock ?? undefined}
+                    onSelect={() => setRemoving(row.original)}
+                  >
+                    <Trash2Icon aria-hidden />
+                    Remove member
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             );
           },
         }),
@@ -227,7 +231,7 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title={organization.name}
         description={
@@ -238,9 +242,7 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
               Default organization for users who log in without one. It cannot be renamed or
               deleted.
             </span>
-          ) : (
-            'Members of this organization and their roles in it.'
-          )
+          ) : undefined
         }
         actions={
           <>

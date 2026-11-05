@@ -1,5 +1,3 @@
-import { SectionCard } from '@oakestra/ui';
-
 import { AppearancePanel } from '../components/AppearancePanel';
 
 /**
@@ -8,10 +6,9 @@ import { AppearancePanel } from '../components/AppearancePanel';
  */
 export function GeneralSettingsPage() {
   return (
-    <div className="space-y-4">
-      <SectionCard title="Appearance" description="Choose how the dashboard looks on this device.">
-        <AppearancePanel />
-      </SectionCard>
-    </div>
+    <section aria-label="Appearance" className="bg-card max-w-3xl divide-y rounded-lg border">
+      <h2 className="px-4 py-2.5 text-sm font-semibold">Appearance</h2>
+      <AppearancePanel />
+    </section>
   );
 }

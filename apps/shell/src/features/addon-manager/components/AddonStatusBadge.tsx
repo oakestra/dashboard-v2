@@ -1,6 +1,6 @@
 import { isTransitionalAddonStatus, type AddonStatus } from '@oakestra/api';
 import { StatusBadge, type StatusTone } from '@oakestra/ui';
-import { LoaderCircleIcon, TriangleAlertIcon } from 'lucide-react';
+import { LoaderCircleIcon } from 'lucide-react';
 
 const LABELS: Readonly<Record<AddonStatus, string>> = {
   installing: 'Installing',
@@ -31,10 +31,9 @@ export function AddonStatusBadge({ status }: { status: AddonStatus }) {
       tone={ADDON_STATUS_TONES[status]}
       data-status={status}
       icon={
+        // Only work in progress gets its own glyph; every other state keeps the standard dot.
         isTransitionalAddonStatus(status) ? (
           <LoaderCircleIcon className="animate-spin" aria-hidden />
-        ) : status === 'partially_active' ? (
-          <TriangleAlertIcon aria-hidden />
         ) : undefined
       }
     >

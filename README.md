@@ -90,11 +90,26 @@ the container starts:
 | `API_URL`                 |                             | URL of the system-manager API as the browser sees it, e.g. `https://oakestra.example/api` |
 | `API_ADDRESS`             |                             | Alternative to `API_URL`: `host:port` of the system-manager, becomes `http://<API_ADDRESS>/api` |
 | `GRAFANA_URL`             |                             | Optional. Adds a Grafana link to the sidebar and the infrastructure page   |
+| `MAP_STYLE_URL`           | public VersaTiles styles    | Optional. MapLibre style URL of the basemap, see [Maps and privacy](#maps-and-privacy) |
+| `MAP_STYLE_DARK_URL`      | `MAP_STYLE_URL`             | Optional. Basemap for the dark theme                                        |
 | `ADDONS_MANAGER_ADDRESS`  | `root_addons_manager:11101` | Addons manager, reached by nginx (`/ui-addons`, `/addons-api/`)             |
 | `MARKETPLACE_ADDRESS`     | `marketplace_manager:11102` | Marketplace manager, reached by nginx (`/marketplace-api/`)                 |
 | `ADDONS_POLL_INTERVAL_MS` | `15000`                     | How often the dashboard checks for added or removed addon UIs, in milliseconds (at least `1000`) |
 | `PRESET_URL`              |                             | Optional. URL of a [deployment preset](docs/addons/presets.md), e.g. `/preset.json` for a mounted file |
 | `DNS_RESOLVER`            | `127.0.0.11`                | DNS server nginx uses for the upstreams above (Docker's by default)         |
+
+### Maps and privacy
+
+The dashboard's own fonts and scripts are served from the dashboard itself. The one exception is the
+basemap: pages with a map (infrastructure, cluster and instance details, the location constraint of
+the service form) load its style, tiles and label fonts from a tile server, which sees the viewer's
+IP address. By default that is the public [VersaTiles](https://versatiles.org) server.
+
+If that transfer is not acceptable for your deployment, for example under the GDPR, serve the tiles
+yourself and set `MAP_STYLE_URL` (and `MAP_STYLE_DARK_URL` for a separate dark style). The dashboard
+then contacts no third party for maps, as long as your style does not reference one for its tiles,
+sprites or glyphs. With only one of the two set, it is used for both themes. Otherwise cover the
+public tile server in your privacy notice.
 
 Either `API_URL` or `API_ADDRESS` is required. Example:
 

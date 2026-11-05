@@ -262,6 +262,9 @@ interface CopyButtonProps {
     variant?: 'ghost' | 'outline' | 'secondary';
 }
 
+// @public
+export const DEFAULT_MAP_STYLES: MapStyleUrls;
+
 // @public (undocumented)
 export function Dialog(input: React_2.ComponentProps<typeof Dialog_2.Root>): React_2.JSX.Element;
 
@@ -455,6 +458,14 @@ interface JsonViewerProps {
 // @public (undocumented)
 export function Label(input: React_2.ComponentProps<typeof Label_2.Root>): React_2.JSX.Element;
 
+// @public
+export interface MapStyleUrls {
+    // (undocumented)
+    dark: string;
+    // (undocumented)
+    light: string;
+}
+
 // @public (undocumented)
 export function PageHeader(input: PageHeaderProps): React_2.JSX.Element;
 
@@ -592,6 +603,9 @@ export function SelectValue(input: React_2.ComponentProps<typeof Select_2.Value>
 
 // @public (undocumented)
 export function Separator(input: React_2.ComponentProps<typeof Separator_2.Root>): React_2.JSX.Element;
+
+// @public
+export function setMapStyles(styles: MapStyleUrls): void;
 
 // @public
 export function setMapWorkerUrl(url: string): void;
@@ -761,6 +775,9 @@ export interface StatCardProps {
     // (undocumented)
     value: React_2.ReactNode;
 }
+
+// @public
+export function StatGroup(input: React_2.ComponentProps<'div'>): React_2.JSX.Element;
 
 // @public
 export function StatusBadge(input: StatusBadgeProps): React_2.JSX.Element;

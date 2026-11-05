@@ -21,7 +21,7 @@ import { Controller, useFieldArray, useFormContext, useWatch } from 'react-hook-
 
 import { clustersQuery } from '@oakestra/dashboard-sdk';
 import { defaultConstraint, type ServiceFormValues } from '../model/schema';
-import { count, FormSelect, Section, TextField, useFieldError } from './fields';
+import { FIELD_GAP, count, FormSelect, Section, TextField, useFieldError } from './fields';
 
 function RigidnessFields({ prefix }: { prefix: `constraints.${number}` }) {
   return (
@@ -91,7 +91,7 @@ function ClusterPicker({ index, clusters }: { index: number; clusters: Cluster[]
         // Keep names that are no longer registered (imported files) selectable so they can be removed.
         const names = [...new Set([...(clusters?.map((c) => c.cluster_name) ?? []), ...selected])];
         return (
-          <Field data-invalid={!!error}>
+          <Field data-invalid={!!error} className={FIELD_GAP}>
             <FieldLabel>Allowed clusters</FieldLabel>
             <div className="flex flex-wrap gap-x-6 gap-y-2">
               {names.map((name) => (
@@ -120,8 +120,8 @@ function ClusterPicker({ index, clusters }: { index: number; clusters: Cluster[]
 function DirectFields({ index, clusters }: { index: number; clusters: Cluster[] | undefined }) {
   const clusterError = useFieldError(`constraints.${index}.cluster`);
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <Field data-invalid={!!clusterError}>
+    <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+      <Field data-invalid={!!clusterError} className={FIELD_GAP}>
         <FieldLabel htmlFor={`sla-direct-cluster-${index}`}>Cluster</FieldLabel>
         <FormSelect
           id={`sla-direct-cluster-${index}`}
@@ -181,15 +181,18 @@ export function ConstraintsSection() {
           </AlertDescription>
         </Alert>
       ) : null}
-      <div className="space-y-4">
+      <div>
         {fields.map((item, index) => (
-          <div key={item.id} className="space-y-4 rounded-lg border p-4">
+          <div
+            key={item.id}
+            className="space-y-3 border-b py-4 first:pt-0 last:border-b-0 last:pb-0"
+          >
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-medium">{TITLES[item.kind]} constraint</h3>
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
+                size="icon-sm"
                 aria-label={`Remove ${TITLES[item.kind].toLowerCase()} constraint`}
                 onClick={() => remove(index)}
               >
@@ -197,7 +200,7 @@ export function ConstraintsSection() {
               </Button>
             </div>
             {item.kind === 'latency' ? (
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
                 <TextField name={`constraints.${index}.area`} label="Area" placeholder="munich-1" />
                 <TextField
                   name={`constraints.${index}.threshold`}
@@ -209,7 +212,7 @@ export function ConstraintsSection() {
             ) : null}
             {item.kind === 'geo' ? (
               <div className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
                   <TextField
                     name={`constraints.${index}.latitude`}
                     label="Latitude"

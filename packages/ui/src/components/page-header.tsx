@@ -15,8 +15,8 @@ function PageHeader({ title, description, actions, className, ...props }: PageHe
       className={cn('flex flex-wrap items-start justify-between gap-3', className)}
       {...props}
     >
-      <div className="min-w-0 space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+      <div className="min-w-0 space-y-0.5">
+        <h1 className="text-xl leading-7 font-semibold tracking-[-0.012em]">{title}</h1>
         {description ? (
           <p className="max-w-prose text-sm text-pretty text-muted-foreground">{description}</p>
         ) : null}

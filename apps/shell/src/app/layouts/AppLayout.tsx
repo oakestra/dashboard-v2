@@ -44,9 +44,19 @@ export function AppLayout() {
 
   return (
     <SidebarProvider>
+      {/* The sidebar is about ten tab stops long, a keyboard user should not walk it on every page. */}
+      <a
+        href="#page-content"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById('page-content')?.focus();
+        }}
+        className="bg-card focus-visible:ring-ring sr-only z-50 rounded-md px-3 py-1.5 text-sm font-medium focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus-visible:ring-2"
+      >
+        Skip to content
+      </a>
       <Sidebar collapsible="icon">
-        {/* Same height and rule as the top bar, so the two read as one line across the page. */}
-        <SidebarHeader className="h-14 justify-center border-b border-sidebar-border">
+        <SidebarHeader className="h-12 justify-center">
           <Link
             to="/"
             aria-label="Oakestra home"
@@ -54,10 +64,10 @@ export function AppLayout() {
           >
             {/* The collapsed icon rail is too narrow for the lettering, so it shows only the tree. */}
             <span className="group-data-[collapsible=icon]:hidden">
-              <OakestraLogo className="h-6" />
+              <OakestraLogo surface="inverse" className="h-[1.375rem]" />
             </span>
             <span className="hidden group-data-[collapsible=icon]:block">
-              <OakestraLogo variant="mark" className="size-6" />
+              <OakestraLogo variant="mark" surface="inverse" className="size-6" />
             </span>
           </Link>
         </SidebarHeader>
@@ -70,7 +80,7 @@ export function AppLayout() {
         <SidebarRail />
       </Sidebar>
       <SidebarInset>
-        <header className="bg-background/85 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur md:px-6">
+        <header className="bg-card sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b px-3 md:px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
           <Breadcrumbs />
@@ -82,10 +92,12 @@ export function AppLayout() {
         {/* SidebarInset already is the <main> landmark. Pages share one gutter, and one width
             unless a route asks for all of it (`fullWidth`). */}
         <div
+          id="page-content"
+          tabIndex={-1}
           data-testid="page-content"
           data-width={fullWidth ? 'full' : 'default'}
           className={cn(
-            'mx-auto w-full min-w-0 flex-1 px-4 py-6 md:px-6 md:py-8 lg:px-8',
+            'mx-auto w-full min-w-0 flex-1 px-4 py-5 outline-none md:px-6 md:py-6',
             !fullWidth && 'max-w-7xl',
           )}
         >

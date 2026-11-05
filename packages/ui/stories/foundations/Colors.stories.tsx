@@ -17,7 +17,8 @@ const GROUPS: { title: string; description: string; tokens: string[] }[] = [
   },
   {
     title: 'Brand and neutrals',
-    description: 'The primary is the slate-teal of the Oakestra lettering.',
+    description:
+      'Neutrals are a cool gray used for content. The primary is the slate-teal of the Oakestra lettering, used for what you can act on, nothing else.',
     tokens: [
       'primary',
       'primary-foreground',
@@ -32,7 +33,7 @@ const GROUPS: { title: string; description: string; tokens: string[] }[] = [
   {
     title: 'Status',
     description:
-      'Readable as text on the card and on their own 10% tint. -foreground is for text on the solid color.',
+      'Readable as text on the card and on their own soft tint. Only warning and destructive are saturated; success has low chroma. -foreground is for text on the solid color.',
     tokens: [
       'success',
       'success-foreground',
@@ -56,7 +57,8 @@ const GROUPS: { title: string; description: string; tokens: string[] }[] = [
   },
   {
     title: 'Sidebar',
-    description: 'The navigation has its own slightly darker surface.',
+    description:
+      'The navigation is dark teal in both themes. Anything inside it uses these tokens only.',
     tokens: [
       'sidebar',
       'sidebar-foreground',
@@ -74,7 +76,7 @@ function Swatch({ token }: { token: string }) {
   return (
     <div className="flex items-center gap-3">
       <div
-        className="size-10 shrink-0 rounded-md border shadow-xs"
+        className="size-10 shrink-0 rounded-md border"
         style={{ background: `var(--${token})` }}
       />
       <div className="min-w-0">
@@ -103,7 +105,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Tokens: Story = {
   render: () => (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {GROUPS.map((group) => (
         <section key={group.title} className="space-y-3">
           <div>
@@ -122,17 +124,48 @@ export const Tokens: Story = {
 };
 
 export const Radius: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'A 2/4/6/8px scale that follows hierarchy: `sm` for tags and badges, `md` for controls, `lg` for panels and cards, `xl` for overlays. `rounded-full` is for avatars only.',
+      },
+    },
+  },
   render: () => (
     <div className="flex flex-wrap gap-6">
       {(['sm', 'md', 'lg', 'xl'] as const).map((size) => (
         <div key={size} className="flex flex-col items-center gap-2">
           <div
-            className="size-16 border-2 border-primary bg-primary/10"
+            className="size-16 border-2 border-primary"
             style={{ borderRadius: `var(--radius-${size})` }}
           />
           <code className="text-xs text-muted-foreground">rounded-{size}</code>
         </div>
       ))}
+    </div>
+  ),
+};
+
+export const Typography: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Instrument Sans for the interface, JetBrains Mono for identifiers and machine values only (image references, IPs, ids, env keys, JSON, logs), never for labels or counts. Body text is 13.5px (`text-sm`). Both fonts are self-hosted. Use sentence case everywhere and `tabular-nums` for numbers.',
+      },
+    },
+  },
+  render: () => (
+    <div className="max-w-xl space-y-3">
+      <p className="text-base font-semibold">Page and section titles are semibold</p>
+      <p className="text-sm">
+        Body text is 13.5px. Secondary text is smaller and muted.{' '}
+        <span className="text-muted-foreground">Sentence case, plain words.</span>
+      </p>
+      <p className="text-xs text-muted-foreground">Hints and captions use text-xs.</p>
+      <p className="text-sm tabular-nums">Numbers line up: 1,204 / 98 / 7</p>
+      <p className="font-mono text-xs">registry.example.com/oakestra/nginx:1.27</p>
     </div>
   ),
 };

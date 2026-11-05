@@ -154,7 +154,7 @@ export { ConfirmDialog, type ConfirmDialogProps } from './components/confirm-dia
 export { EmptyState, type EmptyStateProps } from './components/empty-state';
 export { PageHeader, type PageHeaderProps } from './components/page-header';
 export { SectionCard, type SectionCardProps } from './components/section-card';
-export { StatCard, type StatCardProps } from './components/stat-card';
+export { StatCard, StatGroup, type StatCardProps } from './components/stat-card';
 export {
   StatusBadge,
   StatusDot,
@@ -196,6 +196,7 @@ export { cn } from './lib/utils';
 // Lives in the root export so the host can configure maps at startup without loading the map
 // subpath (and its stylesheet) on every page.
 export { setMapWorkerUrl } from './lib/map-worker';
+export { DEFAULT_MAP_STYLES, setMapStyles, type MapStyleUrls } from './lib/map-styles';
 export { CopyButton } from './components/copy-button';
 export { JsonViewer } from './components/json-viewer';
 export { QueryErrorAlert } from './components/query-error-alert';

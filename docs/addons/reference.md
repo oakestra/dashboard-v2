@@ -97,13 +97,14 @@ Nested routes and a lazy page:
 
 ```tsx
 import { defineAddon } from '@oakestra/dashboard-sdk';
+import { PageHeader } from '@oakestra/ui';
 import { lazy } from 'react';
 import { Outlet, useParams } from 'react-router';
 
 function JobsLayout() {
   return (
     <div className="ex:space-y-4">
-      <h1 className="ex:text-2xl ex:font-semibold">Jobs</h1>
+      <PageHeader title="Jobs" />
       <Outlet />
     </div>
   );
@@ -314,11 +315,11 @@ extension points` and shows no panel.
 The overview page lays `home.widgets` out in three places, top to bottom, each sorted by `order`
 on its own:
 
-| `size`           | Where                                                  | Frame                                                                                     |
-| ---------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| `stat`           | Summary row at the top (2 columns, 4 on large screens) | None: render the whole tile, usually a `StatCard` from `@oakestra/ui`. It fills the cell. |
-| `wide`           | Full-width sections below the summary row              | None: render your own section, usually a `SectionCard` (title, description, actions).     |
-| `card` (default) | Grid at the bottom (2 columns from `md`, 3 from `xl`)  | A card with `title` as its heading.                                                       |
+| `size`           | Where                                                 | Frame                                                                                                                                 |
+| ---------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `stat`           | Summary row at the top, one joined strip              | None: render one plain `StatCard` from `@oakestra/ui`. The shell puts all `stat` widgets in a `StatGroup`; do not add your own frame. |
+| `wide`           | Full-width sections below the summary row             | None: render your own section, usually a `SectionCard` (title, description, actions).                                                 |
+| `card` (default) | Grid at the bottom (2 columns from `md`, 3 from `xl`) | A card with `title` as its heading.                                                                                                   |
 
 A `stat` or `wide` widget that renders nothing (`return null`) takes no space. `cluster.widgets`
 ignores `size` and renders every widget as a card. A shell older than the field, or one that gets
@@ -774,7 +775,7 @@ them: `pnpm storybook` (port 6006).
 
 | Kind               | Components                                                                                                                                                                                                                                                 |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Composites         | `PageHeader`, `SectionCard`, `StatCard`, `StatusBadge`, `StatusDot`, `EmptyState`, `ConfirmDialog`                                                                                                                                                         |
+| Composites         | `PageHeader`, `SectionCard`, `StatCard`, `StatGroup`, `StatusBadge`, `StatusDot`, `EmptyState`, `ConfirmDialog`                                                                                                                                            |
 | Layout and content | `Card` (+ `CardHeader`, `CardTitle`, `CardDescription`, `CardAction`, `CardContent`, `CardFooter`), `Tabs`, `Accordion`, `Collapsible`, `Separator`, `ScrollArea`, `Table`, `Skeleton`, `Badge`, `Avatar`, `Alert`, `Progress`, `Pagination`, `Breadcrumb` |
 | Forms              | `Button`, `Input`, `Textarea`, `Label`, `Field` (+ `FieldLabel`, `FieldError`, ...), `Checkbox`, `RadioGroup`, `Select`, `Switch`, `Toggle`, `ToggleGroup`                                                                                                 |
 | Overlays           | `Dialog`, `AlertDialog`, `Sheet`, `Popover`, `Tooltip`, `DropdownMenu`                                                                                                                                                                                     |
@@ -783,6 +784,13 @@ them: `pnpm storybook` (port 6006).
 `StatusBadge` and `StatCard` take a `tone`: `success` (healthy), `warning` (degraded), `info` (in
 progress), `destructive` (failed), `neutral` (inactive or unknown). Pick the tone by meaning, not
 by color.
+
+Keep healthy states neutral and use color for abnormal ones. `StatusBadge` shows each tone with its
+own shape (disc, triangle, square, ring, dash), and only `warning` and `destructive` get a fill.
+`StatCard` colors its value only for those two, so pass `tone` for an abnormal number (a non-zero
+failure count) and leave it off otherwise. Do not wrap icons in tinted boxes, and write labels in
+sentence case ("Failed services", not "FAILED SERVICES"). Use `StatGroup` only on your own pages
+with several related `StatCard`s; a `stat` widget renders a single `StatCard`.
 
 **Subpath entries**, each a separate shared chunk that is only downloaded by pages that import it:
 

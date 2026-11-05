@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { StatCard } from './stat-card';
+import { StatCard, StatGroup } from './stat-card';
 
 describe('StatCard', () => {
   it('shows label, value and hint', () => {
@@ -10,6 +10,27 @@ describe('StatCard', () => {
     expect(screen.getByText('Clusters')).toBeInTheDocument();
     expect(screen.getByText('3')).toBeInTheDocument();
     expect(screen.getByText('2 active')).toBeInTheDocument();
+  });
+
+  it('colors only abnormal values', () => {
+    const { rerender } = render(<StatCard label="Failed" value={2} tone="destructive" />);
+    expect(screen.getByText('2')).toHaveClass('text-destructive');
+
+    rerender(<StatCard label="Failed" value={2} tone="success" />);
+    expect(screen.getByText('2')).not.toHaveClass('text-success');
+  });
+
+  it('joins tiles into one strip with StatGroup', () => {
+    render(
+      <StatGroup aria-label="Summary" role="group">
+        <StatCard label="Clusters" value={3} />
+        <StatCard label="Nodes" value={7} />
+      </StatGroup>,
+    );
+    expect(screen.getByRole('group', { name: 'Summary' })).toHaveAttribute(
+      'data-slot',
+      'stat-group',
+    );
   });
 
   it('shows a skeleton instead of the value while loading', () => {

@@ -4,13 +4,17 @@ import {
   Badge,
   Button,
   ConfirmDialog,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyState,
   PageHeader,
   QueryErrorAlert,
 } from '@oakestra/ui';
 import { createDataTableColumnHelper, DataTable } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
-import { BuildingIcon, PlusIcon, Trash2Icon } from 'lucide-react';
+import { BuildingIcon, EllipsisIcon, PlusIcon, Trash2Icon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
@@ -55,17 +59,33 @@ export function OrganizationsPage() {
           id: 'actions',
           header: () => <span className="sr-only">Actions</span>,
           meta: { align: 'right' },
-          // The root organization has no delete button at all: the detail page explains why.
+          // The root organization cannot be deleted (the detail page explains why). The spacer
+          // keeps its row as tall as the others, which carry a 28px menu button.
           cell: ({ row }) =>
-            row.original.name === ROOT_ORGANIZATION_NAME ? null : (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Delete ${row.original.name}`}
-                onClick={() => setDeleting(row.original)}
-              >
-                <Trash2Icon aria-hidden />
-              </Button>
+            row.original.name === ROOT_ORGANIZATION_NAME ? (
+              <span className="inline-flex size-7 align-middle" aria-hidden />
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Actions for ${row.original.name}`}
+                  >
+                    <EllipsisIcon aria-hidden />
+                  </Button>
+                </DropdownMenuTrigger>
+                {/* Portal events bubble to the clickable row and would open it. */}
+                <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onSelect={() => setDeleting(row.original)}
+                  >
+                    <Trash2Icon aria-hidden />
+                    Delete organization
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ),
         }),
       ]),
@@ -73,10 +93,9 @@ export function OrganizationsPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title="Organizations"
-        description="Groups of users that share a set of roles."
         actions={
           <Button onClick={() => setCreateOpen(true)}>
             <PlusIcon aria-hidden />

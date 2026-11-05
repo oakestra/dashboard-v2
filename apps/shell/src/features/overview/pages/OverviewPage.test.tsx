@@ -34,7 +34,7 @@ describe('<OverviewPage>', () => {
     renderOverview([]);
 
     expect(await screen.findByRole('heading', { name: 'Overview' })).toBeVisible();
-    expect(screen.getByText('Welcome back, Admin.')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
   });
 
   it('shows an empty state when nothing is contributed', async () => {

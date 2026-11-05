@@ -11,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -102,10 +101,11 @@ export function ApplicationFormDialog({
           <DialogHeader>
             <DialogTitle>{application ? 'Edit application' : 'New application'}</DialogTitle>
             <DialogDescription>
-              An application groups services under a name and a namespace.
+              An application groups services under a name and a namespace. Both take letters and
+              digits, up to 32 characters.
             </DialogDescription>
           </DialogHeader>
-          <FieldGroup>
+          <FieldGroup className="gap-4">
             {mutation.isError ? (
               <Alert variant="destructive" data-testid="application-form-error">
                 <AlertDescription>{describeError(mutation.error)}</AlertDescription>
@@ -119,7 +119,6 @@ export function ApplicationFormDialog({
                 aria-invalid={!!errors.application_name}
                 {...form.register('application_name')}
               />
-              <FieldDescription>Letters and digits, up to 32 characters.</FieldDescription>
               <FieldError errors={[errors.application_name]} />
             </Field>
             <Field data-invalid={!!errors.application_namespace}>
@@ -130,7 +129,6 @@ export function ApplicationFormDialog({
                 aria-invalid={!!errors.application_namespace}
                 {...form.register('application_namespace')}
               />
-              <FieldDescription>Letters and digits, up to 32 characters.</FieldDescription>
               <FieldError errors={[errors.application_namespace]} />
             </Field>
             <Field data-invalid={!!errors.application_desc}>

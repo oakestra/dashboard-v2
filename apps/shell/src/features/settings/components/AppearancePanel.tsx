@@ -14,12 +14,14 @@ const OPTIONS = [
 export function AppearancePanel() {
   const theme = useTheme();
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
       <div className="text-sm">
-        <div className="font-medium">Theme</div>
-        <div className="text-muted-foreground">
-          System follows your operating system, currently {theme.resolved}.
-        </div>
+        <div>Theme</div>
+        {theme.preference === 'system' ? (
+          <div className="text-muted-foreground">
+            System follows your operating system, currently {theme.resolved}.
+          </div>
+        ) : null}
       </div>
       <ToggleGroup
         type="single"

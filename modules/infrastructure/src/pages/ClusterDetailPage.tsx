@@ -3,7 +3,6 @@ import { parseClusterLocation, type Cluster } from '@oakestra/api';
 import { Slot, useAddonPath, useOakestraApi } from '@oakestra/dashboard-sdk';
 import {
   Alert,
-  AlertDescription,
   AlertTitle,
   Badge,
   Button,
@@ -11,12 +10,12 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  cn,
   EmptyState,
   PageHeader,
   SectionCard,
   Skeleton,
   StatCard,
+  StatGroup,
   CopyButton,
   QueryErrorAlert,
   formatBytes,
@@ -62,13 +61,13 @@ export function ClusterDetailPage() {
 
   if (cluster.isPending) {
     return (
-      <div className="space-y-6" data-testid="cluster-loading">
+      <div className="space-y-4" data-testid="cluster-loading">
         <Skeleton className="h-10 w-64" />
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatGroup>
           {['CPU usage', 'Memory usage', 'Active nodes'].map((label) => (
             <StatCard key={label} label={label} value="" hint="of 0" loading />
           ))}
-        </div>
+        </StatGroup>
         <div className="grid gap-4 lg:grid-cols-2">
           <Skeleton className="h-72 w-full" />
           <Skeleton className="h-72 w-full" />
@@ -101,7 +100,7 @@ export function ClusterDetailPage() {
     );
   }
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {back}
       <ClusterDetail cluster={cluster.data} />
     </div>
@@ -116,8 +115,6 @@ function ClusterDetail({ cluster }: { cluster: Cluster }) {
   const { active } = cluster;
   const widgetContext = useMemo(() => ({ clusterId: cluster._id }), [cluster._id]);
   // An inactive cluster keeps its last report, which would otherwise read as an idle cluster.
-  const live = (value: string) => (active ? value : '-');
-  const noData = active ? undefined : 'No current data';
 
   const cpuHistory = cluster.cpu_history.map(({ timestamp, value }) => ({ timestamp, value }));
   const memoryHistory = cluster.memory_history.map(({ timestamp, value }) => ({
@@ -139,7 +136,7 @@ function ClusterDetail({ cluster }: { cluster: Cluster }) {
     { title: 'GPU drivers', items: cluster.gpu_drivers },
   ];
   const reported = capabilities.filter((group) => group.items.length > 0);
-  const statCount = 3 + (hasGpu ? 1 + (gpuTemp === undefined ? 0 : 1) + (cluster.vram ? 1 : 0) : 0);
+  const showCharts = active && (cpuHistory.length > 0 || memoryHistory.length > 0);
 
   return (
     <>
@@ -156,124 +153,117 @@ function ClusterDetail({ cluster }: { cluster: Cluster }) {
       />
 
       {active ? null : (
-        <Alert variant="warning">
+        // One line instead of dash tiles and empty charts: an inactive cluster keeps its last
+        // report, which would otherwise read as an idle cluster.
+        <Alert variant="warning" data-testid="cluster-stats">
           <TriangleAlertIcon aria-hidden />
-          <AlertTitle>This cluster is not reporting</AlertTitle>
-          <AlertDescription>
-            Last report {formatRelativeTime(cluster.last_modified_timestamp)}. Its nodes may be
-            offline or unable to reach the root orchestrator.
-          </AlertDescription>
+          <AlertTitle>
+            This cluster is not reporting. Last report{' '}
+            {formatRelativeTime(cluster.last_modified_timestamp)}.
+          </AlertTitle>
         </Alert>
       )}
 
-      <div
-        className={cn('grid grid-cols-2 gap-4', statColumns[statCount] ?? 'lg:grid-cols-4')}
-        data-testid="cluster-stats"
-      >
-        <StatCard
-          label="CPU usage"
-          icon={<CpuIcon />}
-          value={live(formatPercent(cluster.cpu_percent ?? cluster.aggregated_cpu_percent))}
-          hint={noData ?? cpuHint}
-        />
-        <StatCard
-          label="Memory usage"
-          icon={<MemoryStickIcon />}
-          value={live(formatPercent(cluster.memory_percent))}
-          hint={noData ?? (memoryTotal ? `of ${formatBytes(memoryTotal)}` : undefined)}
-        />
-        <StatCard
-          label="Active nodes"
-          icon={<NetworkIcon />}
-          value={live(String(cluster.active_nodes ?? 0))}
-          hint={noData}
-        />
-        {hasGpu ? (
-          <>
-            <StatCard
-              label="GPU usage"
-              icon={<ZapIcon />}
-              value={live(formatPercent(cluster.gpu_percent))}
-              hint={noData}
-            />
-            {gpuTemp !== undefined ? (
+      {active ? (
+        <StatGroup data-testid="cluster-stats">
+          <StatCard
+            label="CPU usage"
+            icon={<CpuIcon />}
+            value={formatPercent(cluster.cpu_percent ?? cluster.aggregated_cpu_percent)}
+            hint={cpuHint}
+          />
+          <StatCard
+            label="Memory usage"
+            icon={<MemoryStickIcon />}
+            value={formatPercent(cluster.memory_percent)}
+            hint={memoryTotal ? `of ${formatBytes(memoryTotal)}` : undefined}
+          />
+          <StatCard
+            label="Active nodes"
+            icon={<NetworkIcon />}
+            value={String(cluster.active_nodes ?? 0)}
+          />
+          {hasGpu ? (
+            <>
               <StatCard
-                label="GPU temperature"
-                icon={<ThermometerIcon />}
-                value={live(`${gpuTemp} °C`)}
-                hint={noData}
+                label="GPU usage"
+                icon={<ZapIcon />}
+                value={formatPercent(cluster.gpu_percent)}
               />
-            ) : null}
-            {cluster.vram ? (
-              <StatCard
-                label="VRAM"
-                icon={<MemoryStickIcon />}
-                value={formatMegabytes(cluster.vram)}
-                hint={
-                  noData ??
-                  (vramPercent === undefined ? undefined : `${formatPercent(vramPercent)} used`)
-                }
-              />
-            ) : null}
-          </>
-        ) : null}
-      </div>
+              {gpuTemp !== undefined ? (
+                <StatCard
+                  label="GPU temperature"
+                  icon={<ThermometerIcon />}
+                  value={`${gpuTemp} °C`}
+                />
+              ) : null}
+              {cluster.vram ? (
+                <StatCard
+                  label="VRAM"
+                  icon={<MemoryStickIcon />}
+                  value={formatMegabytes(cluster.vram)}
+                  hint={
+                    vramPercent === undefined ? undefined : `${formatPercent(vramPercent)} used`
+                  }
+                />
+              ) : null}
+            </>
+          ) : null}
+        </StatGroup>
+      ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <HistoryCard title="CPU usage" data={cpuHistory} />
-        <HistoryCard title="Memory usage" data={memoryHistory} color="var(--chart-2)" />
-      </div>
+      {showCharts ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <HistoryCard title="CPU usage" data={cpuHistory} />
+          <HistoryCard title="Memory usage" data={memoryHistory} color="var(--chart-2)" />
+        </div>
+      ) : null}
 
-      {/* items-start: a short capabilities list should not stretch to the map's height. */}
-      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+      <SectionCard title="Capabilities">
+        {reported.length === 0 ? (
+          <p className="text-muted-foreground text-sm">
+            No virtualization, addons, CSI or GPU drivers reported.
+          </p>
+        ) : (
+          <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-[max-content_1fr]">
+            {reported.map((group) => (
+              <div key={group.title} className="contents">
+                <dt
+                  className="text-muted-foreground text-sm"
+                  id={`cap-${group.title.replaceAll(' ', '-')}`}
+                >
+                  {group.title}
+                </dt>
+                <dd className="flex flex-wrap gap-1">
+                  {group.items.map((item) => (
+                    <Badge key={item} variant="secondary">
+                      {item}
+                    </Badge>
+                  ))}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </SectionCard>
+
+      {location ? (
         <SectionCard
-          title="Capabilities"
-          description={reported.length === 0 ? undefined : 'What this cluster reports it supports.'}
-        >
-          {reported.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              No virtualization, addons, CSI or GPU drivers reported.
-            </p>
-          ) : (
-            <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-[max-content_1fr]">
-              {reported.map((group) => (
-                <div key={group.title} className="contents">
-                  <dt
-                    className="text-sm font-medium"
-                    id={`cap-${group.title.replaceAll(' ', '-')}`}
-                  >
-                    {group.title}
-                  </dt>
-                  <dd className="flex flex-wrap gap-1">
-                    {group.items.map((item) => (
-                      <Badge key={item} variant="secondary">
-                        {item}
-                      </Badge>
-                    ))}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </SectionCard>
-
-        {location ? (
-          <SectionCard
-            title="Location"
-            description={
-              <span className="inline-flex items-center gap-1">
-                <span>
-                  <span className="font-mono">{coordinates}</span>
-                  {location.radius ? `, radius ${location.radius} km` : null}
-                </span>
-                <CopyButton value={coordinates ?? ''} label="Copy coordinates" size="icon-xs" />
+          title="Location"
+          description={
+            <span className="inline-flex items-center gap-1">
+              <span>
+                <span className="font-mono">{coordinates}</span>
+                {location.radius ? `, radius ${location.radius} km` : null}
               </span>
-            }
-          >
-            <ClusterMap clusters={[cluster]} className="h-64 w-full" ariaLabel="Cluster location" />
-          </SectionCard>
-        ) : null}
-      </div>
+              <CopyButton value={coordinates ?? ''} label="Copy coordinates" size="icon-xs" />
+            </span>
+          }
+          flush
+        >
+          <ClusterMap clusters={[cluster]} className="h-56 w-full" ariaLabel="Cluster location" />
+        </SectionCard>
+      ) : null}
 
       <Slot
         point="cluster.widgets"
@@ -290,13 +280,6 @@ function ClusterDetail({ cluster }: { cluster: Cluster }) {
     </>
   );
 }
-
-// Full rows of tiles at lg: three or six tiles look unfinished in a four column grid.
-const statColumns: Record<number, string> = {
-  3: 'lg:grid-cols-3',
-  5: 'lg:grid-cols-5',
-  6: 'lg:grid-cols-3',
-};
 
 /** "Last 3 minutes" from the first to the last sample; the backend keeps a short rolling window. */
 function describeWindow(data: readonly { timestamp: Date }[]): string | undefined {

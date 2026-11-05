@@ -38,10 +38,10 @@ describe('infrastructure cluster page (linked addon)', () => {
       route: `/infrastructure/clusters/${inactive._id}`,
     });
 
-    expect(await screen.findByText('This cluster is not reporting')).toBeVisible();
-    const stats = screen.getByTestId('cluster-stats');
-    expect(within(stats).getAllByText('-').length).toBeGreaterThanOrEqual(3);
-    expect(within(stats).queryByText('0%')).not.toBeInTheDocument();
+    const notice = await screen.findByTestId('cluster-stats');
+    expect(notice).toHaveTextContent('This cluster is not reporting');
+    expect(within(notice).queryByText('0%')).not.toBeInTheDocument();
+    expect(screen.queryByText('No history yet')).not.toBeInTheDocument();
   });
 
   it('renders widgets contributed to cluster.widgets with the cluster id', async () => {

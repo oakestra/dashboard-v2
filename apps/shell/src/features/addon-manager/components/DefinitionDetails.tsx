@@ -12,7 +12,7 @@ interface DefinitionLike {
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="space-y-2">
+    <section className="space-y-2 border-t pt-4 first:border-t-0 first:pt-0">
       <h3 className="text-sm font-semibold">{title}</h3>
       {children}
     </section>
@@ -21,7 +21,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-[6rem_1fr] gap-2 text-sm">
+    <div className="grid grid-cols-[6rem_1fr] gap-x-6 text-sm">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="min-w-0 break-words">{children}</dd>
     </div>
@@ -29,7 +29,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function Mono({ children }: { children: ReactNode }) {
-  return <code className="bg-muted rounded px-1 py-0.5 font-mono text-xs">{children}</code>;
+  return <code className="bg-muted rounded-sm px-1 py-0.5 font-mono text-xs">{children}</code>;
 }
 
 function List({ items }: { items: readonly string[] }) {
@@ -54,12 +54,12 @@ export function DefinitionDetails({
   failingServices = [],
 }: DefinitionLike) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Section title={`Services (${services.length})`}>
         {services.length === 0 ? (
           <p className="text-muted-foreground text-sm">No services.</p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="divide-y">
             {services.map((service) => {
               const failing = failingServices.includes(service.service_name);
               const ports = Object.entries(service.ports).map(
@@ -70,16 +70,16 @@ export function DefinitionDetails({
                 <li
                   key={service.service_name}
                   className={cn(
-                    'space-y-2 rounded-lg border p-3',
-                    failing && 'border-l-destructive border-l-4',
+                    'space-y-1.5 py-3 first:pt-0 last:pb-0',
+                    failing && 'text-destructive',
                   )}
                   data-testid={`service-${service.service_name}`}
                 >
-                  <p className="flex flex-wrap items-center gap-2 font-medium">
+                  <p className="text-foreground flex flex-wrap items-center gap-2 text-sm font-medium">
                     {service.service_name}
                     {failing ? <StatusBadge tone="destructive">Failing</StatusBadge> : null}
                   </p>
-                  <dl className="space-y-1.5">
+                  <dl className="text-foreground space-y-1.5">
                     <Row label="Image">
                       <Mono>{service.image}</Mono>
                     </Row>

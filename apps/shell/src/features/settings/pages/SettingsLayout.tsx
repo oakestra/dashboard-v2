@@ -3,8 +3,8 @@ import { Outlet } from 'react-router';
 
 export function SettingsLayout() {
   return (
-    <div className="space-y-6">
-      <PageHeader title="Settings" description="Preferences for this dashboard." />
+    <div className="space-y-4">
+      <PageHeader title="Settings" />
       <Outlet />
     </div>
   );

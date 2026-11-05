@@ -15,54 +15,59 @@ import { Badge } from './badge';
  */
 type StatusTone = 'success' | 'warning' | 'info' | 'destructive' | 'neutral';
 
-const DOT_COLOR: Readonly<Record<StatusTone, string>> = {
-  success: 'bg-success',
-  warning: 'bg-warning',
-  info: 'bg-info',
-  destructive: 'bg-destructive',
-  neutral: 'bg-muted-foreground/60',
+/**
+ * Each tone has its own shape so that status does not depend on color vision: disc for healthy,
+ * triangle for degraded, square for failed, ring for in progress, dash for neutral.
+ */
+const GLYPH: Readonly<Record<StatusTone, string>> = {
+  success: 'rounded-full bg-success',
+  warning: 'bg-warning [clip-path:polygon(50%_4%,100%_96%,0_96%)]',
+  info: 'rounded-full border-2 border-info',
+  destructive: 'rounded-[1px] bg-destructive',
+  neutral: 'my-auto h-0.5! rounded-full bg-muted-foreground/70',
 };
 
 interface StatusDotProps extends React.ComponentProps<'span'> {
   tone: StatusTone;
-  /** Animates a halo around the dot, for states that are changing right now. */
+  /** Pulses the glyph, for states that are changing right now. */
   pulse?: boolean;
 }
 
-/** The bare colored dot, for dense places (table cells, lists) next to a text label. */
+/** The bare status glyph, for dense places (table cells, lists) next to a text label. */
 function StatusDot({ tone, pulse = false, className, ...props }: StatusDotProps) {
   return (
     <span
       aria-hidden
       data-slot="status-dot"
       data-tone={tone}
-      className={cn('relative inline-flex size-1.5 shrink-0', className)}
+      className={cn('inline-flex size-2 shrink-0', className)}
       {...props}
     >
-      {pulse ? (
-        <span
-          className={cn(
-            'absolute inline-flex size-full animate-ping rounded-full opacity-60 motion-reduce:hidden',
-            DOT_COLOR[tone],
-          )}
-        />
-      ) : null}
-      <span className={cn('relative inline-flex size-full rounded-full', DOT_COLOR[tone])} />
+      <span
+        className={cn(
+          'inline-flex size-full',
+          GLYPH[tone],
+          pulse && 'animate-pulse motion-reduce:animate-none',
+        )}
+      />
     </span>
   );
 }
 
 interface StatusBadgeProps extends React.ComponentProps<'span'> {
   tone: StatusTone;
-  /** Leading dot; on by default. Ignored when `icon` is set. */
+  /** Leading glyph; on by default. Ignored when `icon` is set. */
   dot?: boolean;
-  /** Replaces the dot, e.g. a spinner for transitional states. */
+  /** Replaces the glyph, e.g. a spinner for transitional states. */
   icon?: React.ReactNode;
-  /** Pulses the dot, for states that are changing right now. */
+  /** Pulses the glyph, for states that are changing right now. */
   pulse?: boolean;
 }
 
-/** A soft, tinted badge for a status label. The text is the label; color is never the only cue. */
+/**
+ * A status label: glyph plus text. Only `warning` and `destructive` get a background fill, the
+ * other tones are plain text.
+ */
 function StatusBadge({
   tone,
   dot = true,

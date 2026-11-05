@@ -3,7 +3,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
 
 import type { ServiceFormValues } from '../model/schema';
-import { FormSelect, Section, TextField, useFieldError } from './fields';
+import { FIELD_GAP, FormSelect, Section, TextField, useFieldError } from './fields';
 
 const PROTOCOLS = [
   { value: 'tcp', label: 'tcp' },
@@ -42,7 +42,7 @@ function PortRow({ index, onRemove }: { index: number; onRemove: () => void }) {
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size="icon-sm"
           aria-label={`Remove port mapping ${n}`}
           onClick={onRemove}
         >
@@ -59,17 +59,16 @@ export function ResourcesSection() {
   const { fields, append, remove } = useFieldArray({ control, name: 'ports' });
   return (
     <Section id="resources" title="Resources" description="What each instance needs from a node.">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
         <TextField name="memory" label="Memory (MB)" inputMode="numeric" />
         <TextField name="vcpus" label="vCPUs" inputMode="numeric" />
         <TextField name="storage" label="Storage (MB)" inputMode="numeric" />
         <TextField name="vgpus" label="vGPUs" inputMode="numeric" />
         <TextField name="vtpus" label="vTPUs" inputMode="numeric" />
-        <span className="hidden lg:block" />
         <TextField name="bandwidth_in" label="Bandwidth in (kbit/s)" inputMode="numeric" />
         <TextField name="bandwidth_out" label="Bandwidth out (kbit/s)" inputMode="numeric" />
       </div>
-      <Field>
+      <Field className={FIELD_GAP}>
         <FieldLabel>Port mappings (host : container)</FieldLabel>
         <div className="space-y-2">
           {fields.map((item, index) => (

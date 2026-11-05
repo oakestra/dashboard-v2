@@ -142,7 +142,7 @@ function NavMenu({
             >
               <link.icon className="size-4" />
               <span>{link.label}</span>
-              <ExternalLinkIcon className="text-muted-foreground ml-auto size-3" aria-hidden />
+              <ExternalLinkIcon className="text-sidebar-foreground/60 ml-auto size-3" aria-hidden />
             </a>
           </SidebarMenuButton>
         </SidebarMenuItem>

@@ -1,19 +1,22 @@
 import { ROLE_OPTIONS, roleLabel } from '@oakestra/dashboard-sdk';
-import { Badge, SectionCard } from '@oakestra/ui';
+import { Badge } from '@oakestra/ui';
 
 /** Same labels and descriptions as the role picker on the Users page, so the wording never drifts. */
 export function RolesCard({ roles }: { roles: readonly string[] }) {
   return (
-    <SectionCard title="Roles" description="What you can do in this organization.">
+    <section aria-label="Roles" className="py-3">
+      <h2 className="px-4 pb-2 text-sm font-semibold">Roles</h2>
       {roles.length === 0 ? (
-        <p className="text-muted-foreground text-sm">You have no roles in this organization.</p>
+        <p className="text-muted-foreground px-4 text-sm">
+          You have no roles in this organization.
+        </p>
       ) : (
-        <dl
-          className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-[max-content_1fr]"
-          data-testid="roles"
-        >
+        <dl className="divide-y text-sm" data-testid="roles">
           {roles.map((role) => (
-            <div key={role} className="contents">
+            <div
+              key={role}
+              className="grid gap-1 px-4 py-2 sm:grid-cols-[12rem_1fr] sm:items-center sm:gap-6"
+            >
               <dt>
                 <Badge variant="secondary">{roleLabel(role)}</Badge>
               </dt>
@@ -24,6 +27,6 @@ export function RolesCard({ roles }: { roles: readonly string[] }) {
           ))}
         </dl>
       )}
-    </SectionCard>
+    </section>
   );
 }

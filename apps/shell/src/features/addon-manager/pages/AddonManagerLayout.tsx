@@ -32,8 +32,8 @@ export function AddonManagerLayout() {
   useReviewOutcomes();
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Addons" description="Installed addons and the marketplace." />
+    <div className="space-y-4">
+      <PageHeader title="Addons" />
       <nav aria-label="Addon sections" className="flex gap-1 border-b">
         {TABS.map((tab) => (
           <NavLink
@@ -41,7 +41,7 @@ export function AddonManagerLayout() {
             to={tab.to}
             className={({ isActive }) =>
               cn(
-                '-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors',
+                '-mb-px border-b-2 px-3 py-1.5 text-sm font-medium',
                 isActive
                   ? 'border-primary text-foreground'
                   : 'text-muted-foreground hover:text-foreground border-transparent',

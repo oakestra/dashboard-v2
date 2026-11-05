@@ -20,7 +20,7 @@ export function DefinitionList({
   // A fixed label column at every width keeps pairs apart on phones, where stacked label and value
   // would be as far from each other as from the next pair.
   return (
-    <dl className="grid grid-cols-[minmax(6rem,max-content)_1fr] gap-x-6 gap-y-3 text-sm">
+    <dl className="grid grid-cols-[minmax(6rem,max-content)_1fr] gap-x-6 gap-y-1.5 text-sm">
       {shown.map((item) => (
         <div key={item.label} className="contents">
           <dt className="text-muted-foreground">{item.label}</dt>

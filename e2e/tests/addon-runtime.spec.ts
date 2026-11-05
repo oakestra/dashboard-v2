@@ -73,8 +73,8 @@ test.describe('addon runtime', () => {
 
     // Shell components used inside the addon keep the shared theme tokens.
     const button = page.getByRole('button', { name: 'Notify' });
-    // The light theme's --primary in packages/ui/src/styles/styles.css.
-    await expect(button).toHaveCSS('background-color', 'oklch(0.49 0.064 230)');
+    // The light theme's --primary-fill in packages/ui/src/styles/styles.css.
+    await expect(button).toHaveCSS('background-color', 'oklch(0.455 0.07 225)');
   });
 
   test('addon utilities are prefixed and cannot override shell classes', async ({ page }) => {

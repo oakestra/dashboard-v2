@@ -64,18 +64,18 @@ export function MarketplacePage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-full min-w-0 sm:max-w-xs sm:flex-1">
+        <div className="relative w-full sm:max-w-xs">
           <SearchIcon
             aria-hidden
-            className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+            className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2"
           />
           <Input
             type="search"
             aria-label="Search the marketplace"
             placeholder="Search the marketplace"
-            className="pl-9"
+            className="pl-8"
             value={search}
             onChange={(event) => updateSearch(event.target.value)}
           />
@@ -105,9 +105,12 @@ export function MarketplacePage() {
           onRetry={() => void marketplace.refetch()}
         />
       ) : marketplace.isPending ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true">
-          {Array.from({ length: 3 }, (_, index) => (
-            <Skeleton key={index} className="h-48 rounded-xl" />
+        <div className="divide-y rounded-lg border" aria-busy="true">
+          {Array.from({ length: 4 }, (_, index) => (
+            <div key={index} className="space-y-2 px-4 py-3">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
           ))}
         </div>
       ) : visible.length === 0 ? (
@@ -128,9 +131,9 @@ export function MarketplacePage() {
           }
         />
       ) : (
-        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="bg-card divide-y overflow-hidden rounded-lg border">
           {visible.map((addon) => (
-            <li key={addon._id} className="flex min-w-0">
+            <li key={addon._id} className="flex min-w-0 hover:bg-muted/40">
               <MarketplaceCard
                 addon={addon}
                 installed={installedByDefinition.get(addon._id)}

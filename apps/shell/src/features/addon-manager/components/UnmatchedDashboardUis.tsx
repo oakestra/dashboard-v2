@@ -1,16 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@oakestra/ui';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@oakestra/ui';
 
 import { addonLabel, type AddonEntry } from '../../../core/addons/addon-registry';
 import { DashboardUiBadge, dashboardUiProblem } from './DashboardUiBadge';
@@ -58,12 +46,12 @@ function UiTable({
   if (entries.length === 0) return null;
 
   return (
-    <Card data-testid={testId}>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <section data-testid={testId} className="space-y-2">
+      <div>
+        <h2 className="text-sm font-semibold">{title}</h2>
+        <p className="text-muted-foreground text-sm">{description}</p>
+      </div>
+      <div className="rounded-lg border px-2">
         <Table>
           <TableHeader>
             <TableRow>
@@ -98,7 +86,7 @@ function UiTable({
             ))}
           </TableBody>
         </Table>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

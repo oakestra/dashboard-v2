@@ -3,7 +3,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
 
 import type { ServiceFormValues } from '../model/schema';
-import { Section, TextField } from './fields';
+import { FIELD_GAP, Section, TextField } from './fields';
 
 export function AddressesSection() {
   const { control, getValues } = useFormContext<ServiceFormValues>();
@@ -20,13 +20,13 @@ export function AddressesSection() {
       defaultOpen={hasValues}
       summary={hasValues ? 'Set' : 'Allocated by Oakestra'}
     >
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
         <TextField name="addresses.rr_ip" label="Round-robin IP (IPv4)" placeholder="10.30.0.1" />
         <TextField name="addresses.rr_ip_v6" label="Round-robin IP (IPv6)" />
         <TextField name="addresses.closest_ip" label="Closest IP (IPv4)" placeholder="10.30.1.1" />
         <TextField name="addresses.closest_ip_v6" label="Closest IP (IPv6)" />
       </div>
-      <Field>
+      <Field className={FIELD_GAP}>
         <FieldLabel>Per-instance addresses</FieldLabel>
         <div className="space-y-3">
           {fields.map((item, index) => (
@@ -49,8 +49,8 @@ export function AddressesSection() {
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
-                className="mt-6"
+                size="icon-sm"
+                className="mt-[1.375rem]"
                 aria-label={`Remove instance address ${index + 1}`}
                 onClick={() => remove(index)}
               >

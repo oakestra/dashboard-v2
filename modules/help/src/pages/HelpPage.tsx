@@ -6,17 +6,11 @@ import {
   PageHeader,
   SectionCard,
 } from '@oakestra/ui';
-import { BookOpenIcon, CodeIcon, ExternalLinkIcon, MessageCircleIcon } from 'lucide-react';
-import { useEffect, useState, type ComponentType } from 'react';
+import { ExternalLinkIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
 
 import { CONTACT_TEXT, FAQ_ITEMS, HELP_LINKS } from '../content';
-
-const LINK_ICONS: Readonly<Record<string, ComponentType<{ className?: string }>>> = {
-  docs: BookOpenIcon,
-  website: MessageCircleIcon,
-  github: CodeIcon,
-};
 
 const FAQ_PREFIX = 'faq-';
 
@@ -34,50 +28,37 @@ export function HelpPage() {
   }, [linkedId]);
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Help" description="Answers to common questions and ways to reach us." />
+    <div className="space-y-5">
+      <PageHeader title="Help" />
 
-      <section aria-labelledby="help-contact" className="space-y-3">
-        <div>
-          <h2 id="help-contact" className="text-base font-semibold">
-            Get in touch
-          </h2>
-          <p className="text-muted-foreground text-sm">{CONTACT_TEXT}</p>
-        </div>
-        <ul className="grid gap-4 sm:grid-cols-3">
-          {HELP_LINKS.map((link) => {
-            const Icon = LINK_ICONS[link.id] ?? ExternalLinkIcon;
-            return (
-              <li key={link.id}>
-                <a
-                  href={link.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="bg-card hover:border-primary/30 hover:bg-accent/40 focus-visible:ring-ring/50 flex h-full gap-3 rounded-xl border p-4 shadow-xs transition-colors outline-none focus-visible:ring-[3px]"
-                >
-                  <span
-                    aria-hidden
-                    className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-md"
-                  >
-                    <Icon className="size-4" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="flex items-center gap-1.5 font-medium">
-                      {link.label}
-                      <ExternalLinkIcon aria-hidden className="text-muted-foreground size-3.5" />
-                    </span>
-                    <span className="text-muted-foreground block text-sm">{link.description}</span>
-                  </span>
-                </a>
-              </li>
-            );
-          })}
+      <SectionCard title="Get in touch" description={CONTACT_TEXT} flush>
+        <ul className="divide-y border-t">
+          {HELP_LINKS.map((link) => (
+            <li key={link.id}>
+              <a
+                href={link.href}
+                target="_blank"
+                rel="noreferrer"
+                className="group hover:bg-muted/60 focus-visible:bg-muted/60 flex items-center gap-3 px-4 py-2 outline-none"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium">{link.label}</span>
+                  <span className="text-muted-foreground block text-xs">{link.description}</span>
+                </span>
+                <ExternalLinkIcon
+                  aria-hidden
+                  className="text-muted-foreground/60 group-hover:text-foreground size-4 shrink-0"
+                />
+              </a>
+            </li>
+          ))}
         </ul>
-      </section>
+      </SectionCard>
 
-      <SectionCard title="Frequently asked questions">
+      <SectionCard title="Frequently asked questions" flush>
         <Accordion
           type="single"
+          className="border-t"
           collapsible
           value={open}
           onValueChange={(value) => setChosen({ hash, value })}
@@ -87,10 +68,10 @@ export function HelpPage() {
               key={item.id}
               value={item.id}
               id={`${FAQ_PREFIX}${item.id}`}
-              className="scroll-mt-20"
+              className="scroll-mt-20 last:border-b-0"
             >
-              <AccordionTrigger>{item.question}</AccordionTrigger>
-              <AccordionContent className="text-muted-foreground max-w-prose">
+              <AccordionTrigger className="px-4 py-2.5">{item.question}</AccordionTrigger>
+              <AccordionContent className="text-muted-foreground max-w-prose px-4">
                 {item.answer}
               </AccordionContent>
             </AccordionItem>
