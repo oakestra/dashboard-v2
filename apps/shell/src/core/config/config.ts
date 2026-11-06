@@ -30,11 +30,31 @@ export const appConfigSchema = z.object({
   addonsManagerUrl: z.string().min(1).default('/addons-api'),
   /** Base URL of the marketplace-manager (addon definitions), proxied to `/api/v1/marketplace/addons`. */
   marketplaceUrl: z.string().min(1).default('/marketplace-api'),
+  /**
+   * MapLibre style of the basemap, for deployments that serve their own tiles. Unset means the
+   * public default, see mapStylesFromConfig.
+   */
+  mapStyleUrl: optionalUrl,
+  /** The same for the dark theme; without it the dark theme uses `mapStyleUrl` as well. */
+  mapStyleDarkUrl: optionalUrl,
   /** Deployment preset (see preset.ts), a same-origin path or a URL. Unset means the defaults. */
   presetUrl: emptyAsUnset(z.string().min(1)),
 });
 
 export type AppConfig = z.infer<typeof appConfigSchema>;
+
+/**
+ * The basemap a deployment configured, if any. One configured style serves both themes: filling
+ * the other from the public default would send a self-hosted deployment's viewers to a third party
+ * as soon as they switch themes.
+ */
+export function mapStylesFromConfig(
+  config: Pick<AppConfig, 'mapStyleUrl' | 'mapStyleDarkUrl'>,
+): { light: string; dark: string } | undefined {
+  const light = config.mapStyleUrl ?? config.mapStyleDarkUrl;
+  const dark = config.mapStyleDarkUrl ?? config.mapStyleUrl;
+  return light && dark ? { light, dark } : undefined;
+}
 
 export class ConfigError extends Error {
   override name = 'ConfigError';

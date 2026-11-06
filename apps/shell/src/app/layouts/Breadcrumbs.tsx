@@ -7,6 +7,7 @@ import {
   BreadcrumbSeparator,
   cn,
 } from '@oakestra/ui';
+import { ChevronLeftIcon } from 'lucide-react';
 import { Fragment } from 'react';
 import { Link, useMatches } from 'react-router';
 
@@ -27,10 +28,21 @@ export function Breadcrumbs() {
     return label ? [{ id: match.id, label, to: match.pathname }] : [];
   });
   if (crumbs.length === 0) return null;
+  const parent = crumbs.at(-2);
 
   return (
     <Breadcrumb data-testid="breadcrumbs" className="min-w-0">
       <BreadcrumbList className="flex-nowrap sm:gap-2">
+        {/* Phones show only the current page, so this is their way back up the trail. */}
+        {parent ? (
+          <BreadcrumbItem className="md:hidden">
+            <BreadcrumbLink asChild>
+              <Link to={parent.to} aria-label="Back one level" className="-ml-1 p-1">
+                <ChevronLeftIcon aria-hidden className="size-4" />
+              </Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+        ) : null}
         {crumbs.map((crumb, index) => {
           const current = index === crumbs.length - 1;
           // Phones only have room for the current page; the trail starts at md.

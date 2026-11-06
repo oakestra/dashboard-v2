@@ -14,7 +14,17 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
  */
 export type ContributionSource =
   | { kind: 'core'; id: string; label: string }
-  | { kind: 'addon'; id: string; label: string; addon: AddonContextValue };
+  | {
+      kind: 'addon';
+      id: string;
+      label: string;
+      addon: AddonContextValue;
+      /** Loaded at runtime. `kind` cannot tell: linked packages are addons too. */
+      remote?: boolean;
+      displayName?: string;
+      /** Remote addons only: a linked package reports the SDK version, which means nothing here. */
+      version?: string;
+    };
 
 export interface RegisteredSource {
   source: ContributionSource;

@@ -1,7 +1,8 @@
 import type { Contributions, Widget } from '@oakestra/dashboard-sdk';
-import { screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { addonSource } from '../../../core/addons/ui-addons';
 import { renderApp } from '../../../test/render';
 import { overviewModule } from '../index';
 
@@ -34,7 +35,7 @@ describe('<OverviewPage>', () => {
     renderOverview([]);
 
     expect(await screen.findByRole('heading', { name: 'Overview' })).toBeVisible();
-    expect(screen.getByText('Welcome back, Admin.')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
   });
 
   it('shows an empty state when nothing is contributed', async () => {
@@ -86,5 +87,59 @@ describe('<OverviewPage>', () => {
     const summary = within(await screen.findByTestId('overview-summary'));
     expect(await summary.findByTestId('contribution-error')).toHaveTextContent('Title broken');
     expect(summary.getByText('body fine')).toBeVisible();
+  });
+
+  describe('source tags', () => {
+    const remote = addonSource(
+      { name: 'flops', version: '1.2.0', basePath: '/addons/flops', origin: 'manager' },
+      'Flops',
+    );
+    const linked = addonSource(
+      { name: 'help', version: '0.1.0', basePath: '/help', origin: 'linked' },
+      'Help',
+    );
+    const tags = () => document.querySelectorAll('[data-slot="source-tag"]');
+
+    it('marks card widgets of remote addons with their name and version', async () => {
+      const { services } = renderOverview([]);
+      act(() =>
+        services.contributions.getState().register(remote, { 'home.widgets': [widget('a')] }),
+      );
+
+      expect(await screen.findByText('body a')).toBeVisible();
+      expect(tags()).toHaveLength(1);
+      expect(tags()[0]).toHaveTextContent('Flopsv1.2.0');
+    });
+
+    it('does not mark first-party packages, which are addons as well', async () => {
+      const { services } = renderOverview([]);
+      act(() =>
+        services.contributions.getState().register(linked, { 'home.widgets': [widget('a')] }),
+      );
+
+      expect(await screen.findByText('body a')).toBeVisible();
+      expect(tags()).toHaveLength(0);
+    });
+
+    it('leaves remote stat and wide widgets untagged, they must collapse when empty', async () => {
+      const { services } = renderOverview([]);
+      act(() =>
+        services.contributions.getState().register(remote, {
+          'home.widgets': [
+            widget('s', { size: 'stat' }),
+            widget('w', { size: 'wide' }),
+            widget('nothing', { size: 'wide', component: () => null }),
+          ],
+        }),
+      );
+
+      expect(await screen.findByText('body s')).toBeVisible();
+      expect(screen.getByText('body w')).toBeVisible();
+      expect(tags()).toHaveLength(0);
+      const empty = screen
+        .getByTestId('home-sections')
+        .querySelector('[data-widget-id="flops:nothing"]');
+      expect(empty).toBeEmptyDOMElement();
+    });
   });
 });

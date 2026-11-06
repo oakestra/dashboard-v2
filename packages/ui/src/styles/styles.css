@@ -7,105 +7,124 @@
  */
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import '@fontsource-variable/geist/wght.css';
+@import '@fontsource-variable/geist-mono/wght.css';
 @import './theme.css';
 
 /* Components ship as source, so Tailwind has to scan them from here. */
 @source '../components';
+@source '../lib/stretched-link.ts';
 
 /*
- * Palette. Neutrals carry a faint cool tint (hue ~245) so they sit with the brand instead of
- * reading as plain grey. The primary is the slate-teal of the Oakestra lettering (#4a7385),
- * taken a little deeper so white text on it and it as text on the page both clear WCAG AA (5.9:1).
- * Dark mode lifts it to a light slate-teal with dark text on top.
+ * Self-hosted, because a dashboard running next to an edge cluster may have no route to a font CDN.
+ */
+:root {
+  --font-ui: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-code: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/*
+ * Palette. A screen in its normal state is neutral, so that abnormal states are easy to spot.
  *
- * Status colors (success, warning, info, destructive) are tuned to be readable as text on the
- * card surface and on their own 10% tint (soft badges), at least 4.5:1 in both themes. The
- * -foreground variants are for text on the solid color.
+ * - Neutrals are a cool gray (hue ~230) and are used for all content.
+ * - The page is a white panel on the sidebar's tint (the inset sidebar layout). Cards are the same
+ *   white, separated by a hairline and a faint shadow rather than by a darker page.
+ * - The primary is the slate-teal of the Oakestra lettering taken down to ink. It is used for
+ *   interactive elements only, not for decoration.
+ * - Warning and destructive are the only saturated colors. Success has low chroma so that a page
+ *   of healthy items does not compete with the one that failed.
+ *
+ * Status colors stay readable as text on the card surface and on their own soft tint (at least
+ * 4.5:1 in both themes). The -foreground variants are for text on the solid color.
  *
  * The chart palette starts with the brand, then the leaf green of the logo, then hues far enough
  * apart to tell five series apart.
  */
 :root {
-  --radius: 0.5rem;
-  --background: oklch(0.984 0.003 240);
-  --foreground: oklch(0.21 0.018 252);
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.21 0.014 235);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.018 252);
+  --card-foreground: oklch(0.21 0.014 235);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.018 252);
-  --primary: oklch(0.49 0.064 230);
+  --popover-foreground: oklch(0.21 0.014 235);
+  --primary: oklch(0.36 0.055 225);
   --primary-foreground: oklch(0.985 0.004 230);
-  --secondary: oklch(0.954 0.006 240);
-  --secondary-foreground: oklch(0.27 0.02 252);
-  --muted: oklch(0.954 0.006 240);
-  --muted-foreground: oklch(0.5 0.018 252);
-  --accent: oklch(0.948 0.01 232);
-  --accent-foreground: oklch(0.24 0.02 252);
-  --destructive: oklch(0.53 0.2 27);
+  --primary-fill: oklch(0.31 0.045 225);
+  --primary-fill-foreground: oklch(0.985 0.004 230);
+  --secondary: oklch(0.962 0.004 230);
+  --secondary-foreground: oklch(0.27 0.016 235);
+  --muted: oklch(0.968 0.003 230);
+  --muted-foreground: oklch(0.5 0.014 235);
+  --accent: oklch(0.962 0.004 230);
+  --accent-foreground: oklch(0.21 0.014 235);
+  --destructive: oklch(0.525 0.19 30);
   --destructive-foreground: oklch(0.985 0.004 230);
-  --success: oklch(0.5 0.125 152);
+  --success: oklch(0.525 0.105 155);
   --success-foreground: oklch(0.985 0.004 230);
-  --warning: oklch(0.53 0.125 60);
+  --warning: oklch(0.51 0.112 62);
   --warning-foreground: oklch(0.985 0.004 230);
-  --info: oklch(0.52 0.15 258);
+  --info: oklch(0.5 0.1 245);
   --info-foreground: oklch(0.985 0.004 230);
-  --border: oklch(0.912 0.007 245);
-  --input: oklch(0.89 0.008 245);
-  --ring: oklch(0.6 0.07 228);
-  --chart-1: oklch(0.56 0.08 228);
-  --chart-2: oklch(0.66 0.13 150);
-  --chart-3: oklch(0.75 0.13 80);
-  --chart-4: oklch(0.58 0.13 290);
-  --chart-5: oklch(0.66 0.15 32);
-  --sidebar: oklch(0.972 0.005 240);
-  --sidebar-foreground: oklch(0.3 0.018 252);
-  --sidebar-primary: oklch(0.49 0.064 230);
+  --border: oklch(0.925 0.004 230);
+  --input: oklch(0.9 0.005 230);
+  --ring: oklch(0.6 0.06 225);
+  --chart-1: oklch(0.52 0.08 225);
+  --chart-2: oklch(0.64 0.12 150);
+  --chart-3: oklch(0.74 0.12 80);
+  --chart-4: oklch(0.56 0.11 290);
+  --chart-5: oklch(0.64 0.14 35);
+  --sidebar: oklch(0.971 0.003 230);
+  --sidebar-foreground: oklch(0.38 0.014 235);
+  --sidebar-primary: oklch(0.31 0.045 225);
   --sidebar-primary-foreground: oklch(0.985 0.004 230);
-  --sidebar-accent: oklch(0.935 0.008 240);
-  --sidebar-accent-foreground: oklch(0.21 0.018 252);
-  --sidebar-border: oklch(0.912 0.007 245);
-  --sidebar-ring: oklch(0.6 0.07 228);
+  --sidebar-accent: oklch(0.93 0.005 230);
+  --sidebar-accent-foreground: oklch(0.21 0.014 235);
+  --sidebar-border: oklch(0.915 0.004 230);
+  --sidebar-ring: oklch(0.6 0.06 225);
 }
 
 .dark {
-  --background: oklch(0.205 0.012 250);
-  --foreground: oklch(0.96 0.004 240);
-  --card: oklch(0.235 0.013 250);
-  --card-foreground: oklch(0.96 0.004 240);
-  --popover: oklch(0.255 0.013 250);
-  --popover-foreground: oklch(0.96 0.004 240);
-  --primary: oklch(0.75 0.07 225);
+  --background: oklch(0.195 0.008 235);
+  --foreground: oklch(0.955 0.003 235);
+  --card: oklch(0.222 0.009 235);
+  --card-foreground: oklch(0.955 0.003 235);
+  --popover: oklch(0.24 0.01 235);
+  --popover-foreground: oklch(0.955 0.003 235);
+  --primary: oklch(0.78 0.06 222);
   --primary-foreground: oklch(0.2 0.03 235);
-  --secondary: oklch(0.285 0.014 250);
-  --secondary-foreground: oklch(0.96 0.004 240);
-  --muted: oklch(0.285 0.014 250);
-  --muted-foreground: oklch(0.71 0.014 245);
-  --accent: oklch(0.3 0.016 245);
-  --accent-foreground: oklch(0.96 0.004 240);
-  --destructive: oklch(0.72 0.17 22);
+  --primary-fill: oklch(0.92 0.012 225);
+  --primary-fill-foreground: oklch(0.21 0.02 235);
+  --secondary: oklch(0.27 0.01 235);
+  --secondary-foreground: oklch(0.955 0.003 235);
+  --muted: oklch(0.26 0.01 235);
+  --muted-foreground: oklch(0.72 0.012 235);
+  --accent: oklch(0.275 0.011 235);
+  --accent-foreground: oklch(0.955 0.003 235);
+  --destructive: oklch(0.72 0.165 28);
   --destructive-foreground: oklch(0.2 0.03 250);
-  --success: oklch(0.77 0.14 155);
+  --success: oklch(0.76 0.115 155);
   --success-foreground: oklch(0.2 0.03 250);
-  --warning: oklch(0.82 0.13 78);
+  --warning: oklch(0.81 0.125 78);
   --warning-foreground: oklch(0.2 0.03 250);
-  --info: oklch(0.76 0.12 255);
+  --info: oklch(0.76 0.1 245);
   --info-foreground: oklch(0.2 0.03 250);
-  --border: oklch(0.9 0.02 250 / 11%);
-  --input: oklch(0.9 0.02 250 / 16%);
-  --ring: oklch(0.62 0.07 225);
+  --border: oklch(0.9 0.01 235 / 10%);
+  --input: oklch(0.9 0.01 235 / 16%);
+  --ring: oklch(0.64 0.06 222);
   --chart-1: oklch(0.72 0.08 225);
-  --chart-2: oklch(0.74 0.13 155);
+  --chart-2: oklch(0.74 0.12 155);
   --chart-3: oklch(0.8 0.12 80);
-  --chart-4: oklch(0.7 0.13 290);
-  --chart-5: oklch(0.72 0.14 30);
-  --sidebar: oklch(0.185 0.012 250);
-  --sidebar-foreground: oklch(0.86 0.008 245);
-  --sidebar-primary: oklch(0.75 0.07 225);
-  --sidebar-primary-foreground: oklch(0.2 0.03 235);
-  --sidebar-accent: oklch(0.265 0.014 250);
-  --sidebar-accent-foreground: oklch(0.96 0.004 240);
-  --sidebar-border: oklch(0.9 0.02 250 / 9%);
-  --sidebar-ring: oklch(0.62 0.07 225);
+  --chart-4: oklch(0.7 0.12 290);
+  --chart-5: oklch(0.72 0.13 35);
+  --sidebar: oklch(0.155 0.007 235);
+  --sidebar-foreground: oklch(0.8 0.008 235);
+  --sidebar-primary: oklch(0.92 0.012 225);
+  --sidebar-primary-foreground: oklch(0.21 0.02 235);
+  --sidebar-accent: oklch(0.235 0.01 235);
+  --sidebar-accent-foreground: oklch(0.97 0.003 235);
+  --sidebar-border: oklch(0.9 0.01 235 / 9%);
+  --sidebar-ring: oklch(0.64 0.06 222);
 }
 
 @layer base {
@@ -113,7 +132,15 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-sm text-foreground antialiased;
+  }
+  /* A slashed zero matters here: ids, IPs and resource figures are read digit by digit. */
+  code,
+  kbd,
+  pre,
+  samp,
+  .font-mono {
+    font-feature-settings: 'zero';
   }
 }
 
@@ -126,8 +153,12 @@
   .maplibregl-popup-tip {
     @apply hidden!;
   }
+  .maplibregl-map {
+    font-family: var(--font-ui) !important;
+  }
+  /* Stays open: the OpenStreetMap license wants the credit visible, so it is made small instead. */
   .maplibregl-ctrl-attrib {
-    @apply bg-background! text-muted-foreground! border-border! rounded-md! border! shadow-sm!;
+    @apply bg-background/85! text-muted-foreground! rounded-sm! text-[0.625rem]! leading-3! shadow-none!;
   }
   .maplibregl-ctrl-attrib a {
     @apply text-muted-foreground!;

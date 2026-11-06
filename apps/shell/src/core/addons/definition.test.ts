@@ -229,6 +229,81 @@ describe('parseAddonDefinition', () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('flops'), ['settings.panels']);
   });
 
+  describe('commands', () => {
+    const parseActions = (actions: unknown[]) =>
+      parseAddonDefinition(
+        { default: { id: 'flops', contributions: { 'command.actions': actions } } },
+        'flops',
+      );
+
+    it('accepts actions with a relative path or a run function, and sources', () => {
+      const run = () => undefined;
+      const search = () => Promise.resolve([]);
+      const parsed = parseAddonDefinition(
+        {
+          default: {
+            id: 'flops',
+            contributions: {
+              'command.actions': [
+                { id: 'open', label: 'Open', path: 'jobs?state=failed', keywords: ['history'] },
+                { id: 'index', label: 'Index', path: '', icon: Page },
+                { id: 'run', label: 'Run', run },
+              ],
+              'command.sources': [{ id: 'jobs', label: 'Jobs', minQueryLength: 3, search }],
+            },
+          },
+        },
+        'flops',
+      );
+      expect(parsed.contributions?.['command.actions']?.[2]?.run).toBe(run);
+      expect(parsed.contributions?.['command.sources']?.[0]?.search).toBe(search);
+    });
+
+    it.each([
+      ['both', { id: 'a', label: 'A', path: 'x', run: () => undefined }],
+      ['neither', { id: 'a', label: 'A' }],
+    ])('rejects an action with %s of path and run', (_name, action) => {
+      expect(() => parseActions([action])).toThrow(/either `path` or `run`/);
+    });
+
+    it.each(['/jobs', 'https://example.com', 'javascript:alert(1)'])(
+      'rejects the path %s, which is not relative',
+      (path) => {
+        expect(() => parseActions([{ id: 'a', label: 'A', path }])).toThrow(AddonDefinitionError);
+      },
+    );
+
+    it.each(['..', '../users', 'a/../../users', '%2e%2E/users', '..\\users', '..?x=1'])(
+      'rejects the path %s, which leaves the addon',
+      (path) => {
+        expect(() => parseActions([{ id: 'a', label: 'A', path }])).toThrow(/must not leave/);
+      },
+    );
+
+    it('allows dots that do not go anywhere', () => {
+      expect(() =>
+        parseActions([{ id: 'a', label: 'A', path: 'v1..2/a..b?from=../x' }]),
+      ).not.toThrow();
+    });
+
+    it('rejects duplicate ids', () => {
+      const action = { id: 'a', label: 'A', path: '' };
+      expect(() => parseActions([action, action])).toThrow(/duplicate id/);
+    });
+
+    it.each([
+      ['no search function', { id: 's', label: 'S', search: 'nope' }],
+      ['a zero minimum', { id: 's', label: 'S', search: () => [], minQueryLength: 0 }],
+    ])('rejects a source with %s', (_name, source) => {
+      expect(() =>
+        parseAddonDefinition(
+          { default: { id: 'flops', contributions: { 'command.sources': [source] } } },
+          'flops',
+        ),
+      ).toThrow(AddonDefinitionError);
+    });
+  });
+
   it('drops extension points this shell does not know', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const parsed = parseAddonDefinition(

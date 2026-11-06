@@ -1,10 +1,5 @@
 import {
   Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -55,6 +50,9 @@ export function useFieldError(name: string): { message?: string } | undefined {
   return error;
 }
 
+/** Gap between a label and its control. */
+export const FIELD_GAP = 'gap-1.5';
+
 export function TextField({
   name,
   label,
@@ -70,7 +68,7 @@ export function TextField({
   const error = useFieldError(name);
   const id = fieldId(name);
   return (
-    <Field data-invalid={!!error} className={className}>
+    <Field data-invalid={!!error} className={cn(FIELD_GAP, className)}>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <Input id={id} aria-invalid={!!error} {...register(name)} {...input} />
       {description ? <FieldDescription>{description}</FieldDescription> : null}
@@ -80,9 +78,9 @@ export function TextField({
 }
 
 /**
- * A titled card. With `collapsible` the body is hidden until opened; it opens by itself when it
+ * A titled panel. With `collapsible` the body is hidden until opened; it opens by itself when it
  * contains a validation error, otherwise a failed submit would point at nothing visible.
- * `summary` is shown on the right while the card is closed ("2 constraints", "None").
+ * `summary` is shown on the right while the panel is closed ("2 constraints", "None").
  */
 export function Section({
   id,
@@ -106,7 +104,7 @@ export function Section({
   const { errors } = useFormState<ServiceFormValues>();
   const hasError = collapsible && hasErrorsInSection(id, errors);
   const [open, setOpen] = useState(defaultOpen);
-  // Adjusting state while rendering (instead of in an effect) avoids a flash of the closed card.
+  // Adjusting state while rendering (instead of in an effect) avoids a flash of the closed panel.
   const [forcedOpen, setForcedOpen] = useState(false);
   if (hasError && !forcedOpen) {
     setForcedOpen(true);
@@ -115,51 +113,51 @@ export function Section({
     setForcedOpen(false);
   }
 
+  const header = (
+    <>
+      <span className="min-w-0">
+        <span className="block text-sm leading-snug font-semibold">{title}</span>
+        {description ? (
+          <span className="block text-xs text-muted-foreground">{description}</span>
+        ) : null}
+      </span>
+    </>
+  );
   if (!collapsible) {
     return (
-      <Card id={id} className="scroll-mt-20">
-        <CardHeader>
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-1">
-              <CardTitle>{title}</CardTitle>
-              {description ? <CardDescription>{description}</CardDescription> : null}
-            </div>
-            {actions}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">{children}</CardContent>
-      </Card>
+      <section id={id} className="scroll-mt-20 rounded-lg border bg-card text-card-foreground">
+        <div className="flex items-start justify-between gap-3 border-b px-4 py-2.5">
+          {header}
+          {actions}
+        </div>
+        <div className="space-y-4 px-4 py-4">{children}</div>
+      </section>
     );
   }
   return (
-    <Card id={id} className={cn('scroll-mt-20', !open && 'gap-0 py-0')}>
+    <section id={id} className="scroll-mt-20 rounded-lg border bg-card text-card-foreground">
       <Collapsible open={open} onOpenChange={setOpen}>
         <CollapsibleTrigger
           aria-label={`Toggle ${title}`}
           className={cn(
-            'flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl px-6 text-left hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
-            open ? 'pt-6 pb-6' : 'py-4',
+            'flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg px-4 py-2.5 text-left outline-none hover:bg-muted/60 focus-visible:bg-muted/60',
+            open && 'rounded-b-none border-b',
           )}
         >
-          <span className="min-w-0 space-y-1">
-            <span className="block leading-none font-semibold">{title}</span>
-            {description ? (
-              <span className="block text-sm text-muted-foreground">{description}</span>
-            ) : null}
-          </span>
-          <span className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground">
+          {header}
+          <span className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
             {!open && summary ? <span>{summary}</span> : null}
             <ChevronDown
               aria-hidden
-              className={cn('size-4 transition-transform', open && 'rotate-180')}
+              className={cn('size-4 text-muted-foreground/60', open && 'rotate-180')}
             />
           </span>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <CardContent className="space-y-4 pb-6">{children}</CardContent>
+          <div className="space-y-4 px-4 py-4">{children}</div>
         </CollapsibleContent>
       </Collapsible>
-    </Card>
+    </section>
   );
 }
 
@@ -261,9 +259,9 @@ export function StringListField({
   const { control, register } = useFormContext<ServiceFormValues>();
   const { fields, append, remove } = useFieldArray({ control, name });
   return (
-    <Field>
+    <Field className={FIELD_GAP}>
       <FieldLabel>{label}</FieldLabel>
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {fields.map((item, index) => (
           <div key={item.id} className="flex gap-2">
             <Input
@@ -274,7 +272,7 @@ export function StringListField({
             <Button
               type="button"
               variant="ghost"
-              size="icon"
+              size="icon-sm"
               aria-label={`Remove ${itemLabel.toLowerCase()} ${index + 1}`}
               onClick={() => remove(index)}
             >

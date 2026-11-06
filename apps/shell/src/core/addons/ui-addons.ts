@@ -107,12 +107,18 @@ export function isHttpUrl(value: string): boolean {
 
 /** The source an addon's contributions and pages are registered and isolated under. */
 export function addonSource(
-  addon: Pick<ResolvedAddon, 'name' | 'version' | 'basePath'>,
+  addon: Pick<ResolvedAddon, 'name' | 'version' | 'basePath' | 'origin'>,
+  /** The `label` of the addon's definition, when it has been loaded and declares one. */
+  displayName?: string,
 ): Extract<ContributionSource, { kind: 'addon' }> {
+  const remote = addon.origin !== 'linked';
   return {
     kind: 'addon',
     id: addon.name,
     label: `addon "${addon.name}"`,
+    remote,
+    displayName: displayName ?? addon.name,
+    version: remote ? addon.version : undefined,
     addon: { addonId: addon.name, version: addon.version, basePath: addon.basePath },
   };
 }

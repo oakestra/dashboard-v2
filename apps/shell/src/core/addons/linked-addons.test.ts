@@ -31,6 +31,13 @@ function setup(linked: readonly LinkedAddon[]) {
 }
 
 describe('registerLinkedAddons', () => {
+  it('registers linked addons as not remote and without a version of their own', () => {
+    const { contributions } = setup([help]);
+    const { source } = contributions.getState().sources['addon:help']!;
+    expect(source).toMatchObject({ remote: false, displayName: 'Help' });
+    expect(source).not.toHaveProperty('version', SDK_VERSION);
+  });
+
   it('registers the definition as loaded at its mount, without a loading state', () => {
     const { addons, navPaths } = setup([help]);
     expect(addons.getState().entries.help).toMatchObject({

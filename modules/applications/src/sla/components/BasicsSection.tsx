@@ -11,7 +11,7 @@ import {
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
 import { ARCHITECTURES, VIRTUALIZATIONS, type ServiceFormValues } from '../model/schema';
-import { Section, TextField, useFieldError } from './fields';
+import { FIELD_GAP, Section, TextField, useFieldError } from './fields';
 
 const VIRTUALIZATION_LABELS = { container: 'Container', unikernel: 'Unikernel', vm: 'VM' } as const;
 
@@ -21,11 +21,11 @@ export function BasicsSection() {
   const archError = useFieldError('arch');
   return (
     <Section id="basics" title="Basics" description="What the service is and what it runs.">
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
         <TextField name="name" label="Service name" placeholder="e.g. nginx" autoComplete="off" />
         <TextField name="namespace" label="Namespace" placeholder="default" autoComplete="off" />
       </div>
-      <Field>
+      <Field className={FIELD_GAP}>
         <FieldLabel>Virtualization</FieldLabel>
         <Controller
           control={control}
@@ -50,7 +50,7 @@ export function BasicsSection() {
         />
       </Field>
       {virtualization === 'unikernel' ? (
-        <Field data-invalid={!!archError}>
+        <Field data-invalid={!!archError} className={FIELD_GAP}>
           <FieldLabel>Architecture</FieldLabel>
           <Controller
             control={control}
@@ -86,7 +86,7 @@ export function BasicsSection() {
         description="A container image, or the URL of the unikernel or VM image."
         autoComplete="off"
       />
-      <Field>
+      <Field className={FIELD_GAP}>
         <FieldLabel htmlFor="sla-description">Description</FieldLabel>
         <Textarea id="sla-description" rows={2} {...register('description')} />
       </Field>

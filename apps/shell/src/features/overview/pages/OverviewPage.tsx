@@ -1,10 +1,15 @@
+import type { SlotSource, Widget, WidgetSize } from '@oakestra/dashboard-sdk';
 import {
-  useCurrentUser,
-  type SlotSource,
-  type Widget,
-  type WidgetSize,
-} from '@oakestra/dashboard-sdk';
-import { Card, CardContent, CardHeader, CardTitle, EmptyState, PageHeader } from '@oakestra/ui';
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  EmptyState,
+  PageHeader,
+  SourceTag,
+  StatGroup,
+} from '@oakestra/ui';
 import { LayoutDashboardIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
@@ -26,6 +31,12 @@ const isCard = isSize('card');
 // children with `gap` (which skips hidden items, unlike `space-y`) they leave no hole behind.
 const HIDE_EMPTY = 'empty:hidden [&>:empty]:hidden';
 
+// `stat` and `wide` widgets draw their own frame, so a crashed one has none. The error state has no
+// frame of its own either (it also renders in cards and tab panels), so it gets it from here.
+const STAT_CRASH_FRAME = '[&>[data-slot=contribution-error]]:p-4';
+const WIDE_CRASH_FRAME =
+  '[&>[data-slot=contribution-error]]:bg-card [&>[data-slot=contribution-error]]:rounded-lg [&>[data-slot=contribution-error]]:border [&>[data-slot=contribution-error]]:p-4';
+
 function frame(widget: Widget, source: SlotSource, content: ReactNode, className?: string) {
   return (
     <div
@@ -40,18 +51,17 @@ function frame(widget: Widget, source: SlotSource, content: ReactNode, className
 }
 
 /**
- * The start page. Everything on it except the greeting comes from `home.widgets`: the features
+ * The start page. Everything on it comes from `home.widgets`: the features
  * (linked packages and remote addons alike) contribute their summaries there, so a feature a
  * preset leaves out takes its tiles with it.
  */
 export function OverviewPage() {
-  const user = useCurrentUser()!;
   // Only to decide whether to show the empty state; the slots below select their own share.
   const widgets = useContributions('home.widgets');
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Overview" description={`Welcome back, ${user.username}.`} />
+    <div className="space-y-4">
+      <PageHeader title="Overview" />
 
       {widgets.length === 0 ? (
         <EmptyState
@@ -62,24 +72,27 @@ export function OverviewPage() {
         />
       ) : null}
 
-      <section
+      <StatGroup
+        role="group"
         aria-label="Summary"
-        className={`grid grid-cols-2 gap-4 lg:grid-cols-4 ${HIDE_EMPTY}`}
+        className={HIDE_EMPTY}
         data-testid="overview-summary"
       >
         {/* A grid wrapper so the tile (StatCard is h-full) fills its row like a direct child. */}
         <Slot
           point="home.widgets"
           filter={isStat}
-          render={(widget, content, source) => frame(widget, source, content, 'grid')}
+          render={(widget, content, source) =>
+            frame(widget, source, content, `grid ${STAT_CRASH_FRAME}`)
+          }
         />
-      </section>
+      </StatGroup>
 
-      <div className={`flex flex-col gap-6 ${HIDE_EMPTY}`} data-testid="home-sections">
+      <div className={`flex flex-col gap-4 ${HIDE_EMPTY}`} data-testid="home-sections">
         <Slot
           point="home.widgets"
           filter={isWide}
-          render={(widget, content, source) => frame(widget, source, content)}
+          render={(widget, content, source) => frame(widget, source, content, WIDE_CRASH_FRAME)}
         />
       </div>
 
@@ -100,6 +113,11 @@ export function OverviewPage() {
             >
               <CardHeader>
                 <CardTitle>{widget.title}</CardTitle>
+                {source.remote ? (
+                  <CardAction>
+                    <SourceTag name={source.displayName ?? source.id} version={source.version} />
+                  </CardAction>
+                ) : null}
               </CardHeader>
               <CardContent>{content}</CardContent>
             </Card>

@@ -1,19 +1,20 @@
-import { BYTES_PER_MB, formatBytes, formatPercent } from '@oakestra/ui';
-import type { Cluster } from '@oakestra/api';
-import type { StatusTone } from '@oakestra/ui';
+import {
+  clusterCpuPercent,
+  clusterReportState,
+  clusterStateLabel,
+  type Cluster,
+  type ClusterReportState,
+} from '@oakestra/api';
+import { BYTES_PER_MB, type StatusTone } from '@oakestra/ui';
+import type { MapLocationTone } from '@oakestra/ui/location-map';
 
-/** `memory_in_mb` is the cluster's total memory, `memory_percent` how much of it is used. */
-export function totalMemoryBytes(cluster: Cluster): number | undefined {
+/**
+ * `memory_in_mb` is the memory still AVAILABLE, summed over the workers' `mem.Available`, not the
+ * installed total; `memory_percent` is the mean usage of the workers. The two cannot be combined
+ * into "X% of Y", because the percentage is not a share of this figure.
+ */
+export function availableMemoryBytes(cluster: Cluster): number | undefined {
   return cluster.memory_in_mb === undefined ? undefined : cluster.memory_in_mb * BYTES_PER_MB;
-}
-
-export function describeMemory(cluster: Cluster): string {
-  const total = totalMemoryBytes(cluster);
-  // An inactive cluster reports 0 MB, which would read as "0% of 0 B" next to a real cluster.
-  if (total === undefined || total === 0) return '-';
-  const used =
-    cluster.memory_percent === undefined ? '' : `${formatPercent(cluster.memory_percent)} of `;
-  return `${used}${formatBytes(total)}`;
 }
 
 export interface ClusterTotals {
@@ -21,11 +22,11 @@ export interface ClusterTotals {
   activeClusters: number;
   activeNodes: number;
   cpuCores: number;
-  memoryBytes: number;
+  memoryAvailableBytes: number;
   gpuCores: number;
 }
 
-/** Capacity counts only active clusters: an inactive one keeps its last report but offers nothing. */
+/** Capacity counts only active clusters: a silent one keeps its last report but offers nothing. */
 export function clusterTotals(clusters: readonly Cluster[]): ClusterTotals {
   const active = clusters.filter((cluster) => cluster.active);
   return {
@@ -33,12 +34,66 @@ export function clusterTotals(clusters: readonly Cluster[]): ClusterTotals {
     activeClusters: active.length,
     activeNodes: active.reduce((sum, c) => sum + (c.active_nodes ?? 0), 0),
     cpuCores: active.reduce((sum, c) => sum + (c.total_cpu_cores ?? 0), 0),
-    memoryBytes: active.reduce((sum, c) => sum + (totalMemoryBytes(c) ?? 0), 0),
+    memoryAvailableBytes: active.reduce((sum, c) => sum + (availableMemoryBytes(c) ?? 0), 0),
     gpuCores: active.reduce((sum, c) => sum + (c.total_gpu_cores ?? 0), 0),
   };
 }
 
-/** Inactive means registered but not reporting: worth a look, but not a failure. */
-export function clusterTone(active: boolean): StatusTone {
-  return active ? 'success' : 'warning';
+export interface ClusterPresentation {
+  state: ClusterReportState;
+  label: string;
+  tone: StatusTone;
+  /** Last known state without a recent report. */
+  stale: boolean;
+  mapTone: MapLocationTone;
+}
+
+/**
+ * The one place that maps a cluster's report state onto presentation. Silent is abnormal but not
+ * a failure we can name, so it is told apart by the stale hatch and wording, not by a fill.
+ */
+export function clusterPresentation(cluster: Cluster): ClusterPresentation {
+  const state = clusterReportState(cluster);
+  const label = clusterStateLabel(state);
+  if (state === 'reporting') {
+    return { state, label, tone: 'success', stale: false, mapTone: 'default' };
+  }
+  return { state, label, tone: 'neutral', stale: true, mapTone: 'muted' };
+}
+
+export interface ClusterUsage {
+  cpuPercent?: number;
+  memoryPercent?: number;
+  memoryAvailableBytes?: number;
+  activeNodes?: number;
+  /** The values are the last report of a cluster that stopped reporting, not current. */
+  lastKnown: boolean;
+}
+
+/**
+ * Figures that may be shown for a cluster. A reporting cluster shows everything, zeros included.
+ * A silent one keeps only non-zero values: it may have lost all its workers (real zeros, which
+ * read as dashes), and a zero kept from the last report would pass as an idle cluster. A cluster
+ * that never reported has no values at all.
+ */
+export function clusterUsage(cluster: Cluster): ClusterUsage {
+  const state = clusterReportState(cluster);
+  const cpu = clusterCpuPercent(cluster);
+  const memory = availableMemoryBytes(cluster);
+  if (state === 'reporting') {
+    return {
+      cpuPercent: cpu ?? 0,
+      memoryPercent: cluster.memory_percent ?? 0,
+      memoryAvailableBytes: memory,
+      activeNodes: cluster.active_nodes ?? 0,
+      lastKnown: false,
+    };
+  }
+  const usage: ClusterUsage = { lastKnown: true };
+  if (state === 'never-reported') return usage;
+  if (cpu) usage.cpuPercent = cpu;
+  if (cluster.memory_percent) usage.memoryPercent = cluster.memory_percent;
+  if (memory) usage.memoryAvailableBytes = memory;
+  if (cluster.active_nodes) usage.activeNodes = cluster.active_nodes;
+  return usage;
 }

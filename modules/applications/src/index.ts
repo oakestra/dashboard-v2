@@ -1,5 +1,5 @@
 import { defineAddon } from '@oakestra/dashboard-sdk';
-import { BoxesIcon } from 'lucide-react';
+import { BoxesIcon, PlusIcon } from 'lucide-react';
 import { lazy } from 'react';
 
 import { ApplicationCrumb, InstanceCrumb, ServiceCrumb } from './crumbs';
@@ -83,6 +83,27 @@ export default defineAddon({
         icon: BoxesIcon,
         group: 'main',
         order: 10,
+      },
+    ],
+    'command.actions': [
+      {
+        id: 'new-application',
+        label: 'New application',
+        keywords: ['create', 'add'],
+        // The form is a dialog on the list page, it has no route of its own.
+        path: '?new=1',
+        icon: PlusIcon,
+        // Same as APPLICATION_ROLES of the fleet package.
+        roles: ['Admin', 'Application_Provider'],
+      },
+    ],
+    'command.sources': [
+      {
+        id: 'applications',
+        label: 'Applications and services',
+        // A function around the import: the search code is not needed before the palette is used.
+        search: (query, ctx) =>
+          import('./search').then(({ searchApplications }) => searchApplications(query, ctx)),
       },
     ],
     // Orders in steps of 100 so a deployment's own widgets can go in between. Stat tiles and wide

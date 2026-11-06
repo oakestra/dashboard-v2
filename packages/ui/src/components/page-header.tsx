@@ -16,7 +16,7 @@ function PageHeader({ title, description, actions, className, ...props }: PageHe
       {...props}
     >
       <div className="min-w-0 space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="text-2xl leading-8 font-semibold tracking-tight">{title}</h1>
         {description ? (
           <p className="max-w-prose text-sm text-pretty text-muted-foreground">{description}</p>
         ) : null}

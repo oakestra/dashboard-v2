@@ -16,7 +16,6 @@ import {
   downloadJson,
   plural,
 } from '@oakestra/ui';
-import { Download } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { useNavigate } from 'react-router';
@@ -123,10 +122,10 @@ export function ServiceForm({
 
   return (
     <FormProvider {...form}>
-      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_13rem]">
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_11rem]">
         <form
           ref={formRef}
-          className="max-w-4xl min-w-0 space-y-6 pb-4"
+          className="max-w-4xl min-w-0 space-y-4 pb-4"
           noValidate
           onSubmit={(event) => void form.handleSubmit(onValid)(event)}
         >
@@ -174,7 +173,7 @@ export function ServiceForm({
                 Cancel
               </Button>
               <Button type="button" variant="outline" onClick={() => void onExport()}>
-                <Download /> Download SLA
+                Download SLA
               </Button>
               <Button type="submit" disabled={create.isPending}>
                 {create.isPending ? 'Creating...' : 'Create service'}

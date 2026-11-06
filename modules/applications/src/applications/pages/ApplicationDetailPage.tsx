@@ -7,13 +7,11 @@ import {
 import {
   Alert,
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
   PageHeader,
   Skeleton,
+  SourceTag,
   StatusBadge,
   Tabs,
   TabsContent,
@@ -24,18 +22,18 @@ import {
   TooltipTrigger,
   QueryErrorAlert,
   plural,
+  RowMenu,
 } from '@oakestra/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   InfoIcon,
-  MoreHorizontalIcon,
   PencilIcon,
   PlayIcon,
   PlusIcon,
   Trash2Icon,
   TriangleAlertIcon,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 
 import { isNotFound, NotFound } from '../../components/NotFound';
@@ -43,7 +41,8 @@ import { seededApplicationQuery } from '../../queries';
 import { useDeployAll } from '../../services/mutations';
 import { isUndeployed, usePollWhileTransitional } from '../../services/status';
 import { applicationHealth, describeServiceCounts } from '../health';
-import { ServicesTable } from '../components/ServicesTable';
+import { ContributedTabContent } from '../../components/ContributedTabContent';
+import { ServicesList } from '../components/ServicesList';
 import { ApplicationFormDialog } from '../components/ApplicationFormDialog';
 import { DeleteApplicationDialog } from '../components/DeleteApplicationDialog';
 
@@ -54,6 +53,10 @@ export function ApplicationDetailPage() {
   const addonPath = useAddonPath();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [tab, setTab] = useState('services');
+  const leaveTab = useCallback((value: string) => {
+    setTab((current) => (current === value ? 'services' : current));
+  }, []);
 
   const application = useQuery(seededApplicationQuery(api, useQueryClient(), appId));
   const refetchInterval = usePollWhileTransitional();
@@ -138,7 +141,7 @@ export function ApplicationDetailPage() {
           onRetry={() => void services.refetch()}
         />
       ) : (
-        <ServicesTable
+        <ServicesList
           applicationId={app._id}
           applicationNamespace={app.application_namespace}
           services={services.data}
@@ -186,22 +189,15 @@ export function ApplicationDetailPage() {
                 <TooltipContent>Every service already has an instance</TooltipContent>
               ) : null}
             </Tooltip>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="More actions">
-                  <MoreHorizontalIcon aria-hidden />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => setEditing(true)}>
-                  <PencilIcon aria-hidden /> Edit
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
-                  <Trash2Icon aria-hidden /> Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <RowMenu label="More actions" size="icon">
+              <DropdownMenuItem onSelect={() => setEditing(true)}>
+                <PencilIcon aria-hidden /> Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
+                <Trash2Icon aria-hidden /> Delete
+              </DropdownMenuItem>
+            </RowMenu>
           </>
         }
       />
@@ -211,11 +207,16 @@ export function ApplicationDetailPage() {
       <Slot
         point="application.detail.tabs"
         context={tabContext}
-        render={(tab, _content, source) => (
-          <TabsTrigger value={`${source.id}:${tab.id}`}>{tab.label}</TabsTrigger>
+        render={(extTab, _content, source) => (
+          <TabsTrigger value={`${source.id}:${extTab.id}`}>
+            {extTab.label}
+            {source.remote ? (
+              <SourceTag name={source.displayName ?? source.id} version={source.version} />
+            ) : null}
+          </TabsTrigger>
         )}
         wrap={(triggers) => (
-          <Tabs defaultValue="services">
+          <Tabs value={tab} onValueChange={setTab}>
             <TabsList>
               <TabsTrigger value="services">Services</TabsTrigger>
               {triggers}
@@ -224,15 +225,17 @@ export function ApplicationDetailPage() {
             <Slot
               point="application.detail.tabs"
               context={tabContext}
-              render={(tab, content, source) => (
-                <TabsContent value={`${source.id}:${tab.id}`}>{content}</TabsContent>
+              render={(extTab, content, source) => (
+                <ContributedTabContent value={`${source.id}:${extTab.id}`} onRemoved={leaveTab}>
+                  {content}
+                </ContributedTabContent>
               )}
             />
           </Tabs>
         )}
         empty={
           <section aria-labelledby="services-heading" className="space-y-3">
-            <h2 id="services-heading" className="text-base font-semibold">
+            <h2 id="services-heading" className="text-sm font-semibold">
               Services
             </h2>
             {servicesPanel}

@@ -3,7 +3,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
 
 import type { ServiceFormValues } from '../model/schema';
-import { Section, SecretInput, StringListField, useFieldError } from './fields';
+import { FIELD_GAP, Section, SecretInput, StringListField, useFieldError } from './fields';
 
 function EnvironmentRow({ index, onRemove }: { index: number; onRemove: () => void }) {
   const { register } = useFormContext<ServiceFormValues>();
@@ -30,7 +30,7 @@ function EnvironmentRow({ index, onRemove }: { index: number; onRemove: () => vo
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size="icon-sm"
           aria-label={`Remove variable ${n}`}
           onClick={onRemove}
         >
@@ -59,7 +59,7 @@ export function CommandSection() {
         addLabel="Add command part"
       />
       <StringListField name="args" label="Arguments" itemLabel="Argument" addLabel="Add argument" />
-      <Field>
+      <Field className={FIELD_GAP}>
         <FieldLabel>Environment variables</FieldLabel>
         <div className="space-y-2">
           {fields.map((item, index) => (

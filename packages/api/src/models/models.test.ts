@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import samples from '../__fixtures__/backend-samples.json' with { type: 'json' };
 import { applicationSchema } from './application.ts';
 import { decodeTokenClaims, InvalidTokenError } from './auth.ts';
-import { clusterSchema, parseClusterLocation } from './cluster.ts';
+import { clusterReportState, clusterSchema, parseClusterLocation } from './cluster.ts';
 import { lenientArray, numeric, timestamp } from './common.ts';
 import { organizationSchema } from './organization.ts';
 import { serviceSchema } from './service.ts';
@@ -105,6 +105,31 @@ describe('clusterSchema', () => {
     expect(cluster.csi_drivers).toEqual(['{"driver":"nfs"}', '3']);
     expect(cluster.gpu_drivers).toEqual([]);
     expect(clusterSchema.parse({ ...samples.cluster, csi_drivers: 'nfs' }).csi_drivers).toEqual([]);
+  });
+});
+
+describe('volumes', () => {
+  it('models csi_driver and defaults to no volumes', () => {
+    const service = serviceSchema.parse({
+      ...samples.service_without_instances,
+      volumes: [{ volume_id: 'data', csi_driver: 'nfs', mount_path: '/data', config: { a: 1 } }],
+    });
+    expect(service.volumes[0]?.csi_driver).toBe('nfs');
+    expect(service.volumes[0]).toMatchObject({ config: { a: 1 } });
+    expect(serviceSchema.parse(samples.service_without_instances).volumes).toEqual([]);
+  });
+});
+
+describe('clusterReportState', () => {
+  it('follows active, and a missing timestamp means the cluster never reported', () => {
+    const base = clusterSchema.parse(samples.cluster);
+    expect(clusterReportState({ ...base, active: true })).toBe('reporting');
+    expect(clusterReportState({ active: false, last_modified_timestamp: new Date(0) })).toBe(
+      'silent',
+    );
+    expect(clusterReportState({ active: false, last_modified_timestamp: undefined })).toBe(
+      'never-reported',
+    );
   });
 });
 

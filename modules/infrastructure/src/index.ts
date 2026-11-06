@@ -46,6 +46,15 @@ export default defineAddon({
         roles: INFRASTRUCTURE_ROLES,
       },
     ],
+    'command.sources': [
+      {
+        id: 'clusters',
+        label: 'Clusters',
+        roles: INFRASTRUCTURE_ROLES,
+        search: (query, ctx) =>
+          import('./search').then(({ searchClusters }) => searchClusters(query, ctx)),
+      },
+    ],
     // No roles: everyone sees the tile, it only links for INFRASTRUCTURE_ROLES. After the
     // applications package's tiles (100 to 300), with room left on both sides.
     'home.widgets': [

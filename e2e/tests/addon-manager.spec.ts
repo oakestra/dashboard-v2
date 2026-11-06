@@ -46,7 +46,7 @@ test.describe('addon manager', () => {
     // The /ui-addons poll would hide a missing refresh, so only an explicit one can update the nav.
     await withoutUiAddonsPolling(page);
     await page.goto('/addon-manager/installed');
-    const row = page.getByRole('row', { name: /example/ });
+    const row = page.getByTestId('installed-addon-example');
     await expect(row.getByText('Active')).toBeVisible();
     await expect(exampleNav(page)).toBeVisible();
     const notReloaded = await markPage(page);
@@ -65,7 +65,7 @@ test.describe('addon manager', () => {
 
     await page.getByRole('button', { name: 'Remove example' }).click();
     await page.getByRole('alertdialog').getByRole('button', { name: 'Remove addon' }).click();
-    await expect(page.getByRole('row', { name: /example/ })).toHaveCount(0);
+    await expect(page.getByTestId('installed-addon-example')).toHaveCount(0);
     expect(await notReloaded()).toBe(true);
   });
 
@@ -93,7 +93,7 @@ test.describe('addon manager', () => {
     await card.getByRole('button', { name: 'Install example' }).click();
 
     await expect(page).toHaveURL(/\/addon-manager\/installed$/);
-    const row = page.getByRole('row', { name: /example/ });
+    const row = page.getByTestId('installed-addon-example');
     await expect(row.getByText('Installing')).toBeVisible();
     const activeTimeout = INSTALL_DELAY_MS + SHELL_FAST_POLL_MS + SLACK_MS;
     await expect(row.getByText('Active')).toBeVisible({ timeout: activeTimeout });
@@ -122,7 +122,7 @@ test.describe('addon manager', () => {
       .getByRole('button', { name: 'Install broken-addon' })
       .click();
 
-    const row = page.getByRole('row', { name: /broken-addon/ });
+    const row = page.getByTestId('installed-addon-broken-addon');
     await expect(row.getByText('Active')).toBeVisible({
       timeout: COMPOSE_DELAY_MS + SHELL_FAST_POLL_MS + SLACK_MS,
     });
@@ -130,7 +130,7 @@ test.describe('addon manager', () => {
     await expect(row.getByText('Failed')).toBeVisible({
       timeout: 5000 + SHELL_IDLE_POLL_MS + SLACK_MS,
     });
-    await row.click();
+    await row.getByRole('button', { name: 'broken-addon', exact: true }).click();
     await expect(page.getByTestId('addon-logs')).toContainText('manifest');
   });
 
@@ -141,11 +141,11 @@ test.describe('addon manager', () => {
       .getByRole('button', { name: 'Install install-error-addon' })
       .click();
 
-    const row = page.getByRole('row', { name: /install-error-addon/ });
+    const row = page.getByTestId('installed-addon-install-error-addon');
     await expect(row.getByText('Failed')).toBeVisible({
       timeout: COMPOSE_DELAY_MS + SHELL_FAST_POLL_MS + SLACK_MS,
     });
-    await row.click();
+    await row.getByRole('button', { name: 'install-error-addon', exact: true }).click();
     await expect(page.getByTestId('addon-detail')).toBeVisible();
     await expect(page.getByTestId('addon-logs')).toHaveCount(0);
     await expect(page.getByTestId('failed-services')).toHaveCount(0);

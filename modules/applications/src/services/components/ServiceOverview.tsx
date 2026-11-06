@@ -1,24 +1,24 @@
-import type { Instance, Service } from '@oakestra/api';
+import type { Service } from '@oakestra/api';
 import { useAddonPath } from '@oakestra/dashboard-sdk';
 import {
   Badge,
   Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
   SectionCard,
   StatCard,
+  StatGroup,
   formatBytes,
   formatMegabytes,
   formatPercent,
 } from '@oakestra/ui';
-import { ActivityIcon, CpuIcon, MemoryStickIcon, ServerIcon } from 'lucide-react';
+import { ActivityIcon, ChevronRightIcon, CpuIcon, MemoryStickIcon, ServerIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 
+import { placementFailureStatus } from '../placement';
 import { environmentKeys } from '../sla';
-import { describeStatus, instanceHost } from '../status';
+import { describeStatus, hasMetrics, instanceHost, isAbnormalTone } from '../status';
 import { DefinitionList } from './DefinitionList';
+import { PlacementPanel } from './PlacementPanel';
 import { StatusBadge } from './StatusBadge';
 
 const mono = (value: string | undefined) =>
@@ -26,20 +26,14 @@ const mono = (value: string | undefined) =>
 
 const mb = (value: number | undefined) => (value ? formatMegabytes(value, 0) : undefined);
 
-export function hasMetrics(instance: Instance): boolean {
-  return (
-    (instance.cpu_history?.length ?? 0) > 0 ||
-    (instance.cpu_percent ?? 0) > 0 ||
-    (instance.memory_percent ?? 0) > 0
-  );
-}
-
 interface OverviewProps {
   service: Service;
   appId: string;
   /** Cluster names by id. */
   clusterNames: Readonly<Record<string, string>>;
   onShowInstances: () => void;
+  onRetryPlacement: () => void;
+  retryingPlacement: boolean;
 }
 
 /** What matters first: are instances running, how loaded, where. The spec comes below. */
@@ -56,13 +50,10 @@ function InstanceStats({ service, clusterNames }: Pick<OverviewProps, 'service' 
   const clusters = new Set(
     instances.flatMap((i) => (i.cluster_id ? [clusterNames[i.cluster_id] ?? i.cluster_id] : [])),
   );
-  const failing = instances.some((i) => {
-    const { tone } = describeStatus(i.status);
-    return tone === 'destructive' || tone === 'warning';
-  });
+  const failing = instances.some((i) => isAbnormalTone(describeStatus(i.status).tone));
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <StatGroup>
       <StatCard
         label="Instances"
         value={instances.length === 0 ? '0' : `${running}/${instances.length}`}
@@ -88,7 +79,7 @@ function InstanceStats({ service, clusterNames }: Pick<OverviewProps, 'service' 
         hint={clusters.size ? [...clusters].join(', ') : undefined}
         icon={<ServerIcon />}
       />
-    </div>
+    </StatGroup>
   );
 }
 
@@ -113,9 +104,7 @@ function InstancePreview({ service, appId, clusterNames, onShowInstances }: Over
       flush
     >
       {rows.length === 0 ? (
-        <p className="border-t px-5 py-4 text-sm text-muted-foreground sm:px-6">
-          No instances yet.
-        </p>
+        <p className="border-t px-4 py-3 text-sm text-muted-foreground">No instances yet.</p>
       ) : (
         <ul className="divide-y border-t">
           {rows.map((instance) => (
@@ -128,7 +117,7 @@ function InstancePreview({ service, appId, clusterNames, onShowInstances }: Over
                   'instances',
                   instance.instance_number,
                 )}
-                className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 text-sm hover:bg-muted/60 sm:px-6"
+                className="group flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 text-sm outline-none hover:bg-muted/60 focus-visible:bg-muted/60"
               >
                 <span className="w-8 font-medium tabular-nums">#{instance.instance_number}</span>
                 <StatusBadge status={instance.status} detail={instance.status_detail} />
@@ -140,6 +129,10 @@ function InstancePreview({ service, appId, clusterNames, onShowInstances }: Over
                 <span className="font-mono text-xs text-muted-foreground sm:ml-auto">
                   {instanceHost(instance) ?? '-'}
                 </span>
+                <ChevronRightIcon
+                  aria-hidden
+                  className="size-4 shrink-0 text-muted-foreground/60 group-hover:text-foreground"
+                />
               </Link>
             </li>
           ))}
@@ -151,7 +144,7 @@ function InstancePreview({ service, appId, clusterNames, onShowInstances }: Over
 
 function Constraints({ service }: { service: Service }) {
   return (
-    <ul className="space-y-3 text-sm">
+    <ul className="space-y-2 text-sm">
       {service.constraints.map((constraint, index) => {
         const { type, ...rest } = constraint;
         return (
@@ -188,15 +181,22 @@ export function ServiceOverview(props: OverviewProps) {
   const hasConstraints = service.constraints.length > 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <InstanceStats service={service} clusterNames={props.clusterNames} />
+      {placementFailureStatus(service) ? (
+        // Keyed because the what-if limits start from this service's request.
+        <PlacementPanel
+          key={service._id}
+          service={service}
+          appId={props.appId}
+          onRetry={props.onRetryPlacement}
+          retrying={props.retryingPlacement}
+        />
+      ) : null}
       {service.instance_list.length > 0 ? <InstancePreview {...props} /> : null}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Requirements</CardTitle>
-          </CardHeader>
-          <CardContent>
+      <SectionCard title="Specification">
+        <div className="grid gap-x-8 gap-y-4 lg:grid-cols-2">
+          <PanelBlock title="Requirements">
             <DefinitionList
               items={[
                 { label: 'vCPUs', value: service.vcpus || undefined },
@@ -214,13 +214,8 @@ export function ServiceOverview(props: OverviewProps) {
                 },
               ]}
             />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Runtime</CardTitle>
-          </CardHeader>
-          <CardContent>
+          </PanelBlock>
+          <PanelBlock title="Runtime">
             <DefinitionList
               items={[
                 { label: 'Command', value: mono(service.cmd.join(' ')) },
@@ -253,23 +248,37 @@ export function ServiceOverview(props: OverviewProps) {
               ]}
               empty="No command, arguments, environment or ports set."
             />
-          </CardContent>
-        </Card>
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Networking and placement</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {hasAddresses ? <DefinitionList items={addressItems} /> : null}
-            {hasConstraints ? <Constraints service={service} /> : null}
-            {!hasAddresses && !hasConstraints ? (
-              <p className="text-sm text-muted-foreground">
-                Oakestra allocates addresses and may place this service on any cluster.
-              </p>
-            ) : null}
-          </CardContent>
-        </Card>
-      </div>
+          </PanelBlock>
+          <PanelBlock title="Networking and placement" className="border-t pt-4 lg:col-span-2">
+            <div className="space-y-3">
+              {hasAddresses ? <DefinitionList items={addressItems} /> : null}
+              {hasConstraints ? <Constraints service={service} /> : null}
+              {!hasAddresses && !hasConstraints ? (
+                <p className="text-sm text-muted-foreground">
+                  Oakestra allocates addresses and may place this service on any cluster.
+                </p>
+              ) : null}
+            </div>
+          </PanelBlock>
+        </div>
+      </SectionCard>
+    </div>
+  );
+}
+
+function PanelBlock({
+  title,
+  className,
+  children,
+}: {
+  title: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className={className}>
+      <h3 className="mb-2 text-sm font-semibold">{title}</h3>
+      {children}
     </div>
   );
 }

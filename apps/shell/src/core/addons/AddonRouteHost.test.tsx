@@ -1,7 +1,7 @@
 import { useAddonBasePath, type AddonRoute, type CurrentUser } from '@oakestra/dashboard-sdk';
 import { act, render, screen } from '@testing-library/react';
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createStore } from 'zustand/vanilla';
 
 import { AuthSessionContext } from '../auth/auth-context';
@@ -38,13 +38,14 @@ function renderAt(path: string, registry: AddonRegistry, user: CurrentUser | nul
   );
   // The host only reads the user from the session store.
   const session = { store: createStore(() => ({ user })) } as unknown as AuthSession;
-  return render(
+  const view = render(
     <AuthSessionContext.Provider value={session}>
       <AddonRegistryContext.Provider value={registry}>
         <RouterProvider router={router} />
       </AddonRegistryContext.Provider>
     </AuthSessionContext.Provider>,
   );
+  return { ...view, router };
 }
 
 const alice: CurrentUser = {
@@ -317,5 +318,27 @@ describe('<AddonRouteHost>', () => {
     expect(await screen.findByTestId('addon-page-not-found')).toHaveTextContent(
       'FLOps has no page at this address.',
     );
+  });
+
+  it('leaves a crashed page behind when the URL changes to another route of the addon', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    function Broken(): never {
+      throw new Error('kaputt');
+    }
+    const registry = createAddonRegistry();
+    registry.setState({ availability: 'available' });
+    loaded(registry, [
+      { index: true, Component: Index },
+      { path: 'broken', Component: Broken },
+    ]);
+    const router = renderAt('/addons/flops/broken', registry).router;
+
+    expect(screen.getByTestId('contribution-error')).toHaveTextContent(
+      'Page from addon "flops" failed to render.',
+    );
+
+    await act(() => router.navigate('/addons/flops'));
+    expect(screen.queryByTestId('contribution-error')).toBeNull();
+    expect(screen.getByText('flops home at /addons/flops')).toBeInTheDocument();
   });
 });

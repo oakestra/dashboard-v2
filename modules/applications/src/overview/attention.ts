@@ -1,7 +1,13 @@
 import { plural } from '@oakestra/ui';
 import type { Application, Service } from '@oakestra/api';
 
-import { describeStatus, isUndeployed, type StatusTone } from '../services/status';
+import {
+  compareTones,
+  describeStatus,
+  serviceAttention,
+  type ServiceAttention,
+  type StatusTone,
+} from '../services/status';
 
 export interface AttentionItem {
   key: string;
@@ -16,7 +22,14 @@ export interface AttentionItem {
   note: string;
 }
 
-const SEVERITY: Partial<Record<StatusTone, number>> = { destructive: 0, warning: 1 };
+function attentionNote(attention: ServiceAttention, service: Service): string {
+  if (attention.kind === 'undeployed') return 'Deploy an instance to start it';
+  if (attention.kind === 'instances') {
+    return `${attention.failing} of ${plural(service.instance_list.length, 'instance')} failing`;
+  }
+  const own = describeStatus(service.status, service.status_detail);
+  return own.hint || own.label;
+}
 
 /**
  * Services that need a person: the scheduler gave up on them, they or one of their instances
@@ -29,50 +42,20 @@ export function attentionItems(
   const items: AttentionItem[] = [];
   for (const { application, services } of entries) {
     for (const service of services) {
-      const base = {
+      const attention = serviceAttention(service);
+      if (!attention) continue;
+      items.push({
         key: service._id,
         applicationId: application._id,
         applicationName: application.application_name,
         service,
-      };
-      const own = describeStatus(service.status, service.status_detail);
-      if (own.tone === 'destructive' || own.tone === 'warning') {
-        items.push({
-          ...base,
-          status: service.status,
-          detail: service.status_detail,
-          tone: own.tone,
-          note: own.hint || own.label,
-        });
-        continue;
-      }
-      const failing = service.instance_list.filter((instance) => {
-        const { tone } = describeStatus(instance.status);
-        return tone === 'destructive' || tone === 'warning';
+        status: attention.status,
+        detail: attention.detail,
+        tone: attention.tone,
+        note: attentionNote(attention, service),
       });
-      if (failing.length > 0) {
-        const worst = failing[0]!;
-        const description = describeStatus(worst.status, worst.status_detail);
-        items.push({
-          ...base,
-          status: worst.status,
-          detail: worst.status_detail,
-          tone: description.tone,
-          note: `${failing.length} of ${plural(service.instance_list.length, 'instance')} failing`,
-        });
-        continue;
-      }
-      if (isUndeployed(service)) {
-        items.push({
-          ...base,
-          status: undefined,
-          detail: undefined,
-          tone: 'neutral',
-          note: 'Deploy an instance to start it',
-        });
-      }
     }
   }
   // Array.sort is stable, so the backend's order is kept within a severity.
-  return items.sort((a, b) => (SEVERITY[a.tone] ?? 2) - (SEVERITY[b.tone] ?? 2));
+  return items.sort((a, b) => compareTones(a.tone, b.tone));
 }

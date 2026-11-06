@@ -52,7 +52,7 @@ describe('overview widgets of the linked packages', () => {
       ),
     );
     expect(screen.getByRole('heading', { name: 'Overview' })).toBeVisible();
-    expect(screen.getByText('Welcome back, Admin.')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Overview', level: 1 })).toBeVisible();
   });
 
   it('puts the tiles in the summary row in their order, and the sections below it', async () => {

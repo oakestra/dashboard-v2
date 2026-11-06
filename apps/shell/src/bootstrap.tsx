@@ -1,7 +1,7 @@
 import './styles.css';
 
 import { useHostContext } from '@oakestra/dashboard-sdk';
-import { setMapWorkerUrl } from '@oakestra/ui';
+import { setMapStyles, setMapWorkerUrl } from '@oakestra/ui';
 // Imported here rather than in @oakestra/ui: Vite's dev pre-bundler handles shared packages and
 // cannot load `?url` imports, while the shell's own source goes through the normal asset pipeline.
 // Registering it before the first render also covers maps that addons show.
@@ -14,7 +14,7 @@ import { ConfigErrorPage } from './app/errors/ConfigErrorPage';
 import { coreModules, linkedAddons } from './app/modules';
 import { applyPreset } from './app/preset';
 import { createAppServices } from './app/services';
-import { loadConfig } from './core/config/config';
+import { loadConfig, mapStylesFromConfig } from './core/config/config';
 import { loadPreset } from './core/config/preset';
 import { installDebugHook } from './core/debug/debug';
 
@@ -24,6 +24,8 @@ const root = createRoot(document.getElementById('root')!);
 
 try {
   const config = await loadConfig();
+  const mapStyles = mapStylesFromConfig(config);
+  if (mapStyles) setMapStyles(mapStyles);
   const { modules, linked, preset } = applyPreset(
     coreModules,
     linkedAddons,

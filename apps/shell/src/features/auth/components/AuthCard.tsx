@@ -1,4 +1,3 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@oakestra/ui';
 import type { ReactNode } from 'react';
 
 export function AuthCard({
@@ -11,14 +10,12 @@ export function AuthCard({
   children: ReactNode;
 }) {
   return (
-    <Card className="shadow-sm">
-      <CardHeader className="gap-1.5">
-        <CardTitle className="text-xl tracking-tight">
-          <h1>{title}</h1>
-        </CardTitle>
-        {description ? <CardDescription>{description}</CardDescription> : null}
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h1 className="text-xl leading-7 font-semibold tracking-[-0.012em]">{title}</h1>
+        {description ? <p className="text-muted-foreground text-sm">{description}</p> : null}
+      </div>
+      {children}
+    </div>
   );
 }

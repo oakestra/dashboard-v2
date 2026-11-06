@@ -1,4 +1,4 @@
-import { useCurrentUser, type NavGroup } from '@oakestra/dashboard-sdk';
+import type { NavGroup } from '@oakestra/dashboard-sdk';
 import {
   Collapsible,
   CollapsibleContent,
@@ -15,20 +15,14 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from '@oakestra/ui';
-import { ActivityIcon, ChevronRightIcon, ExternalLinkIcon, type LucideIcon } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { Link, useLocation } from 'react-router';
+import { ChevronRightIcon, ExternalLinkIcon } from 'lucide-react';
+import { useState } from 'react';
+import { Link } from 'react-router';
 
-import { useAppConfig } from '../../core/config/config-context';
 import { usePreset } from '../../core/config/preset-context';
 import { ErrorBoundary } from '../../core/extensions/ErrorBoundary';
-import { useContributions } from '../../core/extensions/use-contributions';
-import {
-  applyNavOverrides,
-  buildNavEntries,
-  findActiveKey,
-  type NavEntry as NavEntryModel,
-} from './nav-model';
+import type { NavEntry as NavEntryModel } from './nav-model';
+import { useActiveNav, type ExternalLink } from './use-nav';
 
 /** Groups listed in the scrolling part of the sidebar, in this order, under these headings. */
 const GROUPS: readonly { id: Exclude<NavGroup, 'footer'>; label: string }[] = [
@@ -37,54 +31,9 @@ const GROUPS: readonly { id: Exclude<NavGroup, 'footer'>; label: string }[] = [
   { id: 'addons', label: 'Addons' },
 ];
 
-interface ExternalLink {
-  id: string;
-  label: string;
-  href: string;
-  icon: LucideIcon;
-  group: NavGroup;
-}
-
-/** Links to tools outside the dashboard, configured per deployment in config.json. */
-function useExternalLinks(): ExternalLink[] {
-  const config = useAppConfig();
-  const links: ExternalLink[] = [];
-  if (config.grafanaUrl) {
-    links.push({
-      id: 'grafana',
-      label: 'Grafana',
-      href: config.grafanaUrl,
-      icon: ActivityIcon,
-      group: 'management',
-    });
-  }
-  return links;
-}
-
-function useNav() {
-  // Role filtering of top-level items happens in useContributions, the same way for core modules
-  // and addons; buildNavEntries applies it to the sub-items.
-  const items = useContributions('nav.items');
-  const user = useCurrentUser();
-  const { nav } = usePreset();
-  const entries = useMemo(
-    () => applyNavOverrides(buildNavEntries(items, user), nav.items),
-    [items, user, nav.items],
-  );
-  const externalLinks = useExternalLinks();
-  const { pathname } = useLocation();
-  // Computed over every entry, footer included, so exactly one link in the sidebar is active.
-  const activeKey = findActiveKey(entries, pathname);
-  const inGroup = (group: NavGroup) => ({
-    entries: entries.filter(({ item }) => (item.group ?? 'main') === group),
-    links: externalLinks.filter((link) => link.group === group),
-  });
-  return { activeKey, inGroup };
-}
-
 /** The labelled groups in the scrolling part of the sidebar. */
 export function AppNav() {
-  const { activeKey, inGroup } = useNav();
+  const { activeKey, inGroup } = useActiveNav();
   const { nav } = usePreset();
   return GROUPS.map((group) => {
     const { entries, links } = inGroup(group.id);
@@ -105,7 +54,7 @@ export function AppNav() {
  * sidebar, outside the scrolling area, however long the list above gets.
  */
 export function AppNavFooter() {
-  const { activeKey, inGroup } = useNav();
+  const { activeKey, inGroup } = useActiveNav();
   const { entries, links } = inGroup('footer');
   if (entries.length === 0 && links.length === 0) return null;
   return <NavMenu entries={entries} links={links} activeKey={activeKey} />;
@@ -142,7 +91,7 @@ function NavMenu({
             >
               <link.icon className="size-4" />
               <span>{link.label}</span>
-              <ExternalLinkIcon className="text-muted-foreground ml-auto size-3" aria-hidden />
+              <ExternalLinkIcon className="text-sidebar-foreground/60 ml-auto size-3" aria-hidden />
             </a>
           </SidebarMenuButton>
         </SidebarMenuItem>

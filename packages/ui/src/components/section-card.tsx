@@ -11,7 +11,7 @@ interface SectionCardProps extends Omit<React.ComponentProps<'section'>, 'title'
   headingLevel?: 2 | 3 | 4;
   /**
    * Removes the content's side and bottom padding, for lists and tables that should run to the
-   * card's edges. Give their rows `px-5 sm:px-6` to line up with the title.
+   * card's edges. Give their rows `px-5` to line up with the title.
    */
   flush?: boolean;
   footer?: React.ReactNode;
@@ -41,18 +41,14 @@ function SectionCard({
       data-slot="section-card"
       aria-labelledby={titleId}
       className={cn(
-        'flex min-w-0 flex-col gap-5 rounded-xl border bg-card py-5 text-card-foreground shadow-xs',
+        'flex min-w-0 flex-col gap-4 rounded-lg border bg-card py-5 text-card-foreground shadow-xs',
         flush && !footer && 'pb-0',
         className,
       )}
       {...props}
     >
-      <CardHeader className="gap-1 px-5 sm:px-6">
-        <Heading
-          id={titleId}
-          data-slot="card-title"
-          className="text-base leading-snug font-semibold"
-        >
+      <CardHeader className="gap-1 px-5">
+        <Heading id={titleId} data-slot="card-title" className="leading-snug font-semibold">
           {title}
         </Heading>
         {description ? <CardDescription>{description}</CardDescription> : null}
@@ -62,13 +58,13 @@ function SectionCard({
       </CardHeader>
       <CardContent
         className={cn(
-          flush ? 'overflow-hidden rounded-b-xl px-0' : 'px-5 sm:px-6',
+          flush ? 'overflow-hidden rounded-b-lg px-0' : 'px-5 pb-0.5',
           contentClassName,
         )}
       >
         {children}
       </CardContent>
-      {footer ? <CardFooter className="gap-2 px-5 sm:px-6">{footer}</CardFooter> : null}
+      {footer ? <CardFooter className="gap-2 px-5">{footer}</CardFooter> : null}
     </section>
   );
 }

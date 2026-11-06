@@ -151,13 +151,29 @@ export {
 } from './components/checkbox-group';
 export { Collapsible, CollapsibleContent, CollapsibleTrigger } from './components/collapsible';
 export { ConfirmDialog, type ConfirmDialogProps } from './components/confirm-dialog';
+export { CollectionSearch, useSearchText } from './components/collection-search';
 export { EmptyState, type EmptyStateProps } from './components/empty-state';
+export { RowMenu, type RowMenuProps } from './components/row-menu';
+export {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemFooter,
+  ItemGroup,
+  ItemHeader,
+  ItemMedia,
+  ItemSeparator,
+  ItemTitle,
+} from './components/item';
+export { stretchedLinkClassName } from './lib/stretched-link';
 export { PageHeader, type PageHeaderProps } from './components/page-header';
 export { SectionCard, type SectionCardProps } from './components/section-card';
-export { StatCard, type StatCardProps } from './components/stat-card';
+export { StatCard, StatGroup, type StatCardProps } from './components/stat-card';
 export {
   StatusBadge,
   StatusDot,
+  staleSurfaceClassName,
   type StatusBadgeProps,
   type StatusDotProps,
   type StatusTone,
@@ -173,6 +189,10 @@ export {
 } from './components/pagination';
 export { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from './components/popover';
 export { Progress } from './components/progress';
+export { Kbd } from './components/kbd';
+export { Slider } from './components/slider';
+export { PointerGauge, type PointerGaugeProps } from './components/pointer-gauge';
+export { SourceTag, type SourceTagProps } from './components/source-tag';
 export { ScrollArea, ScrollBar } from './components/scroll-area';
 export {
   Select,
@@ -196,6 +216,7 @@ export { cn } from './lib/utils';
 // Lives in the root export so the host can configure maps at startup without loading the map
 // subpath (and its stylesheet) on every page.
 export { setMapWorkerUrl } from './lib/map-worker';
+export { DEFAULT_MAP_STYLES, setMapStyles, type MapStyleUrls } from './lib/map-styles';
 export { CopyButton } from './components/copy-button';
 export { JsonViewer } from './components/json-viewer';
 export { QueryErrorAlert } from './components/query-error-alert';
@@ -209,6 +230,7 @@ export {
   formatMegabytes,
   formatPercent,
   formatRelativeTime,
+  initials,
   parseLegacyDate,
   plural,
 } from './lib/format';

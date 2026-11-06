@@ -25,15 +25,14 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   InboxIcon,
-  SearchIcon,
   SearchXIcon,
 } from 'lucide-react';
 import * as React from 'react';
 
 import { cn } from '../lib/utils';
 import { Button } from './button';
+import { CollectionSearch, useSearchText } from './collection-search';
 import { EmptyState } from './empty-state';
-import { Input } from './input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
 import { Skeleton } from './skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './table';
@@ -56,7 +55,7 @@ const columnMeta: DataTableColumnMeta = {};
 
 // Module scope on purpose: TanStack Table v9 recomputes its row models whenever the feature
 // object changes identity.
-const dataTableFeatures = tableFeatures({
+export const dataTableFeatures = tableFeatures({
   columnMeta,
   rowSortingFeature,
   sortedRowModel: createSortedRowModel(),
@@ -125,7 +124,7 @@ interface DataTableProps<TData extends object> {
   initialPageSize?: number;
 }
 
-function useControllable<T>(
+export function useControllable<T>(
   controlled: T | undefined,
   initial: T,
   onChange: ((value: T) => void) | undefined,
@@ -147,34 +146,151 @@ function useControllable<T>(
   return [value, set] as const;
 }
 
-/**
- * Text of the search box. The box must not be bound straight to a `globalFilter` that lives in
- * the URL: the router applies location changes asynchronously, so a keystroke typed before the
- * previous one came back would be rendered over with the stale value and lost. The box keeps its
- * own text, and the controlled value only replaces it when it changes for a reason other than
- * what was typed here (back navigation, a link with `?q=`).
- */
-function useSearchText(controlled: string, onChange: (value: string) => void) {
-  const [text, setText] = React.useState(controlled);
-  // Values sent up that the controlled value has not echoed yet, oldest first.
-  const pending = React.useRef<string[]>([]);
-
+/** What `DataTable` and `DataList` do around their row models: keep the page valid, search. */
+export function useCollectionPaging({
+  filteredCount,
+  isLoading,
+  globalFilter,
+  setGlobalFilter,
+  pagination,
+  setPagination,
+}: {
+  filteredCount: number;
+  isLoading: boolean;
+  globalFilter: string;
+  setGlobalFilter: (value: string) => void;
+  pagination: PaginationState;
+  setPagination: (updater: (previous: PaginationState) => PaginationState) => void;
+}) {
+  const pageCount = Math.max(1, Math.ceil(filteredCount / pagination.pageSize));
+  // A controlled page index can outlive the data that justified it (e.g. a stale URL param).
+  const outOfRange = !isLoading && pagination.pageIndex > pageCount - 1;
   React.useEffect(() => {
-    const echoed = pending.current.indexOf(controlled);
-    if (echoed >= 0) {
-      pending.current = pending.current.slice(echoed + 1);
-      return;
-    }
-    pending.current = [];
-    setText(controlled);
-  }, [controlled]);
+    if (outOfRange) setPagination((previous) => ({ ...previous, pageIndex: pageCount - 1 }));
+  }, [outOfRange, pageCount, setPagination]);
 
-  const update = (value: string) => {
-    pending.current.push(value);
-    setText(value);
-    onChange(value);
-  };
-  return [text, update] as const;
+  const [searchText, onSearchTextChange] = useSearchText(globalFilter, (value) => {
+    setGlobalFilter(value);
+    // Results shrink under the user; keep them from landing on an empty page.
+    setPagination((previous) => ({ ...previous, pageIndex: 0 }));
+  });
+  return { pageCount, searchText, onSearchTextChange };
+}
+
+/** Shown instead of the rows: nothing exists yet, or nothing matches the search. */
+export function CollectionEmpty({
+  total,
+  emptyState,
+  noResultsState,
+  searchText,
+  onClearSearch,
+}: {
+  total: number;
+  emptyState: React.ReactNode;
+  noResultsState: React.ReactNode;
+  searchText: string;
+  onClearSearch: () => void;
+}) {
+  if (total === 0)
+    return emptyState ?? <EmptyState icon={<InboxIcon />} title="Nothing here yet" />;
+  return (
+    noResultsState ?? (
+      <EmptyState
+        icon={<SearchXIcon />}
+        title="No results"
+        description="Nothing matches your search. Try a different term."
+        action={
+          searchText ? (
+            <Button variant="outline" size="sm" onClick={onClearSearch}>
+              Clear search
+            </Button>
+          ) : undefined
+        }
+      />
+    )
+  );
+}
+
+/** Result count and paging below a `DataTable` or `DataList`. */
+export function CollectionFooter({
+  noun,
+  total,
+  filteredCount,
+  pageCount,
+  pagination,
+  pageSizeOptions,
+  onPaginationChange,
+}: {
+  /** Singular; the page size label is built from it ("Rows per page"). */
+  noun: string;
+  total: number;
+  filteredCount: number;
+  pageCount: number;
+  pagination: PaginationState;
+  pageSizeOptions: readonly number[];
+  onPaginationChange: (value: PaginationState) => void;
+}) {
+  // Without a filter or more pages, the count only restates the items on screen.
+  if (filteredCount === 0 || (filteredCount === total && pageCount <= 1)) return null;
+  const { pageIndex, pageSize } = pagination;
+  const nouns = `${noun}s`;
+  const perPage = `${nouns[0]!.toUpperCase()}${nouns.slice(1)} per page`;
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm text-muted-foreground">
+      <span aria-live="polite" className="tabular-nums">
+        {filteredCount === total
+          ? `${total} ${total === 1 ? noun : nouns}`
+          : `${filteredCount} of ${total} ${total === 1 ? noun : nouns}`}
+      </span>
+      {pageCount > 1 || filteredCount > (pageSizeOptions[0] ?? 10) ? (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:inline">{perPage}</span>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(value) =>
+                onPaginationChange({ pageIndex: 0, pageSize: Number(value) })
+              }
+            >
+              <SelectTrigger size="sm" aria-label={perPage} className="tabular-nums">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {pageSizeOptions.map((size) => (
+                  <SelectItem key={size} value={String(size)}>
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <span className="tabular-nums">
+            Page {pageIndex + 1} of {pageCount}
+          </span>
+          <div className="flex gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pageIndex <= 0}
+              onClick={() => onPaginationChange({ ...pagination, pageIndex: pageIndex - 1 })}
+            >
+              <ChevronLeftIcon aria-hidden />
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pageIndex >= pageCount - 1}
+              onClick={() => onPaginationChange({ ...pagination, pageIndex: pageIndex + 1 })}
+            >
+              Next
+              <ChevronRightIcon aria-hidden />
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function alignOf(meta: DataTableColumnMeta | undefined) {
@@ -248,20 +364,14 @@ function DataTable<TData extends object>({
   const rows = table.getRowModel().rows;
   const filteredCount = table.getFilteredRowModel().rows.length;
   const total = data?.length ?? 0;
-  const pageCount = Math.max(1, Math.ceil(filteredCount / pagination.pageSize));
-  const pageIndex = pagination.pageIndex;
-  // A controlled page index can outlive the data that justified it (e.g. a stale URL param).
-  const outOfRange = !isLoading && pageIndex > pageCount - 1;
-  React.useEffect(() => {
-    if (outOfRange) setPagination((previous) => ({ ...previous, pageIndex: pageCount - 1 }));
-  }, [outOfRange, pageCount, setPagination]);
   const columnCount = columns.length;
-
-  const searchId = React.useId();
-  const [searchText, onSearchTextChange] = useSearchText(globalFilter, (value) => {
-    setGlobalFilter(value);
-    // Results shrink under the user; keep them from landing on an empty page.
-    setPagination((previous) => ({ ...previous, pageIndex: 0 }));
+  const { pageCount, searchText, onSearchTextChange } = useCollectionPaging({
+    filteredCount,
+    isLoading,
+    globalFilter,
+    setGlobalFilter,
+    pagination,
+    setPagination,
   });
 
   let body: React.ReactNode;
@@ -288,22 +398,13 @@ function DataTable<TData extends object>({
     body = (
       <TableRow className="hover:bg-transparent">
         <TableCell colSpan={columnCount}>
-          {total === 0
-            ? (emptyState ?? <EmptyState icon={<InboxIcon />} title="Nothing here yet" />)
-            : (noResultsState ?? (
-                <EmptyState
-                  icon={<SearchXIcon />}
-                  title="No results"
-                  description="Nothing matches your search. Try a different term."
-                  action={
-                    searchText ? (
-                      <Button variant="outline" size="sm" onClick={() => onSearchTextChange('')}>
-                        Clear search
-                      </Button>
-                    ) : undefined
-                  }
-                />
-              ))}
+          <CollectionEmpty
+            total={total}
+            emptyState={emptyState}
+            noResultsState={noResultsState}
+            searchText={searchText}
+            onClearSearch={() => onSearchTextChange('')}
+          />
         </TableCell>
       </TableRow>
     );
@@ -361,21 +462,12 @@ function DataTable<TData extends object>({
       {hideSearch && !toolbar ? null : (
         <div className="flex flex-wrap items-center gap-2">
           {hideSearch ? null : (
-            <div className="relative w-full max-w-xs">
-              <SearchIcon
-                aria-hidden
-                className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-              />
-              <Input
-                id={searchId}
-                type="search"
-                aria-label={`Search ${label}`}
-                placeholder={searchPlaceholder}
-                className="pl-8"
-                value={searchText}
-                onChange={(event) => onSearchTextChange(event.target.value)}
-              />
-            </div>
+            <CollectionSearch
+              label={label}
+              placeholder={searchPlaceholder}
+              value={searchText}
+              onChange={onSearchTextChange}
+            />
           )}
           {toolbar ? (
             <div className="ml-auto flex flex-wrap items-center gap-2">{toolbar}</div>
@@ -385,7 +477,7 @@ function DataTable<TData extends object>({
 
       <div className="overflow-hidden rounded-lg border bg-card">
         <Table aria-label={label}>
-          <TableHeader className="bg-muted/50">
+          <TableHeader className="bg-muted/60">
             {table.getHeaderGroups().map((group) => (
               <TableRow key={group.id} className="hover:bg-transparent">
                 {group.headers.map((header) => {
@@ -412,7 +504,7 @@ function DataTable<TData extends object>({
                         <button
                           type="button"
                           className={cn(
-                            'group/sort -mx-1.5 inline-flex h-7 items-center gap-1 rounded-md px-1.5 font-medium outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 data-[sorted=true]:text-foreground [&_svg]:size-3.5 [&_svg]:shrink-0',
+                            'group/sort -mx-1.5 inline-flex h-7 items-center gap-1 rounded-md px-1.5 font-medium outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 data-[sorted=true]:text-foreground [&_svg]:size-3.5 [&_svg]:shrink-0',
                             align === 'right' && 'flex-row-reverse',
                           )}
                           data-sorted={sorted !== false}
@@ -443,63 +535,17 @@ function DataTable<TData extends object>({
         </Table>
       </div>
 
-      {!isLoading && filteredCount > 0 ? (
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm text-muted-foreground">
-          <span aria-live="polite" className="tabular-nums">
-            {filteredCount === total
-              ? `${total} ${total === 1 ? 'row' : 'rows'}`
-              : `${filteredCount} of ${total} ${total === 1 ? 'row' : 'rows'}`}
-          </span>
-          {/* A single short page needs no paging controls, only the count. */}
-          {pageCount > 1 || filteredCount > (pageSizeOptions[0] ?? 10) ? (
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <div className="flex items-center gap-2">
-                <span className="hidden sm:inline">Rows per page</span>
-                <Select
-                  value={String(pagination.pageSize)}
-                  onValueChange={(value) =>
-                    setPagination({ pageIndex: 0, pageSize: Number(value) })
-                  }
-                >
-                  <SelectTrigger size="sm" aria-label="Rows per page" className="tabular-nums">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {pageSizeOptions.map((size) => (
-                      <SelectItem key={size} value={String(size)}>
-                        {size}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <span className="tabular-nums">
-                Page {pageIndex + 1} of {pageCount}
-              </span>
-              <div className="flex gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={pageIndex <= 0}
-                  onClick={() => setPagination({ ...pagination, pageIndex: pageIndex - 1 })}
-                >
-                  <ChevronLeftIcon aria-hidden />
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={pageIndex >= pageCount - 1}
-                  onClick={() => setPagination({ ...pagination, pageIndex: pageIndex + 1 })}
-                >
-                  Next
-                  <ChevronRightIcon aria-hidden />
-                </Button>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+      {isLoading ? null : (
+        <CollectionFooter
+          noun="row"
+          total={total}
+          filteredCount={filteredCount}
+          pageCount={pageCount}
+          pagination={pagination}
+          pageSizeOptions={pageSizeOptions}
+          onPaginationChange={setPagination}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import type { Service, SlaMicroservice } from '@oakestra/api';
 import { describe, expect, it } from 'vitest';
 
-import { fromService, fromSlaMicroservice, toSlaMicroservice } from './convert';
+import { fromService, fromSlaMicroservice, parseLimitParam, toSlaMicroservice } from './convert';
 import { buildSla, importSla, type SlaContext } from './document';
 import { defaultConstraint, defaultServiceValues, serviceFormSchema } from './schema';
 
@@ -196,6 +196,21 @@ describe('SLA conversion', () => {
     } as unknown as Service;
     expect(fromService(service).name).toHaveLength(32);
   });
+});
+
+describe('parseLimitParam', () => {
+  it('accepts whole numbers of at least 1', () => {
+    expect(parseLimitParam('1')).toBe('1');
+    expect(parseLimitParam('18700')).toBe('18700');
+    expect(parseLimitParam('007')).toBe('7');
+  });
+
+  it.each([null, '', '0', '-1', '1.5', '1e3', ' 4', 'abc', '99999999999999999999'])(
+    'ignores %j',
+    (value) => {
+      expect(parseLimitParam(value)).toBeUndefined();
+    },
+  );
 });
 
 describe('unikernel architecture', () => {

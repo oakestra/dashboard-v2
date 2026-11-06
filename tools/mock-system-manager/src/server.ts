@@ -9,6 +9,7 @@ const port = Number(process.env.PORT ?? 10000);
 const server = createMockSystemManager({
   accessTokenTtlSeconds: numberFromEnv('ACCESS_TOKEN_TTL_SECONDS'),
   instanceStartupMs: numberFromEnv('INSTANCE_STARTUP_MS'),
+  placementDemo: process.env.PLACEMENT_DEMO === 'true',
 });
 
 server.listen(port, () => {

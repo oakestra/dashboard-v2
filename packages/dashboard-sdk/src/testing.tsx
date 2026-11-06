@@ -29,7 +29,8 @@ import {
   type HostContextValue,
   type HostLinks,
 } from './context';
-import type { Contributions, RenderablePointId } from './extension-points';
+import type { CommandContext, Contributions, RenderablePointId } from './extension-points';
+import { buildAddonPath } from './hooks';
 import { hasAnyRole } from './permissions';
 import type { SlotProps, SlotSource } from './slot';
 import type { CurrentUser, Notify, NotifyOptions, OakestraApi } from './types';
@@ -158,6 +159,11 @@ export interface TestHostOptions {
    */
   contributions?: Contributions;
   /**
+   * Where `contributions` claim to come from, as a `render` wrapper sees it. Pass
+   * `{ remote: true, displayName, version }` to test how a page marks a runtime-loaded addon.
+   */
+  contributionSource?: Pick<SlotSource, 'remote' | 'displayName' | 'version'>;
+  /**
    * The features the deployment enables, for useFeatureEnabled(). Defaults to all of them, like a
    * shell without a preset.
    */
@@ -175,6 +181,7 @@ export interface TestHost {
   readonly route: string;
   readonly path: string;
   readonly contributions: Contributions;
+  readonly contributionSource: Pick<SlotSource, 'remote' | 'displayName' | 'version'>;
 }
 
 /** The context values `TestHostProvider` provides, for tests that assemble their own providers. */
@@ -209,6 +216,7 @@ export function createTestHost(options: TestHostOptions = {}): TestHost {
     route: options.route ?? addon.basePath,
     path: options.path ?? '*',
     contributions: options.contributions ?? {},
+    contributionSource: options.contributionSource ?? {},
   };
 }
 
@@ -260,6 +268,7 @@ function createTestSlotRenderer(testHost: TestHost): ComponentType<SlotProps<Ren
       kind: 'addon',
       id: testHost.addon.addonId,
       label: testHost.addon.addonId,
+      ...testHost.contributionSource,
     } as const;
     const rendered = items.map(({ item }) => {
       const content = <item.component {...ctx} />;
@@ -298,6 +307,55 @@ export function TestHostProvider({ testHost, queryClient, children }: TestHostPr
       </HostContext.Provider>
     </QueryClientProvider>
   );
+}
+
+export interface CommandContextOptions extends Pick<TestHostOptions, 'api' | 'addon' | 'features'> {
+  /** Defaults to a user without roles. There is no logged-out case: the palette needs a login. */
+  user?: Partial<CurrentUser> & { username: string };
+  /** Defaults to a fresh client with retries off. */
+  queryClient?: QueryClient;
+}
+
+/** A `CommandContext` that records what the command did, with any test runner. */
+export interface TestCommandContext extends CommandContext {
+  readonly notify: NotifyRecorder;
+  /** Every path passed to `navigate`, oldest first. */
+  readonly navigations: readonly string[];
+}
+
+/**
+ * What the shell passes to the `run` of a command and the `search` of a source, for calling them
+ * directly in a test:
+ *
+ * ```ts
+ * const ctx = createCommandContext({ api: { clusters: { list: async () => clusters } } });
+ * const results = await source.search('edge', ctx, new AbortController().signal);
+ * ```
+ *
+ * `navigate` rejects relative paths like the shell does, so a test catches them too.
+ */
+export function createCommandContext(options: CommandContextOptions = {}): TestCommandContext {
+  const testHost = createTestHost(options);
+  const { addonId, basePath } = testHost.addon;
+  const navigations: string[] = [];
+  return {
+    api: testHost.api,
+    notify: testHost.notify,
+    // createTestHost only returns null for an explicit `user: null`, which the options rule out.
+    user: testHost.user as CurrentUser,
+    queryClient: options.queryClient ?? createTestQueryClient(),
+    isFeatureEnabled: testHost.host.isFeatureEnabled,
+    addon: {
+      addonId,
+      basePath,
+      path: (...segments) => buildAddonPath(basePath, ...segments),
+    },
+    navigations,
+    navigate: (path) => {
+      if (!path.startsWith('/')) throw new Error(`navigate() needs an absolute path, got ${path}`);
+      navigations.push(path);
+    },
+  };
 }
 
 export interface RenderInHostOptions extends TestHostOptions {

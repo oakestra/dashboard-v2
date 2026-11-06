@@ -24,6 +24,7 @@ import { ReactNode } from 'react';
 import { ScrollArea as ScrollArea_2 } from 'radix-ui';
 import { Select as Select_2 } from 'radix-ui';
 import { Separator as Separator_2 } from 'radix-ui';
+import { Slider as Slider_2 } from 'radix-ui';
 import { Switch as Switch_2 } from 'radix-ui';
 import { Tabs as Tabs_2 } from 'radix-ui';
 import { toast } from 'sonner';
@@ -222,6 +223,14 @@ export function CollapsibleContent(input: React_2.ComponentProps<typeof Collapsi
 // @public (undocumented)
 export function CollapsibleTrigger(input: React_2.ComponentProps<typeof Collapsible_2.CollapsibleTrigger>): React_2.JSX.Element;
 
+// @public
+export function CollectionSearch(input: {
+    label: string;
+    placeholder: string;
+    value: string;
+    onChange: (value: string) => void;
+}): React_2.JSX.Element;
+
 // @public (undocumented)
 export function ConfirmDialog(input: ConfirmDialogProps): React_2.JSX.Element;
 
@@ -261,6 +270,9 @@ interface CopyButtonProps {
     // (undocumented)
     variant?: 'ghost' | 'outline' | 'secondary';
 }
+
+// @public
+export const DEFAULT_MAP_STYLES: MapStyleUrls;
 
 // @public (undocumented)
 export function Dialog(input: React_2.ComponentProps<typeof Dialog_2.Root>): React_2.JSX.Element;
@@ -432,8 +444,54 @@ export function formatPercent(value: number | null | undefined, fractionDigits?:
 // @public
 export function formatRelativeTime(date: Date | string | number | null | undefined, now?: Date | number): string;
 
+// @public
+export function initials(name: string): string;
+
 // @public (undocumented)
 export function Input(input: React_2.ComponentProps<'input'>): React_2.JSX.Element;
+
+// @public (undocumented)
+export function Item(input: React_2.ComponentProps<'div'> & VariantProps<typeof itemVariants> & {
+    asChild?: boolean;
+}): React_2.JSX.Element;
+
+// @public (undocumented)
+export function ItemActions(input: React_2.ComponentProps<'div'>): React_2.JSX.Element;
+
+// @public (undocumented)
+export function ItemContent(input: React_2.ComponentProps<'div'>): React_2.JSX.Element;
+
+// @public (undocumented)
+export function ItemDescription(input: React_2.ComponentProps<'p'>): React_2.JSX.Element;
+
+// @public (undocumented)
+export function ItemFooter(input: React_2.ComponentProps<'div'>): React_2.JSX.Element;
+
+// @public (undocumented)
+export function ItemGroup(input: React_2.ComponentProps<'div'>): React_2.JSX.Element;
+
+// @public (undocumented)
+export function ItemHeader(input: React_2.ComponentProps<'div'>): React_2.JSX.Element;
+
+// @public (undocumented)
+export function ItemMedia(input: React_2.ComponentProps<'div'> & VariantProps<typeof itemMediaVariants>): React_2.JSX.Element;
+
+// @public (undocumented)
+const itemMediaVariants: (props?: ({
+    variant?: "default" | "icon" | "image" | null | undefined;
+} & ClassProp) | undefined) => string;
+
+// @public (undocumented)
+export function ItemSeparator(input: React_2.ComponentProps<typeof Separator>): React_2.JSX.Element;
+
+// @public (undocumented)
+export function ItemTitle(input: React_2.ComponentProps<'div'>): React_2.JSX.Element;
+
+// @public (undocumented)
+const itemVariants: (props?: ({
+    variant?: "default" | "muted" | "outline" | null | undefined;
+    size?: "default" | "sm" | null | undefined;
+} & ClassProp) | undefined) => string;
 
 // @public (undocumented)
 export function JsonViewer(input: JsonViewerProps): JSX.Element;
@@ -452,8 +510,19 @@ interface JsonViewerProps {
     title?: string;
 }
 
+// @public
+export function Kbd(input: React_2.ComponentProps<'kbd'>): React_2.JSX.Element;
+
 // @public (undocumented)
 export function Label(input: React_2.ComponentProps<typeof Label_2.Root>): React_2.JSX.Element;
+
+// @public
+export interface MapStyleUrls {
+    // (undocumented)
+    dark: string;
+    // (undocumented)
+    light: string;
+}
 
 // @public (undocumented)
 export function PageHeader(input: PageHeaderProps): React_2.JSX.Element;
@@ -499,6 +568,20 @@ export function parseLegacyDate(value: string | null | undefined): Date | undefi
 // @public
 export function plural(count: number, singular: string, pluralForm?: string): string;
 
+// @public
+export function PointerGauge(input: PointerGaugeProps): React_2.JSX.Element;
+
+// @public (undocumented)
+export interface PointerGaugeProps extends Omit<React_2.ComponentProps<'div'>, 'children'> {
+    label: string;
+    max?: number;
+    normalMax?: number;
+    // (undocumented)
+    size?: 'sm' | 'md';
+    value: number | null;
+    valueLabel?: string;
+}
+
 // @public (undocumented)
 export function Popover(input: React_2.ComponentProps<typeof Popover_2.Root>): React_2.JSX.Element;
 
@@ -533,6 +616,16 @@ export function RadioGroup(input: React_2.ComponentProps<typeof RadioGroup_2.Roo
 
 // @public (undocumented)
 export function RadioGroupItem(input: React_2.ComponentProps<typeof RadioGroup_2.Item>): React_2.JSX.Element;
+
+// @public
+export function RowMenu(input: RowMenuProps): JSX.Element;
+
+// @public (undocumented)
+export interface RowMenuProps {
+    children: ReactNode;
+    label: string;
+    size?: 'icon-sm' | 'icon';
+}
 
 // @public (undocumented)
 export function ScrollArea(input: React_2.ComponentProps<typeof ScrollArea_2.Root>): React_2.JSX.Element;
@@ -592,6 +685,9 @@ export function SelectValue(input: React_2.ComponentProps<typeof Select_2.Value>
 
 // @public (undocumented)
 export function Separator(input: React_2.ComponentProps<typeof Separator_2.Root>): React_2.JSX.Element;
+
+// @public
+export function setMapStyles(styles: MapStyleUrls): void;
 
 // @public
 export function setMapWorkerUrl(url: string): void;
@@ -738,6 +834,25 @@ export function SidebarTrigger(input: React_2.ComponentProps<typeof Button>): Re
 export function Skeleton(input: React.ComponentProps<'div'>): JSX.Element;
 
 // @public
+export function Slider(input: React_2.ComponentProps<typeof Slider_2.Root> & {
+    thumbLabel?: string | readonly string[];
+    thumbValueText?: string;
+}): React_2.JSX.Element;
+
+// @public
+export function SourceTag(input: SourceTagProps): React_2.JSX.Element;
+
+// @public (undocumented)
+export interface SourceTagProps extends React_2.ComponentProps<'span'> {
+    name?: string;
+    // (undocumented)
+    version?: string;
+}
+
+// @public
+export const staleSurfaceClassName = "bg-[repeating-linear-gradient(135deg,transparent_0_3px,color-mix(in_oklab,currentColor_14%,transparent)_3px_4px)]";
+
+// @public
 export function StatCard(input: StatCardProps): React_2.JSX.Element;
 
 // @public (undocumented)
@@ -763,6 +878,9 @@ export interface StatCardProps {
 }
 
 // @public
+export function StatGroup(input: React_2.ComponentProps<'div'>): React_2.JSX.Element;
+
+// @public
 export function StatusBadge(input: StatusBadgeProps): React_2.JSX.Element;
 
 // @public (undocumented)
@@ -770,6 +888,7 @@ export interface StatusBadgeProps extends React_2.ComponentProps<'span'> {
     dot?: boolean;
     icon?: React_2.ReactNode;
     pulse?: boolean;
+    stale?: boolean;
     // (undocumented)
     tone: StatusTone;
 }
@@ -780,12 +899,16 @@ export function StatusDot(input: StatusDotProps): React_2.JSX.Element;
 // @public (undocumented)
 export interface StatusDotProps extends React_2.ComponentProps<'span'> {
     pulse?: boolean;
+    stale?: boolean;
     // (undocumented)
     tone: StatusTone;
 }
 
 // @public
 export type StatusTone = 'success' | 'warning' | 'info' | 'destructive' | 'neutral';
+
+// @public
+export const stretchedLinkClassName = "underline-offset-4 outline-none hover:underline after:absolute after:inset-0 after:rounded-[inherit] focus-visible:after:ring-2 focus-visible:after:ring-ring";
 
 // @public (undocumented)
 export function Switch(input: React_2.ComponentProps<typeof Switch_2.Root>): React_2.JSX.Element;
@@ -863,6 +986,9 @@ export function TooltipTrigger(input: React_2.ComponentProps<typeof Tooltip_2.Tr
 
 // @public (undocumented)
 export function useIsMobile(): boolean;
+
+// @public
+export function useSearchText(controlled: string, onChange: (value: string) => void): readonly [string, (value: string) => void];
 
 // @public (undocumented)
 export function useSidebar(): SidebarContextProps;

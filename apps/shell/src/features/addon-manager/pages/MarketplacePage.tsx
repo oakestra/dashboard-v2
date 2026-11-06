@@ -1,8 +1,9 @@
 import { useSearchParam } from '@oakestra/dashboard-sdk';
 import type { MarketplaceAddon } from '@oakestra/api';
-import { Button, ConfirmDialog, EmptyState, Input, Skeleton, QueryErrorAlert } from '@oakestra/ui';
+import { Button, ConfirmDialog, EmptyState, QueryErrorAlert } from '@oakestra/ui';
+import { DataList, type DataListSortOption } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
-import { PlusIcon, SearchIcon, StoreIcon } from 'lucide-react';
+import { PlusIcon, SearchXIcon, StoreIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
@@ -14,10 +15,13 @@ import { MarketplaceDetailsDialog } from '../components/MarketplaceDetailsDialog
 import { RegisterAddonDialog } from '../components/RegisterAddonDialog';
 import { INSTALLED_PATH } from '../paths';
 
-function matches(addon: MarketplaceAddon, term: string): boolean {
-  const haystack = [addon.name, addon.description, ...addon.services.map((s) => s.image)];
-  return haystack.some((text) => text.toLowerCase().includes(term));
-}
+const searchValue = (addon: MarketplaceAddon) =>
+  [addon.name, addon.description, ...addon.services.map((service) => service.image)].join(' ');
+
+// One option: no picker, just a stable order.
+const SORT_OPTIONS: readonly DataListSortOption<MarketplaceAddon>[] = [
+  { id: 'name', label: 'Name', value: (addon) => addon.name },
+];
 
 export function MarketplacePage() {
   const api = useAddonsAdminApi();
@@ -25,11 +29,7 @@ export function MarketplacePage() {
   const installed = useQuery(installedAddonsQuery(api));
   const navigate = useNavigate();
 
-  const [query, setQuery] = useSearchParam('q');
-  // The box keeps its own text: the router applies location changes asynchronously, so binding
-  // the input straight to the URL would drop keystrokes typed in between. The URL only makes the
-  // search linkable.
-  const [search, setSearch] = useState(query);
+  const [search, setSearch] = useSearchParam('q');
   const [details, setDetails] = useState<MarketplaceAddon | null>(null);
   const [deleting, setDeleting] = useState<MarketplaceAddon | null>(null);
   const [registerOpen, setRegisterOpen] = useState(false);
@@ -40,20 +40,7 @@ export function MarketplacePage() {
     () => new Map((installed.data ?? []).map((addon) => [addon.marketplace_id, addon])),
     [installed.data],
   );
-  const visible = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    const list = marketplace.data ?? [];
-    return (term ? list.filter((addon) => matches(addon, term)) : list).toSorted((a, b) =>
-      a.name.localeCompare(b.name),
-    );
-  }, [marketplace.data, search]);
-
   const deletingInstalled = deleting ? installedByDefinition.get(deleting._id) : undefined;
-
-  function updateSearch(value: string) {
-    setSearch(value);
-    setQuery(value);
-  }
 
   function startInstall(addon: MarketplaceAddon) {
     install.mutate(
@@ -63,29 +50,15 @@ export function MarketplacePage() {
     );
   }
 
+  const registerButton = (
+    <Button onClick={() => setRegisterOpen(true)}>
+      <PlusIcon aria-hidden />
+      Register addon
+    </Button>
+  );
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-full min-w-0 sm:max-w-xs sm:flex-1">
-          <SearchIcon
-            aria-hidden
-            className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-          />
-          <Input
-            type="search"
-            aria-label="Search the marketplace"
-            placeholder="Search the marketplace"
-            className="pl-9"
-            value={search}
-            onChange={(event) => updateSearch(event.target.value)}
-          />
-        </div>
-        <Button className="sm:ml-auto" onClick={() => setRegisterOpen(true)}>
-          <PlusIcon aria-hidden />
-          Register addon
-        </Button>
-      </div>
-
       {installed.isError && marketplace.isSuccess ? (
         <QueryErrorAlert
           data-testid="installed-unknown"
@@ -98,51 +71,61 @@ export function MarketplacePage() {
       ) : null}
 
       {marketplace.isError ? (
-        <QueryErrorAlert
-          data-testid="marketplace-error"
-          title="Could not load the marketplace"
-          error={marketplace.error}
-          onRetry={() => void marketplace.refetch()}
-        />
-      ) : marketplace.isPending ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true">
-          {Array.from({ length: 3 }, (_, index) => (
-            <Skeleton key={index} className="h-48 rounded-xl" />
-          ))}
-        </div>
-      ) : visible.length === 0 ? (
-        <EmptyState
-          icon={<StoreIcon />}
-          title={search ? 'No addons match your search' : 'The marketplace is empty'}
-          description={
-            search
-              ? 'Try another name or image.'
-              : 'Register an addon definition to make it available here.'
-          }
-          action={
-            search ? (
-              <Button variant="outline" size="sm" onClick={() => updateSearch('')}>
-                Clear search
-              </Button>
-            ) : undefined
-          }
-        />
+        <>
+          {/* Registering does not depend on the list, so it survives the list's failure. */}
+          <div className="flex justify-end">{registerButton}</div>
+          <QueryErrorAlert
+            data-testid="marketplace-error"
+            title="Could not load the marketplace"
+            error={marketplace.error}
+            onRetry={() => void marketplace.refetch()}
+          />
+        </>
       ) : (
-        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {visible.map((addon) => (
-            <li key={addon._id} className="flex min-w-0">
-              <MarketplaceCard
-                addon={addon}
-                installed={installedByDefinition.get(addon._id)}
-                installing={install.isPending && install.variables?.marketplaceId === addon._id}
-                canInstall={installed.isSuccess && !install.isPending}
-                onInstall={() => startInstall(addon)}
-                onDetails={() => setDetails(addon)}
-                onDelete={() => setDeleting(addon)}
-              />
-            </li>
-          ))}
-        </ul>
+        <DataList
+          label="Marketplace"
+          noun="addon"
+          layout="grid"
+          data={marketplace.data}
+          isLoading={marketplace.isPending}
+          getRowId={(addon) => addon._id}
+          searchValue={searchValue}
+          sortOptions={SORT_OPTIONS}
+          searchPlaceholder="Search the marketplace"
+          globalFilter={search}
+          onGlobalFilterChange={setSearch}
+          toolbar={registerButton}
+          renderItem={(addon) => (
+            <MarketplaceCard
+              addon={addon}
+              installed={installedByDefinition.get(addon._id)}
+              installing={install.isPending && install.variables?.marketplaceId === addon._id}
+              canInstall={installed.isSuccess && !install.isPending}
+              onInstall={() => startInstall(addon)}
+              onDetails={() => setDetails(addon)}
+              onDelete={() => setDeleting(addon)}
+            />
+          )}
+          emptyState={
+            <EmptyState
+              icon={<StoreIcon />}
+              title="The marketplace is empty"
+              description="Register an addon definition to make it available here."
+            />
+          }
+          noResultsState={
+            <EmptyState
+              icon={<SearchXIcon />}
+              title="No addons match your search"
+              description="Try another name or image."
+              action={
+                <Button variant="outline" size="sm" onClick={() => setSearch('')}>
+                  Clear search
+                </Button>
+              }
+            />
+          }
+        />
       )}
 
       <MarketplaceDetailsDialog

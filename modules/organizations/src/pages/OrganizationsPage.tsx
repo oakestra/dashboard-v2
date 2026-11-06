@@ -1,82 +1,88 @@
 import { ROOT_ORGANIZATION_NAME, type Organization } from '@oakestra/api';
-import { organizationsQuery, useAddonPath, useOakestraApi } from '@oakestra/dashboard-sdk';
+import {
+  organizationsQuery,
+  useAddonPath,
+  useOakestraApi,
+  useSearchParam,
+} from '@oakestra/dashboard-sdk';
 import {
   Badge,
   Button,
+  Card,
   ConfirmDialog,
+  DropdownMenuItem,
   EmptyState,
   PageHeader,
   QueryErrorAlert,
+  plural,
+  stretchedLinkClassName,
+  RowMenu,
 } from '@oakestra/ui';
-import { createDataTableColumnHelper, DataTable } from '@oakestra/ui/data-table';
+import { DataList, type DataListSortOption } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
 import { BuildingIcon, PlusIcon, Trash2Icon } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { useState, type ReactNode } from 'react';
+import { Link } from 'react-router';
 
 import { useCreateOrganization, useDeleteOrganization } from '../api/mutations';
 import { OrganizationNameDialog } from '../components/OrganizationNameDialog';
+import { adminCount } from '../members';
 
-const column = createDataTableColumnHelper<Organization>();
+const searchValue = (organization: Organization) => organization.name;
+
+const SORT_OPTIONS: readonly DataListSortOption<Organization>[] = [
+  { id: 'name', label: 'Name', value: (organization) => organization.name },
+  {
+    id: 'members',
+    label: 'Most members',
+    value: (organization) => organization.member.length,
+    desc: true,
+  },
+];
+
+function OrganizationCard({
+  organization,
+  href,
+  menu,
+}: {
+  organization: Organization;
+  href: string;
+  menu: ReactNode;
+}) {
+  return (
+    <Card className="hover:bg-accent/40 h-full gap-2 transition-colors">
+      <div className="flex min-h-8 items-center justify-between gap-3 px-5">
+        <div className="flex min-w-0 items-center gap-2">
+          <Link to={href} className={`block truncate font-semibold ${stretchedLinkClassName}`}>
+            {organization.name}
+          </Link>
+          {organization.name === ROOT_ORGANIZATION_NAME ? (
+            <Badge variant="neutral">Default</Badge>
+          ) : null}
+        </div>
+        {menu ? <div className="relative z-10 -mr-2">{menu}</div> : null}
+      </div>
+      <p className="text-muted-foreground px-5 text-sm tabular-nums">
+        {plural(organization.member.length, 'member')}, {plural(adminCount(organization), 'admin')}
+      </p>
+    </Card>
+  );
+}
 
 export function OrganizationsPage() {
   const api = useOakestraApi();
-  const navigate = useNavigate();
   const addonPath = useAddonPath();
   const organizations = useQuery(organizationsQuery(api));
+  const [search, setSearch] = useSearchParam('q');
   const [createOpen, setCreateOpen] = useState(false);
   const [deleting, setDeleting] = useState<Organization | null>(null);
   const create = useCreateOrganization();
   const remove = useDeleteOrganization();
 
-  const columns = useMemo(
-    () =>
-      column.columns([
-        column.accessor('name', {
-          header: 'Name',
-          // A real link keeps the row reachable by keyboard; the row click is the mouse shortcut.
-          cell: ({ row }) => (
-            <span className="flex items-center gap-2">
-              <Link to={addonPath(row.original._id)} className="font-medium hover:underline">
-                {row.original.name}
-              </Link>
-              {row.original.name === ROOT_ORGANIZATION_NAME ? (
-                <Badge variant="neutral">Default</Badge>
-              ) : null}
-            </span>
-          ),
-        }),
-        column.accessor((organization) => organization.member.length, {
-          id: 'members',
-          header: 'Members',
-          meta: { numeric: true },
-        }),
-        column.display({
-          id: 'actions',
-          header: () => <span className="sr-only">Actions</span>,
-          meta: { align: 'right' },
-          // The root organization has no delete button at all: the detail page explains why.
-          cell: ({ row }) =>
-            row.original.name === ROOT_ORGANIZATION_NAME ? null : (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Delete ${row.original.name}`}
-                onClick={() => setDeleting(row.original)}
-              >
-                <Trash2Icon aria-hidden />
-              </Button>
-            ),
-        }),
-      ]),
-    [addonPath],
-  );
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="Organizations"
-        description="Groups of users that share a set of roles."
         actions={
           <Button onClick={() => setCreateOpen(true)}>
             <PlusIcon aria-hidden />
@@ -92,14 +98,38 @@ export function OrganizationsPage() {
           onRetry={() => void organizations.refetch()}
         />
       ) : (
-        <DataTable
+        <DataList
           label="Organizations"
-          columns={columns}
+          noun="organization"
+          layout="grid"
           data={organizations.data}
           getRowId={(row) => row._id}
           isLoading={organizations.isPending}
+          searchValue={searchValue}
+          sortOptions={SORT_OPTIONS}
           searchPlaceholder="Search organizations"
-          onRowClick={(row) => void navigate(addonPath(row._id))}
+          globalFilter={search}
+          onGlobalFilterChange={setSearch}
+          renderItem={(organization) => (
+            <OrganizationCard
+              organization={organization}
+              href={addonPath(organization._id)}
+              menu={
+                // The root organization cannot be deleted (the detail page explains why).
+                organization.name === ROOT_ORGANIZATION_NAME ? null : (
+                  <RowMenu label={`Actions for ${organization.name}`}>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onSelect={() => setDeleting(organization)}
+                    >
+                      <Trash2Icon aria-hidden />
+                      Delete organization
+                    </DropdownMenuItem>
+                  </RowMenu>
+                )
+              }
+            />
+          )}
           emptyState={
             <EmptyState
               icon={<BuildingIcon />}

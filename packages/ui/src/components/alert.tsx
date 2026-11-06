@@ -8,12 +8,12 @@ const alertVariants = cva(
     variants: {
       variant: {
         default: 'bg-card text-card-foreground',
-        // Tinted like the soft Badge variants. Only the title and icon take the tone color: a
-        // whole description in warning or success would be hard to read on the light tint.
+        // The card surface with a toned edge: a tint of amber on the gray page turns muddy. Only the
+        // title and icon take the tone color, a whole description in it would be hard to read.
         destructive:
-          'border-destructive/30 bg-destructive/5 text-destructive *:data-[slot=alert-description]:text-destructive/90 dark:bg-destructive/10',
+          'border-destructive/40 bg-card text-destructive *:data-[slot=alert-description]:text-foreground/80',
         warning:
-          'border-warning/30 bg-warning/5 text-warning *:data-[slot=alert-description]:text-foreground/80 dark:bg-warning/10',
+          'border-warning/40 bg-card text-warning *:data-[slot=alert-description]:text-foreground/80',
         success:
           'border-success/30 bg-success/5 text-success *:data-[slot=alert-description]:text-foreground/80 dark:bg-success/10',
         info: 'border-info/30 bg-info/5 text-info *:data-[slot=alert-description]:text-foreground/80 dark:bg-info/10',

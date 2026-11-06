@@ -12,17 +12,13 @@ import {
   Alert,
   AlertDescription,
   Button,
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   ConfirmDialog,
   EmptyState,
   PageHeader,
+  SectionCard,
   Skeleton,
   StatCard,
+  StatGroup,
   CopyButton,
   QueryErrorAlert,
   formatBytes,
@@ -47,9 +43,14 @@ import { useUndeployInstance } from '../mutations';
 import { DefinitionList } from '../components/DefinitionList';
 import { LogsCard } from '../components/LogsCard';
 import { INFRASTRUCTURE_ROLES } from '../infrastructure-roles';
-import { hasMetrics } from '../components/ServiceOverview';
 import { StatusBadge } from '../components/StatusBadge';
-import { describeStatus, instanceHost, instanceProblem, usePollWhileTransitional } from '../status';
+import {
+  describeStatus,
+  hasMetrics,
+  instanceHost,
+  instanceProblem,
+  usePollWhileTransitional,
+} from '../status';
 
 // Metrics and logs change constantly, so the page refreshes on its own; faster while the
 // scheduler is still placing the instance.
@@ -152,7 +153,7 @@ export function InstanceDetailPage() {
     ) : undefined;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageHeader
         title={
           <span className="flex flex-wrap items-center gap-3">
@@ -177,7 +178,7 @@ export function InstanceDetailPage() {
         </Alert>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <StatGroup>
         <StatCard
           label="CPU"
           value={measured ? formatPercent(instance.cpu_percent) : '-'}
@@ -202,73 +203,54 @@ export function InstanceDetailPage() {
           }
           icon={<ClockIcon />}
         />
-      </div>
+      </StatGroup>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Placement</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <DefinitionList
-              items={[
-                { label: 'Cluster', value: clusterValue },
-                { label: 'Worker node', value: mono(instance.worker_id) },
-                { label: 'Host address', value: mono(host) },
-                { label: 'Public IP', value: mono(instance.publicip) },
-              ]}
-              empty="Not placed on a node yet."
-            />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Location</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {locations.length > 0 ? (
-              <LocationMap
-                locations={locations}
-                ariaLabel="Cluster location"
-                className="h-56 w-full"
-              />
-            ) : (
-              <EmptyState
-                icon={<MapPinOffIcon />}
-                title="No location reported yet"
-                className="py-8"
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <SectionCard title="Placement" contentClassName="grid gap-x-8 gap-y-4 lg:grid-cols-2">
+        <DefinitionList
+          items={[
+            { label: 'Cluster', value: clusterValue },
+            { label: 'Worker node', value: mono(instance.worker_id) },
+            { label: 'Host address', value: mono(host) },
+            { label: 'Public IP', value: mono(instance.publicip) },
+          ]}
+          empty="Not placed on a node yet."
+        />
+        {locations.length > 0 ? (
+          <LocationMap locations={locations} ariaLabel="Cluster location" className="h-44 w-full" />
+        ) : (
+          <EmptyState icon={<MapPinOffIcon />} title="No location reported yet" className="py-4" />
+        )}
+      </SectionCard>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>CPU</CardTitle>
-            <CardDescription>Recent samples, refreshed every 15 s</CardDescription>
-            <CardAction className="text-lg font-semibold tabular-nums">
+      <SectionCard
+        title="Usage"
+        description="Recent samples, refreshed every 15 s"
+        contentClassName="grid gap-x-8 gap-y-4 lg:grid-cols-2"
+      >
+        <div>
+          <div className="mb-2 flex items-baseline justify-between text-sm">
+            <h3 className="font-semibold">CPU</h3>
+            <span className="tabular-nums">
               {measured ? formatPercent(instance.cpu_percent) : '-'}
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            <TimeSeriesChart title="CPU usage" unit="percent" data={instance.cpu_history} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Memory</CardTitle>
-            <CardDescription>Recent samples, refreshed every 15 s</CardDescription>
-            <CardAction className="text-lg font-semibold tabular-nums">
+            </span>
+          </div>
+          <TimeSeriesChart title="CPU usage" unit="percent" data={instance.cpu_history} />
+        </div>
+        <div>
+          <div className="mb-2 flex items-baseline justify-between text-sm">
+            <h3 className="font-semibold">Memory</h3>
+            <span className="tabular-nums">
               {measured ? formatBytes(instance.memory_percent) : '-'}
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            <TimeSeriesChart title="Memory usage" unit="bytes" data={instance.memory_history} />
-          </CardContent>
-        </Card>
-      </div>
+            </span>
+          </div>
+          <TimeSeriesChart
+            title="Memory usage"
+            color="var(--chart-2)"
+            unit="bytes"
+            data={instance.memory_history}
+          />
+        </div>
+      </SectionCard>
 
       <LogsCard
         logs={instance.logs}

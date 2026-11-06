@@ -7,57 +7,111 @@ import {
 } from '@oakestra/dashboard-sdk';
 import {
   Button,
+  Card,
   DropdownMenuItem,
   DropdownMenuSeparator,
   EmptyState,
   PageHeader,
+  Progress,
   Skeleton,
   StatusBadge,
   QueryErrorAlert,
   plural,
+  stretchedLinkClassName,
+  RowMenu,
 } from '@oakestra/ui';
-import { createDataTableColumnHelper, DataTable } from '@oakestra/ui/data-table';
+import { DataList, type DataListSortOption } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
 import { BoxesIcon, PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 import { newestFirst } from '../../queries';
 import { useMyApplications } from '../../use-my-applications';
 import { ApplicationFormDialog } from '../components/ApplicationFormDialog';
 import { applicationHealth, describeServiceCounts } from '../health';
-import { RowMenu } from '../components/RowMenu';
 import { DeleteApplicationDialog } from '../components/DeleteApplicationDialog';
 
-const column = createDataTableColumnHelper<Application>();
+const searchValue = (application: Application) =>
+  [
+    application.application_name,
+    application.application_namespace,
+    application.application_desc,
+  ].join(' ');
 
-/**
- * Cells read the cached services themselves instead of getting them through the columns, so a
- * finished fetch or poll does not rebuild the columns (which would remount the row menus and
- * close an open one).
- */
-function HealthCell({ application, part }: { application: Application; part: 'badge' | 'counts' }) {
+const SORT_OPTIONS: readonly DataListSortOption<Application>[] = [
+  { id: 'newest', label: 'Newest first', value: () => 0 },
+  { id: 'name', label: 'Name', value: (application) => application.application_name },
+  {
+    id: 'services',
+    label: 'Most services',
+    value: (application) => application.microservices.length,
+    desc: true,
+  },
+];
+
+function ApplicationCard({
+  application,
+  href,
+  menu,
+}: {
+  application: Application;
+  href: string;
+  menu: ReactNode;
+}) {
   const api = useOakestraApi();
   const { data: health } = useQuery({
     ...servicesByApplicationQuery(api, application._id),
     select: applicationHealth,
   });
-  if (part === 'badge') {
-    return health ? (
-      <StatusBadge tone={health.tone}>{health.label}</StatusBadge>
-    ) : (
-      <Skeleton className="h-5 w-20" />
-    );
-  }
-  if (health) return <>{describeServiceCounts(health)}</>;
-  return <>{plural(application.microservices.length, 'service')}</>;
+  const { running = 0, total = 0 } = health?.instances ?? {};
+  return (
+    <Card className="hover:bg-accent/40 h-full gap-3 transition-colors">
+      <div className="flex items-start justify-between gap-3 px-5">
+        <div className="min-w-0">
+          <Link to={href} className={`block truncate font-semibold ${stretchedLinkClassName}`}>
+            {application.application_name}
+          </Link>
+          <div className="text-muted-foreground truncate font-mono text-xs">
+            {application.application_namespace}
+          </div>
+        </div>
+        <div className="relative z-10 -mt-1 -mr-2">{menu}</div>
+      </div>
+      <p className="text-muted-foreground line-clamp-2 min-h-10 px-5 text-sm">
+        {application.application_desc || 'No description'}
+      </p>
+      <div className="mt-auto space-y-2.5 px-5">
+        <Progress
+          aria-label={`Running instances of ${application.application_name}`}
+          value={total > 0 ? (running / total) * 100 : 0}
+          className="h-1"
+        />
+        <div className="flex items-center justify-between gap-3 text-sm">
+          {health ? (
+            <StatusBadge tone={health.tone}>{health.label}</StatusBadge>
+          ) : (
+            <Skeleton className="h-5 w-20" />
+          )}
+          <span className="text-muted-foreground truncate tabular-nums">
+            {health
+              ? describeServiceCounts(health)
+              : plural(application.microservices.length, 'service')}
+          </span>
+        </div>
+      </div>
+    </Card>
+  );
 }
 
 export function ApplicationsPage() {
   const navigate = useNavigate();
   const addonPath = useAddonPath();
   const [search, setSearch] = useSearchParam('q');
-  const [creating, setCreating] = useState(false);
+  // In the URL so the command palette can link to it.
+  const [newParam, setNewParam] = useSearchParam('new');
+  const creating = newParam !== '';
+  const setCreating = (open: boolean) => setNewParam(open ? '1' : '');
   const [editing, setEditing] = useState<Application | null>(null);
   const [deleting, setDeleting] = useState<Application | null>(null);
 
@@ -66,67 +120,10 @@ export function ApplicationsPage() {
   // A new application is on top.
   const rows = useMemo(() => newestFirst(applications.data ?? []), [applications.data]);
 
-  const columns = useMemo(
-    () =>
-      column.columns([
-        column.accessor('application_name', {
-          header: 'Name',
-          cell: ({ row }) => (
-            <div className="min-w-0">
-              <Link to={addonPath(row.original._id)} className="font-medium hover:underline">
-                {row.original.application_name}
-              </Link>
-              <div className="font-mono text-xs text-muted-foreground">
-                {row.original.application_namespace}
-              </div>
-            </div>
-          ),
-        }),
-        column.display({
-          id: 'status',
-          header: 'Status',
-          cell: ({ row }) => <HealthCell application={row.original} part="badge" />,
-        }),
-        column.accessor('application_desc', {
-          header: 'Description',
-          meta: { className: 'hidden lg:table-cell', headerClassName: 'hidden lg:table-cell' },
-          cell: (info) => (
-            <span className="block max-w-xs truncate text-muted-foreground">
-              {info.getValue() || '-'}
-            </span>
-          ),
-        }),
-        column.accessor((row) => row.microservices.length, {
-          id: 'services',
-          header: 'Services',
-          meta: { numeric: true },
-          cell: ({ row }) => <HealthCell application={row.original} part="counts" />,
-        }),
-        column.display({
-          id: 'actions',
-          header: () => <span className="sr-only">Actions</span>,
-          meta: { align: 'right' },
-          cell: ({ row }) => (
-            <RowMenu label={`Actions for ${row.original.application_name}`}>
-              <DropdownMenuItem onSelect={() => setEditing(row.original)}>
-                <PencilIcon aria-hidden /> Edit
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(row.original)}>
-                <Trash2Icon aria-hidden /> Delete
-              </DropdownMenuItem>
-            </RowMenu>
-          ),
-        }),
-      ]),
-    [addonPath],
-  );
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="Applications"
-        description="Your applications and the services they group."
         actions={
           <Button onClick={() => setCreating(true)}>
             <PlusIcon aria-hidden /> New application
@@ -137,16 +134,35 @@ export function ApplicationsPage() {
       {error ? (
         <QueryErrorAlert title="Could not load your applications" error={error} onRetry={retry} />
       ) : (
-        <DataTable
+        <DataList
           label="Applications"
-          columns={columns}
+          noun="application"
+          layout="grid"
           data={rows}
           isLoading={applications.isPending}
           getRowId={(row) => row._id}
+          searchValue={searchValue}
+          sortOptions={SORT_OPTIONS}
           searchPlaceholder="Search applications"
           globalFilter={search}
           onGlobalFilterChange={setSearch}
-          onRowClick={(row) => void navigate(addonPath(row._id))}
+          renderItem={(application) => (
+            <ApplicationCard
+              application={application}
+              href={addonPath(application._id)}
+              menu={
+                <RowMenu label={`Actions for ${application.application_name}`}>
+                  <DropdownMenuItem onSelect={() => setEditing(application)}>
+                    <PencilIcon aria-hidden /> Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(application)}>
+                    <Trash2Icon aria-hidden /> Delete
+                  </DropdownMenuItem>
+                </RowMenu>
+              }
+            />
+          )}
           emptyState={
             <EmptyState
               icon={<BoxesIcon />}

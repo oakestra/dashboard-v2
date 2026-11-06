@@ -47,6 +47,13 @@ const portSchema = z
   .nullish()
   .transform((value) => (value === null || value === undefined ? undefined : String(value)));
 
+/** A CSI volume of a service; the scheduler only places it on clusters offering `csi_driver`. */
+const volumeSchema = z.looseObject({
+  volume_id: optionalString,
+  csi_driver: optionalString,
+  mount_path: optionalString,
+});
+
 export const serviceSchema = z.looseObject({
   _id: z.string(),
   microserviceID: optionalString,
@@ -71,6 +78,7 @@ export const serviceSchema = z.looseObject({
   cmd: list(z.string()),
   args: list(z.string()),
   environment: list(z.string()),
+  volumes: list(volumeSchema),
   added_files: list(z.string()),
   /** Only set once the scheduler has looked at the service, e.g. `RUNNING`. */
   status: optionalString,

@@ -17,9 +17,10 @@ prefix `[addons]`, and crashing contributions with `[addon:<name>]`.
 | "Invalid hook call" or hooks behave strangely                        | Two copies of React                                                         | See [duplicate React](#duplicate-react-or-invalid-hook-call)                                                      |
 | Addon renders without styles                                         | `addon.css` not imported, or classes outside the scanned folder             | See [styles](#styles-missing-or-shell-styles-broken)                                                              |
 | The whole dashboard looks different after the addon loads            | The addon loaded a second Tailwind preflight                                | See [styles](#styles-missing-or-shell-styles-broken)                                                              |
-| A red box "... from addon "<name>" failed to render."                | That component threw an error                                               | See [a contribution crashes](#a-contribution-crashes)                                                             |
+| An inline "... failed to render." with a Reload button               | That component threw an error                                               | See [a contribution crashes](#a-contribution-crashes)                                                             |
 | Nav item, widget or tab does not appear                              | `roles` or `visible()` hides it, or the addon is not `loaded`               | Log in with a role that matches; check the addon state                                                            |
 | Application tab does not appear                                      | Same as above. Without any contributed tab, the page shows no tabs at all   | Check that the addon is `loaded` and the tab is not hidden by `roles`                                             |
+| A command or search result does not appear in Ctrl K                 | `roles` hides it, the query is too short, or the source fails               | See [my command does not appear](#my-command-does-not-appear)                                                     |
 | Cluster widget does not appear                                       | The cluster page is only for `Admin` and `Infrastructure_Provider`          | Log in with one of these roles                                                                                    |
 | Users still see the old version                                      | No reload yet, `version` unchanged, or caching                              | See [old version](#old-version-still-served)                                                                      |
 | `?addon-override=...` has no effect                                  | Production build of the shell, or a wrong URL                               | See [dev override](#dev-override-not-applied)                                                                     |
@@ -191,8 +192,10 @@ The addon stylesheet loads after the shell's in the same cascade layer, ...
 ## A contribution crashes
 
 Every widget, tab and addon page runs inside its own error boundary. When one throws, only
-that box shows an error: `<title or label> from addon "<name>" failed to render.` and the error
-message. For a page the label is "Page". The console shows `[addon:<name>] <label> crashed`.
+place shows a calm inline state instead: `<title or label> from <addon> failed to render.`, a
+note that the rest of the page keeps working, a **Reload** button (it renders the component
+again) and a collapsed **Error details** with the error message. If the addon's code could not
+be downloaded at all, the button is **Reload page**. For a page the label is "Page". The console shows `[addon:<name>] <label> crashed`.
 The rest of the page, the sidebar and other contributions keep working.
 
 Other isolation rules:
@@ -211,6 +214,29 @@ location.reload();
 
 Remove it with `localStorage.removeItem('oakestra.example.throw')`. Remove `ThrowingWidget`
 when you copy the example.
+
+## My command does not appear
+
+The "Find or run anything" palette (Ctrl or Cmd K) shows what addons contribute at
+`command.actions` and `command.sources`. If yours is missing:
+
+- **Roles.** `roles` on the action or source hides it from everyone else. Log in with a matching
+  role. The palette itself needs a login.
+- **The addon is not `loaded`.** A `failed` or `incompatible` addon contributes nothing. Admins
+  get a notice with a link to the addon manager after about 30 seconds of a failure.
+- **Invalid definition.** An action needs exactly one of `path` and `run`, and its `path` must be
+  relative to the addon's base path (no leading `/`, no `..`). Otherwise the addon fails with a
+  message that names the contribution, see [definition errors](#invalid-definition-errors).
+- **Source results.** A source is only called for queries of at least `minQueryLength`
+  characters (default 2). Results need a unique `id` and a `label`, and an absolute `path`
+  from `ctx.addon.path(...)` (or a `run`). An invalid one is dropped with a console warning
+  `[commands] <source>: ignoring invalid result`, and a source returns at most 20.
+- **The source fails.** The palette then shows "<label> could not be searched" and keeps the
+  other groups. Look in the console and the network tab. `search` has five seconds and an
+  `AbortSignal`; a rejected or slow request, or a result that is not an array, counts as failing.
+- **`navigate` throws.** `ctx.navigate()` takes absolute paths only. Use `ctx.addon.path(...)`.
+- **The module is switched off.** A preset that leaves a built-in module out removes its commands
+  and searches with it.
 
 ## Old version still served
 

@@ -46,7 +46,7 @@ export function AdvancedSection() {
           />
         ))}
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
         <TextField name="state" label="State URL" description="File with the initial state." />
         <TextField name="target_node" label="Target node" />
         <TextField name="sla_violation_strategy" label="SLA violation strategy" />

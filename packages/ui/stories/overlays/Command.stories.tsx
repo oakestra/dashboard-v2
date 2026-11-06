@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { Button } from '../../src';
+import { Button, Kbd } from '../../src';
 import {
   Command,
   CommandDialog,
@@ -103,9 +103,9 @@ export const Dialog: Story = {
       <>
         <Button variant="outline" onClick={() => setOpen(true)}>
           Open palette
-          <kbd className="ml-2 rounded border bg-muted px-1.5 font-mono text-xs">⌘K</kbd>
+          <Kbd className="ml-2">⌘K</Kbd>
         </Button>
-        <CommandDialog open={open} onOpenChange={setOpen}>
+        <CommandDialog open={open} onOpenChange={setOpen} showCloseButton={false}>
           <PaletteItems />
         </CommandDialog>
       </>

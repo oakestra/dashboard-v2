@@ -34,6 +34,73 @@ interface ClusterContext {
     clusterId: string;
 }
 
+// @public
+type CommandAction = ContributionBase & CommandDisplay & {
+    keywords?: readonly string[];
+} & CommandTarget;
+
+// @public
+interface CommandAddon {
+    // (undocumented)
+    readonly addonId: string;
+    readonly basePath: string;
+    readonly path: (...segments: readonly (string | number)[]) => string;
+}
+
+// @public
+interface CommandContext {
+    readonly addon?: CommandAddon;
+    // (undocumented)
+    readonly api: OakestraApi;
+    readonly isFeatureEnabled: (id: string) => boolean;
+    readonly navigate: (path: string) => void;
+    // (undocumented)
+    readonly notify: Notify;
+    readonly queryClient: QueryClient;
+    readonly user: CurrentUser;
+}
+
+// @public (undocumented)
+export interface CommandContextOptions extends Pick<TestHostOptions, 'api' | 'addon' | 'features'> {
+    queryClient?: QueryClient;
+    user?: Partial<CurrentUser> & {
+        username: string;
+    };
+}
+
+// @public
+interface CommandDisplay {
+    description?: string;
+    // (undocumented)
+    icon?: ComponentType<IconProps>;
+    label: string;
+}
+
+// @public
+type CommandResult = CommandDisplay & {
+    id: string;
+    tone?: CommandResultTone;
+} & CommandTarget;
+
+// @public
+type CommandResultTone = 'warning' | 'destructive';
+
+// @public
+interface CommandSource extends ContributionBase {
+    label: string;
+    minQueryLength?: number;
+    search: (query: string, ctx: CommandContext, signal: AbortSignal) => Promise<readonly CommandResult[]>;
+}
+
+// @public
+type CommandTarget = {
+    path: string;
+    run?: never;
+} | {
+    run: (ctx: CommandContext) => void | Promise<void>;
+    path?: never;
+};
+
 // @public (undocumented)
 interface ContributionBase {
     id: string;
@@ -43,6 +110,9 @@ interface ContributionBase {
 
 // @public (undocumented)
 type Contributions = { readonly [P in ExtensionPointId]?: readonly ExtensionPoints[P][]; };
+
+// @public
+export function createCommandContext(options?: CommandContextOptions): TestCommandContext;
 
 // @public
 export function createMockApi(implementation?: MockApiImplementation): OakestraApi;
@@ -77,6 +147,8 @@ interface ExtensionPoints {
     'application.detail.tabs': Tab<ApplicationContext>;
     // (undocumented)
     'cluster.widgets': Widget<ClusterContext>;
+    'command.actions': CommandAction;
+    'command.sources': CommandSource;
     // (undocumented)
     'home.widgets': Widget;
     // (undocumented)
@@ -221,10 +293,30 @@ interface ServiceContext {
     serviceId: string;
 }
 
+// @public
+interface SlotSource {
+    displayName?: string;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    kind: 'core' | 'addon';
+    // (undocumented)
+    label: string;
+    remote?: boolean;
+    version?: string;
+}
+
 // @public (undocumented)
 interface Tab<C extends object> extends RenderableContribution<C> {
     // (undocumented)
     label: string;
+}
+
+// @public
+export interface TestCommandContext extends CommandContext {
+    readonly navigations: readonly string[];
+    // (undocumented)
+    readonly notify: NotifyRecorder;
 }
 
 // @public (undocumented)
@@ -235,6 +327,8 @@ export interface TestHost {
     readonly api: OakestraApi;
     // (undocumented)
     readonly contributions: Contributions;
+    // (undocumented)
+    readonly contributionSource: Pick<SlotSource, 'remote' | 'displayName' | 'version'>;
     // (undocumented)
     readonly host: HostContextValue;
     // (undocumented)
@@ -253,6 +347,7 @@ export interface TestHostOptions {
     addon?: Partial<AddonContextValue>;
     api?: MockApiImplementation;
     contributions?: Contributions;
+    contributionSource?: Pick<SlotSource, 'remote' | 'displayName' | 'version'>;
     features?: readonly string[];
     links?: HostLinks;
     path?: string;

@@ -52,8 +52,8 @@ export function ImportPanel({
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
         className={cn(
-          'flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed px-4 py-2.5',
-          dragging && 'border-primary bg-primary/5',
+          'flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed px-4 py-2',
+          dragging && 'border-primary bg-muted/60',
         )}
       >
         <p className="text-sm text-muted-foreground">

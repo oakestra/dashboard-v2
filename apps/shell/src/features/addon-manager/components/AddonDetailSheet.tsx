@@ -47,7 +47,15 @@ export function AddonDetailSheet({
 
   return (
     <Sheet open={addon !== undefined} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="w-full gap-0 sm:max-w-xl" data-testid="addon-detail">
+      <SheetContent
+        className="w-full gap-0 sm:max-w-xl"
+        data-testid="addon-detail"
+        // Radix would focus the first button, a copy button that then opens with a focus ring.
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          (event.currentTarget as HTMLElement).focus();
+        }}
+      >
         {addon ? (
           <>
             <SheetHeader className="pr-12">
@@ -58,8 +66,8 @@ export function AddonDetailSheet({
               <SheetDescription>{addon.description || 'No description.'}</SheetDescription>
             </SheetHeader>
             <ScrollArea className="min-h-0 flex-1">
-              <div className="space-y-6 px-4 pb-4">
-                <dl className="grid grid-cols-[7rem_1fr] items-center gap-x-2 gap-y-2 text-sm">
+              <div className="space-y-4 px-4 pb-4">
+                <dl className="grid grid-cols-[7rem_1fr] items-center gap-x-6 gap-y-1.5 text-sm">
                   <dt className="text-muted-foreground">Services</dt>
                   <dd className="tabular-nums">{addon.services.length}</dd>
                   <dt className="text-muted-foreground">Dashboard UI</dt>
@@ -82,7 +90,7 @@ export function AddonDetailSheet({
                 </dl>
 
                 {failedServices.length > 0 || uiProblem || addon.logs ? (
-                  <section className="space-y-3" aria-label="Problems">
+                  <section className="space-y-3 border-t pt-4" aria-label="Problems">
                     {failedServices.length > 0 ? (
                       <Alert
                         variant={addon.status === 'failed' ? 'destructive' : 'warning'}
@@ -113,7 +121,7 @@ export function AddonDetailSheet({
                         </div>
                         {/* Focusable so keyboard users can scroll long logs. */}
                         <pre
-                          className="bg-muted max-h-80 overflow-auto rounded-lg p-3 font-mono text-xs whitespace-pre-wrap break-words"
+                          className="bg-muted max-h-80 overflow-auto rounded-md p-3 font-mono text-xs whitespace-pre-wrap break-words"
                           // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
                           tabIndex={0}
                           aria-label="Addon logs"

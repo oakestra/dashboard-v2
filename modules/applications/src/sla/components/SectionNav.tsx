@@ -1,4 +1,4 @@
-import { cn } from '@oakestra/ui';
+import { StatusDot, cn } from '@oakestra/ui';
 import type { FieldErrors } from 'react-hook-form';
 
 import type { ServiceFormValues } from '../model/schema';
@@ -65,7 +65,7 @@ export function countErrors(errors: unknown): number {
 export function SectionNav({ errors }: { errors: FieldErrors<ServiceFormValues> }) {
   return (
     <nav aria-label="Form sections" className="sticky top-20 hidden self-start xl:block">
-      <ul className="space-y-1 border-l text-sm">
+      <ul className="border-l text-[0.8125rem]">
         {FORM_SECTIONS.map((section) => {
           const failing = sectionHasErrors(section, errors);
           return (
@@ -79,17 +79,15 @@ export function SectionNav({ errors }: { errors: FieldErrors<ServiceFormValues> 
                     ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }}
                 className={cn(
-                  '-ml-px flex items-center justify-between gap-2 border-l-2 border-transparent py-1 pr-2 pl-3 text-muted-foreground hover:border-border hover:text-foreground',
+                  '-ml-px flex items-center justify-between gap-2 border-l-2 border-transparent py-0.5 pr-2 pl-3 text-muted-foreground hover:border-border hover:text-foreground',
                   failing && 'text-destructive hover:text-destructive',
                 )}
               >
                 {section.label}
                 {failing ? (
-                  <span
-                    role="img"
-                    aria-label="has errors"
-                    className="size-1.5 rounded-full bg-destructive"
-                  />
+                  <span role="img" aria-label="has errors" className="inline-flex">
+                    <StatusDot tone="destructive" />
+                  </span>
                 ) : null}
               </a>
             </li>

@@ -1,4 +1,5 @@
 import applications from '@oakestra/module-applications';
+import fleet from '@oakestra/module-fleet';
 import help from '@oakestra/module-help';
 import organizations from '@oakestra/module-organizations';
 import users from '@oakestra/module-users';
@@ -29,6 +30,7 @@ export const coreModules: readonly CoreModule[] = [
  */
 export const linkedAddons: readonly LinkedAddon[] = [
   { definition: applications, mount: '/applications' },
+  { definition: fleet, mount: '/fleet' },
   { definition: help, mount: '/help' },
   { definition: users, mount: '/users' },
   { definition: organizations, mount: '/organizations' },

@@ -3,23 +3,24 @@ import { cn } from '../lib/utils';
 import { Skeleton } from './skeleton';
 import type { StatusTone } from './status-badge';
 
-const ICON_TONE: Readonly<Record<StatusTone | 'default', string>> = {
-  default: 'bg-primary/10 text-primary',
-  success: 'bg-success/10 text-success',
-  warning: 'bg-warning/10 text-warning',
-  info: 'bg-info/10 text-info',
-  destructive: 'bg-destructive/10 text-destructive',
-  neutral: 'bg-muted text-muted-foreground',
+// Only abnormal values take a color, see the palette notes in styles.css.
+const VALUE_TONE: Readonly<Record<StatusTone | 'default', string | undefined>> = {
+  default: undefined,
+  success: undefined,
+  info: undefined,
+  neutral: 'text-muted-foreground',
+  warning: 'text-warning',
+  destructive: 'text-destructive',
 };
 
 interface StatCardProps {
   label: React.ReactNode;
   value: React.ReactNode;
-  /** A lucide icon element; shown top right in a small tinted square. */
+  /** A lucide icon element; shown small and muted next to the label. */
   icon?: React.ReactNode;
   /** One short muted line below the value ("3 active nodes"). */
   hint?: React.ReactNode;
-  /** Tints the icon, e.g. `destructive` for a non-zero failure count. */
+  /** Colors the value when it is abnormal, e.g. `destructive` for a non-zero failure count. */
   tone?: StatusTone | 'default';
   /** Shows skeletons for value and hint instead of the content. */
   loading?: boolean;
@@ -38,9 +39,9 @@ interface StatCardProps {
 }
 
 /**
- * A compact metric tile: label and icon on top, the value below in tabular figures, an optional
- * hint. It fills its grid cell, so tiles in one row share a height whether or not they have a
- * hint.
+ * A compact readout: label on top, the value below in tabular figures, an optional hint. It fills
+ * its grid cell, so tiles in one row share a height whether or not they have a hint. Put related
+ * readouts in a `StatGroup`, on its own a tile has a frame of its own.
  */
 function StatCard({
   label,
@@ -57,28 +58,26 @@ function StatCard({
 }: StatCardProps) {
   const interactive = asChild || href !== undefined || onClick !== undefined;
   const classes = cn(
-    'flex h-full min-w-0 flex-col gap-1 rounded-xl border bg-card p-4 text-left text-card-foreground shadow-xs',
+    'flex h-full min-w-0 flex-col gap-1 rounded-lg border bg-card px-5 py-4 text-left text-card-foreground shadow-xs',
+    // In a group the cells share the group's frame. The lines between them are shadows, which the
+    // group clips at its edge. Borders would need to know each cell's position in the grid, and
+    // that is not known here: tiles come from addons and rows wrap.
+    'in-data-[slot=stat-group]:rounded-none in-data-[slot=stat-group]:border-0 in-data-[slot=stat-group]:bg-transparent in-data-[slot=stat-group]:shadow-[1px_0_0_var(--border),0_1px_0_var(--border)]',
     interactive &&
-      'cursor-pointer transition-colors outline-none hover:border-primary/30 hover:bg-accent/40 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
+      'cursor-pointer outline-none hover:bg-accent/60 in-data-[slot=stat-group]:hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
     className,
   );
 
   const content = (
     <>
       {/* Spans, not divs: the card may render as a <button>, which only takes phrasing content. */}
-      <span className="flex items-start justify-between gap-3">
-        <span className="min-w-0 truncate text-sm text-muted-foreground">{label}</span>
+      <span className="flex items-center gap-1.5 text-muted-foreground">
         {icon ? (
-          <span
-            aria-hidden
-            className={cn(
-              'flex size-7 shrink-0 items-center justify-center rounded-md [&_svg:not([class*="size-"])]:size-4',
-              ICON_TONE[tone],
-            )}
-          >
+          <span aria-hidden className='shrink-0 [&_svg:not([class*="size-"])]:size-3.5'>
             {icon}
           </span>
         ) : null}
+        <span className="min-w-0 truncate text-sm">{label}</span>
       </span>
       {loading ? (
         <>
@@ -87,7 +86,12 @@ function StatCard({
         </>
       ) : (
         <>
-          <span className="text-2xl leading-tight font-semibold tracking-tight tabular-nums">
+          <span
+            className={cn(
+              'text-3xl leading-9 font-semibold tracking-tight tabular-nums',
+              VALUE_TONE[tone],
+            )}
+          >
             {value}
           </span>
           {hint !== undefined && hint !== null ? (
@@ -139,5 +143,23 @@ function StatCard({
   );
 }
 
-export { StatCard };
+/**
+ * Joins `StatCard`s into one frame. Up to the `lg` breakpoint the cells wrap two per
+ * row, from there they share a single row however many there are, so a tile a preset leaves out
+ * does not leave a hole. Pass `grid-cols-*` in `className` for a fixed layout.
+ */
+function StatGroup({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="stat-group"
+      className={cn(
+        'grid grid-cols-2 overflow-hidden rounded-lg border bg-card shadow-xs lg:auto-cols-fr lg:grid-flow-col lg:grid-cols-none',
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export { StatCard, StatGroup };
 export type { StatCardProps };

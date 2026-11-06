@@ -220,6 +220,13 @@ export function fromService(service: Service, nameSuffix = 'copy'): ServiceFormV
   return values;
 }
 
+/** A limit from a link: a whole number of at least 1, anything else is treated as absent. */
+export function parseLimitParam(value: string | null): string | undefined {
+  if (value === null || !/^\d+$/.test(value)) return undefined;
+  const limit = Number(value);
+  return Number.isSafeInteger(limit) && limit >= 1 ? String(limit) : undefined;
+}
+
 function constraintToSla(constraint: ConstraintValues): Raw {
   switch (constraint.kind) {
     case 'latency':

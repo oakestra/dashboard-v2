@@ -40,7 +40,7 @@ test.describe('roles', () => {
   }) => {
     await page.goto('/settings/addons');
     await expect(page).toHaveURL(/\/addon-manager\/installed$/);
-    await expect(page.getByRole('row', { name: /example/ })).toContainText('Loaded');
+    await expect(page.getByTestId('installed-addon-example')).toContainText('Loaded');
   });
 
   test.describe('as an application provider', () => {

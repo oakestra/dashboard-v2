@@ -67,12 +67,12 @@ function ErrorView({ title, message, retry, icon }: Described) {
       actions={
         <>
           {retry ? (
-            <Button onClick={() => window.location.reload()}>
+            <Button size="sm" onClick={() => window.location.reload()}>
               <RotateCwIcon aria-hidden />
               Reload
             </Button>
           ) : null}
-          <Button asChild variant={retry ? 'outline' : 'default'}>
+          <Button asChild size="sm" variant={retry ? 'outline' : 'default'}>
             <Link to="/">Back to home</Link>
           </Button>
         </>

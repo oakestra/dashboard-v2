@@ -75,4 +75,20 @@ describe('Slot', () => {
     expect(screen.getAllByTestId('wrapper')).toHaveLength(1);
     expect(screen.getByTestId('wrapper').textContent).toBe('tab for a1tab for a1');
   });
+
+  it('passes contributionSource on to render, so pages can test how they mark remote addons', () => {
+    renderInHost(
+      <Slot
+        point="home.widgets"
+        render={(_item, _content, source) => (
+          <p>{source.remote ? `${source.displayName} ${source.version}` : 'built in'}</p>
+        )}
+      />,
+      {
+        contributions: { 'home.widgets': [{ id: 'a', title: 'A', component: () => null }] },
+        contributionSource: { remote: true, displayName: 'Flops', version: '1.2.0' },
+      },
+    );
+    expect(screen.getByText('Flops 1.2.0')).toBeTruthy();
+  });
 });

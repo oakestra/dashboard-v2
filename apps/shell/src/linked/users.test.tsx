@@ -13,9 +13,16 @@ function renderUsers(user?: Parameters<typeof renderApp>[0]['user'], route = '/u
   return renderApp({ linked: linkedAddons, route, user });
 }
 
-function rowOf(name: string) {
-  return screen.getByRole('row', { name: new RegExp(`^${name}\\b`) });
-}
+// Scoped to the list, the header shows the name of the logged-in user too.
+const inList = { selector: '[aria-label="Users"] [data-slot="item-title"] span' };
+
+const rowOf = (name: string) => screen.getByText(name, inList).closest('li')!;
+const queryRow = (name: string) => screen.queryByText(name, inList);
+const findRow = async (name: string) => (await screen.findByText(name, inList)).closest('li')!;
+
+// Items render before the organization listing has answered.
+const rolesLoaded = () =>
+  waitFor(() => expect(within(rowOf('alice')).getByText('Application Provider')).toBeVisible());
 
 async function openActions(user: UserEvent, name: string) {
   await user.click(await screen.findByRole('button', { name: `Actions for ${name}` }));
@@ -25,16 +32,16 @@ afterEach(() => vi.restoreAllMocks());
 
 // The users package in the real shell: router, layout, role guard and MSW backend.
 describe('users (linked addon)', () => {
-  it('shows roles for admins where the organization listing knows them, "-" elsewhere', async () => {
+  it('shows roles for admins where the organization listing knows them', async () => {
     // dave is no member of the session's organization, so the backend cannot tell his roles.
     const root = mockStore.data.organizations.find((org) => org.name === 'root')!;
     const dave = mockStore.data.users.find((u) => u.name === 'dave')!;
     root.member = root.member.filter((m) => m.user_id !== dave._id);
     renderUsers();
 
-    expect(await screen.findByRole('row', { name: /^dave/ })).toBeVisible();
+    expect(await findRow('dave')).toBeVisible();
     expect(within(rowOf('alice')).getByText('Application Provider')).toBeVisible();
-    expect(within(rowOf('dave')).getByText('-', { selector: 'span' })).toBeVisible();
+    expect(within(rowOf('dave')).getByText('Roles unknown')).toBeVisible();
   });
 
   it('shows the roles error and keeps "Edit roles" disabled when the listing fails', async () => {
@@ -46,7 +53,7 @@ describe('users (linked addon)', () => {
     const { user } = renderUsers();
 
     expect(await screen.findByText('Could not load the roles')).toBeVisible();
-    expect(await screen.findByRole('row', { name: /^alice/ })).toBeVisible();
+    expect(await findRow('alice')).toBeVisible();
     await openActions(user, 'alice');
     expect(screen.getByRole('menuitem', { name: 'Edit roles' })).toHaveAttribute(
       'aria-disabled',
@@ -55,8 +62,7 @@ describe('users (linked addon)', () => {
   });
 
   it('keeps "Edit roles" disabled while the roles are loading', async () => {
-    // Held until the test releases it: a fixed delay raced the menu under load, and roles arriving
-    // early rebuild the columns and close the menu before it can be checked.
+    // Held until the test releases it: a fixed delay raced the menu under load.
     let releaseRoles = () => {};
     const rolesHeld = new Promise<void>((resolve) => {
       releaseRoles = resolve;
@@ -69,7 +75,7 @@ describe('users (linked addon)', () => {
     );
     const { user } = renderUsers();
 
-    expect(await screen.findByRole('row', { name: /^alice/ })).toBeVisible();
+    expect(await findRow('alice')).toBeVisible();
     await openActions(user, 'alice');
     expect(screen.getByRole('menuitem', { name: 'Edit roles' })).toHaveAttribute(
       'aria-disabled',
@@ -77,8 +83,7 @@ describe('users (linked addon)', () => {
     );
     await user.keyboard('{Escape}');
     releaseRoles();
-    // The roles arriving rebuilds the columns, which closes an open menu.
-    await screen.findByRole('row', { name: /^alice.*Application Provider/ });
+    await rolesLoaded();
     await openActions(user, 'alice');
     expect(screen.getByRole('menuitem', { name: 'Edit roles' })).not.toHaveAttribute(
       'aria-disabled',
@@ -107,8 +112,8 @@ describe('users (linked addon)', () => {
     ],
   ])('a user %s also invalidates the organization queries', async (_name, act) => {
     const { user, services } = renderUsers();
-    await screen.findByRole('row', { name: /^alice/ });
-    await screen.findByRole('row', { name: /^alice.*Application Provider/ });
+    await findRow('alice');
+    await rolesLoaded();
     const invalidate = vi.spyOn(services.queryClient, 'invalidateQueries');
 
     await act(user);
@@ -122,8 +127,8 @@ describe('users (linked addon)', () => {
   it('keeps search and role filter in the URL', async () => {
     const { user, router } = renderUsers(undefined, '/users?q=bo&role=Infrastructure_Provider');
 
-    expect(await screen.findByRole('row', { name: /^bob/ })).toBeVisible();
-    expect(screen.queryByRole('row', { name: /^alice/ })).not.toBeInTheDocument();
+    expect(await findRow('bob')).toBeVisible();
+    expect(queryRow('alice')).not.toBeInTheDocument();
     expect(screen.getByRole('searchbox', { name: 'Search Users' })).toHaveValue('bo');
 
     await user.clear(screen.getByRole('searchbox', { name: 'Search Users' }));
@@ -132,7 +137,7 @@ describe('users (linked addon)', () => {
     await user.click(screen.getByRole('combobox', { name: 'Filter by role' }));
     await user.click(await screen.findByRole('option', { name: 'All roles' }));
     await waitFor(() => expect(router.state.location.search).toBe(''));
-    expect(await screen.findByRole('row', { name: /^alice/ })).toBeVisible();
+    expect(await findRow('alice')).toBeVisible();
   });
 
   it('creates a user and offers the credentials as a download', async () => {
@@ -168,7 +173,7 @@ describe('users (linked addon)', () => {
     expect(text).toContain(`Password: ${password}`);
 
     await user.click(screen.getByRole('button', { name: 'Done' }));
-    expect(await screen.findByRole('row', { name: /^erin/ })).toBeVisible();
+    expect(await findRow('erin')).toBeVisible();
   });
 
   it('shows the backend reason when the username is taken', async () => {
@@ -196,7 +201,7 @@ describe('users (linked addon)', () => {
     );
     const { user } = renderUsers();
 
-    await screen.findByRole('row', { name: /^alice.*Application Provider/ });
+    await rolesLoaded();
     await openActions(user, 'alice');
     await user.click(await screen.findByRole('menuitem', { name: 'Edit roles' }));
     const dialog = await screen.findByRole('dialog');
@@ -221,43 +226,36 @@ describe('users (linked addon)', () => {
     await user.click(await screen.findByRole('button', { name: 'Delete user' }));
 
     await waitFor(() => expect(mockStore.data.users.some((u) => u.name === 'dave')).toBe(false));
-    await waitFor(() =>
-      expect(screen.queryByRole('row', { name: /^dave/ })).not.toBeInTheDocument(),
-    );
+    await waitFor(() => expect(queryRow('dave')).not.toBeInTheDocument());
   });
 
-  it('sorts the created column by date, not by the legacy string', async () => {
+  it('sorts by creation date, not by the legacy string', async () => {
     // As strings 31/07 would sort after 01/11.
     mockStore.data.users.find((u) => u.name === 'alice')!.created_at = '31/07/2026 22:49';
     mockStore.data.users.find((u) => u.name === 'bob')!.created_at = '01/11/2026, 16:34';
     const { user } = renderUsers();
-    await screen.findByRole('row', { name: /^alice/ });
-    const header = screen.getByRole('columnheader', { name: /Created/ });
+    await findRow('alice');
 
-    await user.click(within(header).getByRole('button'));
+    await user.click(screen.getByRole('combobox', { name: 'Sort Users' }));
+    await user.click(await screen.findByRole('option', { name: 'Oldest first' }));
 
-    const order = () => {
-      const names = screen.getAllByRole('row').map((row) => row.textContent ?? '');
-      return (
-        names.findIndex((text) => text.startsWith('alice')) <
-        names.findIndex((text) => text.startsWith('bob'))
-      );
-    };
-    // July precedes November exactly when the column sorts ascending.
-    expect(order()).toBe(header.getAttribute('aria-sort') === 'ascending');
+    await waitFor(() => {
+      const items = within(screen.getByRole('list', { name: 'Users' })).getAllByRole('listitem');
+      expect(items.indexOf(rowOf('alice'))).toBeLessThan(items.indexOf(rowOf('bob')));
+    });
   });
 
-  it('marks the own row and offers to clear a role filter without matches', async () => {
+  it('marks the own item and offers to clear a role filter without matches', async () => {
     const { user } = renderUsers(undefined, '/users?role=Nobody');
 
     expect(await screen.findByText('No users with this role')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Clear filter' }));
-    expect(await screen.findByRole('row', { name: /^Admin\s*You/ })).toBeVisible();
+    expect(within(await findRow('Admin')).getByText('You')).toBeVisible();
   });
 
   it('refuses users without an admin role', async () => {
     renderUsers({ username: 'alice' });
     expect(await screen.findByText(/do not have permission/i)).toBeVisible();
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Users' })).not.toBeInTheDocument();
   });
 });

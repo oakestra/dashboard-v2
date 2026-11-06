@@ -13,7 +13,7 @@ import {
   Input,
 } from '@oakestra/ui';
 import { useMutation } from '@tanstack/react-query';
-import { Building2Icon, ChevronDownIcon, InfoIcon } from 'lucide-react';
+import { ChevronDownIcon, InfoIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useSearchParams } from 'react-router';
@@ -131,9 +131,8 @@ export function LoginPage() {
                 if (withOrganization) form.setValue('organization_name', '');
                 setWithOrganization(!withOrganization);
               }}
-              className="text-muted-foreground hover:text-foreground aria-expanded:text-foreground focus-visible:ring-ring/50 -mx-1 inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-sm font-medium outline-none focus-visible:ring-[3px]"
+              className="text-muted-foreground hover:text-foreground aria-expanded:text-foreground focus-visible:ring-ring/50 -mx-1 inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-sm outline-none focus-visible:ring-[3px]"
             >
-              <Building2Icon aria-hidden className="size-4" />
               Log in to an organization
               <ChevronDownIcon
                 aria-hidden
@@ -159,7 +158,7 @@ export function LoginPage() {
             {login.isPending ? 'Logging in...' : 'Log in'}
           </Button>
           {import.meta.env.DEV && import.meta.env.MODE === 'mock' ? (
-            <p className="text-muted-foreground bg-muted rounded-md px-3 py-2 text-xs">
+            <p className="text-muted-foreground text-center text-xs">
               Mock API: log in as Admin, alice, bob, carol or dave. The password is the username.
             </p>
           ) : null}

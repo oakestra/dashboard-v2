@@ -47,7 +47,7 @@ export function registerLinkedAddons(
     const resolved = resolveLinkedAddon(addon);
     try {
       const definition = parseAddonDefinition(addon.definition, resolved.name);
-      const source = addonSource(resolved);
+      const source = addonSource(resolved, definition.label);
       registries.contributions
         .getState()
         .register(source, resolveAddonContributions(definition, resolved.basePath));

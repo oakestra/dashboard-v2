@@ -2,9 +2,9 @@ import { cn } from '@oakestra/ui';
 import type { ReactNode } from 'react';
 
 /**
- * Centered message block shared by the 404, route error and config error pages. It may render
- * inside the app layout or on a bare page, so it centers itself in the space it gets instead of
- * assuming a full viewport.
+ * Message block shared by the 404, route error and config error pages. It may render inside the
+ * app layout or on a bare page, so it sizes itself to the space it gets instead of assuming a
+ * full viewport.
  */
 export function ErrorState({
   icon,
@@ -16,8 +16,8 @@ export function ErrorState({
   className,
   ...props
 }: {
-  icon: ReactNode;
-  /** HTTP status or similar, shown small above the title when it tells the reader something. */
+  icon?: ReactNode;
+  /** HTTP status or similar, shown next to the title when it tells the reader something. */
   code?: string | number;
   title: ReactNode;
   children?: ReactNode;
@@ -28,34 +28,31 @@ export function ErrorState({
   'data-testid'?: string;
 }) {
   return (
-    <div
-      className={cn('flex min-h-[60vh] items-center justify-center px-4 py-12', className)}
-      {...props}
-    >
-      <div className="flex w-full max-w-lg flex-col items-center text-center">
-        <div
-          aria-hidden
-          className={cn(
-            'mb-5 flex size-12 items-center justify-center rounded-xl border shadow-xs [&_svg]:size-6',
-            tone === 'destructive'
-              ? 'border-destructive/20 bg-destructive/10 text-destructive'
-              : 'bg-card text-muted-foreground',
-          )}
-        >
-          {icon}
+    <div className={cn('px-4 py-10', className)} {...props}>
+      <div className="mx-auto w-full max-w-xl">
+        <div className="flex items-center gap-2">
+          {icon ? (
+            <span
+              aria-hidden
+              className={cn(
+                'shrink-0 [&_svg]:size-4',
+                tone === 'destructive' ? 'text-destructive' : 'text-muted-foreground',
+              )}
+            >
+              {icon}
+            </span>
+          ) : null}
+          <h1 className="text-base font-semibold text-balance">{title}</h1>
+          {code !== undefined ? (
+            <span className="text-muted-foreground text-sm tabular-nums">{code}</span>
+          ) : null}
         </div>
-        {code !== undefined ? (
-          <p className="text-muted-foreground mb-1 font-mono text-sm tabular-nums">{code}</p>
-        ) : null}
-        <h1 className="text-2xl font-semibold tracking-tight text-balance">{title}</h1>
         {children ? (
           <div className="text-muted-foreground mt-2 text-sm text-pretty break-words">
             {children}
           </div>
         ) : null}
-        {actions ? (
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">{actions}</div>
-        ) : null}
+        {actions ? <div className="mt-4 flex flex-wrap items-center gap-2">{actions}</div> : null}
       </div>
     </div>
   );

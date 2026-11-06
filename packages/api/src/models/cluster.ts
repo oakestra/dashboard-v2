@@ -73,3 +73,37 @@ export function parseClusterLocation(value: string | null | undefined): ClusterL
   if (radius !== undefined && (!Number.isFinite(radius) || radius < 0)) return null;
   return radius === undefined ? { latitude, longitude } : { latitude, longitude, radius };
 }
+
+export type ClusterReportState = 'reporting' | 'silent' | 'never-reported';
+
+/**
+ * Whether a cluster is sending reports. `active` is computed by the backend on every read (last
+ * report newer than its freshness threshold), so no clock is needed here and the browser's time
+ * zone or skew cannot disagree with the server. A cluster that registered but never reported has
+ * no `last_modified_timestamp` at all (registration inserts the document without one), which is
+ * why a missing timestamp is told apart from a stale one: a silent cluster still has last-known
+ * values worth showing, a never-reported one has none.
+ */
+export function clusterReportState(
+  cluster: Pick<Cluster, 'active' | 'last_modified_timestamp'>,
+): ClusterReportState {
+  if (cluster.active) return 'reporting';
+  return cluster.last_modified_timestamp === undefined ? 'never-reported' : 'silent';
+}
+
+const CLUSTER_STATE_LABELS: Record<ClusterReportState, string> = {
+  reporting: 'Active',
+  silent: 'Silent',
+  'never-reported': 'Never reported',
+};
+
+export function clusterStateLabel(state: ClusterReportState): string {
+  return CLUSTER_STATE_LABELS[state];
+}
+
+/** Clusters report one of the two fields, depending on their version. */
+export function clusterCpuPercent(
+  cluster: Pick<Cluster, 'cpu_percent' | 'aggregated_cpu_percent'>,
+): number | undefined {
+  return cluster.cpu_percent ?? cluster.aggregated_cpu_percent;
+}

@@ -1,11 +1,13 @@
-import { http, HttpResponse } from '@oakestra/mocks';
+import { http, HttpResponse, withPlacementDemo } from '@oakestra/mocks';
 import type { SlaV2 } from '@oakestra/api';
 import type { Contributions } from '@oakestra/dashboard-sdk';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import type { UserEvent } from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { linkedAddons } from '../app/modules';
+import { addonSource } from '../core/addons/ui-addons';
 import { mockServer, mockStore, TEST_API_URL } from '../test/msw';
 import { renderApp } from '../test/render';
 
@@ -178,6 +180,140 @@ describe('service detail page (linked addon)', () => {
   });
 });
 
+describe('placement explanation', () => {
+  const service = (name: string) =>
+    mockStore.data.services.find((s) => s.microservice_name === name)!;
+  const routeOf = (name: string) =>
+    `/applications/${service(name).applicationID}/services/${service(name)._id}`;
+
+  it('stays away from a service that was placed', async () => {
+    renderService();
+    expect(await screen.findByRole('heading', { name: /frontend/ })).toBeVisible();
+    expect(screen.queryByTestId('placement-panel')).not.toBeInTheDocument();
+  });
+
+  it('shows why trainer is blocked, on the overview only', async () => {
+    const { user } = renderService(routeOf('trainer'));
+
+    const panel = await screen.findByTestId('placement-panel');
+    expect(await within(panel).findByText('Every active cluster is blocked')).toBeVisible();
+    expect(within(panel).getByTestId('placement-row-test-cluster')).toHaveTextContent(
+      'Blocked by memory and vCPU',
+    );
+    expect(within(panel).getByTestId('placement-row-edge-munich')).toHaveTextContent(
+      'Silent, not considered',
+    );
+    expect(panel).not.toHaveTextContent('No cluster can fit');
+
+    await user.click(screen.getByRole('tab', { name: /Instances/ }));
+    expect(screen.queryByTestId('placement-panel')).not.toBeInTheDocument();
+    expect(await screen.findByText('No capacity', { selector: 'h3, div' })).toBeVisible();
+  });
+
+  it('keeps the duplicate and retry actions', async () => {
+    const { user } = renderService(routeOf('trainer'));
+
+    const panel = await screen.findByTestId('placement-panel');
+    expect(
+      within(panel).getByRole('link', { name: 'Duplicate with lower requirements' }),
+    ).toHaveAttribute('href', `${routeOf('trainer')}/duplicate`);
+
+    await user.click(within(panel).getByRole('button', { name: 'Retry placement' }));
+    await waitFor(() => expect(service('trainer').status).not.toBe('NoActiveClusterWithCapacity'));
+  });
+
+  it('disables the copy until a cluster passes, then links it with the limits', async () => {
+    const { user, router } = renderService(routeOf('trainer'));
+
+    const panel = await screen.findByTestId('placement-panel');
+    const blocked = await within(panel).findByRole('button', { name: 'Copy with these limits' });
+    expect(blocked).toBeDisabled();
+    expect(blocked).toHaveAccessibleDescription(/No active cluster passes at these limits/);
+
+    within(panel).getByRole('slider', { name: 'vCPU limit' }).focus();
+    await user.keyboard('{Home}');
+    within(panel)
+      .getByRole('slider', { name: /^Memory limit/ })
+      .focus();
+    await user.keyboard('{Home}');
+
+    expect(within(panel).getByRole('status')).toHaveTextContent(
+      /At 1 vCPU and 1 MB, 1 of 1 active cluster passes cluster checks: test-cluster/,
+    );
+    expect(within(panel).getByTestId('placement-row-test-cluster')).toHaveTextContent(
+      'Passes cluster checks',
+    );
+
+    const copy = within(panel).getByRole('link', { name: 'Copy with these limits' });
+    expect(copy).toHaveAttribute('href', `${routeOf('trainer')}/duplicate?memory=1&vcpus=1`);
+
+    await user.click(copy);
+    expect(await screen.findByRole('heading', { name: 'Duplicate trainer' })).toBeVisible();
+    expect(router.state.location.search).toBe('?memory=1&vcpus=1');
+    expect(await screen.findByLabelText(/^Memory/)).toHaveValue('1');
+    expect(screen.getByLabelText(/^vCPUs?/)).toHaveValue('1');
+  });
+
+  it('ignores limits in the link that are not whole numbers of at least 1', async () => {
+    renderService(`${routeOf('trainer')}/duplicate?memory=0&vcpus=1.5`);
+
+    expect(await screen.findByLabelText(/^Memory/)).toHaveValue('500000');
+    expect(screen.getByLabelText(/^vCPUs?/)).toHaveValue('64');
+  });
+
+  it('explains totals against workers, also next to an instance (wideload)', async () => {
+    withPlacementDemo(mockStore.data);
+    renderService(routeOf('wideload'));
+
+    const panel = await screen.findByTestId('placement-panel');
+    expect(
+      await within(panel).findByText('Cluster totals pass, but no single worker has room'),
+    ).toBeVisible();
+    expect(within(panel).getByTestId('placement-row-test-cluster')).toHaveAttribute(
+      'data-placement',
+      'passes',
+    );
+    expect(within(panel).getByRole('link', { name: 'Copy with these limits' })).toBeVisible();
+  });
+
+  it('explains a pin to a silent cluster and offers no sliders (munichgw)', async () => {
+    withPlacementDemo(mockStore.data);
+    renderService(routeOf('munichgw'));
+
+    const panel = await screen.findByTestId('placement-panel');
+    expect(
+      await within(panel).findByText('Target cluster edge-munich is not reporting'),
+    ).toBeVisible();
+    expect(panel).not.toHaveTextContent('No cluster can fit');
+    expect(within(panel).queryByRole('slider')).not.toBeInTheDocument();
+    expect(within(panel).getByRole('button', { name: 'Copy with these limits' })).toBeDisabled();
+    expect(
+      within(panel).getByRole('link', { name: 'Duplicate with another target' }),
+    ).toBeVisible();
+  });
+
+  it('says what the checks did not look at', async () => {
+    Object.assign(service('trainer'), { vgpus: 1, constraints: [{ type: 'latency' }] });
+    renderService(routeOf('trainer'));
+
+    expect(
+      await screen.findByText('Not evaluated by these checks: vGPU and latency constraint.'),
+    ).toBeVisible();
+  });
+
+  it('keeps the explanation and actions when the clusters cannot be loaded', async () => {
+    mockServer.use(
+      http.get(`${TEST_API_URL}/clusters/`, () => HttpResponse.json({}, { status: 500 })),
+    );
+    renderService(routeOf('trainer'));
+
+    const panel = await screen.findByTestId('placement-panel');
+    expect(await within(panel).findByText('Could not load the clusters')).toBeVisible();
+    expect(within(panel).getByText('No capacity')).toBeVisible();
+    expect(within(panel).getByRole('button', { name: 'Retry placement' })).toBeVisible();
+  });
+});
+
 describe('instance detail page (linked addon)', () => {
   it('renders status, placement, metrics, map and logs', async () => {
     renderService(`${base()}/instances/0`);
@@ -255,5 +391,73 @@ describe('instance detail page (linked addon)', () => {
   it('says so when the instance does not exist', async () => {
     renderService(`${base()}/instances/42`);
     expect(await screen.findByText('Instance not found')).toBeVisible();
+  });
+
+  describe('tabs of remote addons', () => {
+    const flops = addonSource(
+      { name: 'flops', version: '1.2.0', basePath: '/addons/flops', origin: 'manager' },
+      'Flops',
+    );
+    const tab = (component: () => ReactNode) => ({
+      'service.detail.tabs': [{ id: 'tab', label: 'Rounds', component }],
+    });
+
+    it('marks the trigger with the source', async () => {
+      const { services } = renderService();
+      await screen.findByRole('tab', { name: 'Overview' });
+      act(() =>
+        services.contributions.getState().register(
+          flops,
+          tab(() => <p>rounds</p>),
+        ),
+      );
+
+      expect(await screen.findByRole('tab', { name: /Rounds/ })).toHaveTextContent(
+        'RoundsFlopsv1.2.0',
+      );
+    });
+
+    it('falls back to the first tab when the selected one disappears', async () => {
+      const { services, user } = renderService();
+      await screen.findByRole('tab', { name: 'Overview' });
+      act(() =>
+        services.contributions.getState().register(
+          flops,
+          tab(() => <p>rounds</p>),
+        ),
+      );
+      await user.click(await screen.findByRole('tab', { name: /Rounds/ }));
+      expect(await screen.findByText('rounds')).toBeVisible();
+
+      act(() => services.contributions.getState().unregister('addon:flops'));
+
+      expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+      expect(screen.getByText('Requirements')).toBeVisible();
+    });
+
+    it('contains a crash to the panel, and the other tabs keep working', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const { services, user } = renderService();
+      await screen.findByRole('tab', { name: 'Overview' });
+      act(() =>
+        services.contributions.getState().register(
+          flops,
+          tab(() => {
+            throw new Error('kaputt');
+          }),
+        ),
+      );
+      await user.click(await screen.findByRole('tab', { name: /Rounds/ }));
+
+      const error = await screen.findByTestId('contribution-error');
+      expect(error).toHaveTextContent('Rounds from addon "flops" failed to render.');
+      expect(error).toHaveAttribute('data-source', 'addon:flops');
+
+      await user.click(screen.getByRole('tab', { name: 'Overview' }));
+      expect(screen.getByText('Requirements')).toBeVisible();
+    });
   });
 });

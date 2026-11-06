@@ -13,6 +13,18 @@ export interface SlotSource {
   kind: 'core' | 'addon';
   id: string;
   label: string;
+  /**
+   * True for an addon loaded at runtime. Unset or false for everything built into the dashboard,
+   * which `kind` cannot tell: first-party packages are of kind `addon` too.
+   */
+  remote?: boolean;
+  /** The addon's name for people: its `label`, or its id when it declares none. */
+  displayName?: string;
+  /**
+   * The installed version, for remote addons only. Packages built into the dashboard have no
+   * version of their own to show.
+   */
+  version?: string;
 }
 
 type ContextProp<P extends RenderablePointId> =

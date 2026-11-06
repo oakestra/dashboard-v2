@@ -28,3 +28,4 @@ export * from './models/organization.ts';
 export * from './models/service.ts';
 export * from './models/sla.ts';
 export * from './models/user.ts';
+export * from './status.ts';
