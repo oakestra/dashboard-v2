@@ -103,11 +103,12 @@ describe('fleet (linked addon)', () => {
     row.focus();
     await user.keyboard('{Enter}');
     await waitFor(() => expect(router.state.location.search).toMatch(/^\?select=service/));
-    expect(row).toHaveAttribute('aria-pressed', 'true');
+    // The router state is ahead of the render, so the DOM needs its own wait.
+    await waitFor(() => expect(row).toHaveAttribute('aria-pressed', 'true'));
 
     await user.click(row);
     await waitFor(() => expect(router.state.location.search).toBe(''));
-    expect(row).toHaveAttribute('aria-pressed', 'false');
+    await waitFor(() => expect(row).toHaveAttribute('aria-pressed', 'false'));
   });
 
   it('selects a cluster from its header', async () => {
@@ -228,7 +229,7 @@ describe('fleet (linked addon)', () => {
     await waitFor(() => expect(router.state.location.search).toBe('?lens=cpu'));
     // 0 without any history is not the same as idle.
     expect(
-      within(cards).getByRole('button', { name: /^ingest on test-cluster:.*no data/ }),
+      await within(cards).findByRole('button', { name: /^ingest on test-cluster:.*no data/ }),
     ).toHaveTextContent('No data');
   });
 
