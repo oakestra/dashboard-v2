@@ -12,6 +12,7 @@ import {
   parseLens,
   placementSelection,
   resolveSelection,
+  selectionOnCard,
   serviceSelection,
   summarySentence,
   unplacedGroups,
@@ -559,5 +560,26 @@ describe('parseLens', () => {
   it('falls back to health for anything hand-written into the URL', () => {
     expect(parseLens('cpu')).toBe('cpu');
     expect(parseLens('power')).toBe('health');
+  });
+});
+
+describe('selectionOnCard', () => {
+  const { rows } = fleetOf([entry('shop', [service('web')])]);
+
+  it('keeps a service or instance selection on the card that lists it', () => {
+    expect(selectionOnCard(serviceSelection('web'), rows, 'a')).toBe(serviceSelection('web'));
+    expect(selectionOnCard(instanceSelection('web', 0), rows, 'a')).toBe(
+      instanceSelection('web', 0),
+    );
+  });
+
+  it('blanks anything that is on another card', () => {
+    expect(selectionOnCard(serviceSelection('other'), rows, 'a')).toBe('');
+    expect(selectionOnCard(clusterSelection('b'), rows, 'a')).toBe('');
+    expect(selectionOnCard(clusterSelection('b'), rows)).toBe('');
+  });
+
+  it('keeps the selection of the cluster itself', () => {
+    expect(selectionOnCard(clusterSelection('a'), [], 'a')).toBe(clusterSelection('a'));
   });
 });

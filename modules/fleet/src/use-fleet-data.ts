@@ -2,6 +2,7 @@ import type { Application, Cluster, Service } from '@oakestra/api';
 import {
   allApplicationsQuery,
   allServicesQuery,
+  addonQueryKey,
   applicationsQuery,
   clustersQuery,
   profileQuery,
@@ -9,8 +10,9 @@ import {
   useCurrentUser,
   useOakestraApi,
   usePermissions,
+  type OakestraApi,
 } from '@oakestra/dashboard-sdk';
-import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import type { FleetEntry, FleetScope } from './lib';
@@ -34,8 +36,40 @@ interface QueryState {
   refetch: () => unknown;
 }
 
-function foldServices(results: UseQueryResult<Service[]>[]) {
-  return { lists: results.map((query) => query.data), states: results as QueryState[] };
+interface ServicesResult {
+  applicationId: string;
+  /** The last list that arrived, which a failed refresh leaves in place. */
+  services: Service[] | undefined;
+  updatedAt: number;
+  error: Error | null;
+}
+
+/**
+ * One round over all applications. A timer per application would land its responses one by one, and
+ * each would rebuild the whole fleet. The lists still go through their shared cache entries, and a
+ * failure stays with its application.
+ */
+function refreshServices(
+  queryClient: QueryClient,
+  api: OakestraApi,
+  applications: readonly Application[],
+): Promise<ServicesResult[]> {
+  return Promise.all(
+    applications.map(async ({ _id }) => {
+      const options = servicesByApplicationQuery(api, _id);
+      const error = await queryClient.fetchQuery({ ...options, ...SILENT, staleTime: 0 }).then(
+        () => null,
+        (reason: Error) => reason,
+      );
+      const state = queryClient.getQueryState(options.queryKey);
+      return {
+        applicationId: _id,
+        services: state?.data,
+        updatedAt: state?.dataUpdatedAt ?? 0,
+        error,
+      };
+    }),
+  );
 }
 
 function byApplication(
@@ -77,6 +111,7 @@ export interface FleetData {
  */
 export function useFleetData(): FleetData {
   const api = useOakestraApi();
+  const queryClient = useQueryClient();
   const user = useCurrentUser();
   const isAdmin = usePermissions().hasRole('Admin');
   const username = user?.username ?? null;
@@ -99,32 +134,39 @@ export function useFleetData(): FleetData {
     enabled: !isAdmin && userId !== undefined,
   });
   const ownList = isAdmin ? NO_APPLICATIONS : (ownApplications.data ?? NO_APPLICATIONS);
-  const own = useQueries({
-    queries: ownList.map((application) => ({
-      ...servicesByApplicationQuery(api, application._id),
-      ...LIVE,
-    })),
-    combine: foldServices,
+  const own = useQuery({
+    queryKey: addonQueryKey('fleet', 'own-services', ...ownList.map(({ _id }) => _id)),
+    queryFn: () => refreshServices(queryClient, api, ownList),
+    ...LIVE,
+    enabled: !isAdmin && ownApplications.data !== undefined,
+    // Mutations invalidate the lists, not this key, so coming back to the page always refreshes.
+    staleTime: 0,
+    // Each list was already shared in its own cache entry.
+    structuralSharing: false,
   });
 
   const entries = useMemo<readonly FleetEntry[]>(() => {
     if (isAdmin) return byApplication(allApplications.data ?? [], allServices.data ?? []);
-    return ownList.map((application, index) => {
-      const services = own.lists[index];
+    const results = new Map(own.data?.map((result) => [result.applicationId, result]));
+    return ownList.map((application) => {
+      const services = results.get(application._id)?.services;
       return { application, services: services ?? [], servicesUnavailable: !services };
     });
-  }, [isAdmin, allApplications.data, allServices.data, ownList, own.lists]);
+  }, [isAdmin, allApplications.data, allServices.data, ownList, own.data]);
 
   const required: QueryState[] = isAdmin
     ? [clusters, allApplications, allServices]
     : [clusters, profile, ownApplications];
-  const optional = isAdmin ? [] : own.states;
-  const all = [...required, ...optional];
+  const ownResults = isAdmin ? [] : (own.data ?? []);
+  const ownError = ownResults.find((result) => result.error)?.error ?? null;
 
-  const failed = all.filter((query) => query.isError);
+  const failed = required.filter((query) => query.isError);
   const missing = required.find((query) => query.data === undefined && query.isError);
-  const pending =
-    required.some((query) => query.isPending) || optional.some((query) => query.isPending);
+  const pending = required.some((query) => query.isPending) || (!isAdmin && own.isPending);
+  const updates = [
+    ...required.map((query) => query.dataUpdatedAt),
+    ...ownResults.map((r) => r.updatedAt),
+  ];
 
   return {
     scope: isAdmin ? 'all' : 'own',
@@ -133,9 +175,12 @@ export function useFleetData(): FleetData {
     clusters: clusters.data ?? NO_CLUSTERS,
     // Without the clusters every instance would look unplaced, so they are not optional.
     status: missing ? 'error' : pending ? 'pending' : 'ready',
-    error: missing?.error ?? failed[0]?.error ?? null,
-    stale: failed.length > 0,
-    updatedAt: Math.min(...all.map((query) => query.dataUpdatedAt).filter((time) => time > 0)),
-    retry: () => failed.forEach((query) => void query.refetch()),
+    error: missing?.error ?? failed[0]?.error ?? ownError,
+    stale: failed.length > 0 || ownError !== null,
+    updatedAt: Math.min(...updates.filter((time) => time > 0)),
+    retry: () => {
+      failed.forEach((query) => void query.refetch());
+      if (ownError) void own.refetch();
+    },
   };
 }

@@ -323,6 +323,41 @@ describe('fleet (linked addon)', () => {
     expect(screen.queryByRole('list', { name: 'Fleet board' })).not.toBeInTheDocument();
   });
 
+  it('keeps the last services of an application whose refresh fails, and retries it', async () => {
+    const { services, user } = renderFleet({ user: ALICE });
+    const cards = await board();
+
+    let down = true;
+    mockServer.use(
+      http.get(`${TEST_API_URL}/services/:appId`, () =>
+        down ? HttpResponse.json({ message: 'boom' }, { status: 500 }) : undefined,
+      ),
+    );
+    await services.queryClient.refetchQueries();
+
+    expect(await screen.findByText(/Could not refresh/)).toBeVisible();
+    expect(within(cards).getByRole('heading', { name: 'analytics' })).toBeVisible();
+    expect(screen.queryByText('Services could not be loaded')).not.toBeInTheDocument();
+    expect(document.querySelector('[data-sonner-toast]')).toBeNull();
+
+    down = false;
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(screen.queryByText(/Could not refresh/)).not.toBeInTheDocument());
+  });
+
+  it('says so when the services of an application never loaded', async () => {
+    mockServer.use(
+      http.get(`${TEST_API_URL}/services/:appId`, () =>
+        HttpResponse.json({ message: 'boom' }, { status: 500 }),
+      ),
+    );
+    renderFleet({ user: ALICE });
+
+    expect((await screen.findAllByText('Services could not be loaded'))[0]).toBeVisible();
+    expect(screen.getByText(/Could not refresh/)).toBeVisible();
+  });
+
   it('keeps the data and shows one banner when a refresh fails', async () => {
     const { services } = renderFleet();
     await board();

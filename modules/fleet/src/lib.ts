@@ -644,6 +644,23 @@ export function unplacedGroups(rows: readonly ApplicationRow[]): ApplicationRow[
   );
 }
 
+/**
+ * The selection as one card needs it: blank unless it is on that card, so a click only re-renders
+ * the cards it concerns. Rows compare with it only to tell whether they are pressed.
+ */
+export function selectionOnCard(
+  selection: string,
+  groups: readonly ApplicationRow[],
+  clusterId?: string,
+): string {
+  const [kind, id] = selection.split(':');
+  const here =
+    kind === 'cluster'
+      ? id === clusterId
+      : groups.some((group) => group.services.some((row) => row.service._id === id));
+  return here ? selection : '';
+}
+
 export type InspectorTarget =
   | { kind: 'service'; application: ApplicationRow; row: ServiceRow }
   | { kind: 'instance'; application: ApplicationRow; row: ServiceRow; entry: FleetInstance }

@@ -8,12 +8,13 @@ import {
   PointerGauge,
   staleSurfaceClassName,
 } from '@oakestra/ui';
-import type { ReactNode } from 'react';
+import { memo, useMemo, type ReactNode } from 'react';
 
 import {
   availableMemoryLabel,
   clusterGroups,
   clusterSelection,
+  selectionOnCard,
   unplacedGroups,
   type ApplicationRow,
   type ClusterLane,
@@ -74,7 +75,7 @@ interface CardProps {
   onSelect: (selection: string) => void;
 }
 
-function ClusterCard({
+const ClusterCard = memo(function ClusterCard({
   lane,
   groups,
   lens,
@@ -140,9 +141,9 @@ function ClusterCard({
       </div>
     </Card>
   );
-}
+});
 
-function UnplacedCard({
+const UnplacedCard = memo(function UnplacedCard({
   groups,
   selection,
   onSelect,
@@ -177,7 +178,7 @@ function UnplacedCard({
       </div>
     </Card>
   );
-}
+});
 
 interface FleetBoardProps {
   fleet: FleetModel;
@@ -195,17 +196,33 @@ interface FleetBoardProps {
  * of them. The columns follow the board's own width rather than the viewport, because the open
  * inspector takes a third of the page away from it.
  */
-export function FleetBoard({ fleet, rows, lens, selection, filtering, onSelect }: FleetBoardProps) {
-  const unplaced = unplacedGroups(rows);
-  const cards = fleet.lanes
-    .map((lane) => ({ lane, groups: clusterGroups(rows, lane.id) }))
-    .filter(({ groups }) => !filtering || groups.length > 0);
+export const FleetBoard = memo(function FleetBoard({
+  fleet,
+  rows,
+  lens,
+  selection,
+  filtering,
+  onSelect,
+}: FleetBoardProps) {
+  // Kept across selection changes: the cards are memoized on these groups.
+  const unplaced = useMemo(() => unplacedGroups(rows), [rows]);
+  const cards = useMemo(
+    () =>
+      fleet.lanes
+        .map((lane) => ({ lane, groups: clusterGroups(rows, lane.id) }))
+        .filter(({ groups }) => !filtering || groups.length > 0),
+    [fleet.lanes, rows, filtering],
+  );
   return (
     <div className="@container">
       <ul aria-label="Fleet board" className="grid gap-4 @xl:grid-cols-2 @5xl:grid-cols-3">
         {unplaced.length > 0 ? (
           <li className="min-w-0">
-            <UnplacedCard groups={unplaced} selection={selection} onSelect={onSelect} />
+            <UnplacedCard
+              groups={unplaced}
+              selection={selectionOnCard(selection, unplaced)}
+              onSelect={onSelect}
+            />
           </li>
         ) : null}
         {cards.map(({ lane, groups }) => (
@@ -214,7 +231,7 @@ export function FleetBoard({ fleet, rows, lens, selection, filtering, onSelect }
               lane={lane}
               groups={groups}
               lens={lens}
-              selection={selection}
+              selection={selectionOnCard(selection, groups, lane.id)}
               onSelect={onSelect}
             />
           </li>
@@ -222,4 +239,4 @@ export function FleetBoard({ fleet, rows, lens, selection, filtering, onSelect }
       </ul>
     </div>
   );
-}
+});

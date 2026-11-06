@@ -16,7 +16,7 @@ import {
   useSearchText,
 } from '@oakestra/ui';
 import { BoxesIcon, SearchXIcon } from 'lucide-react';
-import { useMemo } from 'react';
+import { useDeferredValue, useMemo } from 'react';
 import { Link } from 'react-router';
 
 import { ExceptionsList } from '../components/ExceptionsList';
@@ -98,16 +98,18 @@ function Loaded({ data }: { data: FleetData }) {
   const lens = parseLens(lensParam);
   const [queryParam, setQueryParam] = useSearchParam('q');
   const [query, setQuery] = useSearchText(queryParam, setQueryParam);
+  // The board is not paged, so narrowing it must not hold up the field.
+  const filterText = useDeferredValue(query);
   const [exceptionsParam, setExceptionsParam] = useSearchParam('only');
   const onlyExceptions = exceptionsParam === 'exceptions';
   const [selection, setSelection] = useSearchParam('select');
 
   const rows = useMemo(
-    () => filterRows(fleet.rows, { query, onlyExceptions }),
-    [fleet.rows, query, onlyExceptions],
+    () => filterRows(fleet.rows, { query: filterText, onlyExceptions }),
+    [fleet.rows, filterText, onlyExceptions],
   );
   const target = selection ? resolveSelection(fleet, selection) : null;
-  const filtering = query.trim() !== '' || onlyExceptions;
+  const filtering = filterText.trim() !== '' || onlyExceptions;
   const clearFilters = () => {
     setQuery('');
     setExceptionsParam('');
