@@ -16,6 +16,7 @@ import {
   QueryErrorAlert,
   plural,
   stretchedLinkClassName,
+  RowMenu,
 } from '@oakestra/ui';
 import { DataList, type DataListSortOption } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
@@ -25,7 +26,6 @@ import { Link } from 'react-router';
 
 import { useCreateOrganization, useDeleteOrganization } from '../api/mutations';
 import { OrganizationNameDialog } from '../components/OrganizationNameDialog';
-import { RowMenu } from '../components/RowMenu';
 import { adminCount } from '../members';
 
 const searchValue = (organization: Organization) => organization.name;

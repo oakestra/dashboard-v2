@@ -4,39 +4,24 @@ import {
   allServicesQuery,
   applicationsQuery,
   hasAnyRole,
+  matchesTokens,
   profileQuery,
+  readCached,
+  searchTokens,
   servicesByApplicationQuery,
   type CommandAddon,
   type CommandContext,
   type CommandResult,
 } from '@oakestra/dashboard-sdk';
-import type { EnsureQueryDataOptions, QueryKey } from '@tanstack/react-query';
 import { BoxesIcon, BoxIcon } from 'lucide-react';
 
 import { placementFailureStatus } from './services/placement';
-
-// The palette asks on every pause in typing, and its answer should not wait for the network. Older
-// entries still answer at once and get refreshed behind the scenes.
-const FRESH_ENOUGH_MS = 30_000;
 
 const MAX_RESULTS = 12;
 
 interface ApplicationEntry {
   application: Application;
   services: readonly Service[];
-}
-
-function readCached<T, K extends QueryKey>(
-  { queryClient }: CommandContext,
-  options: EnsureQueryDataOptions<T, Error, T, K>,
-): Promise<T> {
-  return queryClient.ensureQueryData({
-    ...options,
-    revalidateIfStale: true,
-    staleTime: FRESH_ENOUGH_MS,
-    // A failed refresh in the background is no reason for a toast.
-    meta: { silent: true },
-  });
 }
 
 async function adminEntries(ctx: CommandContext): Promise<ApplicationEntry[]> {
@@ -68,11 +53,6 @@ async function ownEntries(ctx: CommandContext): Promise<ApplicationEntry[]> {
     const list = lists[index];
     return { application, services: list?.status === 'fulfilled' ? list.value : [] };
   });
-}
-
-function fits(tokens: readonly string[], ...fields: readonly (string | undefined)[]): boolean {
-  const text = fields.join(' ').toLowerCase();
-  return tokens.every((token) => text.includes(token));
 }
 
 function applicationResult(
@@ -116,14 +96,14 @@ export async function searchApplications(
   const { addon } = ctx;
   if (!addon) return [];
   const entries = await (hasAnyRole(ctx.user, ['Admin']) ? adminEntries(ctx) : ownEntries(ctx));
-  const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const tokens = searchTokens(query);
 
   const services: CommandResult[] = [];
   const applications: CommandResult[] = [];
   for (const entry of entries) {
     const { application } = entry;
     const matched = entry.services.filter((service) =>
-      fits(
+      matchesTokens(
         tokens,
         application.application_name,
         service.microservice_name,
@@ -132,7 +112,11 @@ export async function searchApplications(
       ),
     );
     services.push(...matched.map((service) => serviceResult(application, service, addon)));
-    const byName = fits(tokens, application.application_name, application.application_namespace);
+    const byName = matchesTokens(
+      tokens,
+      application.application_name,
+      application.application_namespace,
+    );
     if (byName || matched.length > 0) {
       applications.push(applicationResult(entry, addon, byName ? undefined : matched[0]));
     }

@@ -124,7 +124,7 @@ function InstalledAddonItem({
           <DashboardUiBadge entry={uiEntry} />
         </span>
       </div>
-      <ItemActions className="relative z-10 ml-auto">
+      <ItemActions className="ml-auto">
         {action === 'force-disable' ? (
           <Button
             variant="outline"

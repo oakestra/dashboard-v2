@@ -4,8 +4,8 @@ import {
   AlertDescription,
   Button,
   cn,
+  CollectionSearch,
   EmptyState,
-  Input,
   Label,
   PageHeader,
   QueryErrorAlert,
@@ -13,9 +13,10 @@ import {
   Switch,
   ToggleGroup,
   ToggleGroupItem,
+  useSearchText,
 } from '@oakestra/ui';
-import { BoxesIcon, SearchIcon, SearchXIcon } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { BoxesIcon, SearchXIcon } from 'lucide-react';
+import { useMemo } from 'react';
 import { Link } from 'react-router';
 
 import { ExceptionsList } from '../components/ExceptionsList';
@@ -96,13 +97,7 @@ function Loaded({ data }: { data: FleetData }) {
   const [lensParam, setLens] = useSearchParam('lens', 'health');
   const lens = parseLens(lensParam);
   const [queryParam, setQueryParam] = useSearchParam('q');
-  // The field reads local state and only reports to the URL: a router update is asynchronous, so a
-  // controlled input bound to it straight away drops characters of anyone typing fast.
-  const [query, setQueryState] = useState(queryParam);
-  const setQuery = (value: string) => {
-    setQueryState(value);
-    setQueryParam(value);
-  };
+  const [query, setQuery] = useSearchText(queryParam, setQueryParam);
   const [exceptionsParam, setExceptionsParam] = useSearchParam('only');
   const onlyExceptions = exceptionsParam === 'exceptions';
   const [selection, setSelection] = useSearchParam('select');
@@ -156,20 +151,12 @@ function Loaded({ data }: { data: FleetData }) {
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {fleet.rows.length > 0 ? (
           <>
-            <div className="relative w-full sm:w-64">
-              <SearchIcon
-                aria-hidden
-                className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2"
-              />
-              <Input
-                type="search"
-                aria-label="Filter applications and services"
-                placeholder="Filter applications and services"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                className="pl-8"
-              />
-            </div>
+            <CollectionSearch
+              label="applications and services"
+              placeholder="Filter applications and services"
+              value={query}
+              onChange={setQuery}
+            />
             <div className="flex items-center gap-2">
               <Switch
                 id="fleet-only-exceptions"

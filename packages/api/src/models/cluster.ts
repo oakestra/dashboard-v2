@@ -90,3 +90,20 @@ export function clusterReportState(
   if (cluster.active) return 'reporting';
   return cluster.last_modified_timestamp === undefined ? 'never-reported' : 'silent';
 }
+
+const CLUSTER_STATE_LABELS: Record<ClusterReportState, string> = {
+  reporting: 'Active',
+  silent: 'Silent',
+  'never-reported': 'Never reported',
+};
+
+export function clusterStateLabel(state: ClusterReportState): string {
+  return CLUSTER_STATE_LABELS[state];
+}
+
+/** Clusters report one of the two fields, depending on their version. */
+export function clusterCpuPercent(
+  cluster: Pick<Cluster, 'cpu_percent' | 'aggregated_cpu_percent'>,
+): number | undefined {
+  return cluster.cpu_percent ?? cluster.aggregated_cpu_percent;
+}

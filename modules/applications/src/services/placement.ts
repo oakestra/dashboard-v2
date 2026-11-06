@@ -1,6 +1,7 @@
 import {
   clusterReportState,
   isPlacementFailure,
+  isWorkerPlacementFailure,
   type Cluster,
   type ClusterReportState,
   type Service,
@@ -51,8 +52,6 @@ export interface SilentPlacementRow extends RowBase {
 export type PlacementRow = CheckedPlacementRow | SilentPlacementRow;
 
 const isChecked = (row: PlacementRow): row is CheckedPlacementRow => row.state !== 'silent';
-
-const normalizeStatus = (status: string) => status.toUpperCase().replaceAll('_', '');
 
 /**
  * The status to explain, if any. The cluster manager writes NO_WORKER_CAPACITY onto the instance,
@@ -185,9 +184,6 @@ export function describeRowResult(row: PlacementRow): string {
     : `Blocked by ${blockerList(row.blockers)}`;
 }
 
-/** Statuses from a cluster's own scheduler: the root already chose a cluster, no worker took it. */
-const WORKER_FAILURES = new Set(['NOWORKERCAPACITY', 'NOQUALIFIEDWORKERFOUND', 'NONODEFOUND']);
-
 export interface PlacementExplanation {
   title: string;
   detail: string;
@@ -240,7 +236,7 @@ export function explainPlacement(
   rows: readonly PlacementRow[],
 ): PlacementExplanation {
   const status = placementFailureStatus(service);
-  const workerFailure = status !== undefined && WORKER_FAILURES.has(normalizeStatus(status));
+  const workerFailure = isWorkerPlacementFailure(status);
   const target = directTarget(service);
   if (target !== undefined) {
     const row = rows.find((candidate) => candidate.isTarget);

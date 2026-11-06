@@ -1,7 +1,8 @@
+import { clusterCpuPercent, clusterStateLabel } from '@oakestra/api';
 import {
   Card,
   cn,
-  formatMegabytes,
+  formatPercent,
   formatRelativeTime,
   plural,
   PointerGauge,
@@ -10,23 +11,17 @@ import {
 import type { ReactNode } from 'react';
 
 import {
+  availableMemoryLabel,
   clusterGroups,
   clusterSelection,
   unplacedGroups,
   type ApplicationRow,
-  type BoardGroup,
   type ClusterLane,
   type FleetModel,
   type Lens,
 } from '../lib';
 import { PlacedRow, rowButtonClassName, UnplacedRow } from './ServiceRows';
 import { Mark } from './Mark';
-
-const STATE_LABELS = {
-  reporting: 'Active',
-  silent: 'Silent',
-  'never-reported': 'Never reported',
-};
 
 function clusterSubline({ state, cluster }: ClusterLane): string {
   if (state === 'never-reported') return 'Registered, no report yet';
@@ -35,37 +30,36 @@ function clusterSubline({ state, cluster }: ClusterLane): string {
 }
 
 function ClusterLoad({ lane, lens }: { lane: ClusterLane; lens: Lens }) {
-  const { cpu_percent, aggregated_cpu_percent, memory_in_mb: available } = lane.cluster;
   if (lane.state !== 'reporting') return null;
   if (lens === 'cpu') {
-    const cpu = cpu_percent ?? aggregated_cpu_percent ?? null;
+    const cpu = clusterCpuPercent(lane.cluster) ?? null;
     return (
       <PointerGauge
         size="sm"
         className="mt-2 w-full"
         label={`${lane.name} CPU`}
         value={cpu}
-        valueLabel={cpu === null ? undefined : `${Math.round(cpu)}%`}
+        valueLabel={cpu === null ? undefined : formatPercent(cpu, 0)}
       />
     );
   }
   if (lens === 'memory') {
     return (
       <span className="text-muted-foreground mt-2 block text-xs">
-        {available === undefined ? 'No data' : `${formatMegabytes(available, 0)} available`}
+        {availableMemoryLabel(lane.cluster) ?? 'No data'}
       </span>
     );
   }
   return null;
 }
 
-function Group({ application, children }: { application: ApplicationRow; children: ReactNode }) {
-  const name = application.application.application_name;
+function Group({ group, children }: { group: ApplicationRow; children: ReactNode }) {
+  const name = group.application.application_name;
   return (
     <div>
       <h3 className="text-muted-foreground flex items-baseline gap-2 px-3 py-1 text-xs font-medium">
         <span className="truncate">{name}</span>
-        {application.owned ? null : <span className="font-normal">{application.owner}</span>}
+        {group.owned ? null : <span className="font-normal">{group.owner}</span>}
       </h3>
       {children}
     </div>
@@ -86,11 +80,11 @@ function ClusterCard({
   lens,
   selection,
   onSelect,
-}: CardProps & { lane: ClusterLane; groups: readonly BoardGroup[] }) {
+}: CardProps & { lane: ClusterLane; groups: readonly ApplicationRow[] }) {
   const target = clusterSelection(lane.id);
   const selected = selection === target;
   const reporting = lane.state === 'reporting';
-  const state = STATE_LABELS[lane.state];
+  const state = clusterStateLabel(lane.state);
   const sub = clusterSubline(lane);
   return (
     <Card
@@ -125,10 +119,10 @@ function ClusterCard({
         {groups.length === 0 ? (
           <p className="text-muted-foreground px-3 py-1 text-sm">Nothing you can see runs here.</p>
         ) : (
-          groups.map(({ application, services }) => (
-            <Group key={application.application._id} application={application}>
+          groups.map((group) => (
+            <Group key={group.application._id} group={group}>
               <ul>
-                {services.map((row) => (
+                {group.services.map((row) => (
                   <li key={row.service._id}>
                     <PlacedRow
                       row={row}
@@ -152,7 +146,7 @@ function UnplacedCard({
   groups,
   selection,
   onSelect,
-}: Omit<CardProps, 'lens'> & { groups: readonly BoardGroup[] }) {
+}: Omit<CardProps, 'lens'> & { groups: readonly ApplicationRow[] }) {
   const count = groups.reduce((total, group) => total + group.services.length, 0);
   return (
     <Card role="group" aria-label="Unplaced" className="h-full gap-0 overflow-hidden py-0">
@@ -163,15 +157,15 @@ function UnplacedCard({
         </p>
       </div>
       <div className={cardBodyClassName}>
-        {groups.map(({ application, services }) => (
-          <Group key={application.application._id} application={application}>
-            {services.length === 0 ? (
+        {groups.map((group) => (
+          <Group key={group.application._id} group={group}>
+            {group.services.length === 0 ? (
               <p className="text-muted-foreground px-3 py-1 text-sm">
-                {application.servicesUnavailable ? 'Services could not be loaded' : 'No services'}
+                {group.servicesUnavailable ? 'Services could not be loaded' : 'No services'}
               </p>
             ) : (
               <ul>
-                {services.map((row) => (
+                {group.services.map((row) => (
                   <li key={row.service._id}>
                     <UnplacedRow row={row} selection={selection} onSelect={onSelect} />
                   </li>

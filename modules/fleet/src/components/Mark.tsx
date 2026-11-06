@@ -16,7 +16,8 @@ export function Mark({ tone, stale = false, pulse = false, className }: MarkProp
     <StatusDot
       tone={tone}
       stale={stale}
-      pulse={pulse}
+      // A last-known state is not changing in front of anyone.
+      pulse={pulse && !stale}
       className={cn(
         tone === 'success' && !stale && '[&>span]:bg-muted-foreground',
         // Eight pixels cannot carry a dashed outline, the dashes smear into a blob.

@@ -56,6 +56,12 @@ export function formatRelativeTime(
   return relativeFormat.format(seconds, 'second');
 }
 
+/** Two letters for an avatar: of the first two words of a name, or of its only word. */
+export function initials(name: string): string {
+  const [first = '', second] = name.split(/[\s._-]+/).filter(Boolean);
+  return (second ? first.charAt(0) + second.charAt(0) : first.slice(0, 2)).toUpperCase();
+}
+
 const LEGACY_DATE = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/;
 
 /**

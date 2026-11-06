@@ -15,8 +15,8 @@ import {
   serviceSelection,
   summarySentence,
   unplacedGroups,
-  type BoardGroup,
   type BuildFleetInput,
+  type ApplicationRow,
   type FleetEntry,
 } from './lib';
 
@@ -237,7 +237,7 @@ describe('buildFleet silent clusters', () => {
     expect(rows[0]!.services[0]!.placements.get('off')![0]!.stale).toBe(true);
     expect(rows[0]!.services[0]!.placements.get('new')![0]!.stale).toBe(true);
     expect(rows[0]!.services[0]!.placements.get('a')![0]!.stale).toBe(false);
-    expect(summary).toMatchObject({ running: 1, runningClusters: 1, lastKnown: 2 });
+    expect(summary).toMatchObject({ running: 1, runningClusters: 1 });
   });
 
   it('counts what is still on the way as not running', () => {
@@ -523,13 +523,14 @@ describe('board groups', () => {
     ],
     [reporting('a'), reporting('b')],
   );
-  const names = (group: BoardGroup) => group.services.map((row) => row.service.microservice_name);
+  const names = (group: ApplicationRow) =>
+    group.services.map((row) => row.service.microservice_name);
 
   it('groups what sits on a cluster by application, a service on each cluster it runs on', () => {
     const onA = clusterGroups(rows, 'a');
     const onB = clusterGroups(rows, 'b');
 
-    expect(onA.map((group) => group.application.application.application_name)).toEqual(['shop']);
+    expect(onA.map((group) => group.application.application_name)).toEqual(['shop']);
     expect(names(onA[0]!)).toEqual(['web']);
     expect(names(onB[0]!).sort()).toEqual(['db', 'web']);
     expect(clusterGroups(rows, 'nope')).toEqual([]);
@@ -538,7 +539,7 @@ describe('board groups', () => {
   it('lists unplaced services, and applications that would otherwise be nowhere', () => {
     const groups = unplacedGroups(rows);
 
-    expect(groups.map((group) => group.application.application.application_name).sort()).toEqual([
+    expect(groups.map((group) => group.application.application_name).sort()).toEqual([
       'batch',
       'empty',
     ]);

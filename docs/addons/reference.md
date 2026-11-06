@@ -440,9 +440,9 @@ in a group of their own named after the source `label`:
     label: 'Jobs',
     minQueryLength: 2,
     search: async (query, ctx, signal) => {
-      const { addon, api, queryClient } = ctx;
+      const { addon, api } = ctx;
       if (!addon) return [];
-      const jobs = await queryClient.ensureQueryData(jobsQuery(api));
+      const jobs = await readCached(ctx, jobsQuery(api));
       return jobs
         .filter((job) => job.name.toLowerCase().includes(query.toLowerCase()))
         .map((job) => ({
@@ -476,9 +476,10 @@ invalid result`), the others stay.
   palette, outside your React tree, so there are no hooks. What they would return is on `ctx`:
   `api`, `notify`, `user`, `queryClient`, `navigate`, `addon` and `isFeatureEnabled(id)` (use it
   instead of `useFeatureEnabled`).
-- **Read through `ctx.queryClient`.** A search runs after each pause in typing, so fetch with
-  `ensureQueryData` and the SDK's [platform queries](#data-fetching-rules) or your own
-  `addonQueryKey` keys instead of calling the API per keystroke.
+- **Read through the cache.** A search runs after each pause in typing, so fetch with
+  `readCached(ctx, options)` and the SDK's [platform queries](#data-fetching-rules) or your own
+  `addonQueryKey` keys instead of calling the API per keystroke. It answers from the cache, refreshes
+  in the background and never toasts. `searchTokens` and `matchesTokens` match a query word by word.
 - **Limits.** `search` is not called for queries shorter than `minQueryLength` (default 2, never
   below 1) and has five seconds; `signal` aborts when the query changes or the time is up, so
   pass it to `fetch`. At most 20 results per source are shown, in the order returned, and ids

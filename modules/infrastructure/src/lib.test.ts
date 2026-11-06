@@ -1,7 +1,7 @@
 import type { Cluster } from '@oakestra/api';
 import { describe, expect, it } from 'vitest';
 
-import { clusterPresentation, clusterTotals, clusterUsage, describeAvailableMemory } from './lib';
+import { clusterPresentation, clusterTotals, clusterUsage } from './lib';
 
 const cluster = (overrides: Partial<Cluster>) =>
   ({ _id: 'c', cluster_name: 'c', active: true, virtualization: [], ...overrides }) as Cluster;
@@ -21,19 +21,6 @@ describe('clusterTotals', () => {
       memoryAvailableBytes: 1024 * 1024 * 1024,
       gpuCores: 1,
     });
-  });
-});
-
-describe('describeAvailableMemory', () => {
-  it('shows a dash for a cluster that reports no memory', () => {
-    expect(describeAvailableMemory(cluster({ memory_in_mb: 0 }))).toBe('-');
-    expect(describeAvailableMemory(cluster({}))).toBe('-');
-  });
-
-  it('labels the figure as available, not as a share of a total', () => {
-    expect(describeAvailableMemory(cluster({ memory_in_mb: 2048, memory_percent: 40 }))).toBe(
-      '2 GB available',
-    );
   });
 });
 

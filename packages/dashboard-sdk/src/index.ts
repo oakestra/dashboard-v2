@@ -74,5 +74,6 @@ export {
   servicesByApplicationQuery,
   usersQuery,
 } from './platform-queries';
+export { matchesTokens, readCached, searchTokens } from './command-search';
 export { seedFromLists } from './seed-from-lists';
 export { useSearchParam } from './use-search-param';

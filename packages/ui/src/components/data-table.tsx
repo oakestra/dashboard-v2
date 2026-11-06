@@ -25,15 +25,14 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   InboxIcon,
-  SearchIcon,
   SearchXIcon,
 } from 'lucide-react';
 import * as React from 'react';
 
 import { cn } from '../lib/utils';
 import { Button } from './button';
+import { CollectionSearch, useSearchText } from './collection-search';
 import { EmptyState } from './empty-state';
-import { Input } from './input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
 import { Skeleton } from './skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './table';
@@ -147,63 +146,68 @@ export function useControllable<T>(
   return [value, set] as const;
 }
 
-/**
- * Text of the search box. The box must not be bound straight to a `globalFilter` that lives in
- * the URL: the router applies location changes asynchronously, so a keystroke typed before the
- * previous one came back would be rendered over with the stale value and lost. The box keeps its
- * own text, and the controlled value only replaces it when it changes for a reason other than
- * what was typed here (back navigation, a link with `?q=`).
- */
-export function useSearchText(controlled: string, onChange: (value: string) => void) {
-  const [text, setText] = React.useState(controlled);
-  // Values sent up that the controlled value has not echoed yet, oldest first.
-  const pending = React.useRef<string[]>([]);
-
+/** What `DataTable` and `DataList` do around their row models: keep the page valid, search. */
+export function useCollectionPaging({
+  filteredCount,
+  isLoading,
+  globalFilter,
+  setGlobalFilter,
+  pagination,
+  setPagination,
+}: {
+  filteredCount: number;
+  isLoading: boolean;
+  globalFilter: string;
+  setGlobalFilter: (value: string) => void;
+  pagination: PaginationState;
+  setPagination: (updater: (previous: PaginationState) => PaginationState) => void;
+}) {
+  const pageCount = Math.max(1, Math.ceil(filteredCount / pagination.pageSize));
+  // A controlled page index can outlive the data that justified it (e.g. a stale URL param).
+  const outOfRange = !isLoading && pagination.pageIndex > pageCount - 1;
   React.useEffect(() => {
-    const echoed = pending.current.indexOf(controlled);
-    if (echoed >= 0) {
-      pending.current = pending.current.slice(echoed + 1);
-      return;
-    }
-    pending.current = [];
-    setText(controlled);
-  }, [controlled]);
+    if (outOfRange) setPagination((previous) => ({ ...previous, pageIndex: pageCount - 1 }));
+  }, [outOfRange, pageCount, setPagination]);
 
-  const update = (value: string) => {
-    pending.current.push(value);
-    setText(value);
-    onChange(value);
-  };
-  return [text, update] as const;
+  const [searchText, onSearchTextChange] = useSearchText(globalFilter, (value) => {
+    setGlobalFilter(value);
+    // Results shrink under the user; keep them from landing on an empty page.
+    setPagination((previous) => ({ ...previous, pageIndex: 0 }));
+  });
+  return { pageCount, searchText, onSearchTextChange };
 }
 
-/** The search box of a `DataTable` or `DataList`. */
-export function CollectionSearch({
-  label,
-  placeholder,
-  value,
-  onChange,
+/** Shown instead of the rows: nothing exists yet, or nothing matches the search. */
+export function CollectionEmpty({
+  total,
+  emptyState,
+  noResultsState,
+  searchText,
+  onClearSearch,
 }: {
-  label: string;
-  placeholder: string;
-  value: string;
-  onChange: (value: string) => void;
+  total: number;
+  emptyState: React.ReactNode;
+  noResultsState: React.ReactNode;
+  searchText: string;
+  onClearSearch: () => void;
 }) {
+  if (total === 0)
+    return emptyState ?? <EmptyState icon={<InboxIcon />} title="Nothing here yet" />;
   return (
-    <div className="relative w-full sm:max-w-xs">
-      <SearchIcon
-        aria-hidden
-        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+    noResultsState ?? (
+      <EmptyState
+        icon={<SearchXIcon />}
+        title="No results"
+        description="Nothing matches your search. Try a different term."
+        action={
+          searchText ? (
+            <Button variant="outline" size="sm" onClick={onClearSearch}>
+              Clear search
+            </Button>
+          ) : undefined
+        }
       />
-      <Input
-        type="search"
-        aria-label={`Search ${label}`}
-        placeholder={placeholder}
-        className="pl-9"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </div>
+    )
   );
 }
 
@@ -360,19 +364,14 @@ function DataTable<TData extends object>({
   const rows = table.getRowModel().rows;
   const filteredCount = table.getFilteredRowModel().rows.length;
   const total = data?.length ?? 0;
-  const pageCount = Math.max(1, Math.ceil(filteredCount / pagination.pageSize));
-  const pageIndex = pagination.pageIndex;
-  // A controlled page index can outlive the data that justified it (e.g. a stale URL param).
-  const outOfRange = !isLoading && pageIndex > pageCount - 1;
-  React.useEffect(() => {
-    if (outOfRange) setPagination((previous) => ({ ...previous, pageIndex: pageCount - 1 }));
-  }, [outOfRange, pageCount, setPagination]);
   const columnCount = columns.length;
-
-  const [searchText, onSearchTextChange] = useSearchText(globalFilter, (value) => {
-    setGlobalFilter(value);
-    // Results shrink under the user; keep them from landing on an empty page.
-    setPagination((previous) => ({ ...previous, pageIndex: 0 }));
+  const { pageCount, searchText, onSearchTextChange } = useCollectionPaging({
+    filteredCount,
+    isLoading,
+    globalFilter,
+    setGlobalFilter,
+    pagination,
+    setPagination,
   });
 
   let body: React.ReactNode;
@@ -399,22 +398,13 @@ function DataTable<TData extends object>({
     body = (
       <TableRow className="hover:bg-transparent">
         <TableCell colSpan={columnCount}>
-          {total === 0
-            ? (emptyState ?? <EmptyState icon={<InboxIcon />} title="Nothing here yet" />)
-            : (noResultsState ?? (
-                <EmptyState
-                  icon={<SearchXIcon />}
-                  title="No results"
-                  description="Nothing matches your search. Try a different term."
-                  action={
-                    searchText ? (
-                      <Button variant="outline" size="sm" onClick={() => onSearchTextChange('')}>
-                        Clear search
-                      </Button>
-                    ) : undefined
-                  }
-                />
-              ))}
+          <CollectionEmpty
+            total={total}
+            emptyState={emptyState}
+            noResultsState={noResultsState}
+            searchText={searchText}
+            onClearSearch={() => onSearchTextChange('')}
+          />
         </TableCell>
       </TableRow>
     );

@@ -17,6 +17,7 @@ import {
   TooltipContent,
   TooltipTrigger,
   useSidebar,
+  initials,
 } from '@oakestra/ui';
 import {
   ChevronsUpDownIcon,
@@ -64,7 +65,7 @@ export function UserMenu() {
             >
               <Avatar className="size-8 rounded-md">
                 <AvatarFallback className="bg-sidebar-accent rounded-md text-xs font-medium">
-                  {user.username.slice(0, 2).toUpperCase()}
+                  {initials(user.username)}
                 </AvatarFallback>
               </Avatar>
               <span className="grid min-w-0 flex-1 text-left leading-tight">

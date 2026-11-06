@@ -158,7 +158,9 @@ features/<name>/
   nests sub-items (one level only, see `app/layouts/nav-model.ts`); the one link with the longest
   matching path is highlighted, so a parent and its sub-item are never active together.
 - **Shared status helpers** (`describeStatus`, `serviceAttention`, `summarizeStatuses`,
-  `isPlacementFailure`, `instanceProblem`, `clusterReportState`, tones) live in `@oakestra/api`
+  `isPlacementFailure`, `isWorkerPlacementFailure`, `schedulerDetail`, `instanceProblem`,
+  `hasMetrics`, `clusterReportState`, `clusterStateLabel`, `clusterCpuPercent`, tones and
+  `compareTones`) live in `@oakestra/api`
   (`status.ts`, `models/cluster.ts`), so packages and the SDK do not each keep a copy.
   `modules/applications/src/services/status.ts` re-exports them and adds only React.
 - **Data:** components get the API with `useOakestraApi()` from the SDK, exactly like addons, and
@@ -307,7 +309,10 @@ copy of small stateless pieces (`cn`, `Button`, `Table`), which is harmless.
   default). Column `meta: { numeric: true }` right-aligns with tabular figures (`align`,
   `className`, `headerClassName` also exist).
 - `EmptyState` (icon, title, description, action), `PageHeader` (title, description, actions),
-  `ConfirmDialog` (`destructive`, `pending`; the caller closes it when the mutation settles).
+  `ConfirmDialog` (`destructive`, `pending`; the caller closes it when the mutation settles),
+  `RowMenu` (the kebab menu of a list item or, with `size="icon"`, a page header), `CollectionSearch`
+  and `useSearchText` (a search box whose value lives in the URL; root exports, so a page without a
+  `DataList` does not need the TanStack Table entry).
 - `StatusBadge` (`tone`, `dot`, `icon`, `pulse`) and `StatusDot`: status labels with a glyph per
   tone (disc, triangle, ring, square, dash), so status never rests on color alone; only `warning`
   and `destructive` get a fill. Tones are meanings, not backend states: `success` healthy,
@@ -328,7 +333,7 @@ Also in `@oakestra/ui` root (generic helpers that feature packages must be able 
   It reads `error.message` itself (same text as `describeError`), because `@oakestra/ui` cannot
   import `@oakestra/api`.
 - `format.ts` helpers (`formatBytes`, `formatMegabytes`, `formatPercent`, `formatRelativeTime`,
-  `plural`, `formatDate(Time)`, `parseLegacyDate`/`formatLegacyDate`) and `downloadJson(filename,
+  `initials`, `plural`, `formatDate(Time)`, `parseLegacyDate`/`formatLegacyDate`) and `downloadJson(filename,
 data)` / `downloadText`.
 
 `@oakestra/ui/chart` also has `TimeSeriesChart`: line or area chart of `{ timestamp: Date, value:
@@ -344,8 +349,9 @@ instead of the map. It is its own subpath, not part of `./map`, so a page that o
 does not load MapLibre until a map renders; its implementation imports `@oakestra/ui/map` by
 package name (never `./map`), so the shared map module stays the only MapLibre copy.
 
-`@oakestra/dashboard-sdk` root also exports `seedFromLists` and `useSearchParam(key, fallback)` (one
-search param as state, replacing the history entry).
+`@oakestra/dashboard-sdk` root also exports `seedFromLists`, `useSearchParam(key, fallback)` (one
+search param as state, replacing the history entry) and, for `command.sources`, `readCached`,
+`searchTokens` and `matchesTokens`.
 
 `apps/shell/src/lib` keeps `zod-issues.ts` (`formatIssue`, Zod issues worded for people who write
 JSON by hand) for the addon manager's register dialog; the applications package has its own copy
@@ -736,9 +742,9 @@ plus `app/layouts/command-palette/`. Its contract (`command.actions`, `command.s
   cache as the pages (`modules/applications/src/search.ts`: Admins read `allApplicationsQuery` and
   `allServicesQuery` but keep only their own applications, because detail pages are owner-scoped
   and anyone else's would open on a 404; others use `applicationsQuery`;
-  `modules/infrastructure/src/search.ts`) through
-  `ensureQueryData` with `revalidateIfStale` and `meta.silent`, so typing is answered from the
-  cache and a failed refresh does not toast.
+  `modules/infrastructure/src/search.ts`) through the SDK's `readCached` (`ensureQueryData` with
+  `revalidateIfStale` and `meta.silent`), so typing is answered from the cache and a failed refresh
+  does not toast.
 - "New application" opens `/applications?new=1`, which the applications page turns into its
   create dialog (`useSearchParam('new')`), so it works from any page.
 - Remote addon entries carry a `SourceTag` (`SlotSource.remote`, `displayName`, `version`, filled

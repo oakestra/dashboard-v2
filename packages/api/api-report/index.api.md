@@ -209,6 +209,9 @@ export interface AuthEndpoints {
 // @public (undocumented)
 export type Cluster = z.infer<typeof clusterSchema>;
 
+// @public
+export function clusterCpuPercent(cluster: Pick<Cluster, 'cpu_percent' | 'aggregated_cpu_percent'>): number | undefined;
+
 // @public (undocumented)
 export interface ClusterEndpoints {
     // (undocumented)
@@ -300,6 +303,12 @@ export const clusterSchema: z.ZodObject<{
 }, z.core.$loose>;
 
 // @public (undocumented)
+export function clusterStateLabel(state: ClusterReportState): string;
+
+// @public
+export function compareTones(a: StatusTone, b: StatusTone): number;
+
+// @public (undocumented)
 interface components {
     // (undocumented)
     headers: never;
@@ -371,6 +380,9 @@ export function describeError(error: unknown): string;
 
 // @public
 export function describeStatus(status: string | undefined, detail?: string): StatusDescription;
+
+// @public
+export function hasMetrics(instance: Instance): boolean;
 
 // @public (undocumented)
 export function hasTransitionalInstance(services: readonly Service[]): boolean;
@@ -559,6 +571,9 @@ export function isTransitionalStatus(status: string | undefined): boolean;
 
 // @public
 export function isUndeployed(service: Service): boolean;
+
+// @public
+export function isWorkerPlacementFailure(status: string | undefined): boolean;
 
 // @public
 export function lenientArray<T extends z.ZodType>(item: T, label: string): z.ZodPipe<z.ZodArray<z.ZodUnknown>, z.ZodTransform<z.output<T>[], unknown[]>>;
@@ -2568,6 +2583,9 @@ export interface RequestOptions {
 
 // @public
 export const ROOT_ORGANIZATION_NAME = "root";
+
+// @public
+export function schedulerDetail(detail: string | undefined): string | undefined;
 
 // @public (undocumented)
 export type Service = z.infer<typeof serviceSchema>;

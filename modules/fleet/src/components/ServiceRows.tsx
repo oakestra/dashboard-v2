@@ -31,7 +31,7 @@ function HealthMarks({ instances }: { instances: readonly FleetInstance[] }) {
   return (
     <>
       {sorted.slice(0, MAX_MARKS).map(({ key, status, stale }) => (
-        <Mark key={key} tone={status.tone} stale={stale} pulse={status.pulse && !stale} />
+        <Mark key={key} tone={status.tone} stale={stale} pulse={status.pulse} />
       ))}
       {extra > 0 ? (
         <span className="text-muted-foreground text-xs tabular-nums">+{extra}</span>
@@ -50,11 +50,9 @@ function Reading({
   const reading = instanceReading(instances, lens);
   // A failed instance has no number, which must not make the row look calmer than the health lens.
   const worst = sortInstances(instances)[0];
-  const abnormal =
-    worst && (worst.status.tone === 'destructive' || worst.status.tone === 'warning');
   return (
     <>
-      {abnormal ? <Mark tone={worst.status.tone} /> : null}
+      {worst && isAbnormalTone(worst.status.tone) ? <Mark tone={worst.status.tone} /> : null}
       {reading === null ? (
         <span className="text-muted-foreground text-xs">No data</span>
       ) : reading.value === null ? (

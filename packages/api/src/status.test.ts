@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Service } from './models/service.ts';
-import { describeStatus, isPlacementFailure, serviceAttention } from './status.ts';
+import {
+  compareTones,
+  describeStatus,
+  isPlacementFailure,
+  isWorkerPlacementFailure,
+  schedulerDetail,
+  serviceAttention,
+} from './status.ts';
 
 function service(status: string | undefined, instances: string[] = []): Service {
   return {
@@ -61,5 +68,36 @@ describe('serviceAttention', () => {
     expect(serviceAttention(service(undefined))?.kind).toBe('undeployed');
     expect(serviceAttention(service('REQUESTED'))).toBeNull();
     expect(serviceAttention(service('RUNNING', ['RUNNING']))).toBeNull();
+  });
+});
+
+describe('schedulerDetail', () => {
+  it('drops the placeholder the scheduler leaves on a failed service', () => {
+    const placeholder = 'Waiting for scheduling decision';
+    expect(schedulerDetail(placeholder)).toBeUndefined();
+    expect(describeStatus('FAILED', placeholder).hint).toBe('');
+    expect(describeStatus('FAILED', 'image pull failed').hint).toBe('image pull failed');
+  });
+});
+
+describe('compareTones', () => {
+  it('sorts the worst tone first', () => {
+    const tones = ['neutral', 'success', 'destructive', 'info', 'warning'] as const;
+    expect([...tones].sort(compareTones)).toEqual([
+      'destructive',
+      'warning',
+      'info',
+      'success',
+      'neutral',
+    ]);
+  });
+});
+
+describe('isWorkerPlacementFailure', () => {
+  it('tells a cluster giving up from the root scheduler, in either spelling', () => {
+    expect(isWorkerPlacementFailure('NO_WORKER_CAPACITY')).toBe(true);
+    expect(isWorkerPlacementFailure('NoWorkerCapacity')).toBe(true);
+    expect(isWorkerPlacementFailure('NoActiveClusterWithCapacity')).toBe(false);
+    expect(isWorkerPlacementFailure(undefined)).toBe(false);
   });
 });

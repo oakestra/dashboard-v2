@@ -10,11 +10,8 @@ import {
   Badge,
   Button,
   ConfirmDialog,
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
   EmptyState,
   PageHeader,
   Skeleton,
@@ -30,6 +27,7 @@ import {
   JsonViewer,
   QueryErrorAlert,
   downloadJson,
+  RowMenu,
 } from '@oakestra/ui';
 import { DataList, type DataListSortOption } from '@oakestra/ui/data-table';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -37,7 +35,6 @@ import {
   CircleAlertIcon,
   CopyIcon,
   DownloadIcon,
-  EllipsisIcon,
   Loader2Icon,
   PlayIcon,
   Trash2Icon,
@@ -200,30 +197,23 @@ export function ServiceDetailPage() {
                 <CopyIcon aria-hidden /> Duplicate
               </Link>
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="More actions">
-                  <EllipsisIcon aria-hidden />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onSelect={() => downloadJson(`${data.microservice_name}.sla.json`, sla)}
-                >
-                  <DownloadIcon aria-hidden />
-                  <span>
-                    Download SLA
-                    <span className="block text-xs text-muted-foreground">
-                      Includes environment values
-                    </span>
+            <RowMenu label="More actions" size="icon">
+              <DropdownMenuItem
+                onSelect={() => downloadJson(`${data.microservice_name}.sla.json`, sla)}
+              >
+                <DownloadIcon aria-hidden />
+                <span>
+                  Download SLA
+                  <span className="block text-xs text-muted-foreground">
+                    Includes environment values
                   </span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
-                  <Trash2Icon aria-hidden /> Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
+                <Trash2Icon aria-hidden /> Delete
+              </DropdownMenuItem>
+            </RowMenu>
           </>
         }
       />

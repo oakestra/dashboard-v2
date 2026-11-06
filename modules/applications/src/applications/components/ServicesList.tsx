@@ -14,6 +14,7 @@ import {
   formatMegabytes,
   plural,
   stretchedLinkClassName,
+  RowMenu,
 } from '@oakestra/ui';
 import { DataList, type DataListSortOption } from '@oakestra/ui/data-table';
 import { CopyIcon, PlayIcon, ServerIcon, Trash2Icon } from 'lucide-react';
@@ -23,7 +24,6 @@ import { Link } from 'react-router';
 import { StatusBadge } from '../../services/components/StatusBadge';
 import { useDeleteService, useDeployInstance } from '../../services/mutations';
 import { describeStatus, formatVirtualization, summarizeStatuses } from '../../services/status';
-import { RowMenu } from './RowMenu';
 
 const searchValue = (service: Service) =>
   [
@@ -111,7 +111,7 @@ function ServiceItem({
         ) : null}
       </ItemContent>
       <InstanceCount service={service} />
-      <ItemActions className="relative z-10 ml-auto">{menu}</ItemActions>
+      <ItemActions className="ml-auto">{menu}</ItemActions>
     </Item>
   );
 }

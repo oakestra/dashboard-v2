@@ -1,5 +1,11 @@
-import { clusterReportState, type Cluster, type ClusterReportState } from '@oakestra/api';
-import { BYTES_PER_MB, formatBytes, type StatusTone } from '@oakestra/ui';
+import {
+  clusterCpuPercent,
+  clusterReportState,
+  clusterStateLabel,
+  type Cluster,
+  type ClusterReportState,
+} from '@oakestra/api';
+import { BYTES_PER_MB, type StatusTone } from '@oakestra/ui';
 import type { MapLocationTone } from '@oakestra/ui/location-map';
 
 /**
@@ -9,13 +15,6 @@ import type { MapLocationTone } from '@oakestra/ui/location-map';
  */
 export function availableMemoryBytes(cluster: Cluster): number | undefined {
   return cluster.memory_in_mb === undefined ? undefined : cluster.memory_in_mb * BYTES_PER_MB;
-}
-
-export function describeAvailableMemory(cluster: Cluster): string {
-  const available = availableMemoryBytes(cluster);
-  // A cluster without workers reports 0 MB, which would read as "0 B available" next to a real one.
-  if (available === undefined || available === 0) return '-';
-  return `${formatBytes(available)} available`;
 }
 
 export interface ClusterTotals {
@@ -55,14 +54,11 @@ export interface ClusterPresentation {
  */
 export function clusterPresentation(cluster: Cluster): ClusterPresentation {
   const state = clusterReportState(cluster);
-  switch (state) {
-    case 'reporting':
-      return { state, label: 'Active', tone: 'success', stale: false, mapTone: 'default' };
-    case 'silent':
-      return { state, label: 'Silent', tone: 'neutral', stale: true, mapTone: 'muted' };
-    case 'never-reported':
-      return { state, label: 'Never reported', tone: 'neutral', stale: true, mapTone: 'muted' };
+  const label = clusterStateLabel(state);
+  if (state === 'reporting') {
+    return { state, label, tone: 'success', stale: false, mapTone: 'default' };
   }
+  return { state, label, tone: 'neutral', stale: true, mapTone: 'muted' };
 }
 
 export interface ClusterUsage {
@@ -82,7 +78,7 @@ export interface ClusterUsage {
  */
 export function clusterUsage(cluster: Cluster): ClusterUsage {
   const state = clusterReportState(cluster);
-  const cpu = cluster.cpu_percent ?? cluster.aggregated_cpu_percent;
+  const cpu = clusterCpuPercent(cluster);
   const memory = availableMemoryBytes(cluster);
   if (state === 'reporting') {
     return {

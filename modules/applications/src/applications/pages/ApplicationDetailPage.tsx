@@ -7,11 +7,8 @@ import {
 import {
   Alert,
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
   PageHeader,
   Skeleton,
   SourceTag,
@@ -25,11 +22,11 @@ import {
   TooltipTrigger,
   QueryErrorAlert,
   plural,
+  RowMenu,
 } from '@oakestra/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   InfoIcon,
-  MoreHorizontalIcon,
   PencilIcon,
   PlayIcon,
   PlusIcon,
@@ -192,22 +189,15 @@ export function ApplicationDetailPage() {
                 <TooltipContent>Every service already has an instance</TooltipContent>
               ) : null}
             </Tooltip>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="More actions">
-                  <MoreHorizontalIcon aria-hidden />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => setEditing(true)}>
-                  <PencilIcon aria-hidden /> Edit
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
-                  <Trash2Icon aria-hidden /> Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <RowMenu label="More actions" size="icon">
+              <DropdownMenuItem onSelect={() => setEditing(true)}>
+                <PencilIcon aria-hidden /> Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
+                <Trash2Icon aria-hidden /> Delete
+              </DropdownMenuItem>
+            </RowMenu>
           </>
         }
       />

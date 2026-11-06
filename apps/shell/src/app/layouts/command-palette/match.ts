@@ -1,3 +1,5 @@
+import { searchTokens } from '@oakestra/dashboard-sdk';
+
 export interface Matchable {
   label: string;
   keywords?: readonly string[] | undefined;
@@ -41,7 +43,7 @@ function rankToken(token: string, item: Matchable): number | undefined {
  */
 export function matchRank(query: string, item: Matchable): number | undefined {
   let total = 0;
-  for (const token of query.toLowerCase().split(/\s+/).filter(Boolean)) {
+  for (const token of searchTokens(query)) {
     const rank = rankToken(token, item);
     if (rank === undefined) return undefined;
     total += rank;

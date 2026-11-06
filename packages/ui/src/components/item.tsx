@@ -131,7 +131,12 @@ function ItemDescription({ className, ...props }: React.ComponentProps<'p'>) {
 
 function ItemActions({ className, ...props }: React.ComponentProps<'div'>) {
   return (
-    <div data-slot="item-actions" className={cn('flex items-center gap-2', className)} {...props} />
+    // Above the stretched link of the item, or its controls could not be clicked.
+    <div
+      data-slot="item-actions"
+      className={cn('relative z-10 flex items-center gap-2', className)}
+      {...props}
+    />
   );
 }
 

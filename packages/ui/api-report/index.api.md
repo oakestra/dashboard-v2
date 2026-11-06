@@ -223,6 +223,14 @@ export function CollapsibleContent(input: React_2.ComponentProps<typeof Collapsi
 // @public (undocumented)
 export function CollapsibleTrigger(input: React_2.ComponentProps<typeof Collapsible_2.CollapsibleTrigger>): React_2.JSX.Element;
 
+// @public
+export function CollectionSearch(input: {
+    label: string;
+    placeholder: string;
+    value: string;
+    onChange: (value: string) => void;
+}): React_2.JSX.Element;
+
 // @public (undocumented)
 export function ConfirmDialog(input: ConfirmDialogProps): React_2.JSX.Element;
 
@@ -436,6 +444,9 @@ export function formatPercent(value: number | null | undefined, fractionDigits?:
 // @public
 export function formatRelativeTime(date: Date | string | number | null | undefined, now?: Date | number): string;
 
+// @public
+export function initials(name: string): string;
+
 // @public (undocumented)
 export function Input(input: React_2.ComponentProps<'input'>): React_2.JSX.Element;
 
@@ -605,6 +616,16 @@ export function RadioGroup(input: React_2.ComponentProps<typeof RadioGroup_2.Roo
 
 // @public (undocumented)
 export function RadioGroupItem(input: React_2.ComponentProps<typeof RadioGroup_2.Item>): React_2.JSX.Element;
+
+// @public
+export function RowMenu(input: RowMenuProps): JSX.Element;
+
+// @public (undocumented)
+export interface RowMenuProps {
+    children: ReactNode;
+    label: string;
+    size?: 'icon-sm' | 'icon';
+}
 
 // @public (undocumented)
 export function ScrollArea(input: React_2.ComponentProps<typeof ScrollArea_2.Root>): React_2.JSX.Element;
@@ -965,6 +986,9 @@ export function TooltipTrigger(input: React_2.ComponentProps<typeof Tooltip_2.Tr
 
 // @public (undocumented)
 export function useIsMobile(): boolean;
+
+// @public
+export function useSearchText(controlled: string, onChange: (value: string) => void): readonly [string, (value: string) => void];
 
 // @public (undocumented)
 export function useSidebar(): SidebarContextProps;

@@ -151,7 +151,9 @@ export {
 } from './components/checkbox-group';
 export { Collapsible, CollapsibleContent, CollapsibleTrigger } from './components/collapsible';
 export { ConfirmDialog, type ConfirmDialogProps } from './components/confirm-dialog';
+export { CollectionSearch, useSearchText } from './components/collection-search';
 export { EmptyState, type EmptyStateProps } from './components/empty-state';
+export { RowMenu, type RowMenuProps } from './components/row-menu';
 export {
   Item,
   ItemActions,
@@ -228,6 +230,7 @@ export {
   formatMegabytes,
   formatPercent,
   formatRelativeTime,
+  initials,
   parseLegacyDate,
   plural,
 } from './lib/format';

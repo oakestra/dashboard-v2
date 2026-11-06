@@ -7,8 +7,6 @@ export interface ApplicationHealth {
   tone: StatusTone;
   label: string;
   services: number;
-  /** Services without an instance that the scheduler is not working on either. */
-  undeployed: number;
   instances: { total: number; running: number; pending: number; failed: number };
 }
 
@@ -32,7 +30,7 @@ export function applicationHealth(services: readonly Service[]): ApplicationHeal
     pending: instances.pending,
     failed: instances.failed,
   };
-  const base = { services: services.length, undeployed, instances: counts };
+  const base = { services: services.length, instances: counts };
 
   if (services.length === 0) return { ...base, tone: 'neutral', label: 'Empty' };
   if (summary.tone === 'destructive') return { ...base, tone: 'destructive', label: 'Failing' };

@@ -90,7 +90,12 @@ export function PlacementPanel({ service, appId, onRetry, retrying }: PlacementP
         </Button>
       </div>
       {clusters.data ? (
-        <ClusterChecks service={service} clusters={clusters.data} duplicateTo={duplicateTo} />
+        <ClusterChecks
+          service={service}
+          clusters={clusters.data}
+          baseline={rows ?? []}
+          duplicateTo={duplicateTo}
+        />
       ) : clusters.isError ? (
         <div className="border-t p-4">
           <QueryErrorAlert
@@ -113,14 +118,16 @@ export function PlacementPanel({ service, appId, onRetry, retrying }: PlacementP
 function ClusterChecks({
   service,
   clusters,
+  baseline,
   duplicateTo,
 }: {
   service: Service;
   clusters: readonly Cluster[];
+  /** The evaluation without any changed limits. */
+  baseline: readonly PlacementRow[];
   duplicateTo: string;
 }) {
   const [limits, setLimits] = useState(() => initialLimits(service));
-  const baseline = useMemo(() => evaluatePlacement(service, clusters), [service, clusters]);
   const rows = useMemo(
     () => evaluatePlacement(service, clusters, limits),
     [service, clusters, limits],

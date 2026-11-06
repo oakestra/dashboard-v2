@@ -9,7 +9,9 @@ import { useRef } from 'react';
 // The pure helpers live in @oakestra/api so other packages can share them; this file keeps the
 // import path the module already uses.
 export {
+  compareTones,
   describeStatus,
+  hasMetrics,
   hasTransitionalInstance,
   instanceHost,
   instanceProblem,

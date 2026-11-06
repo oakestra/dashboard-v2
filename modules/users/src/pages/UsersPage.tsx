@@ -12,11 +12,8 @@ import {
   Badge,
   Button,
   ConfirmDialog,
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
   EmptyState,
   Item,
   ItemActions,
@@ -35,17 +32,18 @@ import {
   formatDate,
   formatDateTime,
   parseLegacyDate,
+  RowMenu,
+  initials,
 } from '@oakestra/ui';
 import { DataList, type DataListSortOption } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
-import { EllipsisIcon, PencilIcon, PlusIcon, Trash2Icon, UsersIcon } from 'lucide-react';
+import { PencilIcon, PlusIcon, Trash2Icon, UsersIcon } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 
 import { useDeleteUser } from '../api/mutations';
 import { organizationUsersQuery } from '../api/queries';
 import { CreateUserDialog } from '../components/CreateUserDialog';
 import { EditRolesDialog } from '../components/EditRolesDialog';
-import { initials } from '../initials';
 
 interface UserRow {
   id: string;
@@ -232,29 +230,22 @@ export function UsersPage() {
                 isSelf={isSelf}
                 compact={compact}
                 menu={
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${row.name}`}>
-                        <EllipsisIcon aria-hidden />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem disabled={!rolesKnown} onSelect={() => setEditing(row)}>
-                        <PencilIcon aria-hidden />
-                        Edit roles
-                      </DropdownMenuItem>
-                      {/* Hidden, not disabled: deleting yourself is never an option worth explaining. */}
-                      {isSelf ? null : (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(row)}>
-                            <Trash2Icon aria-hidden />
-                            Delete user
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <RowMenu label={`Actions for ${row.name}`}>
+                    <DropdownMenuItem disabled={!rolesKnown} onSelect={() => setEditing(row)}>
+                      <PencilIcon aria-hidden />
+                      Edit roles
+                    </DropdownMenuItem>
+                    {/* Hidden, not disabled: deleting yourself is never an option worth explaining. */}
+                    {isSelf ? null : (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(row)}>
+                          <Trash2Icon aria-hidden />
+                          Delete user
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </RowMenu>
                 }
               />
             );

@@ -1,26 +1,24 @@
-import { clustersQuery, type CommandContext, type CommandResult } from '@oakestra/dashboard-sdk';
+import {
+  clustersQuery,
+  matchesTokens,
+  readCached,
+  searchTokens,
+  type CommandContext,
+  type CommandResult,
+} from '@oakestra/dashboard-sdk';
 import { ServerIcon } from 'lucide-react';
 
 import { clusterPresentation } from './lib';
-
-// The palette asks on every pause in typing, see the same constant in the applications package.
-const FRESH_ENOUGH_MS = 30_000;
 
 const MAX_RESULTS = 12;
 
 export async function searchClusters(query: string, ctx: CommandContext): Promise<CommandResult[]> {
   const { addon } = ctx;
   if (!addon) return [];
-  const clusters = await ctx.queryClient.ensureQueryData({
-    ...clustersQuery(ctx.api),
-    revalidateIfStale: true,
-    staleTime: FRESH_ENOUGH_MS,
-    // A failed refresh in the background is no reason for a toast.
-    meta: { silent: true },
-  });
-  const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const clusters = await readCached(ctx, clustersQuery(ctx.api));
+  const tokens = searchTokens(query);
   return clusters
-    .filter(({ cluster_name: name }) => tokens.every((token) => name.toLowerCase().includes(token)))
+    .filter((cluster) => matchesTokens(tokens, cluster.cluster_name))
     .slice(0, MAX_RESULTS)
     .map((cluster) => {
       const { label } = clusterPresentation(cluster);

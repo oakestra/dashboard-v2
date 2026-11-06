@@ -23,7 +23,7 @@ describe('applicationHealth', () => {
 
   it('is not deployed when no service has an instance', () => {
     const health = applicationHealth([service(undefined), service(undefined)]);
-    expect(health).toMatchObject({ tone: 'neutral', label: 'Not deployed', undeployed: 2 });
+    expect(health).toMatchObject({ tone: 'neutral', label: 'Not deployed' });
   });
 
   it('is healthy when everything runs', () => {
@@ -32,9 +32,9 @@ describe('applicationHealth', () => {
     expect(describeServiceCounts(health)).toBe('1 service, 2/2 running');
   });
 
-  it('stays healthy next to an undeployed service but counts it', () => {
+  it('stays healthy next to an undeployed service', () => {
     const health = applicationHealth([service('RUNNING', ['RUNNING']), service(undefined)]);
-    expect(health).toMatchObject({ tone: 'success', undeployed: 1 });
+    expect(health).toMatchObject({ tone: 'success' });
   });
 
   it('is deploying while the scheduler works', () => {

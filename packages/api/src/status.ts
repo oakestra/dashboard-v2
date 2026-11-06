@@ -51,13 +51,20 @@ const SCHEDULING = new Set(['SCHEDULED', 'CLUSTER_SCHEDULED', 'NODE_SCHEDULED'])
 const STARTING = new Set(['INSTANTIATION', 'CREATED', 'CREATING', 'DEPLOYING', 'STARTING']);
 const STOPPING = new Set(['UNDEPLOY_REQUESTED', 'TERMINATING']);
 
+interface PlacementFailure {
+  label: string;
+  hint: string;
+  /** From a cluster's own scheduler: the root already chose a cluster, no worker took it. */
+  worker?: boolean;
+}
+
 /**
  * The scheduler's negative results (`NegativeSchedulingStatus` in oakestra_utils), keyed without
  * case and underscores: the service shows `NoActiveClusterWithCapacity` and `TargetCluster*`
  * in camel case but `NO_WORKER_CAPACITY` in screaming snake case, and older fixtures mix both.
  * An explicit list instead of a `NO` prefix, which would also match `NODE_SCHEDULED`.
  */
-const PLACEMENT_FAILURES: Record<string, { label: string; hint: string }> = {
+const PLACEMENT_FAILURES: Record<string, PlacementFailure> = {
   TARGETCLUSTERNOTFOUND: {
     label: 'Target cluster not found',
     hint: 'The cluster named in the service constraints does not exist',
@@ -77,24 +84,43 @@ const PLACEMENT_FAILURES: Record<string, { label: string; hint: string }> = {
   NOWORKERCAPACITY: {
     label: 'No capacity',
     hint: 'The chosen cluster has no worker with enough free resources',
+    worker: true,
   },
   NOQUALIFIEDWORKERFOUND: {
     label: 'No suitable worker',
     hint: 'No worker in the chosen cluster meets the service requirements',
+    worker: true,
   },
   NONODEFOUND: {
     label: 'No node found',
     hint: 'The chosen cluster has no node to run this service',
+    worker: true,
   },
 };
 
-function placementFailure(status: string): { label: string; hint: string } | undefined {
+function placementFailure(status: string): PlacementFailure | undefined {
   return PLACEMENT_FAILURES[status.toUpperCase().replaceAll('_', '')];
 }
 
 /** The scheduler could not place the service anywhere (as opposed to a deploy that crashed). */
 export function isPlacementFailure(status: string | undefined): boolean {
   return status !== undefined && placementFailure(status) !== undefined;
+}
+
+/** A placement failure reported by a cluster rather than by the root scheduler. */
+export function isWorkerPlacementFailure(status: string | undefined): boolean {
+  return status !== undefined && placementFailure(status)?.worker === true;
+}
+
+/**
+ * The scheduler leaves this text behind on services it has long given up on, where it would
+ * contradict the failure right next to it.
+ */
+const SCHEDULER_PLACEHOLDER = 'Waiting for scheduling decision';
+
+/** `status_detail` when it says something, so without the scheduler's leftover placeholder. */
+export function schedulerDetail(detail: string | undefined): string | undefined {
+  return detail && detail !== SCHEDULER_PLACEHOLDER ? detail : undefined;
 }
 
 /**
@@ -117,9 +143,9 @@ export function describeStatus(status: string | undefined, detail?: string): Sta
   if (SCHEDULING.has(upper)) return make('info', 'Scheduling', '', true);
   if (STARTING.has(upper)) return make('info', 'Starting', '', true);
   if (STOPPING.has(upper)) return make('neutral', 'Stopping', '', true);
-  if (upper === 'DEAD') return make('destructive', 'Crashed', detail ?? '');
+  if (upper === 'DEAD') return make('destructive', 'Crashed', schedulerDetail(detail));
   if (upper === 'FAILED' || upper.includes('ERROR')) {
-    return make('destructive', 'Failed', detail ?? '');
+    return make('destructive', 'Failed', schedulerDetail(detail));
   }
   const placement = placementFailure(status);
   if (placement) return make('warning', placement.label, placement.hint);
@@ -149,6 +175,15 @@ export function instanceHost(instance: Instance): string | undefined {
 export function instanceProblem(instance: Instance): string | undefined {
   const { status, status_detail } = instance;
   return status_detail && describeStatus(status).tone !== 'success' ? status_detail : undefined;
+}
+
+/** Without any history a 0 means "not measured", not "idle". */
+export function hasMetrics(instance: Instance): boolean {
+  return (
+    (instance.cpu_history?.length ?? 0) > 0 ||
+    (instance.cpu_percent ?? 0) > 0 ||
+    (instance.memory_percent ?? 0) > 0
+  );
 }
 
 /** Tones that mean something is wrong, as opposed to working, waiting or idle. */
@@ -216,6 +251,11 @@ const TONE_RANK: Record<StatusTone, number> = {
   success: 1,
   neutral: 0,
 };
+
+/** Sort comparator, worst tone first. */
+export function compareTones(a: StatusTone, b: StatusTone): number {
+  return TONE_RANK[b] - TONE_RANK[a];
+}
 
 export interface StatusSummary {
   /** The worst tone present (destructive > warning > info > success > neutral); neutral when empty. */

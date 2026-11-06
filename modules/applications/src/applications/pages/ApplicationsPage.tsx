@@ -18,6 +18,7 @@ import {
   QueryErrorAlert,
   plural,
   stretchedLinkClassName,
+  RowMenu,
 } from '@oakestra/ui';
 import { DataList, type DataListSortOption } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
@@ -29,7 +30,6 @@ import { newestFirst } from '../../queries';
 import { useMyApplications } from '../../use-my-applications';
 import { ApplicationFormDialog } from '../components/ApplicationFormDialog';
 import { applicationHealth, describeServiceCounts } from '../health';
-import { RowMenu } from '../components/RowMenu';
 import { DeleteApplicationDialog } from '../components/DeleteApplicationDialog';
 
 const searchValue = (application: Application) =>

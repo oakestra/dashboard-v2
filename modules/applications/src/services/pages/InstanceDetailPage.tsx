@@ -43,9 +43,14 @@ import { useUndeployInstance } from '../mutations';
 import { DefinitionList } from '../components/DefinitionList';
 import { LogsCard } from '../components/LogsCard';
 import { INFRASTRUCTURE_ROLES } from '../infrastructure-roles';
-import { hasMetrics } from '../components/ServiceOverview';
 import { StatusBadge } from '../components/StatusBadge';
-import { describeStatus, instanceHost, instanceProblem, usePollWhileTransitional } from '../status';
+import {
+  describeStatus,
+  hasMetrics,
+  instanceHost,
+  instanceProblem,
+  usePollWhileTransitional,
+} from '../status';
 
 // Metrics and logs change constantly, so the page refreshes on its own; faster while the
 // scheduler is still placing the instance.

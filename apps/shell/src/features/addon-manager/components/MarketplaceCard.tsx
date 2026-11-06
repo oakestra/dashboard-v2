@@ -7,14 +7,12 @@ import {
   Badge,
   Button,
   Card,
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
   plural,
   stretchedLinkClassName,
+  RowMenu,
 } from '@oakestra/ui';
-import { LoaderCircleIcon, MoreHorizontalIcon, Trash2Icon } from 'lucide-react';
+import { LoaderCircleIcon, Trash2Icon } from 'lucide-react';
 import { Link } from 'react-router';
 
 import { installedAddonLink } from '../paths';
@@ -64,19 +62,12 @@ export function MarketplaceCard({
           </div>
         </div>
         <div className="relative z-10 -mt-1 -mr-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="icon-sm" variant="ghost" aria-label={`More actions for ${addon.name}`}>
-                <MoreHorizontalIcon aria-hidden />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem variant="destructive" onSelect={onDelete}>
-                <Trash2Icon aria-hidden />
-                Delete from marketplace
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <RowMenu label={`More actions for ${addon.name}`}>
+            <DropdownMenuItem variant="destructive" onSelect={onDelete}>
+              <Trash2Icon aria-hidden />
+              Delete from marketplace
+            </DropdownMenuItem>
+          </RowMenu>
         </div>
       </div>
       <p className="text-muted-foreground line-clamp-2 min-h-10 px-5 text-sm">

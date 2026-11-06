@@ -120,9 +120,9 @@ export interface CommandContext {
   /** Never null: the palette only exists behind the login. */
   readonly user: CurrentUser;
   /**
-   * The shell's shared client. Read through it (`ensureQueryData` with the SDK's platform queries,
-   * or your own keys from `addonQueryKey`) so that a search per keystroke does not mean a request
-   * per keystroke.
+   * The shell's shared client. Read through it (`readCached` with the SDK's platform queries, or
+   * your own keys from `addonQueryKey`) so that a search per keystroke does not mean a request per
+   * keystroke.
    */
   readonly queryClient: QueryClient;
   /** Same answer as `useFeatureEnabled(id)`. */

@@ -1,5 +1,7 @@
 import type { Instance } from '@oakestra/api';
 import {
+  clusterCpuPercent,
+  clusterStateLabel,
   describeStatus,
   instanceHost,
   instanceProblem,
@@ -14,7 +16,7 @@ import {
   AlertTitle,
   Button,
   formatDateTime,
-  formatMegabytes,
+  formatPercent,
   formatRelativeTime,
   plural,
   PointerGauge,
@@ -28,10 +30,12 @@ import { useRef, type ReactNode } from 'react';
 import { Link } from 'react-router';
 
 import {
+  availableMemoryLabel,
   instanceReading,
   clusterSelection,
   instanceSelection,
   serviceRequests,
+  serviceSelection,
   sortInstances,
   type ApplicationRow,
   type FleetInstance,
@@ -108,11 +112,7 @@ function InstanceList({
               }
               className={`${rowButtonClassName} min-h-11 gap-2.5 px-3 py-1.5 text-left text-sm`}
             >
-              <Mark
-                tone={entry.status.tone}
-                stale={entry.stale}
-                pulse={entry.status.pulse && !entry.stale}
-              />
+              <Mark tone={entry.status.tone} stale={entry.stale} pulse={entry.status.pulse} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate">{label(entry)}</span>
                 <span className="text-muted-foreground block truncate text-xs">
@@ -136,6 +136,34 @@ function useClusterLink() {
   return enabled && permissions.hasAnyRole(INFRASTRUCTURE_ROLES);
 }
 
+function useCanOpenApplication(application: ApplicationRow) {
+  const enabled = useFeatureEnabled('applications');
+  return application.owned && enabled;
+}
+
+/** The way to the full page, or why there is none. */
+function OwnedFooter({
+  application,
+  to,
+  children,
+}: {
+  application: ApplicationRow;
+  to: string;
+  children: ReactNode;
+}) {
+  const canOpen = useCanOpenApplication(application);
+  return (
+    <>
+      {application.owned ? null : <ForeignNote owner={application.owner} />}
+      {canOpen ? (
+        <Button asChild className="self-start">
+          <Link to={to}>{children}</Link>
+        </Button>
+      ) : null}
+    </>
+  );
+}
+
 function applicationPath(application: ApplicationRow) {
   return `/applications/${application.application._id}`;
 }
@@ -155,8 +183,7 @@ function ServiceBody({
   fleet: FleetModel;
   onSelect: (selection: string) => void;
 }) {
-  const applicationsEnabled = useFeatureEnabled('applications');
-  const canOpen = application.owned && applicationsEnabled;
+  const canOpen = useCanOpenApplication(application);
   const { service, exception } = row;
   const clusterName = (id: string | undefined) => fleet.lanes.find((lane) => lane.id === id)?.name;
   const placement = isPlacementFailure(service.status);
@@ -209,12 +236,9 @@ function ServiceBody({
           onSelect={onSelect}
         />
       ) : null}
-      {application.owned ? null : <ForeignNote owner={application.owner} />}
-      {canOpen ? (
-        <Button asChild className="self-start">
-          <Link to={servicePath(application, row)}>Open service</Link>
-        </Button>
-      ) : null}
+      <OwnedFooter application={application} to={servicePath(application, row)}>
+        Open service
+      </OwnedFooter>
     </>
   );
 }
@@ -264,8 +288,6 @@ function InstanceBody({
   fleet: FleetModel;
   onSelect: (selection: string) => void;
 }) {
-  const applicationsEnabled = useFeatureEnabled('applications');
-  const canOpen = application.owned && applicationsEnabled;
   const { instance } = entry;
   const lane = fleet.lanes.find((candidate) => candidate.id === entry.clusterId);
   const problem = instanceProblem(instance);
@@ -295,7 +317,7 @@ function InstanceBody({
         <Fact label="Service">
           <button
             type="button"
-            onClick={() => onSelect(`service:${row.service._id}`)}
+            onClick={() => onSelect(serviceSelection(row.service._id))}
             className="text-primary text-left hover:underline"
           >
             {application.application.application_name} / {row.service.microservice_name}
@@ -326,12 +348,9 @@ function InstanceBody({
           ) : undefined}
         </Fact>
       </Facts>
-      {application.owned ? null : <ForeignNote owner={application.owner} />}
-      {canOpen ? (
-        <Button asChild className="self-start">
-          <Link to={path}>Open instance</Link>
-        </Button>
-      ) : null}
+      <OwnedFooter application={application} to={path}>
+        Open instance
+      </OwnedFooter>
     </>
   );
 }
@@ -350,7 +369,7 @@ function ClusterBody({
 }) {
   const canOpen = useClusterLink();
   const { cluster, state } = lane;
-  const cpu = cluster.cpu_percent ?? cluster.aggregated_cpu_percent;
+  const cpu = clusterCpuPercent(cluster);
   const reporting = state === 'reporting';
   return (
     <>
@@ -380,16 +399,12 @@ function ClusterBody({
                   size="sm"
                   label="CPU"
                   value={cpu}
-                  valueLabel={`${Math.round(cpu)}%`}
+                  valueLabel={formatPercent(cpu, 0)}
                 />
               )}
             </Fact>
             <Fact label="Cores">{cluster.vcpus}</Fact>
-            <Fact label="Memory">
-              {cluster.memory_in_mb === undefined
-                ? undefined
-                : `${formatMegabytes(cluster.memory_in_mb, 0)} available`}
-            </Fact>
+            <Fact label="Memory">{availableMemoryLabel(cluster)}</Fact>
             <Fact label="Runtimes">{cluster.virtualization.join(', ')}</Fact>
           </>
         ) : null}
@@ -421,10 +436,10 @@ interface InspectorHeading {
 }
 
 function clusterStatus(lane: ClusterLane) {
-  if (lane.state === 'reporting') return <Status mark={<Mark tone="success" />}>Reporting</Status>;
+  const reporting = lane.state === 'reporting';
   return (
-    <Status mark={<Mark tone="neutral" stale />}>
-      {lane.state === 'silent' ? 'Silent' : 'Never reported'}
+    <Status mark={<Mark tone={reporting ? 'success' : 'neutral'} stale={!reporting} />}>
+      {clusterStateLabel(lane.state)}
     </Status>
   );
 }
@@ -450,7 +465,7 @@ function headingOf(target: InspectorTarget): InspectorHeading {
       kind: `Instance of ${application} / ${service}`,
       title: `Instance ${instance.instance_number}`,
       status: (
-        <Status mark={<Mark tone={status.tone} stale={stale} pulse={status.pulse && !stale} />}>
+        <Status mark={<Mark tone={status.tone} stale={stale} pulse={status.pulse} />}>
           {stale ? `Last known: ${status.label}` : status.label}
         </Status>
       ),

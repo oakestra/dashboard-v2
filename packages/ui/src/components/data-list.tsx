@@ -4,19 +4,17 @@ import {
   type PaginationState,
   type SortingState,
 } from '@tanstack/react-table';
-import { InboxIcon, SearchXIcon } from 'lucide-react';
 import * as React from 'react';
 
 import { cn } from '../lib/utils';
-import { Button } from './button';
+import { CollectionSearch } from './collection-search';
 import {
+  CollectionEmpty,
   CollectionFooter,
-  CollectionSearch,
   dataTableFeatures,
+  useCollectionPaging,
   useControllable,
-  useSearchText,
 } from './data-table';
-import { EmptyState } from './empty-state';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
 import { Skeleton } from './skeleton';
 
@@ -148,17 +146,13 @@ function DataList<TData extends object>({
   const rows = table.getRowModel().rows;
   const filteredCount = table.getFilteredRowModel().rows.length;
   const total = data?.length ?? 0;
-  const pageCount = Math.max(1, Math.ceil(filteredCount / pagination.pageSize));
-  // A controlled page index can outlive the data that justified it (e.g. a stale URL param).
-  const outOfRange = !isLoading && pagination.pageIndex > pageCount - 1;
-  React.useEffect(() => {
-    if (outOfRange) setPagination((previous) => ({ ...previous, pageIndex: pageCount - 1 }));
-  }, [outOfRange, pageCount, setPagination]);
-
-  const [searchText, onSearchTextChange] = useSearchText(globalFilter, (value) => {
-    setGlobalFilter(value);
-    // Results shrink under the user; keep them from landing on an empty page.
-    setPagination((previous) => ({ ...previous, pageIndex: 0 }));
+  const { pageCount, searchText, onSearchTextChange } = useCollectionPaging({
+    filteredCount,
+    isLoading,
+    globalFilter,
+    setGlobalFilter,
+    pagination,
+    setPagination,
   });
 
   const grid = layout === 'grid';
@@ -185,22 +179,13 @@ function DataList<TData extends object>({
   } else if (rows.length === 0) {
     body = (
       <div className="rounded-lg border border-dashed">
-        {total === 0
-          ? (emptyState ?? <EmptyState icon={<InboxIcon />} title="Nothing here yet" />)
-          : (noResultsState ?? (
-              <EmptyState
-                icon={<SearchXIcon />}
-                title="No results"
-                description="Nothing matches your search. Try a different term."
-                action={
-                  searchText ? (
-                    <Button variant="outline" size="sm" onClick={() => onSearchTextChange('')}>
-                      Clear search
-                    </Button>
-                  ) : undefined
-                }
-              />
-            ))}
+        <CollectionEmpty
+          total={total}
+          emptyState={emptyState}
+          noResultsState={noResultsState}
+          searchText={searchText}
+          onClearSearch={() => onSearchTextChange('')}
+        />
       </div>
     );
   } else {

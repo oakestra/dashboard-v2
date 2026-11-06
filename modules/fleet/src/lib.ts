@@ -1,10 +1,13 @@
 import {
   clusterReportState,
+  compareTones,
   describeStatus,
+  hasMetrics,
   instanceProblem,
   isAbnormalTone,
   isPlacementFailure,
   isTransitionalStatus,
+  schedulerDetail,
   serviceAttention,
   type Application,
   type Cluster,
@@ -121,15 +124,11 @@ export interface FleetException {
 export interface FleetSummary {
   scope: FleetScope;
   applications: number;
-  services: number;
   /** Instances known to run right now, so never those on a silent cluster. */
   running: number;
   /** Services and clusters those running instances belong to. */
   runningServices: number;
   runningClusters: number;
-  lastKnown: number;
-  reportingClusters: number;
-  silentClusters: number;
   exceptions: number;
 }
 
@@ -146,7 +145,8 @@ const REPORT_ORDER: Record<ClusterReportState, number> = {
   'never-reported': 2,
 };
 
-const byName = (a: string, b: string) => a.localeCompare(b, 'en', { sensitivity: 'base' });
+// One collator: `localeCompare` with options builds a new one per comparison.
+const byName = new Intl.Collator('en', { sensitivity: 'base' }).compare;
 
 function isOffline(state: ClusterReportState | undefined): boolean {
   return state === 'silent' || state === 'never-reported';
@@ -228,16 +228,6 @@ function unplacedEntries(
 }
 
 /**
- * The scheduler leaves this text behind on services it has long given up on, where it would
- * contradict the failure right next to it.
- */
-const SCHEDULER_PLACEHOLDER = 'Waiting for scheduling decision';
-
-function schedulerDetail({ status_detail }: Service): string | undefined {
-  return status_detail && status_detail !== SCHEDULER_PLACEHOLDER ? status_detail : undefined;
-}
-
-/**
  * Whether a person has to act on the service. Built on the shared `serviceAttention`, so this list
  * and the overview's cannot drift. The two differences: a service nobody deployed is shown quietly
  * in Unplaced rather than as an exception, and an instance on an unregistered cluster counts too,
@@ -254,7 +244,7 @@ function serviceException(
       return {
         tone: attention.tone,
         summary: "can't be placed",
-        detail: schedulerDetail(service) ?? own.hint,
+        detail: schedulerDetail(service.status_detail) ?? own.hint,
       };
     }
     // The service's own detail tends to be the scheduler's; why it failed is on the instance.
@@ -262,7 +252,7 @@ function serviceException(
     return {
       tone: attention.tone,
       summary: 'failed',
-      detail: crashed ?? schedulerDetail(service) ?? own.hint,
+      detail: crashed ?? schedulerDetail(service.status_detail) ?? own.hint,
     };
   }
   if (attention?.kind === 'instances') {
@@ -404,7 +394,6 @@ function fleetExceptions(
 
 function summarize(
   rows: readonly ApplicationRow[],
-  lanes: readonly ClusterLane[],
   scope: FleetScope,
   exceptions: number,
 ): FleetSummary {
@@ -413,13 +402,9 @@ function summarize(
   return {
     scope,
     applications: rows.length,
-    services: serviceRows.length,
     running: running.length,
     runningServices: new Set(running.map((entry) => entry.service._id)).size,
     runningClusters: new Set(running.map((entry) => entry.clusterId)).size,
-    lastKnown: serviceRows.flatMap((row) => row.instances).filter((entry) => entry.stale).length,
-    reportingClusters: lanes.filter((lane) => lane.state === 'reporting').length,
-    silentClusters: lanes.filter((lane) => isOffline(lane.state)).length,
     exceptions,
   };
 }
@@ -445,7 +430,7 @@ export function buildFleet({ entries, clusters, scope, username }: BuildFleetInp
     lanes,
     rows,
     exceptions,
-    summary: summarize(rows, lanes, scope, exceptions.length),
+    summary: summarize(rows, scope, exceptions.length),
   };
 }
 
@@ -513,15 +498,6 @@ export function parseLens(value: string): Lens {
   return LENSES.find((lens) => lens === value) ?? 'health';
 }
 
-/** Same rule as the service page: without any history a 0 means "not measured", not "idle". */
-function hasMetrics(instance: Instance): boolean {
-  return (
-    (instance.cpu_history?.length ?? 0) > 0 ||
-    (instance.cpu_percent ?? 0) > 0 ||
-    (instance.memory_percent ?? 0) > 0
-  );
-}
-
 /** What a row shows under the CPU or memory lens. Several instances show the highest one. */
 export interface InstanceReading {
   /** Position on the 0 to 100 track, may exceed it. Null: there is no scale, only `label`. */
@@ -584,24 +560,15 @@ export function instanceReading(
   return lens === 'cpu' ? cpuReading(measured) : memoryReading(measured);
 }
 
-const TONE_ORDER: Record<StatusTone, number> = {
-  destructive: 0,
-  warning: 1,
-  info: 2,
-  success: 3,
-  neutral: 4,
-};
-
 /** Worst first, so with more instances than room the ones that matter stay visible. */
 export function sortInstances(instances: readonly FleetInstance[]): FleetInstance[] {
   return [...instances].sort(
-    (a, b) =>
-      TONE_ORDER[a.status.tone] - TONE_ORDER[b.status.tone] || Number(a.stale) - Number(b.stale),
+    (a, b) => compareTones(a.status.tone, b.status.tone) || Number(a.stale) - Number(b.stale),
   );
 }
 
 export function sortUnplaced(entries: readonly UnplacedEntry[]): UnplacedEntry[] {
-  return [...entries].sort((a, b) => TONE_ORDER[a.tone] - TONE_ORDER[b.tone]);
+  return [...entries].sort((a, b) => compareTones(a.tone, b.tone));
 }
 
 /** The status words of a row, for its accessible name: "2 Running, 1 Failed". */
@@ -649,26 +616,21 @@ export function isRowSelected(
   );
 }
 
-/** One application on a card of the board. */
-export interface BoardGroup {
-  application: ApplicationRow;
-  services: readonly ServiceRow[];
-}
-
-function groupsOf(
+/** Each application with only the services a card lists, narrowed like in `filterRows`. */
+function narrowServices(
   rows: readonly ApplicationRow[],
   keep: (service: ServiceRow) => boolean,
-): BoardGroup[] {
-  return rows.map((application) => ({
-    application,
-    services: application.services.filter(keep),
-  }));
+): ApplicationRow[] {
+  return rows.map((row) => ({ ...row, services: row.services.filter(keep) }));
 }
 
 /** What sits on one cluster. Takes filtered rows, so a card narrows along with the filter. */
-export function clusterGroups(rows: readonly ApplicationRow[], clusterId: string): BoardGroup[] {
-  return groupsOf(rows, (service) => service.placements.has(clusterId)).filter(
-    (group) => group.services.length > 0,
+export function clusterGroups(
+  rows: readonly ApplicationRow[],
+  clusterId: string,
+): ApplicationRow[] {
+  return narrowServices(rows, (service) => service.placements.has(clusterId)).filter(
+    (row) => row.services.length > 0,
   );
 }
 
@@ -676,9 +638,9 @@ export function clusterGroups(rows: readonly ApplicationRow[], clusterId: string
  * What the Unplaced card lists. An application with nothing to place stays in, empty: no cluster
  * would show it, and it would be gone from the board.
  */
-export function unplacedGroups(rows: readonly ApplicationRow[]): BoardGroup[] {
-  return groupsOf(rows, (service) => service.unplaced.length > 0).filter(
-    (group) => group.services.length > 0 || group.application.serviceCount === 0,
+export function unplacedGroups(rows: readonly ApplicationRow[]): ApplicationRow[] {
+  return narrowServices(rows, (service) => service.unplaced.length > 0).filter(
+    (row) => row.services.length > 0 || row.serviceCount === 0,
   );
 }
 
@@ -709,6 +671,11 @@ export function resolveSelection(fleet: FleetModel, selection: string): Inspecto
       : { kind: 'service', application, row };
   }
   return null;
+}
+
+/** `memory_in_mb` is what is still free, not the installed total. */
+export function availableMemoryLabel({ memory_in_mb: available }: Cluster): string | undefined {
+  return available === undefined ? undefined : `${formatMegabytes(available, 0)} available`;
 }
 
 /** What a service asks for, as in "1 vCPU, 64 MB". */

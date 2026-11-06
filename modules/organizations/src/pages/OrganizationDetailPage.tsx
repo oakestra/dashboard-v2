@@ -16,11 +16,8 @@ import {
   Badge,
   Button,
   ConfirmDialog,
-  DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
   EmptyState,
   Item,
   ItemActions,
@@ -32,17 +29,12 @@ import {
   Skeleton,
   QueryErrorAlert,
   plural,
+  RowMenu,
+  initials,
 } from '@oakestra/ui';
 import { DataList, type DataListSortOption } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
-import {
-  BuildingIcon,
-  EllipsisIcon,
-  PencilIcon,
-  PlusIcon,
-  Trash2Icon,
-  UsersIcon,
-} from 'lucide-react';
+import { BuildingIcon, PencilIcon, PlusIcon, Trash2Icon, UsersIcon } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 
@@ -53,8 +45,6 @@ import {
 } from '../api/mutations';
 import { MemberDialog } from '../components/MemberDialog';
 import { OrganizationNameDialog } from '../components/OrganizationNameDialog';
-import { RowMenu } from '../components/RowMenu';
-import { initials } from '../initials';
 import { adminCount, removalBlock, rolesBlock } from '../members';
 
 interface MemberRow extends OrganizationMember {
@@ -245,19 +235,12 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
               </Button>
             )}
             {isRoot ? null : (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="More actions">
-                    <EllipsisIcon aria-hidden />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
-                    <Trash2Icon aria-hidden />
-                    Delete organization
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <RowMenu label="More actions" size="icon">
+                <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(true)}>
+                  <Trash2Icon aria-hidden />
+                  Delete organization
+                </DropdownMenuItem>
+              </RowMenu>
             )}
           </>
         }

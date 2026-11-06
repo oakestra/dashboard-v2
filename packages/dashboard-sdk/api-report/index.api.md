@@ -7,6 +7,7 @@
 import { ComponentType } from 'react';
 import { Context } from 'react';
 import { describeError } from '@oakestra/api';
+import { EnsureQueryDataOptions } from '@tanstack/react-query';
 import { JSX } from 'react';
 import { OakestraEndpoints } from '@oakestra/api';
 import { OmitKeyof } from '@tanstack/react-query';
@@ -804,6 +805,9 @@ export interface IconProps {
 export type KnownRole = 'Admin' | 'Organization_Admin' | 'Application_Provider' | 'Infrastructure_Provider';
 
 // @public
+export function matchesTokens(tokens: readonly string[], ...fields: readonly (string | undefined)[]): boolean;
+
+// @public
 export type NavGroup = 'main' | 'management' | 'addons' | 'footer';
 
 // @public (undocumented)
@@ -951,6 +955,9 @@ roles?: string[] | undefined;
 organization_id: string | undefined;
 }, Error>;
 
+// @public
+export function readCached<T, K extends QueryKey>(input: Pick<CommandContext, 'queryClient'>, options: EnsureQueryDataOptions<T, Error, T, K>): Promise<T>;
+
 // @public (undocumented)
 interface RenderableContribution<C extends object> extends ContributionBase {
     // (undocumented)
@@ -984,6 +991,9 @@ export interface RoleOption {
 
 // @public
 export const SDK_VERSION = "0.1.0";
+
+// @public
+export function searchTokens(query: string): string[];
 
 // @public
 export function seedFromLists<T>(queryClient: QueryClient, listKey: QueryKey, match: (item: T) => boolean): {

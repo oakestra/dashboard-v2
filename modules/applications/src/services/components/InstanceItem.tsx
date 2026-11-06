@@ -9,13 +9,12 @@ import {
   formatBytes,
   formatPercent,
   stretchedLinkClassName,
+  RowMenu,
 } from '@oakestra/ui';
 import { ExternalLinkIcon, SquareIcon } from 'lucide-react';
 import { Link } from 'react-router';
 
-import { RowMenu } from '../../applications/components/RowMenu';
-import { instanceHost, instanceProblem } from '../status';
-import { hasMetrics } from './ServiceOverview';
+import { hasMetrics, instanceHost, instanceProblem } from '../status';
 import { StatusBadge } from './StatusBadge';
 
 function Metric({ label, value }: { label: string; value: string }) {
@@ -68,7 +67,7 @@ export function InstanceItem({
         <Metric label="CPU" value={metrics ? formatPercent(instance.cpu_percent) : '-'} />
         <Metric label="Memory" value={metrics ? formatBytes(instance.memory_percent) : '-'} />
       </dl>
-      <ItemActions className="relative z-10 ml-auto">
+      <ItemActions className="ml-auto">
         <RowMenu label={`Actions for instance ${instance.instance_number}`}>
           <DropdownMenuItem asChild>
             <Link to={href}>

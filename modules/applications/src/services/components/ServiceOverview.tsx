@@ -1,4 +1,4 @@
-import type { Instance, Service } from '@oakestra/api';
+import type { Service } from '@oakestra/api';
 import { useAddonPath } from '@oakestra/dashboard-sdk';
 import {
   Badge,
@@ -16,7 +16,7 @@ import { Link } from 'react-router';
 
 import { placementFailureStatus } from '../placement';
 import { environmentKeys } from '../sla';
-import { describeStatus, instanceHost } from '../status';
+import { describeStatus, hasMetrics, instanceHost, isAbnormalTone } from '../status';
 import { DefinitionList } from './DefinitionList';
 import { PlacementPanel } from './PlacementPanel';
 import { StatusBadge } from './StatusBadge';
@@ -25,14 +25,6 @@ const mono = (value: string | undefined) =>
   value ? <span className="font-mono text-xs">{value}</span> : undefined;
 
 const mb = (value: number | undefined) => (value ? formatMegabytes(value, 0) : undefined);
-
-export function hasMetrics(instance: Instance): boolean {
-  return (
-    (instance.cpu_history?.length ?? 0) > 0 ||
-    (instance.cpu_percent ?? 0) > 0 ||
-    (instance.memory_percent ?? 0) > 0
-  );
-}
 
 interface OverviewProps {
   service: Service;
@@ -58,10 +50,7 @@ function InstanceStats({ service, clusterNames }: Pick<OverviewProps, 'service' 
   const clusters = new Set(
     instances.flatMap((i) => (i.cluster_id ? [clusterNames[i.cluster_id] ?? i.cluster_id] : [])),
   );
-  const failing = instances.some((i) => {
-    const { tone } = describeStatus(i.status);
-    return tone === 'destructive' || tone === 'warning';
-  });
+  const failing = instances.some((i) => isAbnormalTone(describeStatus(i.status).tone));
 
   return (
     <StatGroup>
