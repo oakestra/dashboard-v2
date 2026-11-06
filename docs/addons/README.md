@@ -36,7 +36,8 @@ SDK gives you:
 
 An **extension point** is a named place in the shell where addons can add UI, for example the
 widget grid on the home page. In the shell code, an extension point is rendered by a **slot**
-(the `<Slot point="..." />` component). Each item you add to an extension point is a
+(the `<Slot point="..." />` component; `nav.items` and the two command points are data the
+shell reads itself). Each item you add to an extension point is a
 **contribution**.
 
 ## What an addon UI can do
@@ -57,6 +58,8 @@ An addon UI can:
 | `application.detail.tabs` | A tab                                | Application page (`/applications/:appId`), next to the "Services" tab                |
 | `service.detail.tabs`     | A tab                                | Service page (`/applications/:appId/services/:serviceId`), after "Overview", "Instances", "JSON" |
 | `cluster.widgets`         | A card with a title and your content | Cluster page (`/infrastructure/clusters/:clusterId`), at the bottom                  |
+| `command.actions`         | An entry that opens a page or runs a function | The "Find or run anything" palette (Ctrl or Cmd K)                          |
+| `command.sources`         | A live search over your own data     | The same palette, as a group of results                                              |
 
 Notes:
 
@@ -64,6 +67,9 @@ Notes:
   other users never see `cluster.widgets`.
 - The application page shows tabs only when at least one addon contributes a tab. Without
   contributions it shows the service list without tabs.
+- Commands are described in the [reference](reference.md#command-palette-commandactions-commandsources).
+  If a contribution throws while rendering, only its place shows a short message with a
+  **Reload** button; the rest of the page keeps working.
 - Addon pages are only reachable for logged-in users.
 - The shell's Settings page is for the dashboard's own settings. An addon puts its settings on
   its own page and links it as a sub-item of its nav entry (see

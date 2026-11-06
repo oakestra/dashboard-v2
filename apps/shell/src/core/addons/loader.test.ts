@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createContributionRegistry, selectContributions } from '../extensions/registry';
 import { createAddonRegistry } from './addon-registry';
 import type { AddonModuleRuntime } from './federation-runtime';
-import { createAddonLoader } from './loader';
+import { createAddonLoader, resolveAddonContributions } from './loader';
 import type { ResolvedAddon } from './ui-addons';
 
 const Widget = () => null;
@@ -87,7 +87,13 @@ describe('addon loader', () => {
       '/addons/flops/jobs',
       '/addons/flops/jobs/failed',
     ]);
-    expect(nav?.source).toMatchObject({ kind: 'addon', addon: { basePath: '/addons/flops' } });
+    expect(nav?.source).toMatchObject({
+      kind: 'addon',
+      remote: true,
+      displayName: 'flops',
+      version: '1.0.0',
+      addon: { basePath: '/addons/flops' },
+    });
   });
 
   it('resolves nav paths and the source against a mounted base path', async () => {
@@ -260,5 +266,54 @@ describe('addon loader', () => {
 
     expect(onUpgradeAvailable).not.toHaveBeenCalled();
     expect(entry('flops')).toMatchObject({ state: 'loaded', version: '0.0.0-dev' });
+  });
+});
+
+describe('resolveAddonContributions', () => {
+  const run = () => undefined;
+
+  it('resolves action paths of an addon without nav items', () => {
+    const contributions = resolveAddonContributions(
+      {
+        id: 'flops',
+        contributions: {
+          'command.actions': [
+            { id: 'index', label: 'Index', path: '' },
+            { id: 'jobs', label: 'Jobs', path: 'jobs' },
+            { id: 'run', label: 'Run', run },
+          ],
+        },
+      },
+      '/addons/flops',
+    );
+    expect(contributions['command.actions']?.map((action) => action.path)).toEqual([
+      '/addons/flops',
+      '/addons/flops/jobs',
+      undefined,
+    ]);
+    expect(contributions['command.actions']?.[2]?.run).toBe(run);
+  });
+
+  it('keeps a query on the index route directly behind the base path', () => {
+    const contributions = resolveAddonContributions(
+      {
+        id: 'fleet',
+        contributions: {
+          'command.actions': [
+            { id: 'index', label: 'Index', path: '?only=exceptions' },
+            { id: 'sub', label: 'Sub', path: 'jobs?state=failed' },
+          ],
+        },
+      },
+      '/fleet',
+    );
+    expect(contributions['command.actions']?.map((action) => action.path)).toEqual([
+      '/fleet?only=exceptions',
+      '/fleet/jobs?state=failed',
+    ]);
+  });
+
+  it('leaves points it has nothing to resolve in alone', () => {
+    expect(resolveAddonContributions({ id: 'flops' }, '/addons/flops')).toEqual({});
   });
 });

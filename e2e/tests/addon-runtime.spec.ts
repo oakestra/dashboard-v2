@@ -74,7 +74,7 @@ test.describe('addon runtime', () => {
     // Shell components used inside the addon keep the shared theme tokens.
     const button = page.getByRole('button', { name: 'Notify' });
     // The light theme's --primary-fill in packages/ui/src/styles/styles.css.
-    await expect(button).toHaveCSS('background-color', 'oklch(0.455 0.07 225)');
+    await expect(button).toHaveCSS('background-color', 'oklch(0.31 0.045 225)');
   });
 
   test('addon utilities are prefixed and cannot override shell classes', async ({ page }) => {
@@ -122,6 +122,41 @@ test.describe('addon runtime', () => {
     await expect(page.getByTestId('example-banner')).toBeVisible();
   });
 
+  test('Reload brings a crashed contribution back without leaving the page', async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem('oakestra.example.throw', '1'));
+    await page.goto('/');
+
+    const error = page.getByTestId('contribution-error');
+    await expect(error).toBeVisible();
+
+    await page.evaluate(() => window.localStorage.removeItem('oakestra.example.throw'));
+    await error.getByRole('button', { name: 'Reload Crash test' }).click();
+
+    await expect(error).toHaveCount(0);
+    await expect(page.getByText('to make this widget crash')).toBeVisible();
+  });
+
+  test('the command palette runs an action and opens a result of the addon', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByTestId('nav-example-main')).toBeVisible();
+
+    await page.keyboard.press('Control+k');
+    const palette = page.getByRole('dialog', { name: 'Find or run anything' });
+    await expect(palette).toBeVisible();
+    await page.getByRole('combobox', { name: 'Find or run anything' }).fill('say hello');
+    const action = palette.getByRole('option', { name: /Say hello from the example addon/ });
+    // Tagged as coming from a runtime-loaded addon, so the label carries the name and version.
+    await expect(action).toContainText('Example');
+    await action.click();
+    await expect(palette).toBeHidden();
+    await expect(page.getByText('Hello from the palette, Admin')).toBeVisible();
+
+    await page.keyboard.press('Control+k');
+    await page.getByRole('combobox', { name: 'Find or run anything' }).fill('beta');
+    await palette.getByRole('option', { name: /Sample Beta/ }).click();
+    await expect(page).toHaveURL(/\/addons\/example\/details\/Beta$/);
+  });
+
   test('nav sub-items of an addon lead to its pages', async ({ page }) => {
     await page.goto('/');
     const toggle = page.getByTestId('nav-toggle-example-main');
@@ -150,16 +185,16 @@ test.describe('addon runtime', () => {
     await page.goto('/addons/example/about');
     await expect(page.getByTestId('example-about')).toBeVisible();
     const breadcrumbs = page.getByTestId('breadcrumbs');
-    await expect(breadcrumbs).toHaveText('HomeExampleAbout');
+    await expect(breadcrumbs).toHaveText('OverviewExampleAbout');
 
     await breadcrumbs.getByRole('link', { name: 'Example' }).click();
     await expect(page).toHaveURL(/\/addons\/example$/);
     await expect(page.getByTestId('example-banner')).toBeVisible();
-    await expect(breadcrumbs).toHaveText('HomeExample');
+    await expect(breadcrumbs).toHaveText('OverviewExample');
 
     await page.getByRole('link', { name: 'Open a nested page' }).click();
     await expect(page.getByTestId('example-details')).toHaveText('Item 42');
-    await expect(breadcrumbs).toHaveText('HomeExampleDetails');
+    await expect(breadcrumbs).toHaveText('OverviewExampleDetails');
   });
 
   test.describe('as a user without the Admin role', () => {
@@ -172,7 +207,7 @@ test.describe('addon runtime', () => {
       // Only the page is replaced: the addon's nav entry and the breadcrumbs stay.
       await expect(page.getByTestId('nav-example-main')).toBeVisible();
       await expect(page.getByTestId('nav-example-main-settings')).toHaveCount(0);
-      await expect(page.getByTestId('breadcrumbs')).toHaveText('HomeExampleSettings');
+      await expect(page.getByTestId('breadcrumbs')).toHaveText('OverviewExampleSettings');
     });
   });
 

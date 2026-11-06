@@ -36,6 +36,58 @@ rowPaginationFeature: TableFeature;
 paginatedRowModel: (table: Table<any, any>) => () => RowModel<any, any>;
 }, TData>;
 
+// @public
+export function DataList<TData extends object>(input: DataListProps<TData>): React_2.JSX.Element;
+
+// @public (undocumented)
+export interface DataListProps<TData extends object> {
+    // (undocumented)
+    className?: string;
+    // (undocumented)
+    data: readonly TData[] | undefined;
+    emptyState?: React_2.ReactNode;
+    getRowId: (row: TData) => string;
+    // (undocumented)
+    globalFilter?: string;
+    // (undocumented)
+    hideSearch?: boolean;
+    isLoading?: boolean;
+    label: string;
+    layout?: 'list' | 'grid';
+    // (undocumented)
+    loadingItems?: number;
+    noResultsState?: React_2.ReactNode;
+    noun?: string;
+    // (undocumented)
+    onGlobalFilterChange?: (value: string) => void;
+    // (undocumented)
+    onPaginationChange?: (value: PaginationState) => void;
+    // (undocumented)
+    onSortChange?: (value: string) => void;
+    // (undocumented)
+    pageSizeOptions?: readonly number[];
+    // (undocumented)
+    pagination?: PaginationState;
+    renderItem: (row: TData) => React_2.ReactNode;
+    // (undocumented)
+    searchPlaceholder?: string;
+    searchValue?: (row: TData) => string;
+    sort?: string;
+    sortOptions?: readonly DataListSortOption<TData>[];
+    toolbar?: React_2.ReactNode;
+}
+
+// @public (undocumented)
+export interface DataListSortOption<TData> {
+    // (undocumented)
+    desc?: boolean;
+    // (undocumented)
+    id: string;
+    label: string;
+    // (undocumented)
+    value: (row: TData) => string | number;
+}
+
 // @public (undocumented)
 export function DataTable<TData extends object>(input: DataTableProps<TData>): React_2.JSX.Element;
 

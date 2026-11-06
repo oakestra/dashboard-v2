@@ -4,6 +4,14 @@ export {
   EXTENSION_POINT_IDS,
   type ApplicationContext,
   type ClusterContext,
+  type CommandAction,
+  type CommandAddon,
+  type CommandContext,
+  type CommandDisplay,
+  type CommandResult,
+  type CommandResultTone,
+  type CommandSource,
+  type CommandTarget,
   type ContributionBase,
   type Contributions,
   type EmptyContext,
@@ -41,6 +49,7 @@ export { hasAnyRole, ROLE_OPTIONS, roleLabel, type RoleOption } from './permissi
 export { describeError } from '@oakestra/api';
 export {
   addonQueryKey,
+  buildAddonPath,
   useAddonBasePath,
   useAddonContext,
   useAddonPath,
@@ -54,6 +63,8 @@ export {
   type Permissions,
 } from './hooks';
 export {
+  allApplicationsQuery,
+  allServicesQuery,
   applicationsQuery,
   CLUSTER_REFETCH_MS,
   clustersQuery,

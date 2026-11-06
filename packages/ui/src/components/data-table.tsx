@@ -56,7 +56,7 @@ const columnMeta: DataTableColumnMeta = {};
 
 // Module scope on purpose: TanStack Table v9 recomputes its row models whenever the feature
 // object changes identity.
-const dataTableFeatures = tableFeatures({
+export const dataTableFeatures = tableFeatures({
   columnMeta,
   rowSortingFeature,
   sortedRowModel: createSortedRowModel(),
@@ -125,7 +125,7 @@ interface DataTableProps<TData extends object> {
   initialPageSize?: number;
 }
 
-function useControllable<T>(
+export function useControllable<T>(
   controlled: T | undefined,
   initial: T,
   onChange: ((value: T) => void) | undefined,
@@ -154,7 +154,7 @@ function useControllable<T>(
  * own text, and the controlled value only replaces it when it changes for a reason other than
  * what was typed here (back navigation, a link with `?q=`).
  */
-function useSearchText(controlled: string, onChange: (value: string) => void) {
+export function useSearchText(controlled: string, onChange: (value: string) => void) {
   const [text, setText] = React.useState(controlled);
   // Values sent up that the controlled value has not echoed yet, oldest first.
   const pending = React.useRef<string[]>([]);
@@ -175,6 +175,118 @@ function useSearchText(controlled: string, onChange: (value: string) => void) {
     onChange(value);
   };
   return [text, update] as const;
+}
+
+/** The search box of a `DataTable` or `DataList`. */
+export function CollectionSearch({
+  label,
+  placeholder,
+  value,
+  onChange,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="relative w-full sm:max-w-xs">
+      <SearchIcon
+        aria-hidden
+        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+      />
+      <Input
+        type="search"
+        aria-label={`Search ${label}`}
+        placeholder={placeholder}
+        className="pl-9"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </div>
+  );
+}
+
+/** Result count and paging below a `DataTable` or `DataList`. */
+export function CollectionFooter({
+  noun,
+  total,
+  filteredCount,
+  pageCount,
+  pagination,
+  pageSizeOptions,
+  onPaginationChange,
+}: {
+  /** Singular; the page size label is built from it ("Rows per page"). */
+  noun: string;
+  total: number;
+  filteredCount: number;
+  pageCount: number;
+  pagination: PaginationState;
+  pageSizeOptions: readonly number[];
+  onPaginationChange: (value: PaginationState) => void;
+}) {
+  // Without a filter or more pages, the count only restates the items on screen.
+  if (filteredCount === 0 || (filteredCount === total && pageCount <= 1)) return null;
+  const { pageIndex, pageSize } = pagination;
+  const nouns = `${noun}s`;
+  const perPage = `${nouns[0]!.toUpperCase()}${nouns.slice(1)} per page`;
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm text-muted-foreground">
+      <span aria-live="polite" className="tabular-nums">
+        {filteredCount === total
+          ? `${total} ${total === 1 ? noun : nouns}`
+          : `${filteredCount} of ${total} ${total === 1 ? noun : nouns}`}
+      </span>
+      {pageCount > 1 || filteredCount > (pageSizeOptions[0] ?? 10) ? (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:inline">{perPage}</span>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(value) =>
+                onPaginationChange({ pageIndex: 0, pageSize: Number(value) })
+              }
+            >
+              <SelectTrigger size="sm" aria-label={perPage} className="tabular-nums">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {pageSizeOptions.map((size) => (
+                  <SelectItem key={size} value={String(size)}>
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <span className="tabular-nums">
+            Page {pageIndex + 1} of {pageCount}
+          </span>
+          <div className="flex gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pageIndex <= 0}
+              onClick={() => onPaginationChange({ ...pagination, pageIndex: pageIndex - 1 })}
+            >
+              <ChevronLeftIcon aria-hidden />
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pageIndex >= pageCount - 1}
+              onClick={() => onPaginationChange({ ...pagination, pageIndex: pageIndex + 1 })}
+            >
+              Next
+              <ChevronRightIcon aria-hidden />
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function alignOf(meta: DataTableColumnMeta | undefined) {
@@ -257,7 +369,6 @@ function DataTable<TData extends object>({
   }, [outOfRange, pageCount, setPagination]);
   const columnCount = columns.length;
 
-  const searchId = React.useId();
   const [searchText, onSearchTextChange] = useSearchText(globalFilter, (value) => {
     setGlobalFilter(value);
     // Results shrink under the user; keep them from landing on an empty page.
@@ -361,21 +472,12 @@ function DataTable<TData extends object>({
       {hideSearch && !toolbar ? null : (
         <div className="flex flex-wrap items-center gap-2">
           {hideSearch ? null : (
-            <div className="relative w-full sm:max-w-xs">
-              <SearchIcon
-                aria-hidden
-                className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
-              />
-              <Input
-                id={searchId}
-                type="search"
-                aria-label={`Search ${label}`}
-                placeholder={searchPlaceholder}
-                className="pl-8"
-                value={searchText}
-                onChange={(event) => onSearchTextChange(event.target.value)}
-              />
-            </div>
+            <CollectionSearch
+              label={label}
+              placeholder={searchPlaceholder}
+              value={searchText}
+              onChange={onSearchTextChange}
+            />
           )}
           {toolbar ? (
             <div className="ml-auto flex flex-wrap items-center gap-2">{toolbar}</div>
@@ -443,63 +545,17 @@ function DataTable<TData extends object>({
         </Table>
       </div>
 
-      {/* Without a filter or more pages, the count only restates the rows on screen. */}
-      {!isLoading && filteredCount > 0 && (filteredCount < total || pageCount > 1) ? (
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm text-muted-foreground">
-          <span aria-live="polite" className="tabular-nums">
-            {filteredCount === total
-              ? `${total} ${total === 1 ? 'row' : 'rows'}`
-              : `${filteredCount} of ${total} ${total === 1 ? 'row' : 'rows'}`}
-          </span>
-          {pageCount > 1 || filteredCount > (pageSizeOptions[0] ?? 10) ? (
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <div className="flex items-center gap-2">
-                <span className="hidden sm:inline">Rows per page</span>
-                <Select
-                  value={String(pagination.pageSize)}
-                  onValueChange={(value) =>
-                    setPagination({ pageIndex: 0, pageSize: Number(value) })
-                  }
-                >
-                  <SelectTrigger size="sm" aria-label="Rows per page" className="tabular-nums">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {pageSizeOptions.map((size) => (
-                      <SelectItem key={size} value={String(size)}>
-                        {size}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <span className="tabular-nums">
-                Page {pageIndex + 1} of {pageCount}
-              </span>
-              <div className="flex gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={pageIndex <= 0}
-                  onClick={() => setPagination({ ...pagination, pageIndex: pageIndex - 1 })}
-                >
-                  <ChevronLeftIcon aria-hidden />
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={pageIndex >= pageCount - 1}
-                  onClick={() => setPagination({ ...pagination, pageIndex: pageIndex + 1 })}
-                >
-                  Next
-                  <ChevronRightIcon aria-hidden />
-                </Button>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+      {isLoading ? null : (
+        <CollectionFooter
+          noun="row"
+          total={total}
+          filteredCount={filteredCount}
+          pageCount={pageCount}
+          pagination={pagination}
+          pageSizeOptions={pageSizeOptions}
+          onPaginationChange={setPagination}
+        />
+      )}
     </div>
   );
 }

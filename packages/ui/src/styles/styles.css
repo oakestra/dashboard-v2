@@ -7,62 +7,57 @@
  */
 @import 'tailwindcss';
 @import 'tw-animate-css';
-@import '@fontsource-variable/instrument-sans/wght.css';
-@import '@fontsource-variable/jetbrains-mono/wght.css';
+@import '@fontsource-variable/geist/wght.css';
+@import '@fontsource-variable/geist-mono/wght.css';
 @import './theme.css';
 
 /* Components ship as source, so Tailwind has to scan them from here. */
 @source '../components';
+@source '../lib/stretched-link.ts';
 
 /*
  * Self-hosted, because a dashboard running next to an edge cluster may have no route to a font CDN.
- * Only the weight axis is loaded: the width axis of Instrument Sans would double the download for
- * something nothing here uses.
  */
 :root {
-  --font-ui: 'Instrument Sans Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-code: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-ui: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-code: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 /*
- * Palette. Follows ISA-101 ("high-performance HMI") from process control: a screen in its normal
- * state is neutral, so that abnormal states are easy to spot.
+ * Palette. A screen in its normal state is neutral, so that abnormal states are easy to spot.
  *
  * - Neutrals are a cool gray (hue ~230) and are used for all content.
- * - The primary is the slate-teal of the Oakestra lettering (#4a7385) taken deeper, so white text
- *   on it and it as text on the page both clear WCAG AA. It is used for interactive elements only,
- *   not for decoration.
+ * - The page is a white panel on the sidebar's tint (the inset sidebar layout). Cards are the same
+ *   white, separated by a hairline and a faint shadow rather than by a darker page.
+ * - The primary is the slate-teal of the Oakestra lettering taken down to ink. It is used for
+ *   interactive elements only, not for decoration.
  * - Warning and destructive are the only saturated colors. Success has low chroma so that a page
- *   of healthy rows does not compete with the one row that failed.
+ *   of healthy items does not compete with the one that failed.
  *
  * Status colors stay readable as text on the card surface and on their own soft tint (at least
  * 4.5:1 in both themes). The -foreground variants are for text on the solid color.
- *
- * The sidebar is dark teal in both themes, so it always shows the dark form of the logo. Anything
- * rendered in it has to
- * use the --sidebar-* tokens, the page tokens would be dark on dark in the light theme.
  *
  * The chart palette starts with the brand, then the leaf green of the logo, then hues far enough
  * apart to tell five series apart.
  */
 :root {
-  --radius: 0.375rem;
-  --background: oklch(0.975 0.003 230);
-  --foreground: oklch(0.235 0.016 235);
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.21 0.014 235);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.235 0.016 235);
+  --card-foreground: oklch(0.21 0.014 235);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.235 0.016 235);
-  --primary: oklch(0.455 0.07 225);
+  --popover-foreground: oklch(0.21 0.014 235);
+  --primary: oklch(0.36 0.055 225);
   --primary-foreground: oklch(0.985 0.004 230);
-  --primary-fill: oklch(0.455 0.07 225);
+  --primary-fill: oklch(0.31 0.045 225);
   --primary-fill-foreground: oklch(0.985 0.004 230);
-  --secondary: oklch(0.948 0.005 230);
-  --secondary-foreground: oklch(0.29 0.018 235);
-  --muted: oklch(0.955 0.004 230);
-  --muted-foreground: oklch(0.485 0.016 235);
-  --accent: oklch(0.948 0.006 230);
-  --accent-foreground: oklch(0.235 0.016 235);
+  --secondary: oklch(0.962 0.004 230);
+  --secondary-foreground: oklch(0.27 0.016 235);
+  --muted: oklch(0.968 0.003 230);
+  --muted-foreground: oklch(0.5 0.014 235);
+  --accent: oklch(0.962 0.004 230);
+  --accent-foreground: oklch(0.21 0.014 235);
   --destructive: oklch(0.525 0.19 30);
   --destructive-foreground: oklch(0.985 0.004 230);
   --success: oklch(0.525 0.105 155);
@@ -71,43 +66,41 @@
   --warning-foreground: oklch(0.985 0.004 230);
   --info: oklch(0.5 0.1 245);
   --info-foreground: oklch(0.985 0.004 230);
-  --border: oklch(0.905 0.005 230);
-  --input: oklch(0.865 0.007 230);
-  --ring: oklch(0.56 0.08 225);
+  --border: oklch(0.925 0.004 230);
+  --input: oklch(0.9 0.005 230);
+  --ring: oklch(0.6 0.06 225);
   --chart-1: oklch(0.52 0.08 225);
   --chart-2: oklch(0.64 0.12 150);
   --chart-3: oklch(0.74 0.12 80);
   --chart-4: oklch(0.56 0.11 290);
   --chart-5: oklch(0.64 0.14 35);
-  --sidebar: oklch(0.275 0.03 225);
-  --sidebar-foreground: oklch(0.85 0.014 225);
-  --sidebar-primary: oklch(0.78 0.13 150);
-  --sidebar-primary-foreground: oklch(0.22 0.03 225);
-  --sidebar-accent: oklch(0.345 0.034 225);
-  --sidebar-accent-foreground: oklch(0.985 0.004 230);
-  --sidebar-border: oklch(0.95 0.02 225 / 12%);
-  --sidebar-ring: oklch(0.78 0.06 225);
+  --sidebar: oklch(0.971 0.003 230);
+  --sidebar-foreground: oklch(0.38 0.014 235);
+  --sidebar-primary: oklch(0.31 0.045 225);
+  --sidebar-primary-foreground: oklch(0.985 0.004 230);
+  --sidebar-accent: oklch(0.93 0.005 230);
+  --sidebar-accent-foreground: oklch(0.21 0.014 235);
+  --sidebar-border: oklch(0.915 0.004 230);
+  --sidebar-ring: oklch(0.6 0.06 225);
 }
 
 .dark {
-  --background: oklch(0.2 0.012 235);
-  --foreground: oklch(0.945 0.004 235);
-  --card: oklch(0.232 0.013 235);
-  --card-foreground: oklch(0.945 0.004 235);
-  --popover: oklch(0.255 0.014 235);
-  --popover-foreground: oklch(0.945 0.004 235);
-  --primary: oklch(0.76 0.075 222);
+  --background: oklch(0.195 0.008 235);
+  --foreground: oklch(0.955 0.003 235);
+  --card: oklch(0.222 0.009 235);
+  --card-foreground: oklch(0.955 0.003 235);
+  --popover: oklch(0.24 0.01 235);
+  --popover-foreground: oklch(0.955 0.003 235);
+  --primary: oklch(0.78 0.06 222);
   --primary-foreground: oklch(0.2 0.03 235);
-  /* Primary as text has to be light here, but a button that light is the loudest thing on the
-     page. Filled controls stay the deep teal of the light theme. */
-  --primary-fill: oklch(0.47 0.07 225);
-  --primary-fill-foreground: oklch(0.97 0.006 230);
-  --secondary: oklch(0.285 0.014 235);
-  --secondary-foreground: oklch(0.945 0.004 235);
-  --muted: oklch(0.27 0.014 235);
-  --muted-foreground: oklch(0.72 0.014 235);
-  --accent: oklch(0.295 0.016 235);
-  --accent-foreground: oklch(0.945 0.004 235);
+  --primary-fill: oklch(0.92 0.012 225);
+  --primary-fill-foreground: oklch(0.21 0.02 235);
+  --secondary: oklch(0.27 0.01 235);
+  --secondary-foreground: oklch(0.955 0.003 235);
+  --muted: oklch(0.26 0.01 235);
+  --muted-foreground: oklch(0.72 0.012 235);
+  --accent: oklch(0.275 0.011 235);
+  --accent-foreground: oklch(0.955 0.003 235);
   --destructive: oklch(0.72 0.165 28);
   --destructive-foreground: oklch(0.2 0.03 250);
   --success: oklch(0.76 0.115 155);
@@ -116,22 +109,22 @@
   --warning-foreground: oklch(0.2 0.03 250);
   --info: oklch(0.76 0.1 245);
   --info-foreground: oklch(0.2 0.03 250);
-  --border: oklch(0.9 0.015 235 / 11%);
-  --input: oklch(0.9 0.015 235 / 17%);
-  --ring: oklch(0.64 0.075 222);
+  --border: oklch(0.9 0.01 235 / 10%);
+  --input: oklch(0.9 0.01 235 / 16%);
+  --ring: oklch(0.64 0.06 222);
   --chart-1: oklch(0.72 0.08 225);
   --chart-2: oklch(0.74 0.12 155);
   --chart-3: oklch(0.8 0.12 80);
   --chart-4: oklch(0.7 0.12 290);
   --chart-5: oklch(0.72 0.13 35);
-  --sidebar: oklch(0.17 0.014 235);
-  --sidebar-foreground: oklch(0.83 0.01 235);
-  --sidebar-primary: oklch(0.78 0.13 150);
-  --sidebar-primary-foreground: oklch(0.2 0.03 235);
-  --sidebar-accent: oklch(0.245 0.016 235);
-  --sidebar-accent-foreground: oklch(0.97 0.004 235);
-  --sidebar-border: oklch(0.9 0.015 235 / 10%);
-  --sidebar-ring: oklch(0.64 0.075 222);
+  --sidebar: oklch(0.155 0.007 235);
+  --sidebar-foreground: oklch(0.8 0.008 235);
+  --sidebar-primary: oklch(0.92 0.012 225);
+  --sidebar-primary-foreground: oklch(0.21 0.02 235);
+  --sidebar-accent: oklch(0.235 0.01 235);
+  --sidebar-accent-foreground: oklch(0.97 0.003 235);
+  --sidebar-border: oklch(0.9 0.01 235 / 9%);
+  --sidebar-ring: oklch(0.64 0.06 222);
 }
 
 @layer base {

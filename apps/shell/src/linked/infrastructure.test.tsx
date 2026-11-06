@@ -8,6 +8,10 @@ import { linkedAddons } from '../app/modules';
 import { mockServer, mockStore, TEST_API_URL } from '../test/msw';
 import { renderApp, type RenderAppOptions } from '../test/render';
 
+const clusterList = () => screen.findByRole('list', { name: 'Clusters' });
+const cardOf = (list: HTMLElement, name: string) =>
+  within(list).getByRole('link', { name }).closest('li')!;
+
 function renderInfrastructure(options: Partial<RenderAppOptions> = {}) {
   return renderApp({ linked: linkedAddons, route: '/infrastructure', ...options });
 }
@@ -20,12 +24,11 @@ describe('infrastructure (linked addon)', () => {
   it('lists the clusters with a summary and the overview map', async () => {
     renderInfrastructure();
 
-    const table = await screen.findByRole('table', { name: 'Clusters' });
-    const rows = within(table).getAllByRole('row').slice(1);
-    expect(rows).toHaveLength(mockStore.data.clusters.length);
-    expect(within(table).getByRole('link', { name: 'test-cluster' })).toBeVisible();
-    expect(within(table).getByText('Active')).toBeVisible();
-    expect(within(table).getByText('Inactive')).toBeVisible();
+    const list = await clusterList();
+    expect(within(list).getAllByRole('listitem')).toHaveLength(mockStore.data.clusters.length);
+    expect(within(list).getByRole('link', { name: 'test-cluster' })).toBeVisible();
+    expect(within(list).getByText('Active')).toBeVisible();
+    expect(within(list).getByText('Silent')).toBeVisible();
     expect(within(screen.getByTestId('summary')).getByText('Clusters')).toBeVisible();
     expect(await screen.findByLabelText('Cluster locations')).toBeInTheDocument();
     expect(screen.getByTestId('breadcrumbs')).toHaveTextContent(/^HomeInfrastructure$/);
@@ -45,34 +48,89 @@ describe('infrastructure (linked addon)', () => {
   it('has no Grafana button without a configured Grafana', async () => {
     renderInfrastructure();
 
-    await screen.findByRole('table', { name: 'Clusters' });
+    await clusterList();
     expect(screen.queryByRole('link', { name: 'Open Grafana' })).not.toBeInTheDocument();
   });
 
-  it('shows dashes instead of zero usage for inactive clusters', async () => {
+  it('shows no data instead of zero usage for silent clusters', async () => {
     renderInfrastructure();
-    const table = await screen.findByRole('table', { name: 'Clusters' });
-    const row = within(table).getByRole('link', { name: 'edge-munich' }).closest('tr')!;
+    const card = cardOf(await clusterList(), 'edge-munich');
 
-    expect(within(row).queryByText(/0%/)).not.toBeInTheDocument();
-    expect(within(row).getAllByText('-').length).toBeGreaterThanOrEqual(2);
+    expect(within(card).queryByText(/0%/)).not.toBeInTheDocument();
+    expect(within(card).getByRole('img', { name: 'CPU (last known): no data' })).toBeVisible();
+    expect(within(card).getByRole('img', { name: 'Memory (last known): no data' })).toBeVisible();
+    expect(within(card).getByText('-')).toBeVisible();
   });
 
-  it('filters the table with the search box', async () => {
+  it('shows non-zero last-known usage of a silent cluster as last known', async () => {
+    const munich = mockStore.data.clusters.find(
+      (cluster) => cluster.cluster_name === 'edge-munich',
+    )!;
+    Object.assign(munich, { cpu_percent: 31, memory_percent: 46, memory_in_mb: 17_696 });
+    renderInfrastructure();
+    const card = cardOf(await clusterList(), 'edge-munich');
+
+    expect(within(card).getByRole('img', { name: 'CPU (last known): 31%' })).toBeVisible();
+    expect(within(card).getByRole('img', { name: 'Memory (last known): 46%' })).toBeVisible();
+    expect(within(card).getByText(/17\.3 GB/)).toHaveTextContent('(last known)');
+  });
+
+  it('never warns about a last-known value', async () => {
+    const munich = mockStore.data.clusters.find(
+      (cluster) => cluster.cluster_name === 'edge-munich',
+    )!;
+    Object.assign(munich, { cpu_percent: 95 });
+    renderInfrastructure();
+    const card = cardOf(await clusterList(), 'edge-munich');
+
+    expect(within(card).getByRole('img', { name: /^CPU/ })).not.toHaveAttribute('data-abnormal');
+  });
+
+  it('marks a cluster that never reported', async () => {
+    const munich = mockStore.data.clusters.find(
+      (cluster) => cluster.cluster_name === 'edge-munich',
+    )!;
+    delete munich.last_modified_timestamp;
+    renderInfrastructure();
+    const card = cardOf(await clusterList(), 'edge-munich');
+
+    expect(within(card).getByText('Never reported')).toBeVisible();
+    expect(within(card).getByText('Never seen')).toBeVisible();
+  });
+
+  it('labels the summary tile as available memory', async () => {
+    renderInfrastructure();
+    const summary = await screen.findByTestId('summary');
+    expect(within(summary).getByText('Memory available')).toBeVisible();
+  });
+
+  it('filters the list with the search box', async () => {
     const { user } = renderInfrastructure();
-    const table = await screen.findByRole('table', { name: 'Clusters' });
+    const list = await clusterList();
 
     await user.type(screen.getByRole('searchbox', { name: /clusters/i }), 'munich');
 
-    expect(within(table).queryByRole('link', { name: 'test-cluster' })).not.toBeInTheDocument();
-    expect(within(table).getByRole('link', { name: 'edge-munich' })).toBeVisible();
+    expect(within(list).queryByRole('link', { name: 'test-cluster' })).not.toBeInTheDocument();
+    expect(within(list).getByRole('link', { name: 'edge-munich' })).toBeVisible();
   });
 
-  it('opens the detail page when a row is clicked', async () => {
-    const { user, router } = renderInfrastructure();
-    const table = await screen.findByRole('table', { name: 'Clusters' });
+  it('sorts clusters without a figure below the ones reporting', async () => {
+    const { user } = renderInfrastructure();
+    const list = await clusterList();
 
-    await user.click(within(table).getByText('Active'));
+    await user.click(screen.getByRole('combobox', { name: 'Sort Clusters' }));
+    await user.click(await screen.findByRole('option', { name: 'Highest CPU usage' }));
+
+    await waitFor(() =>
+      expect(within(list).getAllByRole('listitem').at(-1)).toHaveTextContent('edge-munich'),
+    );
+  });
+
+  it('opens the detail page from a card', async () => {
+    const { user, router } = renderInfrastructure();
+    const list = await clusterList();
+
+    await user.click(within(list).getByRole('link', { name: 'test-cluster' }));
 
     await waitFor(() =>
       expect(router.state.location.pathname).toMatch(/^\/infrastructure\/clusters\/.+/),
@@ -83,12 +141,12 @@ describe('infrastructure (linked addon)', () => {
     renderInfrastructure({ user: { username: 'alice' } });
 
     expect(await screen.findByText(/403|not allowed|permission/i)).toBeVisible();
-    expect(screen.queryByRole('table', { name: 'Clusters' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Clusters' })).not.toBeInTheDocument();
   });
 
   it('lets an infrastructure provider in', async () => {
     renderInfrastructure({ user: { username: 'bob' } });
-    expect(await screen.findByRole('table', { name: 'Clusters' })).toBeVisible();
+    expect(await clusterList()).toBeVisible();
   });
 
   it('explains how clusters register when there are none', async () => {

@@ -119,11 +119,20 @@ function LoadedAddonRoutes({ entry }: { entry: Extract<AddonEntry, { state: 'loa
     ],
     [entry],
   );
-  const source = useMemo(() => addonSource(entry), [entry]);
+  const source = useMemo(() => addonSource(entry, entry.definition.label), [entry]);
   const element = useRoutes(routes);
+  const { pathname, search } = useLocation();
 
   return (
-    <ContributionBoundary source={source} label="Page" fallback={<AddonPageSkeleton />}>
+    <ContributionBoundary
+      source={source}
+      label="Page"
+      page
+      // This host stays mounted across the addon's routes, so without it one crashed page would
+      // keep every other page of the addon out of reach.
+      resetKey={`${pathname}${search}`}
+      fallback={<AddonPageSkeleton />}
+    >
       {element}
     </ContributionBoundary>
   );

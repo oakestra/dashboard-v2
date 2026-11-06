@@ -29,20 +29,12 @@ function renderInstalled(options: Partial<Parameters<typeof renderApp>[0]> = {})
   });
 }
 
-const rowOf = async (name: string) => {
-  const cell = await screen.findByText(name, { selector: 'td span' });
-  return cell.closest('tr')!;
-};
+const rowOf = (name: string) => screen.findByTestId(`installed-addon-${name}`);
 
-/**
- * Waits until the row of `name` shows `status`. The row is looked up on every retry: a status
- * change re-renders the table, and a cell found before that is detached, so its closest('tr') is
- * null.
- */
+/** Waits until the row of `name` shows `status`. */
 const waitForStatus = (name: string, status: string) =>
   waitFor(() => {
-    const row = screen.getByText(name, { selector: 'td span' }).closest('tr');
-    expect(within(row!).getByText(status)).toBeVisible();
+    expect(within(screen.getByTestId(`installed-addon-${name}`)).getByText(status)).toBeVisible();
   });
 
 describe('<InstalledPage>', () => {
@@ -62,7 +54,7 @@ describe('<InstalledPage>', () => {
     const example = await rowOf('example');
     expect(within(example).getByText('Active')).toBeVisible();
     expect(within(example).getByText('Loaded')).toBeVisible();
-    expect(within(example).getByText('2')).toBeVisible();
+    expect(within(example).getByText('2 services')).toBeVisible();
     const analytics = await rowOf('analytics');
     expect(within(analytics).getByText('Partially active')).toBeVisible();
     expect(within(analytics).getByText('None')).toBeVisible();
@@ -101,7 +93,7 @@ describe('<InstalledPage>', () => {
 
   it('shows the details of an addon without any environment value', async () => {
     const { user } = renderInstalled();
-    await user.click(await rowOf('example'));
+    await user.click(await screen.findByRole('button', { name: 'example' }));
 
     const sheet = await screen.findByTestId('addon-detail');
     const worker = within(within(sheet).getByTestId('service-example-worker'));
@@ -117,7 +109,7 @@ describe('<InstalledPage>', () => {
 
   it('shows the failed services and the logs of a failed addon', async () => {
     const { user } = renderInstalled();
-    await user.click(await rowOf('legacy-exporter'));
+    await user.click(await screen.findByRole('button', { name: 'legacy-exporter' }));
 
     const sheet = await screen.findByTestId('addon-detail');
     expect(
@@ -359,7 +351,7 @@ describe('<InstalledPage>', () => {
         },
       });
     });
-    await user.click(await rowOf('example'));
+    await user.click(await screen.findByRole('button', { name: 'example' }));
 
     expect(
       await within(await screen.findByTestId('addon-detail')).findByTestId('nav-item-keys'),
@@ -385,7 +377,7 @@ describe('<InstalledPage>', () => {
 
     const alert = await screen.findByTestId('installed-error');
     expect(alert).toHaveTextContent('The addons service is not reachable');
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Installed addons' })).not.toBeInTheDocument();
 
     mockServer.resetHandlers();
     await user.click(within(alert).getByRole('button', { name: 'Try again' }));

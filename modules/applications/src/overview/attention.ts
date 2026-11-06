@@ -1,7 +1,7 @@
 import { plural } from '@oakestra/ui';
 import type { Application, Service } from '@oakestra/api';
 
-import { describeStatus, isUndeployed, type StatusTone } from '../services/status';
+import { describeStatus, serviceAttention, type StatusTone } from '../services/status';
 
 export interface AttentionItem {
   key: string;
@@ -35,34 +35,26 @@ export function attentionItems(
         applicationName: application.application_name,
         service,
       };
-      const own = describeStatus(service.status, service.status_detail);
-      if (own.tone === 'destructive' || own.tone === 'warning') {
+      const attention = serviceAttention(service);
+      if (!attention) continue;
+      if (attention.kind === 'service') {
+        const own = describeStatus(service.status, service.status_detail);
         items.push({
           ...base,
-          status: service.status,
-          detail: service.status_detail,
-          tone: own.tone,
+          status: attention.status,
+          detail: attention.detail,
+          tone: attention.tone,
           note: own.hint || own.label,
         });
-        continue;
-      }
-      const failing = service.instance_list.filter((instance) => {
-        const { tone } = describeStatus(instance.status);
-        return tone === 'destructive' || tone === 'warning';
-      });
-      if (failing.length > 0) {
-        const worst = failing[0]!;
-        const description = describeStatus(worst.status, worst.status_detail);
+      } else if (attention.kind === 'instances') {
         items.push({
           ...base,
-          status: worst.status,
-          detail: worst.status_detail,
-          tone: description.tone,
-          note: `${failing.length} of ${plural(service.instance_list.length, 'instance')} failing`,
+          status: attention.status,
+          detail: attention.detail,
+          tone: attention.tone,
+          note: `${attention.failing} of ${plural(service.instance_list.length, 'instance')} failing`,
         });
-        continue;
-      }
-      if (isUndeployed(service)) {
+      } else {
         items.push({
           ...base,
           status: undefined,

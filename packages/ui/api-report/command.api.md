@@ -15,6 +15,9 @@ export function Command(input: React_2.ComponentProps<typeof Command_2>): React_
 export function CommandDialog(input: React_2.ComponentProps<typeof Dialog$1> & {
     title?: string;
     description?: string;
+    className?: string;
+    commandProps?: React_2.ComponentProps<typeof Command_2>;
+    showCloseButton?: boolean;
 }): React_2.JSX.Element;
 
 // @public (undocumented)

@@ -2,12 +2,15 @@ import { QueryClient } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 
 import {
+  allApplicationsQuery,
+  allServicesQuery,
   applicationsQuery,
   clustersQuery,
   platformQueryKeys,
   profileQuery,
   servicesByApplicationQuery,
 } from './platform-queries';
+import { seedFromLists } from './seed-from-lists';
 import { createMockApi } from './testing';
 
 describe('platform queries', () => {
@@ -29,6 +32,33 @@ describe('platform queries', () => {
     expect(applicationsQuery(api, 'u-1').queryKey).not.toEqual(
       platformQueryKeys.application('u-1'),
     );
+  });
+
+  it('keep the all-entities lists under the same prefixes, so existing invalidation covers them', async () => {
+    const api = createMockApi();
+    expect(allApplicationsQuery(api).queryKey.slice(0, 2)).toEqual(
+      platformQueryKeys.applications(),
+    );
+    expect(allServicesQuery(api).queryKey.slice(0, 2)).toEqual(platformQueryKeys.services());
+
+    const client = new QueryClient();
+    client.setQueryData(allServicesQuery(api).queryKey, []);
+    await client.invalidateQueries({ queryKey: platformQueryKeys.services() });
+    expect(client.getQueryState(allServicesQuery(api).queryKey)?.isInvalidated).toBe(true);
+  });
+
+  it('let a detail page seed from the all-entities list like from any other list', () => {
+    const api = createMockApi();
+    const client = new QueryClient();
+    client.setQueryData(allServicesQuery(api).queryKey, [{ _id: 's-1' }, { _id: 's-2' }] as never);
+    client.setQueryData(platformQueryKeys.service('s-2'), { _id: 's-2' });
+
+    const seed = seedFromLists<{ _id: string }>(
+      client,
+      platformQueryKeys.services(),
+      (service) => service._id === 's-2',
+    );
+    expect(seed.initialData()).toEqual({ _id: 's-2' });
   });
 
   it('fetch through the API facade', async () => {

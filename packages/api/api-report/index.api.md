@@ -226,6 +226,12 @@ export interface ClusterLocation {
 }
 
 // @public (undocumented)
+export type ClusterReportState = 'reporting' | 'silent' | 'never-reported';
+
+// @public
+export function clusterReportState(cluster: Pick<Cluster, 'active' | 'last_modified_timestamp'>): ClusterReportState;
+
+// @public (undocumented)
 export const clusterSchema: z.ZodObject<{
     _id: z.ZodString;
     cluster_name: z.ZodString;
@@ -363,6 +369,12 @@ export function decodeTokenClaims(token: string): AccessTokenClaims;
 // @public
 export function describeError(error: unknown): string;
 
+// @public
+export function describeStatus(status: string | undefined, detail?: string): StatusDescription;
+
+// @public (undocumented)
+export function hasTransitionalInstance(services: readonly Service[]): boolean;
+
 // @public (undocumented)
 export type HistoryPoint = z.infer<typeof historyPointSchema>;
 
@@ -474,6 +486,12 @@ export interface InstanceEndpoints {
     undeploy(serviceId: string, instanceNumber: number): Promise<void>;
 }
 
+// @public
+export function instanceHost(instance: Instance): string | undefined;
+
+// @public
+export function instanceProblem(instance: Instance): string | undefined;
+
 // @public (undocumented)
 export const instanceSchema: z.ZodObject<{
     instance_number: z.ZodCoercedNumber<unknown>;
@@ -525,10 +543,22 @@ export class InvalidTokenError extends Error {
 }
 
 // @public
+export function isAbnormalTone(tone: StatusTone): tone is 'destructive' | 'warning';
+
+// @public
 export function isApiError(error: unknown): error is ApiError;
+
+// @public
+export function isPlacementFailure(status: string | undefined): boolean;
 
 // @public (undocumented)
 export function isTransitionalAddonStatus(status: string): status is TransitionalAddonStatus;
+
+// @public (undocumented)
+export function isTransitionalStatus(status: string | undefined): boolean;
+
+// @public
+export function isUndeployed(service: Service): boolean;
 
 // @public
 export function lenientArray<T extends z.ZodType>(item: T, label: string): z.ZodPipe<z.ZodArray<z.ZodUnknown>, z.ZodTransform<z.output<T>[], unknown[]>>;
@@ -2543,6 +2573,34 @@ export const ROOT_ORGANIZATION_NAME = "root";
 export type Service = z.infer<typeof serviceSchema>;
 
 // @public (undocumented)
+export type ServiceAttention =
+/** The service itself failed or could not be placed. */
+    {
+    kind: 'service';
+    tone: 'destructive' | 'warning';
+    status: string | undefined;
+    detail: string | undefined;
+} |
+/** The service looks fine but some of its instances failed. */
+    {
+    kind: 'instances';
+    tone: StatusTone;
+    status: string | undefined;
+    detail: string | undefined;
+    failing: number;
+} |
+/** Nothing running and nothing on the way. */
+    {
+    kind: 'undeployed';
+    tone: 'neutral';
+    status: undefined;
+    detail: undefined;
+};
+
+// @public
+export function serviceAttention(service: Service): ServiceAttention | null;
+
+// @public (undocumented)
 export type ServiceCreateResult = z.infer<typeof serviceCreateResultSchema>;
 
 // @public
@@ -2615,6 +2673,21 @@ export const serviceSchema: z.ZodObject<{
     cmd: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
     args: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
     environment: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+    volumes: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
+        volume_id: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+        csi_driver: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+        mount_path: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    }, z.core.$loose>>>>, z.ZodTransform<{
+        [x: string]: unknown;
+        volume_id: string | undefined;
+        csi_driver: string | undefined;
+        mount_path: string | undefined;
+    }[], {
+        [x: string]: unknown;
+        volume_id: string | undefined;
+        csi_driver: string | undefined;
+        mount_path: string | undefined;
+    }[] | null | undefined>>;
     added_files: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
     status: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
     status_detail: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
@@ -3072,6 +3145,37 @@ export const slaV2Schema: z.ZodObject<{
     }, z.core.$loose>>;
     args: z.ZodOptional<z.ZodArray<z.ZodString>>;
 }, z.core.$loose>;
+
+// @public (undocumented)
+export interface StatusDescription {
+    hint: string;
+    // (undocumented)
+    label: string;
+    pulse: boolean;
+    // (undocumented)
+    tone: StatusTone;
+}
+
+// @public (undocumented)
+export interface StatusSummary {
+    // (undocumented)
+    failed: number;
+    // (undocumented)
+    other: number;
+    // (undocumented)
+    pending: number;
+    // (undocumented)
+    running: number;
+    tone: StatusTone;
+    // (undocumented)
+    total: number;
+}
+
+// @public
+export type StatusTone = 'success' | 'warning' | 'destructive' | 'info' | 'neutral';
+
+// @public
+export function summarizeStatuses(statuses: readonly (string | undefined)[]): StatusSummary;
 
 // @public
 export const timestamp: z.ZodPipe<z.ZodUnion<readonly [z.ZodNumber, z.ZodString]>, z.ZodTransform<Date, string | number>>;

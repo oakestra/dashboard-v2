@@ -16,9 +16,9 @@ const orgByName = (name: string) => mockStore.data.organizations.find((o) => o.n
 describe('organizations list', () => {
   it('shows names and member counts', async () => {
     renderOrgs();
-    const row = await screen.findByRole('row', { name: /^root/ });
-    expect(within(row).getByText('5')).toBeVisible();
-    expect(screen.getByRole('row', { name: /^edge-lab/ })).toBeVisible();
+    const card = (await screen.findByRole('link', { name: 'root' })).closest('li')!;
+    expect(within(card).getByText('5 members, 1 admin')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'edge-lab' })).toBeVisible();
   });
 
   it('creates an organization', async () => {
@@ -36,7 +36,7 @@ describe('organizations list', () => {
     await user.type(within(dialog).getByLabelText('Name'), 'campus');
     await user.click(within(dialog).getByRole('button', { name: 'Create organization' }));
 
-    expect(await screen.findByRole('row', { name: /^campus/ })).toBeVisible();
+    expect(await screen.findByRole('link', { name: 'campus' })).toBeVisible();
     expect(body).toEqual({ name: 'campus', member: [] });
     expect(orgByName('campus').member).toEqual([]);
   });
@@ -52,9 +52,21 @@ describe('organizations list', () => {
     );
   });
 
+  it('keeps the search in the URL and opens an organization from its card', async () => {
+    const { user, router } = renderOrgs('/organizations?q=edge');
+
+    expect(await screen.findByRole('link', { name: 'edge-lab' })).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'root' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('link', { name: 'edge-lab' }));
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(`/organizations/${orgByName('edge-lab')._id}`),
+    );
+  });
+
   it('does not offer deleting the root organization', async () => {
     renderOrgs();
-    await screen.findByRole('row', { name: /^root/ });
+    await screen.findByRole('link', { name: 'root' });
     expect(screen.queryByRole('button', { name: 'Actions for root' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Actions for edge-lab' })).toBeEnabled();
   });
@@ -77,7 +89,9 @@ describe('organization detail', () => {
     );
     const { user } = renderOrgs(`/organizations/${edge._id}`);
 
-    await user.click(await screen.findByRole('button', { name: 'Add member' }));
+    // The empty state repeats the header's button.
+    await screen.findByText('No members');
+    await user.click(screen.getAllByRole('button', { name: 'Add member' })[0]!);
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('combobox', { name: 'User' }));
     await user.click(await screen.findByRole('option', { name: 'bob' }));
@@ -90,7 +104,8 @@ describe('organization detail', () => {
       member: [{ user_id: bob._id, roles: ['Infrastructure_Provider'] }],
     };
     await waitFor(() => expect(body).toEqual(expected));
-    expect(await screen.findByRole('row', { name: /^bob/ })).toBeVisible();
+    const members = await screen.findByRole('list', { name: 'Members' });
+    expect(await within(members).findByText('bob')).toBeVisible();
   });
 
   it('edits roles and removes a member', async () => {

@@ -5,6 +5,8 @@ import { LocationMap, toMapLocation, type MarkerLinkProps } from '@oakestra/ui/l
 import { useMemo } from 'react';
 import { Link } from 'react-router';
 
+import { clusterPresentation } from '../lib';
+
 // Client-side navigation: a plain anchor would reload the app. Module scope, so the markers keep
 // a stable prop across renders.
 function renderLink({ href, label, className }: MarkerLinkProps) {
@@ -29,16 +31,18 @@ export function ClusterMap({
   const locations = useMemo(
     () =>
       clusters.flatMap((cluster) => {
+        const { state, label, mapTone } = clusterPresentation(cluster);
         const location = toMapLocation(
-          cluster.active ? cluster.cluster_name : `${cluster.cluster_name} (inactive)`,
+          state === 'reporting'
+            ? cluster.cluster_name
+            : `${cluster.cluster_name} (${label.toLowerCase()})`,
           parseClusterLocation(cluster.cluster_location),
         );
         if (!location) return [];
         return [
           {
             ...location,
-            // Same meaning as the amber Inactive badge in the table next to the map.
-            tone: cluster.active ? ('default' as const) : ('warning' as const),
+            tone: mapTone,
             ...(linkToDetail ? { href: addonPath('clusters', cluster._id) } : {}),
           },
         ];

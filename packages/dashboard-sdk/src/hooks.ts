@@ -85,6 +85,23 @@ export function useAddonBasePath(): string {
 }
 
 /**
+ * `useAddonPath()` for code that cannot call hooks, such as a command's `run`, where
+ * `ctx.addon.path` is usually what you want. Both are this function.
+ */
+export function buildAddonPath(
+  basePath: string,
+  ...segments: readonly (string | number)[]
+): string {
+  return [
+    basePath,
+    ...segments
+      .map(String)
+      .filter((segment) => segment !== '')
+      .map(encodeURIComponent),
+  ].join('/');
+}
+
+/**
  * Returns a function that builds absolute paths below the addon's base path:
  * `addonPath('details', id)` is `/addons/<id>/details/<encoded id>`, `addonPath()` the base path.
  *
@@ -94,17 +111,7 @@ export function useAddonBasePath(): string {
  */
 export function useAddonPath(): (...segments: readonly (string | number)[]) => string {
   const basePath = useAddonBasePath();
-  return useCallback(
-    (...segments) =>
-      [
-        basePath,
-        ...segments
-          .map(String)
-          .filter((segment) => segment !== '')
-          .map(encodeURIComponent),
-      ].join('/'),
-    [basePath],
-  );
+  return useCallback((...segments) => buildAddonPath(basePath, ...segments), [basePath]);
 }
 
 /**

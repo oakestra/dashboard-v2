@@ -2,6 +2,7 @@
   "$schema": "../preset.schema.json",
   "modules": [
     "overview",
+    "fleet",
     "applications",
     "infrastructure",
     "users",

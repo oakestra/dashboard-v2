@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
   PageHeader,
   Skeleton,
+  SourceTag,
   StatusBadge,
   Tabs,
   TabsContent,
@@ -35,7 +36,7 @@ import {
   Trash2Icon,
   TriangleAlertIcon,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 
 import { isNotFound, NotFound } from '../../components/NotFound';
@@ -43,7 +44,8 @@ import { seededApplicationQuery } from '../../queries';
 import { useDeployAll } from '../../services/mutations';
 import { isUndeployed, usePollWhileTransitional } from '../../services/status';
 import { applicationHealth, describeServiceCounts } from '../health';
-import { ServicesTable } from '../components/ServicesTable';
+import { ContributedTabContent } from '../../components/ContributedTabContent';
+import { ServicesList } from '../components/ServicesList';
 import { ApplicationFormDialog } from '../components/ApplicationFormDialog';
 import { DeleteApplicationDialog } from '../components/DeleteApplicationDialog';
 
@@ -54,6 +56,10 @@ export function ApplicationDetailPage() {
   const addonPath = useAddonPath();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [tab, setTab] = useState('services');
+  const leaveTab = useCallback((value: string) => {
+    setTab((current) => (current === value ? 'services' : current));
+  }, []);
 
   const application = useQuery(seededApplicationQuery(api, useQueryClient(), appId));
   const refetchInterval = usePollWhileTransitional();
@@ -138,7 +144,7 @@ export function ApplicationDetailPage() {
           onRetry={() => void services.refetch()}
         />
       ) : (
-        <ServicesTable
+        <ServicesList
           applicationId={app._id}
           applicationNamespace={app.application_namespace}
           services={services.data}
@@ -149,7 +155,7 @@ export function ApplicationDetailPage() {
   );
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <PageHeader
         title={app.application_name}
         description={
@@ -211,11 +217,16 @@ export function ApplicationDetailPage() {
       <Slot
         point="application.detail.tabs"
         context={tabContext}
-        render={(tab, _content, source) => (
-          <TabsTrigger value={`${source.id}:${tab.id}`}>{tab.label}</TabsTrigger>
+        render={(extTab, _content, source) => (
+          <TabsTrigger value={`${source.id}:${extTab.id}`}>
+            {extTab.label}
+            {source.remote ? (
+              <SourceTag name={source.displayName ?? source.id} version={source.version} />
+            ) : null}
+          </TabsTrigger>
         )}
         wrap={(triggers) => (
-          <Tabs defaultValue="services">
+          <Tabs value={tab} onValueChange={setTab}>
             <TabsList>
               <TabsTrigger value="services">Services</TabsTrigger>
               {triggers}
@@ -224,8 +235,10 @@ export function ApplicationDetailPage() {
             <Slot
               point="application.detail.tabs"
               context={tabContext}
-              render={(tab, content, source) => (
-                <TabsContent value={`${source.id}:${tab.id}`}>{content}</TabsContent>
+              render={(extTab, content, source) => (
+                <ContributedTabContent value={`${source.id}:${extTab.id}`} onRemoved={leaveTab}>
+                  {content}
+                </ContributedTabContent>
               )}
             />
           </Tabs>

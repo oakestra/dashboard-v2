@@ -1,12 +1,12 @@
 import { useOakestraApi } from '@oakestra/dashboard-sdk';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useParams } from 'react-router';
+import { useParams, useSearchParams } from 'react-router';
 
 import { seededApplicationQuery, seededServiceQuery } from '../../queries';
 import { isNotFound } from '../../components/NotFound';
 import { PageFrame } from '../components/PageFrame';
 import { ServiceForm } from '../components/ServiceForm';
-import { fromService } from '../model/convert';
+import { fromService, parseLimitParam } from '../model/convert';
 
 /**
  * Replaces editing: the backend answers `PUT /service/{id}` with 501, so a change means creating
@@ -18,6 +18,10 @@ export function DuplicateServicePage() {
   const queryClient = useQueryClient();
   const application = useQuery(seededApplicationQuery(api, queryClient, appId));
   const service = useQuery(seededServiceQuery(api, queryClient, serviceId));
+  // Set by "Copy with these limits" on the service page.
+  const [searchParams] = useSearchParams();
+  const memory = parseLimitParam(searchParams.get('memory'));
+  const vcpus = parseLimitParam(searchParams.get('vcpus'));
 
   return (
     <PageFrame
@@ -36,12 +40,17 @@ export function DuplicateServicePage() {
     >
       {(customerId) =>
         application.data && service.data ? (
-          // Keyed so navigating between two duplicates never reuses the previous form state.
+          // Keyed so navigating between two duplicates never reuses the previous form state: the
+          // form reads its initial values once, on mount.
           <ServiceForm
-            key={service.data._id}
+            key={`${service.data._id}:${memory ?? ''}:${vcpus ?? ''}`}
             application={application.data}
             customerId={customerId}
-            initialValues={fromService(service.data)}
+            initialValues={{
+              ...fromService(service.data),
+              ...(memory && { memory }),
+              ...(vcpus && { vcpus }),
+            }}
             source={{ id: service.data._id, name: service.data.microservice_name }}
           />
         ) : null

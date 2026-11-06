@@ -1,6 +1,11 @@
 import type { Server } from 'node:http';
 
-import { createMockFetchHandler, createMockStore, type MockApiOptions } from '@oakestra/mocks';
+import {
+  createMockFetchHandler,
+  createMockStore,
+  withPlacementDemo,
+  type MockApiOptions,
+} from '@oakestra/mocks';
 import { createMockHttpServer } from '@oakestra/mocks/http';
 
 /**
@@ -11,6 +16,8 @@ import { createMockHttpServer } from '@oakestra/mocks/http';
 export interface MockSystemManagerOptions {
   accessTokenTtlSeconds?: number;
   instanceStartupMs?: number;
+  /** Adds the clusters, instances and placement failures of `withPlacementDemo` to the seed. */
+  placementDemo?: boolean;
 }
 
 // Handlers match on absolute URLs. Requests are rebuilt against this origin, whatever Host header
@@ -18,8 +25,9 @@ export interface MockSystemManagerOptions {
 const INTERNAL_ORIGIN = 'http://mock-system-manager';
 
 export function createMockSystemManager(options: MockSystemManagerOptions = {}): Server {
-  const store = createMockStore();
-  const apiOptions: MockApiOptions = { baseUrl: `${INTERNAL_ORIGIN}/api`, store, ...options };
+  const { placementDemo, ...mockOptions } = options;
+  const store = createMockStore(placementDemo ? withPlacementDemo : undefined);
+  const apiOptions: MockApiOptions = { baseUrl: `${INTERNAL_ORIGIN}/api`, store, ...mockOptions };
   const handleApi = createMockFetchHandler(apiOptions);
 
   return createMockHttpServer({ name: 'mock-system-manager', origin: INTERNAL_ORIGIN, handle });

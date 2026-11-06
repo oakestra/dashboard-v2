@@ -6,15 +6,12 @@ import { addonManagerModule } from '../addon-manager';
 import { settingsModule } from './index';
 
 describe('settings', () => {
-  it('offers the appearance panel and shares the theme with the rest of the shell', async () => {
-    const { user } = renderApp({ modules: [settingsModule], route: '/settings' });
+  it('has no theme picker, the theme is a preference of the account', async () => {
+    renderApp({ modules: [settingsModule], route: '/settings' });
 
-    expect(await screen.findByText('Appearance')).toBeVisible();
+    expect(await screen.findByText('No platform settings yet')).toBeVisible();
     expect(screen.getByTestId('breadcrumbs')).toHaveTextContent('Settings');
-
-    await user.click(screen.getByRole('radio', { name: 'Dark' }));
-    expect(document.documentElement).toHaveClass('dark');
-    expect(screen.getByRole('radio', { name: 'Dark' })).toBeChecked();
+    expect(screen.queryByRole('radio', { name: 'Dark' })).not.toBeInTheDocument();
   });
 
   it('redirects the old addon status page to the addon manager', async () => {
@@ -34,7 +31,7 @@ describe('settings', () => {
       preset: { modules: ['settings'], home: '/settings' },
     });
 
-    expect(await screen.findByText('Appearance')).toBeVisible();
+    expect(await screen.findByText('No platform settings yet')).toBeVisible();
     expect(router.state.location.pathname).toBe('/settings');
   });
 

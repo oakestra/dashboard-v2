@@ -95,6 +95,18 @@ export function applicationsQuery(api: OakestraApi, userId: string) {
 }
 
 /**
+ * Every application of the platform (`GET /applications/`, Admin only). The entries have the shape
+ * of the per-user lists, so `seedFromLists` over `platformQueryKeys.applications()` may seed from
+ * this one too. Detail endpoints stay owner-scoped even for an Admin, see `Application.userId`.
+ */
+export function allApplicationsQuery(api: OakestraApi) {
+  return queryOptions({
+    queryKey: [...platformQueryKeys.applications(), 'all'] as const,
+    queryFn: ({ signal }) => api.applications.list({ signal }),
+  });
+}
+
+/**
  * The services of one application. There is no "all my services" endpoint for non-admins, so
  * pages that summarize several applications run one of these per application.
  */
@@ -102,5 +114,13 @@ export function servicesByApplicationQuery(api: OakestraApi, applicationId: stri
   return queryOptions({
     queryKey: platformQueryKeys.servicesByApplication(applicationId),
     queryFn: ({ signal }) => api.services.listForApplication(applicationId, { signal }),
+  });
+}
+
+/** Every service of the platform (`GET /services/`, Admin only), see `allApplicationsQuery`. */
+export function allServicesQuery(api: OakestraApi) {
+  return queryOptions({
+    queryKey: [...platformQueryKeys.services(), 'all'] as const,
+    queryFn: ({ signal }) => api.services.list({ signal }),
   });
 }

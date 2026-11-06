@@ -27,7 +27,9 @@ React shell that loads addon UIs at runtime through Module Federation.
   entry.
 - `modules/<name>` (`@oakestra/module-<name>`, private): features as addon packages written
   against the SDK only, linked into the shell (`linkedAddons` in `src/app/modules.ts`). `help` is
-  the reference. See "Module packages".
+  the reference. See "Module packages". `modules/fleet` is a board of cluster cards, each listing its services by
+  application, behind an Unplaced card (`/fleet`, lenses, inspector, exceptions list); its state lives
+  in search params. The board's columns use container queries, because the inspector narrows the page.
 - `tools/mock-addons-manager`: one server mocking the addons-manager, the marketplace-manager and
   `GET /api/v1/ui-addons` (see "Mock addons manager"), with a `/__test` control API.
 - `tools/mock-system-manager`: the `@oakestra/mocks` backend served over HTTP for the e2e stack.
@@ -100,10 +102,13 @@ backends in the browser (installs settle after 3s; `/ui-addons` stays empty).
   slots and role filtering never special-case core vs addon.
 - Extension points are the `ExtensionPoints` interface in the SDK. Adding one: add the key there,
   to `EXTENSION_POINT_IDS`, and to `pointSchemas` in `core/addons/definition.ts`; render it with
-  `<Slot point="..." />`. New points are an SDK minor bump; renames or incompatible context
+  `<Slot point="..." />`. Points that are data, not components (`nav.items`, `command.actions`,
+  `command.sources`; the rest is `RenderablePointId`) are read with `useContributions` instead and
+  are not accepted by `<Slot>`. New points are an SDK minor bump; renames or incompatible context
   changes are a major bump.
-- The shell's Settings page (`features/settings`) is for the dashboard's own settings and has no
-  extension point. Addons put their settings on their own page, linked as a nav sub-item; core
+- The shell's Settings page (`features/settings`) is for platform-wide settings and has no
+  extension point. It has none yet and shows an empty state; per-account preferences (the theme) go
+  in the account menu. Addons put their settings on their own page, linked as a nav sub-item; core
   sections are added to `GeneralSettingsPage` directly.
 - Addon routes are rendered by `AddonRouteHost` at `/addons/:addonId/*` with `useRoutes`, never
   patched into the data router. Addon routes therefore have no loaders; addons fetch with
@@ -152,6 +157,10 @@ features/<name>/
   Settings). `children: [{ id, label, path, order, roles }]`
   nests sub-items (one level only, see `app/layouts/nav-model.ts`); the one link with the longest
   matching path is highlighted, so a parent and its sub-item are never active together.
+- **Shared status helpers** (`describeStatus`, `serviceAttention`, `summarizeStatuses`,
+  `isPlacementFailure`, `instanceProblem`, `clusterReportState`, tones) live in `@oakestra/api`
+  (`status.ts`, `models/cluster.ts`), so packages and the SDK do not each keep a copy.
+  `modules/applications/src/services/status.ts` re-exports them and adds only React.
 - **Data:** components get the API with `useOakestraApi()` from the SDK, exactly like addons, and
   never build URLs. Responses are already parsed by `@oakestra/api` models; failures are
   `ApiError`s with a readable `message` (use `describeError()` from `core/api/errors`, a
@@ -243,20 +252,24 @@ Module Federation singleton. A subpath needs a `src/<name>.ts` entry, an `export
 a `!@oakestra/ui/<name>` exception in the addon import restrictions of `packages/eslint-config`,
 plus the entry in `packages/ui/tsdown.config.ts` and `publishConfig.exports`; `pnpm api:update`
 then creates its report.
-Each is then a separate lazily fetched chunk, shared with addons. Subpath chunks bundle their own
+Each is then a separate chunk, shared with addons. Module Federation fetches the shared subpath
+chunks at startup (`command-*.js` loads on `/login`), so the chunk itself is not lazy; what stays
+lazy are their heavy dependencies, such as MapLibre, which only load when a map renders. Subpath chunks bundle their own
 copy of small stateless pieces (`cn`, `Button`, `Table`), which is harmless.
 
 - `@oakestra/ui/chart`: `ChartContainer`, `ChartTooltip(Content)`, `ChartLegend(Content)` on
   Recharts 3, plus the Recharts parts (`LineChart`, `AreaChart`, `BarChart`, `XAxis`, ...)
   re-exported so features never import `recharts` themselves.
-- `@oakestra/ui/data-table`: `DataTable`, `createDataTableColumnHelper`, types (see below).
+- `@oakestra/ui/data-table`: `DataList` and `DataTable`, `createDataTableColumnHelper`, types (see
+  below).
 - `@oakestra/ui/command`: the cmdk-based `Command*` components.
 - `@oakestra/ui/map`: mapcn (`Map`, `MapMarker`, `MarkerTooltip`, `MapGeoJSON`, `MapControls`,
   `useMap`, ...) on MapLibre GL with light/dark basemaps that follow the `.dark` class. Three
   local changes to upstream `components/map.tsx`, keep them when updating it: the worker URL comes
   from `setMapWorkerUrl()` instead of unpkg, the theme comes from the `.dark` class only (no OS
-  fallback), and the styles come from `getMapStyles()` (`lib/map-styles.ts`) instead of CARTO, which
-  sent every viewer's IP to a US host. The public VersaTiles styles are the default;
+  fallback), and the styles come from `getMapStyles()` (`lib/map-styles.ts`) instead of a constant in
+  the component. The public CARTO styles (Positron, Dark Matter) are the default, chosen for how
+  they look even though every viewer's IP goes to a US host (VersaTiles was tried and dropped);
   `MAP_STYLE_URL`/`MAP_STYLE_DARK_URL` replace them through `mapStylesFromConfig`, and one set style
   serves both themes so a self-hosted deployment never falls back to the public server. The basemap
   is the only third-party request the dashboard makes: keep it that way, and keep style, tiles,
@@ -266,10 +279,27 @@ copy of small stateless pieces (`cn`, `Button`, `Table`), which is harmless.
   dies. The URL is kept on `globalThis` because the root export and the map subpath are separate
   shared modules with their own module state.
 
+- `Kbd` (a key cap, for shortcut hints), `Slider` (shadcn on Radix; `thumbLabel`, one string or
+  one per thumb, names the thumb, and `thumbValueText` formats what a screen reader announces,
+  because Radix gives the thumb neither), `PointerGauge` (thin track with the normal band shaded
+  and a pointer; `value: null` means not measured, above `normalMax` it turns `warning`) and
+  `SourceTag` (dashed provenance tag with an addon name and version, a plain span so it can sit
+  in tab triggers). `StatusBadge` and `StatusDot` take `stale` for a last-known state without a
+  recent report: a dashed glyph and the hatch of `staleSurfaceClassName`, which table cells may
+  reuse. Tone is kept, because the state still means something.
 - shadcn primitives: accordion, alert-dialog, checkbox, collapsible, pagination,
   popover, progress, scroll-area, select, switch, tabs, textarea, toggle, toggle-group, tooltip,
   sheet, separator, skeleton, plus the older ones (button, card, dialog, field, ...).
-- `DataTable` (subpath `@oakestra/ui/data-table`): TanStack Table v9 with sorting, global text filter, pagination, `onRowClick`,
+- `DataList` (subpath `@oakestra/ui/data-table`): the collection every page uses, on the same row
+  models as `DataTable`. `renderItem` returns an `Item` (`layout="list"`, one joined panel) or a
+  `Card` (`layout="grid"`). `searchValue` and `sortOptions` feed the row model, so keep them at module
+  scope; `globalFilter`, `sort` and `pagination` are uncontrolled unless value and handler are
+  passed. An item that opens a page gets its main link `stretchedLinkClassName` (root export); the
+  item needs `relative` (the `li` has it), other controls in it `relative z-10`.
+- `Item` (`ItemMedia`, `ItemContent`, `ItemTitle`, `ItemDescription`, `ItemActions`, `ItemHeader`,
+  `ItemFooter`, `ItemGroup`, `ItemSeparator`): the shadcn item, a row of a list. Written by hand from
+  the shadcn source, because the CLI cannot resolve this package's aliases.
+- `DataTable` (subpath `@oakestra/ui/data-table`, kept for addons): TanStack Table v9 with sorting, global text filter, pagination, `onRowClick`,
   `emptyState`, `isLoading` skeleton rows and a `toolbar` slot. Build columns with
   `createDataTableColumnHelper<Row>()`. `globalFilter`, `sorting` and `pagination` are
   uncontrolled unless the value and its `on...Change` handler are passed, which is how to mirror
@@ -487,22 +517,30 @@ modules/<name>/
 
 ## Styling
 
-The design follows ISA-101 (high-performance HMI) from process control: a screen in its normal
-state is neutral, so that abnormal states are easy to spot. Use neutrals for content, `primary` only
-for interactive elements, and `warning` and `destructive` only for abnormal states (`StatCard`'s
-`tone` colors the value for those two only). No tinted icon
-boxes, gradients, resting shadows on page content, or uppercase eyebrow labels. Group content in
-panels divided by hairlines rather than many separate cards, and related `StatCard`s in a
-`StatGroup`. Radius follows hierarchy: tags `rounded-sm`, controls `rounded-md`, panels
-`rounded-lg`, overlays `rounded-xl`. `font-mono` is for real identifiers and machine values only.
+The look is modern shadcn: an inset layout (the page is a white panel on the sidebar's tint), Geist,
+a dark ink-teal primary. A screen in its normal state stays neutral, so that abnormal states are easy
+to spot: use neutrals for content, `primary` only for interactive elements, and `warning` and
+`destructive` only for abnormal states (`StatCard`'s `tone` colors the value for those two only). No
+tinted icon boxes, gradients or uppercase eyebrow labels. Cards and panels get a hairline and at most
+`shadow-xs`. Related `StatCard`s go in a `StatGroup`. Radius follows hierarchy: tags `rounded-sm`,
+controls `rounded-md`, panels `rounded-lg`, overlays `rounded-xl`. `font-mono` is for real identifiers
+and machine values only.
 
-The sidebar and the login panel are dark teal in both themes: what renders there uses the
-`--sidebar-*` tokens and `OakestraLogo surface="inverse"`, page tokens would be dark on dark.
+Collections are lists and cards, not tables: `DataList` with `Item`s or `Card`s (see "Shared
+components"). `DataTable` stays public for addons, the dashboard's own pages do not use it.
 
-Fonts (Instrument Sans, JetBrains Mono) are self-hosted through `@fontsource-variable` packages
-imported in `styles.css`, because an edge deployment may have no route to a font CDN. `theme.css`
-maps `--font-sans`/`--font-mono` to the shell's `--font-ui`/`--font-code` and shrinks `text-sm` and
-`text-base` a notch, which addons pick up with the theme import.
+The page scrolls inside the panel, where neither the browser nor react-router manage it:
+`usePageScroll` (`app/layouts`) opens a new path at the top and restores the offset on back. It
+ignores search params, which hold page state.
+
+The account menu (`UserMenu`, with the theme picker) sits in the sidebar footer. The theme is a
+preference of the account, so it has no place on the Settings page. The sidebar scrolls apart from
+the page, and the page scrolls inside `SidebarInset` from the `md` breakpoint.
+
+Fonts (Geist, Geist Mono) are self-hosted through `@fontsource-variable` packages imported in
+`styles.css`, because an edge deployment may have no route to a font CDN. `theme.css` maps
+`--font-sans`/`--font-mono` to the shell's `--font-ui`/`--font-code`, which addons pick up with the
+theme import.
 
 The shell imports `@oakestra/ui/styles.css` once, through `apps/shell/src/styles.css` (preflight,
 token values, component utilities), which also adds `modules/*/src` as a Tailwind source: Tailwind
@@ -656,12 +694,77 @@ Checked against a real system-manager; the mocks reproduce them.
   `failed` with `status_details: {}` and no logs.
 - The token's `organization` claim is an organization id, the root organization's id when the
   user logged in without one (never the string "root"). Use it as the SLA `customerID`.
+- Cluster figures are sums over the workers, not capacities: `memory_in_mb` is the memory still
+  AVAILABLE (summed `mem.Available`, not the installed total), `memory_percent` the mean usage
+  (so "X% of Y" is wrong), and `vcpus` the total core count. The root scheduler's cluster filter
+  checks only virtualization, `vcpus`, memory, a direct constraint and CSI drivers; the
+  placement explanation (`modules/applications/src/services/placement.ts`) replays exactly that
+  and lists everything else as not evaluated. Passing means "not ruled out", never "will run".
+- A cluster's `active` is computed by the backend on every read. `clusterReportState(cluster)`
+  (`@oakestra/api`) tells `reporting` from `silent` (stopped reporting, keeps last-known values,
+  shown stale and never counted in capacity) and `never-reported` (no `last_modified_timestamp`,
+  no values). `modules/infrastructure/src/lib.ts` is the one place that maps it to presentation;
+  silent is abnormal but not an error, so it is neutral and hatched, not red. A failed placement
+  can sit only on an instance (`NO_WORKER_CAPACITY`), see `placementFailureStatus`.
 - Instance metrics are numeric strings, instance history uses ISO timestamps, cluster history
   epoch seconds; `memory_percent` of instances holds bytes. The models normalize all of it.
 - `/clusters/active` repeats `virtualization` entries per node (deduplicated by the model).
   `/clusters/` and `/clusters/active` need no token.
 - Password reset emails link to `http://<host>/resetPassword/<token>`; the shell redirects that
   path to `/reset-password/:token`.
+
+## Command palette
+
+"Find or run anything" (Ctrl or Cmd K, and a button in the header) is `app/layouts/CommandPalette.tsx`
+plus `app/layouts/command-palette/`. Its contract (`command.actions`, `command.sources`,
+`CommandContext`) is in the SDK (`extension-points.ts`) and `docs/addons/reference.md`.
+
+- The shortcut and button are on every page, the dialog body is `React.lazy` because it pulls in
+  cmdk. It sits in its own error boundary. The shortcut does nothing while another modal is open.
+- cmdk's `vimBindings` stays `false`: it is on by default and turns Ctrl+K into "move up", the
+  key that closes the palette. `shouldFilter` is also `false`: matching is `match.ts`, so the
+  order of groups and rows is ours. Source groups come last, so arriving results never move the
+  selected row.
+- Sources run through `useQueries` (`use-source-search.ts`: 150 ms debounce, `signal` from
+  TanStack Query, short `gcTime`). `results.ts` caps a source at 20 results, gives `search` 5 s
+  (`SEARCH_TIMEOUT_MS`, settled even when the source ignores `signal`), and validates every result
+  with Zod: one bad result is dropped with a console warning, a non-array fails the source.
+  A failing source shows a status line and never affects the others. Action definitions are
+  validated at load in `core/addons/definition.ts` (path XOR run, relative, no `..`).
+- `ctx.navigate` accepts absolute app paths only (`isAppPath`, so no other origin). An addon's
+  `ctx.addon.path` is `buildAddonPath` with its base path. Built-in sources read the same query
+  cache as the pages (`modules/applications/src/search.ts`: Admins read `allApplicationsQuery` and
+  `allServicesQuery` but keep only their own applications, because detail pages are owner-scoped
+  and anyone else's would open on a 404; others use `applicationsQuery`;
+  `modules/infrastructure/src/search.ts`) through
+  `ensureQueryData` with `revalidateIfStale` and `meta.silent`, so typing is answered from the
+  cache and a failed refresh does not toast.
+- "New application" opens `/applications?new=1`, which the applications page turns into its
+  create dialog (`useSearchParam('new')`), so it works from any page.
+- Remote addon entries carry a `SourceTag` (`SlotSource.remote`, `displayName`, `version`, filled
+  by the registry; the SDK testing host takes them as `contributionSource`). Packages built into
+  the dashboard are of kind `addon` but not remote, so `kind` alone cannot tell them apart.
+- `useContributions` is used by the palette to read both points, the same way as for `nav.items`.
+
+## Failures the shell shows
+
+- `ContributionBoundary` renders a failed contribution inline, without a frame (it sits in cards,
+  tab panels and bare pages): message, **Reload** (resets the boundary) and a collapsed error
+  text. A chunk load error (`chunk-load-error.ts`) offers **Reload page** instead, because the
+  boundary cannot download the code again.
+- `app/layouts/AddonIssuesNotice.tsx` tells Admins (with the addon manager enabled) about remote
+  addons that are `failed` for 30 s (`ADDON_ISSUE_GRACE_MS`, the container of a new install fails
+  its first loads) or `incompatible` at once. Dismissals live in `sessionStorage` keyed by name,
+  version and state. Linked packages never show up.
+
+## Demo data
+
+`packages/mocks/src/scenarios.ts` has `withPlacementDemo`, a `customize` function for
+`createMockStore` that adds clusters (one silent, one never reported), instances and unplaced
+services for the Fleet view and the placement panel. It is not in `backend.json` because unit
+tests count the seed. `pnpm dev:mock` (`apps/shell/src/mock-api.ts`) always uses it, the HTTP
+mock only with `PLACEMENT_DEMO=true` (`tools/mock-system-manager`). Ids are fixed and
+timestamps relative to when the store is built.
 
 ## Mock addons manager
 
@@ -691,7 +794,7 @@ and `POST /__test/reset` (keeps the delays).
 
 ## Addon manager
 
-`features/addon-manager` (Admin only, nav "Addons") has two real routes under `/addon-manager`:
+`features/addon-manager` (Admin only, one nav item "Addons", its page tabs are the only switch between the two) has two real routes under `/addon-manager`:
 `installed` (DataTable, detail sheet, disable then remove, "Dashboard UI" column from the addon
 registry showing `addonLabel(entry)`, the definition's `label` once loaded, plus a section for registry UIs without an installed record such as dev overrides) and
 `marketplace` (card grid, install, register, delete a definition). `/addon-manager` and the old

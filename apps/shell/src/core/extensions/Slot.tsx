@@ -36,6 +36,10 @@ export function Slot<P extends RenderablePointId>(props: SlotProps<P>) {
   const context = props.context ?? NO_CONTEXT;
   const all = useContributions(point, context);
   const contributions = filter ? all.filter(({ item }) => filter(item)) : all;
+  // A crash belongs to what the contribution was showing: moving from one cluster to the next on
+  // the same page keeps this component mounted, so the context has to clear the error. Slot
+  // contexts are plain ids, and callers often build them inline, so compare by value.
+  const contextKey = JSON.stringify(context);
 
   if (contributions.length === 0) return <>{empty}</>;
 
@@ -47,7 +51,7 @@ export function Slot<P extends RenderablePointId>(props: SlotProps<P>) {
       component: ComponentType<object>;
     };
     const content = (
-      <ContributionBoundary source={source} label={labelOf(item)}>
+      <ContributionBoundary source={source} label={labelOf(item)} resetKey={contextKey}>
         <Contribution {...context} />
       </ContributionBoundary>
     );

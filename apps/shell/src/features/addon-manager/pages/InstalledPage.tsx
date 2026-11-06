@@ -4,17 +4,23 @@ import {
   Button,
   ConfirmDialog,
   EmptyState,
-  useIsMobile,
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemTitle,
   QueryErrorAlert,
   plural,
+  stretchedLinkClassName,
 } from '@oakestra/ui';
-import { createDataTableColumnHelper, DataTable } from '@oakestra/ui/data-table';
+import { DataList, type DataListSortOption } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
 import { PowerOffIcon, PuzzleIcon, StoreIcon, Trash2Icon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { useStore } from 'zustand';
 
+import type { AddonEntry } from '../../../core/addons/addon-registry';
 import { useAddonRegistry } from '../../../core/addons/addon-registry-context';
 import { useAddonsAdminApi } from '../../../core/addons/addons-admin';
 import { addonAction, type AddonAction } from '../addon-action';
@@ -26,7 +32,19 @@ import { DashboardUiBadge } from '../components/DashboardUiBadge';
 import { UnmatchedDashboardUis } from '../components/UnmatchedDashboardUis';
 import { MARKETPLACE_PATH } from '../paths';
 
-const column = createDataTableColumnHelper<InstalledAddon>();
+const searchValue = (addon: InstalledAddon) =>
+  [addon.name, addon.description, addonStatusLabel(addon.status)].join(' ');
+
+const SORT_OPTIONS: readonly DataListSortOption<InstalledAddon>[] = [
+  { id: 'name', label: 'Name', value: (addon) => addon.name },
+  { id: 'status', label: 'Status', value: (addon) => addonStatusLabel(addon.status) },
+  {
+    id: 'services',
+    label: 'Most services',
+    value: (addon) => addon.services.length,
+    desc: true,
+  },
+];
 
 /** "1 of 2 services failing" under the badge, so a broken addon explains itself in the list. */
 function failingServicesHint(addon: InstalledAddon): string | null {
@@ -64,10 +82,91 @@ const CONFIRM_COPY: Readonly<
   },
 };
 
+function InstalledAddonItem({
+  addon,
+  uiEntry,
+  stuck,
+  onOpen,
+  onAction,
+}: {
+  addon: InstalledAddon;
+  uiEntry: AddonEntry | undefined;
+  stuck: boolean;
+  onOpen: () => void;
+  onAction: (kind: AddonAction) => void;
+}) {
+  const action = addonAction(addon, stuck);
+  const transitional = isTransitionalAddonStatus(addon.status);
+  const hint = failingServicesHint(addon);
+  return (
+    <Item data-testid={`installed-addon-${addon.name}`}>
+      <ItemContent className="basis-64">
+        <ItemTitle>
+          <button
+            type="button"
+            className={`cursor-pointer truncate ${stretchedLinkClassName}`}
+            onClick={onOpen}
+          >
+            {addon.name}
+          </button>
+          <AddonStatusBadge status={addon.status} />
+        </ItemTitle>
+        {hint ? <span className="text-muted-foreground text-xs">{hint}</span> : null}
+        <ItemDescription>{addon.description || 'No description'}</ItemDescription>
+      </ItemContent>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+        <span className="text-muted-foreground tabular-nums">
+          {plural(addon.services.length, 'service')}
+        </span>
+        {/* Above the row's button: a failed UI explains itself in a tooltip on the badge. */}
+        <span className="relative z-10 flex items-center gap-2">
+          <span className="text-muted-foreground">Dashboard UI</span>
+          <DashboardUiBadge entry={uiEntry} />
+        </span>
+      </div>
+      <ItemActions className="relative z-10 ml-auto">
+        {action === 'force-disable' ? (
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={`Disable ${addon.name} anyway`}
+            onClick={() => onAction(action)}
+          >
+            <PowerOffIcon aria-hidden />
+            Disable anyway
+          </Button>
+        ) : action === 'remove' ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive"
+            aria-label={`Remove ${addon.name}`}
+            onClick={() => onAction(action)}
+          >
+            <Trash2Icon aria-hidden />
+            Remove
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={`Disable ${addon.name}`}
+            disabled={transitional}
+            title={transitional ? 'Wait until the current change has finished' : undefined}
+            onClick={() => onAction('disable')}
+          >
+            <PowerOffIcon aria-hidden />
+            Disable
+          </Button>
+        )}
+      </ItemActions>
+    </Item>
+  );
+}
+
 export function InstalledPage() {
   const api = useAddonsAdminApi();
   const installed = useQuery(installedAddonsQuery(api));
-  const compact = useIsMobile();
   const registry = useAddonRegistry();
   const uiEntries = useStore(registry, (state) => state.entries);
 
@@ -94,104 +193,6 @@ export function InstalledPage() {
     );
   }, [addons, uiEntries]);
 
-  const columns = useMemo(
-    () =>
-      column.columns([
-        column.accessor('name', {
-          header: 'Name',
-          cell: (info) => <span className="font-medium">{info.getValue()}</span>,
-        }),
-        // Phones keep name, status and the actions; the sheet has everything else.
-        ...(compact
-          ? []
-          : [
-              column.accessor('description', {
-                header: 'Description',
-                enableSorting: false,
-                cell: (info) => (
-                  <span className="text-muted-foreground line-clamp-2 max-w-sm whitespace-normal">
-                    {info.getValue() || '-'}
-                  </span>
-                ),
-              }),
-            ]),
-        column.accessor((addon) => addonStatusLabel(addon.status), {
-          id: 'status',
-          header: 'Status',
-          cell: ({ row }) => {
-            const hint = failingServicesHint(row.original);
-            return (
-              <div className="flex flex-col items-start gap-1">
-                <AddonStatusBadge status={row.original.status} />
-                {hint ? <span className="text-muted-foreground text-xs">{hint}</span> : null}
-              </div>
-            );
-          },
-        }),
-        ...(compact
-          ? []
-          : [
-              column.accessor((addon) => addon.services.length, {
-                id: 'services',
-                header: 'Services',
-              }),
-              column.display({
-                id: 'ui',
-                header: 'Dashboard UI',
-                cell: ({ row }) => <DashboardUiBadge entry={uiEntries[row.original.name]} />,
-              }),
-            ]),
-        column.display({
-          id: 'actions',
-          header: () => <span className="sr-only">Actions</span>,
-          cell: ({ row }) => {
-            const addon = row.original;
-            const action = addonAction(addon, stuckIds.has(addon._id));
-            const transitional = isTransitionalAddonStatus(addon.status);
-            return (
-              <div className="flex justify-end gap-1">
-                {action === 'force-disable' ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    aria-label={`Disable ${addon.name} anyway`}
-                    onClick={() => setPending({ kind: action, addon })}
-                  >
-                    <PowerOffIcon aria-hidden />
-                    Disable anyway
-                  </Button>
-                ) : action === 'remove' ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    aria-label={`Remove ${addon.name}`}
-                    onClick={() => setPending({ kind: action, addon })}
-                  >
-                    <Trash2Icon aria-hidden />
-                    Remove
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    aria-label={`Disable ${addon.name}`}
-                    disabled={transitional}
-                    title={transitional ? 'Wait until the current change has finished' : undefined}
-                    onClick={() => setPending({ kind: 'disable', addon })}
-                  >
-                    <PowerOffIcon aria-hidden />
-                    Disable
-                  </Button>
-                )}
-              </div>
-            );
-          },
-        }),
-      ]),
-    [uiEntries, compact, stuckIds],
-  );
-
   // While the dialog animates closed `pending` is already null; the disable copy stands in.
   const confirmCopy = CONFIRM_COPY[pending?.kind ?? 'disable'];
 
@@ -208,7 +209,7 @@ export function InstalledPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {installed.isError ? (
         <QueryErrorAlert
           data-testid="installed-error"
@@ -224,17 +225,26 @@ export function InstalledPage() {
         </QueryErrorAlert>
       ) : null}
       {installed.isError && !addons ? null : (
-        <DataTable
+        <DataList
           label="Installed addons"
-          columns={columns}
+          noun="addon"
           data={addons}
           getRowId={(addon) => addon._id}
           isLoading={installed.isPending}
+          searchValue={searchValue}
+          sortOptions={SORT_OPTIONS}
           searchPlaceholder="Search installed addons"
           globalFilter={search}
           onGlobalFilterChange={setSearch}
-          initialSorting={[{ id: 'name', desc: false }]}
-          onRowClick={(addon) => setSelectedId(addon._id)}
+          renderItem={(addon) => (
+            <InstalledAddonItem
+              addon={addon}
+              uiEntry={uiEntries[addon.name]}
+              stuck={stuckIds.has(addon._id)}
+              onOpen={() => setSelectedId(addon._id)}
+              onAction={(kind) => setPending({ kind, addon })}
+            />
+          )}
           emptyState={
             <EmptyState
               icon={<PuzzleIcon />}

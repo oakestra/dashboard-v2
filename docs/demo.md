@@ -30,6 +30,8 @@ addons can contribute (an **extension point**):
 | `application.detail.tabs` | "Example" tab on an application's detail page                                                                            |
 | `service.detail.tabs`     | "Example" tab on a service's detail page                                                                                 |
 | `cluster.widgets`         | "Example" card on a cluster's detail page                                                                                |
+| `command.actions`         | "Say hello from the example addon" in the palette (Ctrl or Cmd K)                                                        |
+| `command.sources`         | "Example items" group in the palette: type `sample` to find Alpha, Beta and Gamma                                        |
 
 ## 1. Run the Docker stack
 
@@ -71,7 +73,7 @@ docker compose -f compose.dev.yml down
    nested page** to see a second addon route. The entry expands into the sub-items **Overview**,
    **Settings** and **About**, which the addon declares as `children` of its nav item. The
    addon's settings live on its own page; **Settings** at the bottom of the sidebar is only for
-   the dashboard itself. The breadcrumbs follow the addon's pages: **Home > Example > About** on
+   the dashboard itself. The breadcrumbs follow the addon's pages: **Overview > Example > About** on
    the About page, with the addon's label and the crumbs its routes declare.
 2. Go to **Overview**. The **Example addon** and **Crash test** cards are addon widgets.
 3. Open **Applications**, pick an application and select the **Example** tab. The addon receives
@@ -149,7 +151,10 @@ console on the dashboard and run:
 localStorage.setItem('oakestra.example.throw', '1');
 ```
 
-Reload the Overview page. Only the **Crash test** card shows an error. Remove the flag with
+Reload the Overview page. Only the **Crash test** card changes: it shows a short inline message
+("... failed to render. The rest of this page keeps working.") with a **Reload** button and
+collapsed **Error details**. Reload retries the component, which fails again until you remove
+the flag. Remove the flag with
 `localStorage.removeItem('oakestra.example.throw')`.
 
 ### Experiment 6: Roles
@@ -212,6 +217,18 @@ URL:
 <http://localhost:5173/?addon-override=example=http://localhost:5174/mf-manifest.json>
 
 Log in as `Admin` / `Admin`. The example addon now appears exactly as in the Docker stack.
+
+`pnpm dev:mock` seeds a richer scenario than the plain mock backend: extra clusters (one that has
+gone silent, one that never reported), more instances, and services the scheduler could not
+place. It makes the **Fleet** view (applications by cluster, in the sidebar) and the placement
+explanation on a service page worth a look. The Docker stack's mock system manager has the same
+data with `PLACEMENT_DEMO=true` (set it on `tools/mock-system-manager`, for example in the
+environment of its service in `compose.dev.yml`); without it the seed is the small one the tests
+count on.
+
+Press Ctrl K (Cmd K on a Mac) anywhere to open "Find or run anything": pages, actions, and a
+search over applications, services and clusters. With the addon loaded it also lists the
+example's action and its "Example items" group.
 
 The override is saved in `localStorage`, so it stays when you navigate or reload. Remove it with
 an empty URL: `?addon-override=example=`. It only exists in development builds; the production

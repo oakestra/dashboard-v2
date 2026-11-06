@@ -1,6 +1,7 @@
+import type { QueryClient } from '@tanstack/react-query';
 import type { ComponentType } from 'react';
 
-import type { CurrentUser, Role } from './types';
+import type { CurrentUser, Notify, OakestraApi, Role } from './types';
 
 /**
  * Where a nav item goes. `main`, `management` and `addons` are labelled groups in that order;
@@ -91,6 +92,145 @@ export interface ClusterContext {
   clusterId: string;
 }
 
+/** The contributing addon, as a command sees it. See `CommandContext.addon`. */
+export interface CommandAddon {
+  readonly addonId: string;
+  /** Absolute path the addon's routes are mounted at. Build links with `path`, not from this. */
+  readonly basePath: string;
+  /**
+   * Absolute path below the addon's base path, like `useAddonPath()`: each argument is one
+   * URI-encoded segment, so pass `'details', id`, not `'details/' + id`.
+   */
+  readonly path: (...segments: readonly (string | number)[]) => string;
+}
+
+/**
+ * What the shell hands to `run` and `search`. These are plain functions called from the palette,
+ * outside any addon's React tree, so hooks are not available: everything they would return is
+ * here instead.
+ */
+export interface CommandContext {
+  /**
+   * Goes to a page. `path` must be absolute (`/applications`, or `ctx.addon.path(...)`); there is
+   * no current route to resolve a relative path against, so anything else throws.
+   */
+  readonly navigate: (path: string) => void;
+  readonly api: OakestraApi;
+  readonly notify: Notify;
+  /** Never null: the palette only exists behind the login. */
+  readonly user: CurrentUser;
+  /**
+   * The shell's shared client. Read through it (`ensureQueryData` with the SDK's platform queries,
+   * or your own keys from `addonQueryKey`) so that a search per keystroke does not mean a request
+   * per keystroke.
+   */
+  readonly queryClient: QueryClient;
+  /** Same answer as `useFeatureEnabled(id)`. */
+  readonly isFeatureEnabled: (id: string) => boolean;
+  /** Set for everything an addon or `modules/*` package contributes, absent for core modules. */
+  readonly addon?: CommandAddon;
+}
+
+/**
+ * What selecting an entry of the palette does: exactly one of the two.
+ *
+ * - `path` opens a page.
+ * - `run` calls a function after the palette has closed. It may be async. If it throws or rejects,
+ *   the shell shows the error as a notification, so there is no need to catch just to report.
+ */
+export type CommandTarget =
+  | { path: string; run?: never }
+  | { run: (ctx: CommandContext) => void | Promise<void>; path?: never };
+
+/** How an entry of the palette reads. */
+export interface CommandDisplay {
+  /** Written as what happens or what it is, e.g. `New application`. */
+  label: string;
+  /** Second line, for what the label leaves open. */
+  description?: string;
+  icon?: ComponentType<IconProps>;
+}
+
+/**
+ * Something that can always be done, listed in the palette and matched against what the user
+ * types by the shell. For things that exist in the data, such as one application, use a
+ * `CommandSource`.
+ *
+ * `path` follows the rules of nav items: core modules use absolute paths, addons paths relative to
+ * their base path, where `''` is the addon's index route, `?tab=logs` that route with a query, and
+ * `..` is rejected. `roles` hides the action from everyone else, like any contribution.
+ *
+ * ```ts
+ * 'command.actions': [
+ *   { id: 'jobs', label: 'Open job history', keywords: ['runs'], path: 'jobs' },
+ *   { id: 'sync', label: 'Sync now', roles: ['Admin'], run: (ctx) => ctx.notify.info('Syncing') },
+ * ]
+ * ```
+ */
+export type CommandAction = ContributionBase &
+  CommandDisplay & {
+    /** More words that should find it, e.g. `['create', 'add']`. They are never shown. */
+    keywords?: readonly string[];
+  } & CommandTarget;
+
+/**
+ * Marks a result as abnormal, shown as a status glyph in front of it. Leave it out for everything
+ * that is fine: as on the pages, only what needs attention stands out.
+ */
+export type CommandResultTone = 'warning' | 'destructive';
+
+/**
+ * One entry a `CommandSource` found. Unlike an action, a `path` here is always absolute: use
+ * `ctx.addon.path(...)`. The shell checks every result when it arrives and drops the ones that are
+ * malformed or lead to another origin, with a warning in the console.
+ */
+export type CommandResult = CommandDisplay & {
+  /** Unique among the results of one search. */
+  id: string;
+  tone?: CommandResultTone;
+} & CommandTarget;
+
+/**
+ * Searches something only its contributor knows about. The results form a group of their own in
+ * the palette, in the order returned, below the shell's own groups. A deployment that leaves the
+ * package out loses the search along with it.
+ *
+ * ```ts
+ * 'command.sources': [
+ *   {
+ *     id: 'jobs',
+ *     label: 'Jobs',
+ *     search: async (query, { addon, api, queryClient }) => {
+ *       if (!addon) return [];
+ *       const jobs = await queryClient.ensureQueryData(jobsQuery(api));
+ *       return jobs
+ *         .filter((job) => job.name.includes(query))
+ *         .map((job) => ({ id: job.id, label: job.name, path: addon.path('jobs', job.id) }));
+ *     },
+ *   },
+ * ]
+ * ```
+ */
+export interface CommandSource extends ContributionBase {
+  /** Heading of the group, also how an error names it ("Jobs could not be searched"). */
+  label: string;
+  /** Shorter queries do not call `search`. Defaults to 2, at least 1. */
+  minQueryLength?: number;
+  /**
+   * Called with what the user typed, trimmed, once typing pauses. Matching is up to the source,
+   * the shell shows what it returns as it is.
+   *
+   * It has about five seconds. A source that rejects or takes longer shows a short notice and
+   * leaves the other groups alone. `signal` aborts when the query changes or the time is up: pass
+   * it to `fetch` and to `api` calls.
+   */
+  search: (
+    query: string,
+    ctx: CommandContext,
+    signal: AbortSignal,
+  ) => Promise<readonly CommandResult[]>;
+}
+
 /**
  * Every place in the shell that accepts contributions, keyed by a stable id.
  *
@@ -103,6 +243,10 @@ export interface ExtensionPoints {
   'application.detail.tabs': Tab<ApplicationContext>;
   'service.detail.tabs': Tab<ServiceContext>;
   'cluster.widgets': Widget<ClusterContext>;
+  /** Entries of the "Find or run anything" palette. See `CommandAction`. */
+  'command.actions': CommandAction;
+  /** Live searches of the same palette. See `CommandSource`. */
+  'command.sources': CommandSource;
 }
 
 export type ExtensionPointId = keyof ExtensionPoints;
@@ -113,6 +257,8 @@ export const EXTENSION_POINT_IDS = [
   'application.detail.tabs',
   'service.detail.tabs',
   'cluster.widgets',
+  'command.actions',
+  'command.sources',
 ] as const satisfies readonly ExtensionPointId[];
 
 // Compile-time guard: fails if a point is added to the interface but not to the runtime list.

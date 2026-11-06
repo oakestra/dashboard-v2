@@ -10,8 +10,11 @@ import { Badge } from './badge';
  * - `warning`: works but degraded, or needs attention soon (partially active, high usage).
  * - `info`: in progress or waiting on the system (REQUESTED, SCHEDULED, installing). Pair with
  *   `pulse` while it is actively changing.
- * - `destructive`: failed or broken, someone has to act (FAILED, DEAD, NO_WORKER_CAPACITY).
- * - `neutral`: no judgement: stopped on purpose, inactive, disabled, unknown, not deployed.
+ * - `destructive`: failed or broken, someone has to act (FAILED, DEAD).
+ * - `neutral`: no judgement: stopped on purpose, disabled, unknown, not deployed.
+ *
+ * Features decide the mapping, so the lists above are examples, not a contract: the shell maps
+ * NO_WORKER_CAPACITY and an inactive cluster to `warning`.
  */
 type StatusTone = 'success' | 'warning' | 'info' | 'destructive' | 'neutral';
 
@@ -27,26 +30,39 @@ const GLYPH: Readonly<Record<StatusTone, string>> = {
   neutral: 'my-auto h-0.5! rounded-full bg-muted-foreground/70',
 };
 
+/**
+ * Hatched background for "last known value, no recent report". Not a tone: the state still has a
+ * meaning, we just cannot confirm it. The stripes mix `currentColor`, so they follow the text color
+ * in both themes without a token. Exported so table cells can reuse the same hatch.
+ */
+const staleSurfaceClassName =
+  'bg-[repeating-linear-gradient(135deg,transparent_0_3px,color-mix(in_oklab,currentColor_14%,transparent)_3px_4px)]';
+
+const STALE_GLYPH = 'rounded-full border-2 border-dashed border-muted-foreground';
+
 interface StatusDotProps extends React.ComponentProps<'span'> {
   tone: StatusTone;
+  /** Last known state without a recent report: dashed ring instead of the tone's glyph. */
+  stale?: boolean;
   /** Pulses the glyph, for states that are changing right now. */
   pulse?: boolean;
 }
 
 /** The bare status glyph, for dense places (table cells, lists) next to a text label. */
-function StatusDot({ tone, pulse = false, className, ...props }: StatusDotProps) {
+function StatusDot({ tone, stale = false, pulse = false, className, ...props }: StatusDotProps) {
   return (
     <span
       aria-hidden
       data-slot="status-dot"
       data-tone={tone}
+      data-stale={stale || undefined}
       className={cn('inline-flex size-2 shrink-0', className)}
       {...props}
     >
       <span
         className={cn(
           'inline-flex size-full',
-          GLYPH[tone],
+          stale ? STALE_GLYPH : GLYPH[tone],
           pulse && 'animate-pulse motion-reduce:animate-none',
         )}
       />
@@ -56,6 +72,11 @@ function StatusDot({ tone, pulse = false, className, ...props }: StatusDotProps)
 
 interface StatusBadgeProps extends React.ComponentProps<'span'> {
   tone: StatusTone;
+  /**
+   * Last known state, no recent report: muted text, dashed ring glyph and a hatched background.
+   * The tone is kept for `data-tone` but its fill and color are dropped.
+   */
+  stale?: boolean;
   /** Leading glyph; on by default. Ignored when `icon` is set. */
   dot?: boolean;
   /** Replaces the glyph, e.g. a spinner for transitional states. */
@@ -70,6 +91,7 @@ interface StatusBadgeProps extends React.ComponentProps<'span'> {
  */
 function StatusBadge({
   tone,
+  stale = false,
   dot = true,
   icon,
   pulse = false,
@@ -78,12 +100,22 @@ function StatusBadge({
   ...props
 }: StatusBadgeProps) {
   return (
-    <Badge variant={tone} data-tone={tone} className={cn('gap-1.5', className)} {...props}>
-      {icon ?? (dot ? <StatusDot tone={tone} pulse={pulse} /> : null)}
+    <Badge
+      variant={tone}
+      data-tone={tone}
+      data-stale={stale || undefined}
+      className={cn(
+        'gap-1.5',
+        stale && ['text-muted-foreground', staleSurfaceClassName],
+        className,
+      )}
+      {...props}
+    >
+      {icon ?? (dot ? <StatusDot tone={tone} stale={stale} pulse={pulse} /> : null)}
       {children}
     </Badge>
   );
 }
 
-export { StatusBadge, StatusDot };
+export { StatusBadge, StatusDot, staleSurfaceClassName };
 export type { StatusBadgeProps, StatusDotProps, StatusTone };

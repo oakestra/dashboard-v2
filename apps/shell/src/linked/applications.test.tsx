@@ -17,10 +17,10 @@ describe('applications page (linked addon)', () => {
   it("lists only the signed-in user's applications with their service counts", async () => {
     renderApplications();
 
-    const row = (await screen.findByRole('cell', { name: /^analytics/ })).closest('tr')!;
+    const row = (await screen.findByRole('link', { name: 'analytics' })).closest('li')!;
     expect(within(row).getByText('2 services')).toBeVisible();
     expect(await within(row).findByText('Not deployed')).toBeVisible();
-    expect(screen.queryByRole('cell', { name: /^webshop/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'webshop' })).not.toBeInTheDocument();
     expect(screen.getByTestId('breadcrumbs')).toHaveTextContent('Applications');
   });
 
@@ -35,8 +35,8 @@ describe('applications page (linked addon)', () => {
     await user.clear(screen.getByRole('searchbox', { name: 'Search Applications' }));
     await user.type(screen.getByRole('searchbox', { name: 'Search Applications' }), 'web');
     await waitFor(() => expect(router.state.location.search).toBe('?q=web'));
-    expect(screen.getByRole('cell', { name: /^webshop/ })).toBeVisible();
-    expect(screen.queryByRole('cell', { name: /^iotpipe/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'webshop' })).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'iotpipe' })).not.toBeInTheDocument();
   });
 
   it('creates an application and shows it', async () => {
@@ -117,16 +117,16 @@ describe('applications page (linked addon)', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
 
     await waitFor(() =>
-      expect(screen.queryByRole('cell', { name: /^analytics/ })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('link', { name: 'analytics' })).not.toBeInTheDocument(),
     );
     expect(mockStore.data.applications.some((app) => app.application_name === 'analytics')).toBe(
       false,
     );
   });
 
-  it('opens the detail page on row click', async () => {
+  it('opens the detail page from the card link', async () => {
     const { user, router } = renderApplications();
-    await user.click(await screen.findByRole('cell', { name: /^analytics/ }));
+    await user.click(await screen.findByRole('link', { name: 'analytics' }));
 
     await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/applications\/\w+$/));
     expect(await screen.findByRole('heading', { name: /^analytics/ })).toBeVisible();

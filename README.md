@@ -28,7 +28,13 @@ entries, widgets and tabs without a new dashboard release.
 
 - **Applications and services**: create, edit and delete applications; create services from an
   SLA form, duplicate and delete them, deploy instances, and follow their status and metrics.
-- **Infrastructure**: clusters on a map, with resources and usage history per cluster.
+- **Fleet**: a board of cluster cards showing what runs where, with health, CPU and memory lenses, an
+  inspector per service and a list of what cannot run. Services that are not placed explain which
+  cluster checks they fail.
+- **Infrastructure**: clusters on a map, with resources and usage history per cluster. Clusters
+  that stopped reporting are marked silent and keep their last known values.
+- **Command palette**: Ctrl or Cmd K opens "Find or run anything" for pages, actions and search
+  over applications, services and clusters. Addons add their own actions and searches.
 - **Users and organizations**: manage accounts, roles and organization members.
 - **Addon manager**: install addons from the marketplace, follow their status and logs, and
   disable or remove them.
@@ -72,6 +78,10 @@ pnpm install
 pnpm dev:mock   # http://localhost:5173, all backends mocked in the browser
 ```
 
+`pnpm dev:mock` uses a demo scenario with more clusters (one silent), instances and unplaced
+services, so the Fleet view and the placement explanation have something to show. The mock system
+manager used by the Docker stack has the same data with `PLACEMENT_DEMO=true`.
+
 Log in as `Admin`, `alice`, `bob`, `carol` or `dave`. The password is the username. Each user has
 different roles, so you can see how the UI changes per role.
 
@@ -90,7 +100,7 @@ the container starts:
 | `API_URL`                 |                             | URL of the system-manager API as the browser sees it, e.g. `https://oakestra.example/api` |
 | `API_ADDRESS`             |                             | Alternative to `API_URL`: `host:port` of the system-manager, becomes `http://<API_ADDRESS>/api` |
 | `GRAFANA_URL`             |                             | Optional. Adds a Grafana link to the sidebar and the infrastructure page   |
-| `MAP_STYLE_URL`           | public VersaTiles styles    | Optional. MapLibre style URL of the basemap, see [Maps and privacy](#maps-and-privacy) |
+| `MAP_STYLE_URL`           | public CARTO styles         | Optional. MapLibre style URL of the basemap, see [Maps and privacy](#maps-and-privacy) |
 | `MAP_STYLE_DARK_URL`      | `MAP_STYLE_URL`             | Optional. Basemap for the dark theme                                        |
 | `ADDONS_MANAGER_ADDRESS`  | `root_addons_manager:11101` | Addons manager, reached by nginx (`/ui-addons`, `/addons-api/`)             |
 | `MARKETPLACE_ADDRESS`     | `marketplace_manager:11102` | Marketplace manager, reached by nginx (`/marketplace-api/`)                 |
@@ -103,7 +113,7 @@ the container starts:
 The dashboard's own fonts and scripts are served from the dashboard itself. The one exception is the
 basemap: pages with a map (infrastructure, cluster and instance details, the location constraint of
 the service form) load its style, tiles and label fonts from a tile server, which sees the viewer's
-IP address. By default that is the public [VersaTiles](https://versatiles.org) server.
+IP address. By default that is the public [CARTO](https://carto.com/basemaps) server, a US host.
 
 If that transfer is not acceptable for your deployment, for example under the GDPR, serve the tiles
 yourself and set `MAP_STYLE_URL` (and `MAP_STYLE_DARK_URL` for a separate dark style). The dashboard
@@ -162,7 +172,7 @@ Start with the [addon developer guide](docs/addons/README.md). The reference add
 | Command                                     | What it does                                                   |
 | ------------------------------------------- | -------------------------------------------------------------- |
 | `pnpm dev`                                  | Shell on <http://localhost:5173> against the API in `apps/shell/public/config.json` |
-| `pnpm dev:mock`                             | Shell with all backends mocked in the browser                  |
+| `pnpm dev:mock`                             | Shell with all backends mocked in the browser, with the richer demo scenario |
 | `pnpm --filter @oakestra/addon-example dev` | Example addon dev server on <http://localhost:5174>            |
 | `pnpm storybook`                            | Storybook of the UI components on <http://localhost:6006>      |
 | `pnpm lint`                                 | ESLint (including import boundaries) and Prettier              |

@@ -1,11 +1,13 @@
 import type { SlotSource, Widget, WidgetSize } from '@oakestra/dashboard-sdk';
 import {
   Card,
+  CardAction,
   CardContent,
   CardHeader,
   CardTitle,
   EmptyState,
   PageHeader,
+  SourceTag,
   StatGroup,
 } from '@oakestra/ui';
 import { LayoutDashboardIcon } from 'lucide-react';
@@ -28,6 +30,12 @@ const isCard = isSize('card');
 // wrapper empty. `[&>:empty]:hidden` drops such wrappers, and since the sections space their
 // children with `gap` (which skips hidden items, unlike `space-y`) they leave no hole behind.
 const HIDE_EMPTY = 'empty:hidden [&>:empty]:hidden';
+
+// `stat` and `wide` widgets draw their own frame, so a crashed one has none. The error state has no
+// frame of its own either (it also renders in cards and tab panels), so it gets it from here.
+const STAT_CRASH_FRAME = '[&>[data-slot=contribution-error]]:p-4';
+const WIDE_CRASH_FRAME =
+  '[&>[data-slot=contribution-error]]:bg-card [&>[data-slot=contribution-error]]:rounded-lg [&>[data-slot=contribution-error]]:border [&>[data-slot=contribution-error]]:p-4';
 
 function frame(widget: Widget, source: SlotSource, content: ReactNode, className?: string) {
   return (
@@ -74,7 +82,9 @@ export function OverviewPage() {
         <Slot
           point="home.widgets"
           filter={isStat}
-          render={(widget, content, source) => frame(widget, source, content, 'grid')}
+          render={(widget, content, source) =>
+            frame(widget, source, content, `grid ${STAT_CRASH_FRAME}`)
+          }
         />
       </StatGroup>
 
@@ -82,7 +92,7 @@ export function OverviewPage() {
         <Slot
           point="home.widgets"
           filter={isWide}
-          render={(widget, content, source) => frame(widget, source, content)}
+          render={(widget, content, source) => frame(widget, source, content, WIDE_CRASH_FRAME)}
         />
       </div>
 
@@ -103,6 +113,11 @@ export function OverviewPage() {
             >
               <CardHeader>
                 <CardTitle>{widget.title}</CardTitle>
+                {source.remote ? (
+                  <CardAction>
+                    <SourceTag name={source.displayName ?? source.id} version={source.version} />
+                  </CardAction>
+                ) : null}
               </CardHeader>
               <CardContent>{content}</CardContent>
             </Card>

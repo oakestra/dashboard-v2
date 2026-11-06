@@ -17,6 +17,7 @@
     "@oakestra/api": "workspace:*",
     "@oakestra/dashboard-sdk": "workspace:*",
     "@oakestra/module-applications": "workspace:*",
+    "@oakestra/module-fleet": "workspace:*",
     "@oakestra/module-help": "workspace:*",
     "@oakestra/module-infrastructure": "workspace:*",
     "@oakestra/module-organizations": "workspace:*",

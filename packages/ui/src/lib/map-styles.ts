@@ -11,14 +11,15 @@ const STYLES_KEY = Symbol.for('oakestra.ui.mapStyles');
 type StylesHolder = { [STYLES_KEY]?: MapStyleUrls };
 
 /**
- * The public VersaTiles styles, used when a deployment configures none. Every map view sends the
- * viewer's IP address to whoever serves these, and the fonts of the map labels come from there
- * too, so the default has to stay a host that keeps style, tiles, sprites and glyphs together in
- * one place: a style that loads glyphs from another host sends the IP address there as well.
+ * The public CARTO styles (Positron and Dark Matter), used when a deployment configures none. Every
+ * map view sends the viewer's IP address to CARTO, a US host, and the fonts of the map labels come
+ * from there too. The default has to stay a host that keeps style, tiles, sprites and glyphs
+ * together in one place: a style that loads glyphs from another host sends the IP address there as
+ * well.
  */
 export const DEFAULT_MAP_STYLES: MapStyleUrls = {
-  light: 'https://tiles.versatiles.org/assets/styles/gray/style.json',
-  dark: 'https://tiles.versatiles.org/assets/styles/gray-dark/style.json',
+  light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+  dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
 };
 
 /**

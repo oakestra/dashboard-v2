@@ -1,9 +1,10 @@
 import { http, HttpResponse } from '@oakestra/mocks';
 import type { Contributions } from '@oakestra/dashboard-sdk';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { linkedAddons } from '../app/modules';
+import { addonSource } from '../core/addons/ui-addons';
 import type { CoreModule } from '../core/modules';
 import { mockServer, mockStore, TEST_API_URL } from '../test/msw';
 import { renderApp } from '../test/render';
@@ -24,10 +25,10 @@ describe('application detail page (linked addon)', () => {
     renderDetail();
 
     expect(await screen.findByRole('heading', { name: 'analytics' })).toBeVisible();
-    expect(await screen.findByRole('cell', { name: /^warehouse/ })).toBeVisible();
+    expect(await screen.findByRole('link', { name: 'warehouse' })).toBeVisible();
     // No contributed tabs, so no lone "Services" tab.
     expect(screen.queryByRole('tab')).not.toBeInTheDocument();
-    expect(screen.getByRole('cell', { name: /^dashboard/ })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'dashboard' })).toBeVisible();
     expect(screen.getByRole('link', { name: /New service/ })).toHaveAttribute(
       'href',
       `/applications/${alicesApp()._id}/services/new`,
@@ -48,7 +49,7 @@ describe('application detail page (linked addon)', () => {
 
   it('deploys one instance of every undeployed service with "Deploy all"', async () => {
     const { user } = renderDetail();
-    await screen.findByRole('cell', { name: /^warehouse/ });
+    await screen.findByRole('link', { name: 'warehouse' });
 
     await user.click(screen.getByRole('button', { name: /Deploy all/ }));
 
@@ -72,7 +73,7 @@ describe('application detail page (linked addon)', () => {
       }),
     );
     const { user } = renderDetail();
-    await screen.findByRole('cell', { name: /^warehouse/ });
+    await screen.findByRole('link', { name: 'warehouse' });
 
     await user.click(screen.getByRole('button', { name: /Deploy all/ }));
     await waitFor(() => expect(screen.getByRole('button', { name: /Deploy all/ })).toBeDisabled());
@@ -92,7 +93,7 @@ describe('application detail page (linked addon)', () => {
         mockStore.data.services.find((s) => s.microservice_name === 'warehouse')?.instance_list,
       ).toHaveLength(1),
     );
-    const row = screen.getByRole('cell', { name: /^warehouse/ }).closest('tr')!;
+    const row = screen.getByRole('link', { name: 'warehouse' }).closest('li')!;
     expect(await within(row).findByText('1/1')).toBeVisible();
   });
 
@@ -112,7 +113,7 @@ describe('application detail page (linked addon)', () => {
     );
 
     await waitFor(() =>
-      expect(screen.queryByRole('cell', { name: /^warehouse/ })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('link', { name: 'warehouse' })).not.toBeInTheDocument(),
     );
     expect(mockStore.data.services.some((s) => s.microservice_name === 'warehouse')).toBe(false);
   });
@@ -131,7 +132,7 @@ describe('application detail page (linked addon)', () => {
     );
 
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
-    expect(screen.getByRole('cell', { name: /^warehouse/ })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'warehouse' })).toBeVisible();
   });
 
   it('closes the application delete dialog when the backend refuses', async () => {
@@ -201,6 +202,32 @@ describe('application detail page (linked addon)', () => {
     await user.click(await screen.findByRole('tab', { name: 'Monitoring' }));
 
     expect(await screen.findByText(`Metrics for ${alicesApp()._id}`)).toBeVisible();
+  });
+
+  it('marks a remote tab and leaves it when its addon disappears while selected', async () => {
+    const tabs = (label: string, text: string): Contributions => ({
+      'application.detail.tabs': [{ id: 'tab', label, component: () => <p>{text}</p> }],
+    });
+    const source = (name: string, version: string) =>
+      addonSource({ name, version, basePath: `/addons/${name}`, origin: 'manager' });
+    const { services, user } = renderDetail();
+    await screen.findByRole('heading', { name: alicesApp().application_name });
+    // Two addons, so the tab list outlives the one that goes away.
+    act(() => {
+      const registry = services.contributions.getState();
+      registry.register(source('flops', '1.2.0'), tabs('Rounds', 'rounds panel'));
+      registry.register(source('other', '2.0.0'), tabs('Other', 'other panel'));
+    });
+
+    const rounds = await screen.findByRole('tab', { name: /Rounds/ });
+    expect(rounds).toHaveTextContent('Roundsflopsv1.2.0');
+    await user.click(rounds);
+    expect(await screen.findByText('rounds panel')).toBeVisible();
+
+    act(() => services.contributions.getState().unregister('addon:flops'));
+
+    expect(screen.getByRole('tab', { name: 'Services' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel', { name: 'Services' })).toBeVisible();
   });
 
   it('shows a not-found page for an unknown application', async () => {

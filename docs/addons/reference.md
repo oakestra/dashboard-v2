@@ -10,7 +10,7 @@ addon's own prefix, see [styling](packaging.md#styling).
 Contents:
 
 - [The addon definition](#the-addon-definition)
-- [Extension points](#extension-points)
+- [Extension points](#extension-points), including the [command palette](#command-palette-commandactions-commandsources)
 - [Hooks and helpers](#hooks-and-helpers)
 - [The API client](#the-api-client)
 - [Users and roles](#users-and-roles)
@@ -157,7 +157,9 @@ fails, the addon gets the state `failed` and nothing of it is shown. It is rejec
 - a contribution misses a required field (`id`, `label`/`title`, `component`, `path`), or a field
   has the wrong type (for example `order` that is not a finite number),
 - two contributions **to the same extension point** have the same `id`,
-- a nav item `path` is absolute (`/x`) or a URL (`https:...`).
+- a nav item `path` is absolute (`/x`) or a URL (`https:...`),
+- a command action sets both or neither of `path` and `run`, or its `path` is absolute or leaves the
+  base path with `..`.
 
 Contributions to an **unknown extension point** do not fail the addon. They are dropped with a
 console warning (`[addons] <id>: ignoring unknown extension points`). This happens when an addon
@@ -180,6 +182,8 @@ type Contributions = {
 | `application.detail.tabs` | `Tab<ApplicationContext>` | `{ applicationId }`            | `/applications/:appId`, tab list after "Services"                                                                         |
 | `service.detail.tabs`     | `Tab<ServiceContext>`     | `{ applicationId, serviceId }` | `/applications/:appId/services/:serviceId`, tab list after "JSON"                                                         |
 | `cluster.widgets`         | `Widget<ClusterContext>`  | `{ clusterId }`                | `/infrastructure/clusters/:clusterId`, bottom of the page (only `Admin` and `Infrastructure_Provider` can open this page) |
+| `command.actions`         | `CommandAction`           | none (not a component)         | The "Find or run anything" palette (Ctrl or Cmd K), see [below](#command-palette-commandactions-commandsources)           |
+| `command.sources`         | `CommandSource`           | none (not a component)         | The same palette, as a group of live search results                                                                       |
 
 The ids are also exported at runtime as `EXTENSION_POINT_IDS`.
 
@@ -268,8 +272,8 @@ How the sidebar treats them:
 
 #### Addon settings
 
-The shell's **Settings** page (`/settings`, pinned to the bottom of the sidebar) holds settings
-of the dashboard itself only. There is no extension point for it. If your addon has settings,
+The shell's **Settings** page (`/settings`, pinned to the bottom of the sidebar) holds platform-wide
+settings of the dashboard itself only. There is no extension point for it. If your addon has settings,
 give it its own page and link it as a sub-item:
 
 ```tsx
@@ -380,16 +384,115 @@ import { Slot } from '@oakestra/dashboard-sdk';
 />;
 ```
 
-- `point` is any extension point except `nav.items`. `context` is required unless the point's
+- `point` is any extension point that renders components: not `nav.items`, `command.actions` or
+  `command.sources`, which are data the shell reads itself (`RenderablePointId` is the type of
+  the rest). `context` is required unless the point's
   context is empty, and is spread into each contributed component.
 - `render` wraps each contribution; `content` is already inside an error boundary. `source` is
-  `{ kind: 'core' | 'addon'; id: string; label: string }` (`SlotSource`).
+  `SlotSource`: `{ kind: 'core' | 'addon'; id: string; label: string }` plus, for addons loaded at
+  runtime, `remote: true`, `displayName` (the addon's `label`, or its id) and `version`. Built-in
+  packages are of kind `addon` too but are not `remote` and have no version, so use `remote` to
+  decide whether to show where a contribution comes from (the shell does so with a `SourceTag`
+  on tabs).
 - `empty` renders when nothing is contributed or nothing is visible to the user. It also renders
   outside a host, e.g. in a plain unit test.
 - `wrap(children)` wraps all rendered contributions together and only runs when there is at
   least one, for chrome that must not appear for an empty slot. The applications package uses it
   for its tab list: without contributed tabs, `empty` shows the page without tabs.
 - `roles`, `visible` and `order` apply exactly as for the shell's own slots.
+
+### Command palette (`command.actions`, `command.sources`)
+
+The header's "Find or run anything" bar (Ctrl or Cmd K from anywhere) lists pages, actions and
+search results. Two points feed it. Neither is a component: the shell reads them, so `<Slot>`
+does not render them.
+
+An **action** is something that can always be done, matched against what the user types by the
+shell (`label`, `description` and `keywords`). It has `label`, optional `description`, `icon`
+and `keywords`, and exactly one of `path` and `run`:
+
+```ts
+'command.actions': [
+  // Opens /addons/jobs/history?tab=failed
+  { id: 'failed-jobs', label: 'Show failed jobs', keywords: ['errors'], path: 'history?tab=failed' },
+  // Runs after the palette has closed; a throw or rejection shows up as an error toast
+  {
+    id: 'sync',
+    label: 'Sync now',
+    roles: ['Admin'],
+    run: async (ctx) => {
+      await ctx.api.fetch('/jobs/sync', { method: 'POST' });
+      ctx.notify.success('Sync started');
+      ctx.navigate(ctx.addon?.path('history') ?? '/');
+    },
+  },
+],
+```
+
+A **source** searches something only you know about, such as your own data. `search` receives
+the trimmed query, the context and an `AbortSignal`, and returns results, which the shell shows
+in a group of their own named after the source `label`:
+
+```ts
+'command.sources': [
+  {
+    id: 'jobs',
+    label: 'Jobs',
+    minQueryLength: 2,
+    search: async (query, ctx, signal) => {
+      const { addon, api, queryClient } = ctx;
+      if (!addon) return [];
+      const jobs = await queryClient.ensureQueryData(jobsQuery(api));
+      return jobs
+        .filter((job) => job.name.toLowerCase().includes(query.toLowerCase()))
+        .map((job) => ({
+          id: job.id,
+          label: job.name,
+          description: job.schedule,
+          path: addon.path('details', job.id),
+          // Only for what needs attention; leave it out for everything that is fine.
+          tone: job.failed ? ('destructive' as const) : undefined,
+        }));
+    },
+  },
+],
+```
+
+Rules:
+
+- **`path` or `run`, never both.** An action or result with both, or neither, is invalid. A
+  action like that makes the addon `failed` at load time (see
+  [validation](#validation)); a bad result is dropped when it arrives.
+- **Action paths are relative to the addon's base path** like nav item paths: `''` is the index
+  route, a query string is allowed (`?tab=logs`), and an absolute path or one that climbs out
+  with `..` is rejected when the addon loads, so an action cannot point at another addon's page.
+- **Result paths are absolute**, because they are checked when they arrive: build them with
+  `ctx.addon.path(...)` (each argument is one encoded segment). A result that is malformed or
+  leads to another origin is dropped with a console warning (`[commands] <source>: ignoring
+invalid result`), the others stay.
+- **`ctx.navigate(path)` takes absolute paths only.** There is no current route to resolve a
+  relative one against, so it throws.
+- **`ctx` is not a hook environment.** `run` and `search` are plain functions called from the
+  palette, outside your React tree, so there are no hooks. What they would return is on `ctx`:
+  `api`, `notify`, `user`, `queryClient`, `navigate`, `addon` and `isFeatureEnabled(id)` (use it
+  instead of `useFeatureEnabled`).
+- **Read through `ctx.queryClient`.** A search runs after each pause in typing, so fetch with
+  `ensureQueryData` and the SDK's [platform queries](#data-fetching-rules) or your own
+  `addonQueryKey` keys instead of calling the API per keystroke.
+- **Limits.** `search` is not called for queries shorter than `minQueryLength` (default 2, never
+  below 1) and has five seconds; `signal` aborts when the query changes or the time is up, so
+  pass it to `fetch`. At most 20 results per source are shown, in the order returned, and ids
+  must be unique among them.
+- **A failing source is isolated.** If `search` rejects, times out or does not return an array,
+  the palette says "<label> could not be searched" and every other group keeps working.
+- **`roles` and `order`** apply as everywhere. Actions of runtime-loaded addons appear under "From
+  addons", those of packages built into the dashboard under "Actions", and "Go to" lists the
+  sidebar's pages. Source groups come last, in registration order, so arriving results never move the
+  selected row. What a runtime-loaded addon contributes carries its name and version as a source tag.
+- **A preset that leaves your package out removes its commands and searches** along with its
+  pages.
+
+Test `run` and `search` without rendering using `createCommandContext`, see [Testing](#testing).
 
 ### `visible`
 
@@ -400,8 +503,10 @@ a React component, so do not call hooks in it.
 ### Error isolation
 
 Every rendered contribution and every addon page has its own error boundary. If your component
-throws, only its box shows an error ("<title> from addon "<id>" failed to render." plus the error
-message). The rest of the page keeps working. See
+throws, only its place shows a calm inline state: "<title> from <addon> failed to render.", a
+note that the rest of the page keeps working, a **Reload** button that renders the component again
+and a collapsed "Error details" with the error message. If the failure is that the addon's code
+could not be downloaded, the button reloads the whole page instead. See
 [troubleshooting](troubleshooting.md#a-contribution-crashes).
 
 Example with several points:
@@ -459,21 +564,22 @@ export default defineAddon({
 
 All hooks read React context that the shell provides. They only work inside the shell.
 
-| Hook / helper                      | Returns                        | Where it works                      | Description                                                                                                       |
-| ---------------------------------- | ------------------------------ | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `useOakestraApi()`                 | `OakestraApi`                  | anywhere in the shell               | API client with the user's token. See [The API client](#the-api-client).                                          |
-| `useCurrentUser()`                 | `CurrentUser \| null`          | anywhere in the shell               | The logged-in user, `null` when logged out.                                                                       |
-| `usePermissions()`                 | `Permissions`                  | anywhere in the shell               | `{ roles, hasRole(role), hasAnyRole(roles) }` for the current user.                                               |
-| `useNotify()`                      | `Notify`                       | anywhere in the shell               | Toasts: `success`, `info`, `warning`, `error`.                                                                    |
-| `useAddonContext()`                | `AddonContextValue`            | addon pages and addon contributions | `{ addonId, version, basePath }` of the addon the component belongs to.                                           |
-| `useAddonBasePath()`               | `string`                       | addon pages and addon contributions | `basePath` from `useAddonContext()`, for example `/addons/insights`.                                              |
-| `useAddonPath()`                   | `(...segments) => string`      | addon pages and addon contributions | Builds links below the base path, see below.                                                                      |
-| `useFeatureEnabled(id)`            | `boolean`                      | anywhere in the shell               | Whether the deployment enables the feature `id` (a built-in module id or addon name), see below.                  |
-| `useHostLinks()`                   | `HostLinks`                    | anywhere in the shell               | Links to services next to the dashboard the deployment configures: `{ grafanaUrl? }`. See below.                  |
-| `useHostContext()`                 | `HostContextValue`             | anywhere in the shell               | Everything at once: `{ sdkVersion, user, api, notify, ... }`. `sdkVersion` is the shell's SDK version.            |
-| `addonQueryKey(addonId, ...parts)` | `['addon', addonId, ...parts]` | anywhere (plain function)           | Query key prefix, see [Data fetching rules](#data-fetching-rules).                                                |
-| `hasAnyRole(user, roles)`          | `boolean`                      | anywhere (plain function)           | `true` if `roles` is empty or missing, or the user has one of them. `false` for `null` user and a non-empty list. |
-| `describeError(error)`             | `string`                       | anywhere (plain function)           | A sentence for a toast or an inline error, see [The API client](#the-api-client).                                 |
+| Hook / helper                       | Returns                        | Where it works                      | Description                                                                                                           |
+| ----------------------------------- | ------------------------------ | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `useOakestraApi()`                  | `OakestraApi`                  | anywhere in the shell               | API client with the user's token. See [The API client](#the-api-client).                                              |
+| `useCurrentUser()`                  | `CurrentUser \| null`          | anywhere in the shell               | The logged-in user, `null` when logged out.                                                                           |
+| `usePermissions()`                  | `Permissions`                  | anywhere in the shell               | `{ roles, hasRole(role), hasAnyRole(roles) }` for the current user.                                                   |
+| `useNotify()`                       | `Notify`                       | anywhere in the shell               | Toasts: `success`, `info`, `warning`, `error`.                                                                        |
+| `useAddonContext()`                 | `AddonContextValue`            | addon pages and addon contributions | `{ addonId, version, basePath }` of the addon the component belongs to.                                               |
+| `useAddonBasePath()`                | `string`                       | addon pages and addon contributions | `basePath` from `useAddonContext()`, for example `/addons/insights`.                                                  |
+| `useAddonPath()`                    | `(...segments) => string`      | addon pages and addon contributions | Builds links below the base path, see below.                                                                          |
+| `buildAddonPath(basePath, ...segs)` | `string`                       | anywhere (plain function)           | What `useAddonPath()` calls, for code without hooks. In a command, `ctx.addon.path(...)` is this with your base path. |
+| `useFeatureEnabled(id)`             | `boolean`                      | anywhere in the shell               | Whether the deployment enables the feature `id` (a built-in module id or addon name), see below.                      |
+| `useHostLinks()`                    | `HostLinks`                    | anywhere in the shell               | Links to services next to the dashboard the deployment configures: `{ grafanaUrl? }`. See below.                      |
+| `useHostContext()`                  | `HostContextValue`             | anywhere in the shell               | Everything at once: `{ sdkVersion, user, api, notify, ... }`. `sdkVersion` is the shell's SDK version.                |
+| `addonQueryKey(addonId, ...parts)`  | `['addon', addonId, ...parts]` | anywhere (plain function)           | Query key prefix, see [Data fetching rules](#data-fetching-rules).                                                    |
+| `hasAnyRole(user, roles)`           | `boolean`                      | anywhere (plain function)           | `true` if `roles` is empty or missing, or the user has one of them. `false` for `null` user and a non-empty list.     |
+| `describeError(error)`              | `string`                       | anywhere (plain function)           | A sentence for a toast or an inline error, see [The API client](#the-api-client).                                     |
 
 Errors:
 
@@ -758,6 +864,8 @@ of fetching the same data under your own key, so the page shares the shell's cac
 | `profileQuery(api, username)`                    | `GET /user/{name}` of the current user (`useCurrentUser().username`), the only source of `_id`.                                                                                                             |
 | `applicationsQuery(api, userId)`                 | The applications of one user (`userId` is the `_id` from `profileQuery`).                                                                                                                                   |
 | `servicesByApplicationQuery(api, applicationId)` | The services of one application.                                                                                                                                                                            |
+| `allApplicationsQuery(api)`                      | `GET /applications/`, every application. Admin only; pages of other users' applications stay out of reach.                                                                                                  |
+| `allServicesQuery(api)`                          | `GET /services/`, every service. Admin only.                                                                                                                                                                |
 | `platformQueryKeys`                              | Their keys (`all`, `clusters()`, `user(username)`, `applications()`, `services()`, ...), for `invalidateQueries`. A change to an application or its services invalidates `applications()` and `services()`. |
 
 ```tsx
@@ -880,10 +988,29 @@ it('shows the cluster names', async () => {
   error boundaries. Without it every `<Slot>` renders its `empty`.
 - `notify` records its calls (`notify.calls`, `{ level, message, options? }`; `notify.clear()`),
   independent of the test runner.
+- `contributionSource` is `{ remote, displayName, version }`, what the `source` argument of a
+  `<Slot render>` receives for the addon under test. Use it to test how a page marks a
+  runtime-loaded addon; by default none of them are set, like a package built into the dashboard.
 - `features` lists the features `useFeatureEnabled()` reports as enabled. Without it every
   feature counts as enabled.
 - `links` is what `useHostLinks()` returns, e.g. `{ grafanaUrl: 'https://grafana.example' }`.
   Without it there are no links.
+
+`createCommandContext(options)` builds the `CommandContext` a command gets, so `run` and `search`
+can be called directly, without rendering. It takes `user`, `api`, `addon`, `features` and
+`queryClient`, and records `notify` calls and every path passed to `navigate` (`ctx.navigations`).
+Like the shell, its `navigate` throws for a relative path:
+
+```ts
+import { createCommandContext } from '@oakestra/dashboard-sdk/testing';
+
+const ctx = createCommandContext({
+  addon: { addonId: 'jobs' },
+  api: { clusters: { list: async () => clusters } },
+});
+const results = await jobsSource.search('edge', ctx, new AbortController().signal);
+expect(results[0]?.path).toBe('/addons/jobs/details/job-1');
+```
 
 For your own render function there are smaller pieces: `createTestHost(options)` returns the
 context values (`host`, `addon`, `user`, `api`, `notify`, `route`), `TestHostProvider` renders them
@@ -927,17 +1054,17 @@ Third-party packages:
 
 The SDK also exports these. Most addons do not need them.
 
-| Export                                                                                                                                                                                                          | Description                                                                                                       |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `SDK_VERSION`                                                                                                                                                                                                   | SDK version string, `'0.1.0'`.                                                                                    |
-| `EXTENSION_POINT_IDS`                                                                                                                                                                                           | Array of all extension point ids.                                                                                 |
-| `HostContext`, `AddonContext`                                                                                                                                                                                   | The React contexts behind the hooks. Use the hooks instead; tests can use the providers.                          |
-| `Slot`, `SlotProps`, `SlotSource`, `SlotRendererContext`                                                                                                                                                        | Host an extension point (see above). `SlotRendererContext` is how the shell provides the renderer; do not use it. |
-| `HostContextValue`, `AddonContextValue`, `HostLinks`                                                                                                                                                            | Types of the context values.                                                                                      |
-| `AddonCrumbProps`                                                                                                                                                                                               | Props of a `crumb` component: `{ params }`.                                                                       |
-| `ExtensionPoints`, `ExtensionPointId`, `RenderablePointId`, `SlotContext`, `Contributions`, `ContributionBase`, `NavItem`, `NavSubItem`, `NavGroup`, `Widget`, `WidgetSize`, `Tab`, `IconProps`, `EmptyContext` | Types for extension points.                                                                                       |
-| `seedFromLists`, `useSearchParam`                                                                                                                                                                               | Query-cache seeding for route-less detail pages and one URL search param as state. See the API report.            |
-| `Permissions`, `Notify`, `NotifyOptions`, `CurrentUser`, `Role`, `KnownRole`, `OakestraApi`                                                                                                                     | Types used by the hooks.                                                                                          |
-| `@oakestra/dashboard-sdk/vite`: `oakestraAddon`, `OakestraAddonOptions`                                                                                                                                         | The Vite plugin for addons, see [packaging](packaging.md#build-configuration).                                    |
-| `@oakestra/dashboard-sdk/vite/client`                                                                                                                                                                           | Types of `virtual:oakestra-addon`, for `compilerOptions.types` in `tsconfig.json`.                                |
-| `@oakestra/dashboard-sdk/federation`: `sharedDeps`, `withoutFallback`                                                                                                                                           | The shared config that `oakestraAddon()` uses, see [packaging](packaging.md#shared-dependencies).                 |
+| Export                                                                                                                                                                                                                                                                                                                                                       | Description                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `SDK_VERSION`                                                                                                                                                                                                                                                                                                                                                | SDK version string, `'0.1.0'`.                                                                                    |
+| `EXTENSION_POINT_IDS`                                                                                                                                                                                                                                                                                                                                        | Array of all extension point ids.                                                                                 |
+| `HostContext`, `AddonContext`                                                                                                                                                                                                                                                                                                                                | The React contexts behind the hooks. Use the hooks instead; tests can use the providers.                          |
+| `Slot`, `SlotProps`, `SlotSource`, `SlotRendererContext`                                                                                                                                                                                                                                                                                                     | Host an extension point (see above). `SlotRendererContext` is how the shell provides the renderer; do not use it. |
+| `HostContextValue`, `AddonContextValue`, `HostLinks`                                                                                                                                                                                                                                                                                                         | Types of the context values.                                                                                      |
+| `AddonCrumbProps`                                                                                                                                                                                                                                                                                                                                            | Props of a `crumb` component: `{ params }`.                                                                       |
+| `ExtensionPoints`, `ExtensionPointId`, `RenderablePointId`, `SlotContext`, `Contributions`, `ContributionBase`, `NavItem`, `NavSubItem`, `NavGroup`, `Widget`, `WidgetSize`, `Tab`, `IconProps`, `EmptyContext`, `CommandAction`, `CommandSource`, `CommandContext`, `CommandAddon`, `CommandResult`, `CommandResultTone`, `CommandTarget`, `CommandDisplay` | Types for extension points.                                                                                       |
+| `seedFromLists`, `useSearchParam`                                                                                                                                                                                                                                                                                                                            | Query-cache seeding for route-less detail pages and one URL search param as state. See the API report.            |
+| `Permissions`, `Notify`, `NotifyOptions`, `CurrentUser`, `Role`, `KnownRole`, `OakestraApi`                                                                                                                                                                                                                                                                  | Types used by the hooks.                                                                                          |
+| `@oakestra/dashboard-sdk/vite`: `oakestraAddon`, `OakestraAddonOptions`                                                                                                                                                                                                                                                                                      | The Vite plugin for addons, see [packaging](packaging.md#build-configuration).                                    |
+| `@oakestra/dashboard-sdk/vite/client`                                                                                                                                                                                                                                                                                                                        | Types of `virtual:oakestra-addon`, for `compilerOptions.types` in `tsconfig.json`.                                |
+| `@oakestra/dashboard-sdk/federation`: `sharedDeps`, `withoutFallback`                                                                                                                                                                                                                                                                                        | The shared config that `oakestraAddon()` uses, see [packaging](packaging.md#shared-dependencies).                 |

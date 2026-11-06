@@ -58,7 +58,7 @@ const GROUPS: { title: string; description: string; tokens: string[] }[] = [
   {
     title: 'Sidebar',
     description:
-      'The navigation is dark teal in both themes. Anything inside it uses these tokens only.',
+      'The navigation sits on a light tint of the page in light mode and a darker one in dark mode. Anything inside it uses these tokens only.',
     tokens: [
       'sidebar',
       'sidebar-foreground',
@@ -152,7 +152,7 @@ export const Typography: Story = {
     docs: {
       description: {
         story:
-          'Instrument Sans for the interface, JetBrains Mono for identifiers and machine values only (image references, IPs, ids, env keys, JSON, logs), never for labels or counts. Body text is 13.5px (`text-sm`). Both fonts are self-hosted. Use sentence case everywhere and `tabular-nums` for numbers.',
+          'Geist for the interface, Geist Mono for identifiers and machine values only (image references, IPs, ids, env keys, JSON, logs), never for labels or counts. Body text is 14px (`text-sm`). Both fonts are self-hosted. Use sentence case everywhere and `tabular-nums` for numbers.',
       },
     },
   },

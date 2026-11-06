@@ -23,6 +23,7 @@ interface Case {
 // forms below `:appId`, so a wrong nesting shows up here as a blank or mismatched page.
 const cases: Case[] = [
   { url: () => '/', heading: 'Overview' },
+  { url: () => '/fleet', heading: 'Fleet', crumbs: 'Fleet' },
   { url: () => '/applications', heading: 'Applications', crumbs: 'Applications' },
   { url: () => appBase(), heading: 'webshop', crumbs: 'Applicationswebshop' },
   {
@@ -69,7 +70,7 @@ describe('core module and linked addon routes', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: c.heading })).toBeVisible();
     if (c.crumbs) {
-      expect(screen.getByTestId('breadcrumbs')).toHaveTextContent(`Home${c.crumbs}`);
+      expect(screen.getByTestId('breadcrumbs')).toHaveTextContent(`Overview${c.crumbs}`);
     }
   });
 
@@ -176,13 +177,13 @@ describe('preset routes', () => {
 
       expect(await screen.findByRole('heading', { level: 1, name: 'Acme clusters' })).toBeVisible();
       const breadcrumbs = screen.getByTestId('breadcrumbs');
-      expect(breadcrumbs).toHaveTextContent(/^HomeAcme infrastructure$/);
+      expect(breadcrumbs).toHaveTextContent(/^OverviewAcme infrastructure$/);
 
       const link = screen.getByRole('link', { name: 'EU' });
       expect(link).toHaveAttribute('href', '/infrastructure/clusters/eu%201');
       await user.click(link);
       expect(await screen.findByRole('heading', { level: 1, name: 'One cluster' })).toBeVisible();
-      expect(breadcrumbs).toHaveTextContent(/^HomeAcme infrastructureCluster$/);
+      expect(breadcrumbs).toHaveTextContent(/^OverviewAcme infrastructureCluster$/);
       expect(
         within(breadcrumbs).getByRole('link', { name: 'Acme infrastructure' }),
       ).toHaveAttribute('href', '/infrastructure');

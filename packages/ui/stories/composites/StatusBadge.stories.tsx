@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Loader2Icon } from 'lucide-react';
 
-import { StatusBadge, StatusDot, type StatusTone } from '../../src';
+import { StatusBadge, StatusDot, staleSurfaceClassName, type StatusTone } from '../../src';
 
 const TONES: readonly { tone: StatusTone; label: string; meaning: string }[] = [
   { tone: 'success', label: 'Running', meaning: 'Healthy, nothing to do (disc, plain text)' },
@@ -85,5 +85,25 @@ export const Dot: Story = {
         </li>
       ))}
     </ul>
+  ),
+};
+
+export const Stale: Story = {
+  render: () => (
+    <div className="space-y-2 text-sm">
+      {TONES.map(({ tone, label }) => (
+        <div key={tone} className="flex items-center gap-4">
+          <StatusBadge tone={tone} stale>
+            {label}
+          </StatusBadge>
+          <span className="flex items-center gap-2 text-muted-foreground">
+            <StatusDot tone={tone} stale /> last known, no recent report
+          </span>
+        </div>
+      ))}
+      <div className={`${staleSurfaceClassName} w-48 rounded-sm border px-2 py-1`}>
+        Table cell with the hatch
+      </div>
+    </div>
   ),
 };

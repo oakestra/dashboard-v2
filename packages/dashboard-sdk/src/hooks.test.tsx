@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AddonContext, HostContext, type HostContextValue } from './context';
 import {
   addonQueryKey,
+  buildAddonPath,
   useAddonBasePath,
   useAddonPath,
   useCurrentUser,
@@ -110,6 +111,11 @@ describe('addon hooks', () => {
     expect(addonPath('')).toBe('/addons/flops');
     expect(addonPath('details', 42)).toBe('/addons/flops/details/42');
     expect(addonPath('details', 'a/b c?d#e')).toBe('/addons/flops/details/a%2Fb%20c%3Fd%23e');
+  });
+
+  it('build the same paths without a hook', () => {
+    expect(buildAddonPath('/fleet')).toBe('/fleet');
+    expect(buildAddonPath('/fleet', '', 'a/b', 42)).toBe('/fleet/a%2Fb/42');
   });
 
   it('keep the path builder stable across renders', () => {

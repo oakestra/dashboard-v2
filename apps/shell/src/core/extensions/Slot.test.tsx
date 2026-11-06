@@ -66,6 +66,32 @@ describe('<Slot>', () => {
     expect(screen.getByText('still here')).toBeInTheDocument();
   });
 
+  it('clears a crash when the context moves to another entity', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const registry = createContributionRegistry();
+    registry.getState().register(addonSource, {
+      'cluster.widgets': [
+        {
+          id: 'picky',
+          title: 'Picky widget',
+          component: ({ clusterId }: { clusterId: string }) => {
+            if (clusterId === 'a') throw new Error('kaputt');
+            return <p>cluster {clusterId}</p>;
+          },
+        },
+      ],
+    });
+    const { rerender } = render(<Slot point="cluster.widgets" context={{ clusterId: 'a' }} />, {
+      wrapper: wrapper(registry),
+    });
+    expect(screen.getByTestId('contribution-error')).toBeInTheDocument();
+
+    rerender(<Slot point="cluster.widgets" context={{ clusterId: 'b' }} />);
+
+    expect(screen.queryByTestId('contribution-error')).not.toBeInTheDocument();
+    expect(screen.getByText('cluster b')).toBeInTheDocument();
+  });
+
   it('passes the context as props and provides the addon context', () => {
     const registry = createContributionRegistry();
     function ClusterWidget({ clusterId }: { clusterId: string }) {

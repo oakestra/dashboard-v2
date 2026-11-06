@@ -15,5 +15,7 @@ export default defineAddon({
   contributions: {
     'nav.items': [{ id: 'main', label: '__LABEL__', path: '', icon: PuzzleIcon }],
     'home.widgets': [{ id: 'clusters', title: '__LABEL__', component: ClustersWidget }],
+    // In the "Find or run anything" palette, see CommandAction and CommandSource in the SDK:
+    // 'command.actions': [{ id: 'open', label: 'Open __LABEL__', path: '' }],
   },
 });

@@ -9,7 +9,7 @@ import {
 import { z } from 'zod';
 
 // React components are functions, or objects tagged with $$typeof (memo, forwardRef, lazy).
-const reactComponent = z.custom<NonNullable<AddonRoute['Component']>>(
+export const reactComponent = z.custom<NonNullable<AddonRoute['Component']>>(
   (value) =>
     typeof value === 'function' ||
     (typeof value === 'object' && value !== null && '$$typeof' in value),
@@ -21,7 +21,7 @@ const crumbComponent = z.custom<Extract<NonNullable<AddonRoute['crumb']>, object
   'must be a React component',
 );
 
-const callable = z.custom<(...args: never[]) => unknown>(
+export const callable = z.custom<(...args: never[]) => unknown>(
   (value) => typeof value === 'function',
   'must be a function',
 );
@@ -90,12 +90,45 @@ const widgetSize = z
 const widget = renderable.extend({ title: z.string().min(1), size: widgetSize });
 const tab = renderable.extend({ label: z.string().min(1) });
 
+// Anything that would climb out of the addon once joined to its base path. The link resolves in the
+// shell's router, so an addon could otherwise point a command at any page. `%2e` is the same dot to
+// the URL parser, and a backslash the same slash.
+const leavesBasePath = /(^|[/\\])(\.|%2e){2}([/\\?#]|$)/i;
+
+const commandPath = relativeNavPath.refine((path) => !leavesBasePath.test(path), {
+  message: 'must not leave the addon base path',
+});
+
+// Exactly one of the two, also for JavaScript addons that the SDK's union type does not reach.
+const hasOneTarget = (command: { path?: string | undefined; run?: unknown }) =>
+  (command.path === undefined) !== (command.run === undefined);
+const oneTarget = { message: 'must set either `path` or `run`' };
+
+const commandAction = contributionBase
+  .extend({
+    label: z.string().min(1),
+    description: z.string().optional(),
+    keywords: z.array(z.string()).optional(),
+    icon: reactComponent.optional(),
+    path: commandPath.optional(),
+    run: callable.optional(),
+  })
+  .refine(hasOneTarget, oneTarget);
+
+const commandSource = contributionBase.extend({
+  label: z.string().min(1),
+  minQueryLength: z.number().int().min(1).optional(),
+  search: callable,
+});
+
 const pointSchemas = {
   'nav.items': navItem,
   'home.widgets': widget,
   'application.detail.tabs': tab,
   'service.detail.tabs': tab,
   'cluster.widgets': widget,
+  'command.actions': commandAction,
+  'command.sources': commandSource,
 } satisfies Record<ExtensionPointId, z.ZodType>;
 
 const contributionsSchema = z.object(

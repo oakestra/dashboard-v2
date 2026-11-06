@@ -11,6 +11,8 @@ import {
 import {
   Alert,
   AlertDescription,
+  Avatar,
+  AvatarFallback,
   Badge,
   Button,
   ConfirmDialog,
@@ -20,12 +22,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   EmptyState,
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
   PageHeader,
   Skeleton,
   QueryErrorAlert,
   plural,
 } from '@oakestra/ui';
-import { createDataTableColumnHelper, DataTable } from '@oakestra/ui/data-table';
+import { DataList, type DataListSortOption } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
 import {
   BuildingIcon,
@@ -35,7 +43,7 @@ import {
   Trash2Icon,
   UsersIcon,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 
 import {
@@ -45,13 +53,70 @@ import {
 } from '../api/mutations';
 import { MemberDialog } from '../components/MemberDialog';
 import { OrganizationNameDialog } from '../components/OrganizationNameDialog';
+import { RowMenu } from '../components/RowMenu';
+import { initials } from '../initials';
 import { adminCount, removalBlock, rolesBlock } from '../members';
 
 interface MemberRow extends OrganizationMember {
   name: string | null;
 }
 
-const column = createDataTableColumnHelper<MemberRow>();
+const searchValue = (row: MemberRow) =>
+  [row.name ?? row.user_id, ...row.roles.map(roleLabel)].join(' ');
+
+const SORT_OPTIONS: readonly DataListSortOption<MemberRow>[] = [
+  { id: 'name', label: 'Name', value: (row) => row.name ?? row.user_id },
+];
+
+function MemberItem({
+  member,
+  isSelf,
+  menu,
+}: {
+  member: MemberRow;
+  isSelf: boolean;
+  menu: ReactNode;
+}) {
+  return (
+    <Item className="rounded-none py-3">
+      <ItemMedia>
+        <Avatar aria-hidden>
+          <AvatarFallback className="text-xs font-medium">
+            {member.name === null ? '?' : initials(member.name)}
+          </AvatarFallback>
+        </Avatar>
+      </ItemMedia>
+      {member.name === null ? (
+        <ItemContent>
+          <ItemTitle className="text-muted-foreground">Deleted user</ItemTitle>
+          <ItemDescription className="line-clamp-1 font-mono text-xs">
+            {member.user_id}
+          </ItemDescription>
+        </ItemContent>
+      ) : (
+        <ItemContent>
+          <ItemTitle>
+            <span className="truncate">{member.name}</span>
+            {isSelf ? <Badge variant="neutral">You</Badge> : null}
+          </ItemTitle>
+        </ItemContent>
+      )}
+      {/* Below `sm` the roles take a line of their own, lined up with the name. */}
+      <div className="flex flex-wrap items-center gap-1 max-sm:order-last max-sm:basis-full max-sm:pl-12 sm:justify-end">
+        {member.roles.length === 0 ? (
+          <span className="text-muted-foreground text-sm">No roles</span>
+        ) : (
+          member.roles.map((role) => (
+            <Badge key={role} variant="secondary">
+              {roleLabel(role)}
+            </Badge>
+          ))
+        )}
+      </div>
+      <ItemActions>{menu}</ItemActions>
+    </Item>
+  );
+}
 
 export function OrganizationDetailPage() {
   const { orgId = '' } = useParams();
@@ -63,7 +128,7 @@ export function OrganizationDetailPage() {
 
   if (organizations.isPending) {
     return (
-      <div className="space-y-5" data-testid="organization-loading">
+      <div className="space-y-6" data-testid="organization-loading">
         <div className="space-y-2">
           <Skeleton className="h-8 w-56" />
           <Skeleton className="h-4 w-80 max-w-full" />
@@ -153,85 +218,8 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
   const selfName = me?.username;
   const isSelf = (row: MemberRow) => row.name !== null && row.name === selfName;
 
-  const columns = useMemo(
-    () =>
-      column.columns([
-        column.accessor((row) => row.name ?? row.user_id, {
-          id: 'name',
-          header: 'User',
-          cell: ({ row }) =>
-            row.original.name === null ? (
-              <span className="text-muted-foreground">
-                Deleted user <span className="font-mono text-xs">{row.original.user_id}</span>
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <span className="font-medium">{row.original.name}</span>
-                {row.original.name === selfName ? <Badge variant="neutral">You</Badge> : null}
-              </span>
-            ),
-        }),
-        column.accessor((row) => row.roles.join(', '), {
-          id: 'roles',
-          header: 'Roles',
-          enableSorting: false,
-          cell: ({ row }) =>
-            row.original.roles.length === 0 ? (
-              <span className="text-muted-foreground">No roles</span>
-            ) : (
-              <div className="flex flex-wrap gap-1">
-                {row.original.roles.map((role) => (
-                  <Badge key={role} variant="secondary">
-                    {roleLabel(role)}
-                  </Badge>
-                ))}
-              </div>
-            ),
-        }),
-        column.display({
-          id: 'actions',
-          header: () => <span className="sr-only">Actions</span>,
-          meta: { align: 'right' },
-          cell: ({ row }) => {
-            const label = row.original.name ?? row.original.user_id;
-            const removeBlock = removalBlock(
-              organization,
-              row.original,
-              row.original.name !== null && row.original.name === selfName,
-            );
-            return (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${label}`}>
-                    <EllipsisIcon aria-hidden />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
-                  <DropdownMenuItem onSelect={() => setEditing(row.original)}>
-                    <PencilIcon aria-hidden />
-                    Edit roles
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    disabled={removeBlock !== null}
-                    title={removeBlock ?? undefined}
-                    onSelect={() => setRemoving(row.original)}
-                  >
-                    <Trash2Icon aria-hidden />
-                    Remove member
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            );
-          },
-        }),
-      ]),
-    [organization, selfName],
-  );
-
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <PageHeader
         title={organization.name}
         description={
@@ -274,7 +262,7 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
           </>
         }
       />
-      <p className="text-muted-foreground -mt-3 text-sm tabular-nums" data-testid="member-summary">
+      <p className="text-muted-foreground -mt-4 text-sm tabular-nums" data-testid="member-summary">
         {summary}
       </p>
       {usersFailed ? (
@@ -285,13 +273,42 @@ function Members({ organization, users, usersFailed, usersLoading }: MembersProp
         </Alert>
       ) : null}
 
-      <DataTable
+      <DataList
         label="Members"
-        columns={columns}
+        noun="member"
         data={rows}
         getRowId={(row) => row.user_id}
         isLoading={usersLoading}
+        searchValue={searchValue}
+        sortOptions={SORT_OPTIONS}
         searchPlaceholder="Search members"
+        renderItem={(row) => {
+          const removeBlock = removalBlock(organization, row, isSelf(row));
+          return (
+            <MemberItem
+              member={row}
+              isSelf={isSelf(row)}
+              menu={
+                <RowMenu label={`Actions for ${row.name ?? row.user_id}`}>
+                  <DropdownMenuItem onSelect={() => setEditing(row)}>
+                    <PencilIcon aria-hidden />
+                    Edit roles
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={removeBlock !== null}
+                    title={removeBlock ?? undefined}
+                    onSelect={() => setRemoving(row)}
+                  >
+                    <Trash2Icon aria-hidden />
+                    Remove member
+                  </DropdownMenuItem>
+                </RowMenu>
+              }
+            />
+          );
+        }}
         emptyState={
           <EmptyState
             icon={<UsersIcon />}

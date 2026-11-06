@@ -2,7 +2,7 @@ import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '
 import { MoreHorizontalIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-/** Kebab menu for a table row. `label` names the row for screen readers ("Actions for shop"). */
+/** Kebab menu of a list item. `label` names the item for screen readers ("Actions for shop"). */
 export function RowMenu({ label, children }: { label: string; children: ReactNode }) {
   return (
     <DropdownMenu>
@@ -11,11 +11,7 @@ export function RowMenu({ label, children }: { label: string; children: ReactNod
           <MoreHorizontalIcon aria-hidden />
         </Button>
       </DropdownMenuTrigger>
-      {/* React events bubble through the portal into the clickable table row, which would open
-          it behind the item the user just picked. */}
-      <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
-        {children}
-      </DropdownMenuContent>
+      <DropdownMenuContent align="end">{children}</DropdownMenuContent>
     </DropdownMenu>
   );
 }

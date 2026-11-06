@@ -7,6 +7,7 @@ import {
   Badge,
   Button,
   Card,
+  CardAction,
   CardContent,
   CardHeader,
   CardTitle,
@@ -14,6 +15,7 @@ import {
   PageHeader,
   SectionCard,
   Skeleton,
+  SourceTag,
   StatCard,
   StatGroup,
   CopyButton,
@@ -25,7 +27,6 @@ import {
 } from '@oakestra/ui';
 import { useQuery } from '@tanstack/react-query';
 import {
-  ArrowLeftIcon,
   ChartNoAxesColumnIcon,
   CpuIcon,
   MemoryStickIcon,
@@ -41,7 +42,7 @@ import { Link, useParams } from 'react-router';
 import { clusterQuery } from '../queries';
 import { ClusterMap } from '../components/ClusterMap';
 import { ClusterStatusBadge } from '../components/ClusterStatusBadge';
-import { totalMemoryBytes } from '../lib';
+import { clusterPresentation, clusterUsage } from '../lib';
 
 export function ClusterDetailPage() {
   const { clusterId = '' } = useParams();
@@ -49,15 +50,6 @@ export function ClusterDetailPage() {
   const cluster = useQuery(clusterQuery(api, clusterId));
 
   const addonPath = useAddonPath();
-
-  const back = (
-    <Button variant="ghost" size="sm" asChild className="-ml-2 md:hidden">
-      <Link to={addonPath()}>
-        <ArrowLeftIcon />
-        All clusters
-      </Link>
-    </Button>
-  );
 
   if (cluster.isPending) {
     return (
@@ -78,7 +70,6 @@ export function ClusterDetailPage() {
   if (cluster.isError) {
     return (
       <div className="space-y-4">
-        {back}
         <QueryErrorAlert
           title="Could not load the cluster"
           error={cluster.error}
@@ -90,18 +81,21 @@ export function ClusterDetailPage() {
   if (!cluster.data) {
     return (
       <div className="space-y-4">
-        {back}
         <EmptyState
           icon={<SearchXIcon />}
           title="Cluster not found"
           description="This cluster does not exist or is no longer registered."
+          action={
+            <Button variant="outline" asChild>
+              <Link to={addonPath()}>All clusters</Link>
+            </Button>
+          }
         />
       </div>
     );
   }
   return (
     <div className="space-y-4">
-      {back}
       <ClusterDetail cluster={cluster.data} />
     </div>
   );
@@ -111,10 +105,19 @@ function ClusterDetail({ cluster }: { cluster: Cluster }) {
   const location = parseClusterLocation(cluster.cluster_location);
   const { gpu_temp: gpuTemp, vram_percent: vramPercent, vcpus } = cluster;
   const hasGpu = (cluster.total_gpu_cores ?? 0) > 0;
-  const memoryTotal = totalMemoryBytes(cluster);
-  const { active } = cluster;
+  const { state } = clusterPresentation(cluster);
+  const usage = clusterUsage(cluster);
+  const reporting = state === 'reporting';
   const widgetContext = useMemo(() => ({ clusterId: cluster._id }), [cluster._id]);
-  // An inactive cluster keeps its last report, which would otherwise read as an idle cluster.
+  // A silent cluster keeps its last report, which would otherwise read as an idle cluster, so its
+  // tiles carry "last known" and zeros are left out.
+  const suffix = usage.lastKnown ? ', last known' : '';
+  const hasUsage =
+    usage.cpuPercent !== undefined ||
+    usage.memoryPercent !== undefined ||
+    usage.memoryAvailableBytes !== undefined ||
+    usage.activeNodes !== undefined;
+  const lastReport = formatRelativeTime(cluster.last_modified_timestamp);
 
   const cpuHistory = cluster.cpu_history.map(({ timestamp, value }) => ({ timestamp, value }));
   const memoryHistory = cluster.memory_history.map(({ timestamp, value }) => ({
@@ -136,7 +139,7 @@ function ClusterDetail({ cluster }: { cluster: Cluster }) {
     { title: 'GPU drivers', items: cluster.gpu_drivers },
   ];
   const reported = capabilities.filter((group) => group.items.length > 0);
-  const showCharts = active && (cpuHistory.length > 0 || memoryHistory.length > 0);
+  const showCharts = reporting && (cpuHistory.length > 0 || memoryHistory.length > 0);
 
   return (
     <>
@@ -144,46 +147,57 @@ function ClusterDetail({ cluster }: { cluster: Cluster }) {
         title={cluster.cluster_name}
         description={
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <ClusterStatusBadge active={active} />
-            <span className={active ? undefined : 'text-warning'}>
-              Last seen {formatRelativeTime(cluster.last_modified_timestamp)}
+            <ClusterStatusBadge cluster={cluster} />
+            <span className={reporting ? undefined : 'text-muted-foreground'}>
+              {state === 'never-reported' ? 'Never reported' : `Last seen ${lastReport}`}
             </span>
           </span>
         }
       />
 
-      {active ? null : (
-        // One line instead of dash tiles and empty charts: an inactive cluster keeps its last
-        // report, which would otherwise read as an idle cluster.
-        <Alert variant="warning" data-testid="cluster-stats">
+      {reporting ? null : (
+        <Alert variant="warning" data-testid="cluster-notice">
           <TriangleAlertIcon aria-hidden />
           <AlertTitle>
-            This cluster is not reporting. Last report{' '}
-            {formatRelativeTime(cluster.last_modified_timestamp)}.
+            {state === 'never-reported'
+              ? 'This cluster has not reported yet. There are no values to show.'
+              : hasUsage
+                ? `This cluster is not reporting. Last report ${lastReport}; the figures below are last known, not current.`
+                : `This cluster is not reporting. Last report ${lastReport}.`}
           </AlertTitle>
         </Alert>
       )}
 
-      {active ? (
+      {hasUsage ? (
         <StatGroup data-testid="cluster-stats">
-          <StatCard
-            label="CPU usage"
-            icon={<CpuIcon />}
-            value={formatPercent(cluster.cpu_percent ?? cluster.aggregated_cpu_percent)}
-            hint={cpuHint}
-          />
-          <StatCard
-            label="Memory usage"
-            icon={<MemoryStickIcon />}
-            value={formatPercent(cluster.memory_percent)}
-            hint={memoryTotal ? `of ${formatBytes(memoryTotal)}` : undefined}
-          />
-          <StatCard
-            label="Active nodes"
-            icon={<NetworkIcon />}
-            value={String(cluster.active_nodes ?? 0)}
-          />
-          {hasGpu ? (
+          {usage.cpuPercent === undefined ? null : (
+            <StatCard
+              label={`CPU usage${suffix}`}
+              icon={<CpuIcon />}
+              value={formatPercent(usage.cpuPercent)}
+              hint={cpuHint}
+            />
+          )}
+          {usage.memoryPercent === undefined ? null : (
+            <StatCard
+              label={`Memory usage${suffix}`}
+              icon={<MemoryStickIcon />}
+              value={formatPercent(usage.memoryPercent)}
+              hint={
+                usage.memoryAvailableBytes
+                  ? `${formatBytes(usage.memoryAvailableBytes)} available`
+                  : undefined
+              }
+            />
+          )}
+          {usage.activeNodes === undefined ? null : (
+            <StatCard
+              label={`Active nodes${suffix}`}
+              icon={<NetworkIcon />}
+              value={String(usage.activeNodes)}
+            />
+          )}
+          {reporting && hasGpu ? (
             <>
               <StatCard
                 label="GPU usage"
@@ -268,10 +282,15 @@ function ClusterDetail({ cluster }: { cluster: Cluster }) {
       <Slot
         point="cluster.widgets"
         context={widgetContext}
-        render={(item, content) => (
+        render={(item, content, source) => (
           <Card>
             <CardHeader>
               <CardTitle>{item.title}</CardTitle>
+              {source.remote ? (
+                <CardAction>
+                  <SourceTag name={source.displayName ?? source.id} version={source.version} />
+                </CardAction>
+              ) : null}
             </CardHeader>
             <CardContent>{content}</CardContent>
           </Card>

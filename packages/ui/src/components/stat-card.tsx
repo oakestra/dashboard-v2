@@ -58,7 +58,7 @@ function StatCard({
 }: StatCardProps) {
   const interactive = asChild || href !== undefined || onClick !== undefined;
   const classes = cn(
-    'flex h-full min-w-0 flex-col gap-0.5 rounded-lg border bg-card px-4 py-3 text-left text-card-foreground',
+    'flex h-full min-w-0 flex-col gap-1 rounded-lg border bg-card px-5 py-4 text-left text-card-foreground shadow-xs',
     // In a group the cells share the group's frame. The lines between them are shadows, which the
     // group clips at its edge. Borders would need to know each cell's position in the grid, and
     // that is not known here: tiles come from addons and rows wrap.
@@ -77,7 +77,7 @@ function StatCard({
             {icon}
           </span>
         ) : null}
-        <span className="min-w-0 truncate text-[0.8125rem]">{label}</span>
+        <span className="min-w-0 truncate text-sm">{label}</span>
       </span>
       {loading ? (
         <>
@@ -88,7 +88,7 @@ function StatCard({
         <>
           <span
             className={cn(
-              'text-[1.625rem] leading-8 font-medium tracking-[-0.015em] tabular-nums',
+              'text-3xl leading-9 font-semibold tracking-tight tabular-nums',
               VALUE_TONE[tone],
             )}
           >
@@ -153,7 +153,7 @@ function StatGroup({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot="stat-group"
       className={cn(
-        'grid grid-cols-2 overflow-hidden rounded-lg border bg-card lg:auto-cols-fr lg:grid-flow-col lg:grid-cols-none',
+        'grid grid-cols-2 overflow-hidden rounded-lg border bg-card shadow-xs lg:auto-cols-fr lg:grid-flow-col lg:grid-cols-none',
         className,
       )}
       {...props}

@@ -61,6 +61,396 @@ export interface AddonRoute {
     roles?: readonly Role[];
 }
 
+// @public
+export function allApplicationsQuery(api: OakestraApi): OmitKeyof<UseQueryOptions<    {
+[x: string]: unknown;
+_id: string;
+applicationID: string | undefined;
+application_name: string;
+application_namespace: string;
+application_desc: string;
+microservices: string[];
+userId: string | undefined;
+}[], Error, {
+[x: string]: unknown;
+_id: string;
+applicationID: string | undefined;
+application_name: string;
+application_namespace: string;
+application_desc: string;
+microservices: string[];
+userId: string | undefined;
+}[], readonly ["platform", "applications", "all"]>, "queryFn"> & {
+    queryFn?: QueryFunction<    {
+    [x: string]: unknown;
+    _id: string;
+    applicationID: string | undefined;
+    application_name: string;
+    application_namespace: string;
+    application_desc: string;
+    microservices: string[];
+    userId: string | undefined;
+    }[], readonly ["platform", "applications", "all"], never> | undefined;
+} & QueryKeyWithDataTag<readonly ["platform", "applications", "all"], {
+[x: string]: unknown;
+_id: string;
+applicationID: string | undefined;
+application_name: string;
+application_namespace: string;
+application_desc: string;
+microservices: string[];
+userId: string | undefined;
+}[], Error>;
+
+// @public
+export function allServicesQuery(api: OakestraApi): OmitKeyof<UseQueryOptions<    {
+[x: string]: unknown;
+_id: string;
+microserviceID: string | undefined;
+microservice_name: string;
+microservice_namespace: string;
+applicationID: string | undefined;
+app_name: string | undefined;
+app_ns: string | undefined;
+job_name: string | undefined;
+virtualization: string | undefined;
+code: string | undefined;
+image: string | undefined;
+state: string | undefined;
+port: string | undefined;
+memory?: number | undefined;
+vcpus?: number | undefined;
+vgpus?: number | undefined;
+vtpus?: number | undefined;
+storage?: number | undefined;
+bandwidth_in?: number | undefined;
+bandwidth_out?: number | undefined;
+cmd: string[];
+args: string[];
+environment: string[];
+volumes: {
+[x: string]: unknown;
+volume_id: string | undefined;
+csi_driver: string | undefined;
+mount_path: string | undefined;
+}[];
+added_files: string[];
+status: string | undefined;
+status_detail: string | undefined;
+addresses?: {
+[x: string]: unknown;
+rr_ip: string | undefined;
+rr_ip_v6: string | undefined;
+RR_ip: string | undefined;
+closest_ip: string | undefined;
+closest_ip_v6: string | undefined;
+instances: {
+[x: string]: unknown;
+from: string | undefined;
+to: string | undefined;
+start: string | undefined;
+}[];
+} | undefined;
+RR_ip: string | undefined;
+RR_ip_v6: string | undefined;
+constraints: {
+[x: string]: unknown;
+type: string;
+}[];
+connectivity: {
+[x: string]: unknown;
+target_microservice_id: string;
+}[];
+instance_list: {
+[x: string]: unknown;
+instance_number: number;
+status: string | undefined;
+status_detail: string | undefined;
+cluster_id: string | undefined;
+cluster_location: string | undefined;
+worker_id: string | undefined;
+publicip: string | undefined;
+host_ip: string | undefined;
+host_port?: number | undefined;
+cpu_percent?: number | undefined;
+memory_percent?: number | undefined;
+disk?: number | undefined;
+cpu_history: {
+[x: string]: unknown;
+timestamp: Date;
+value: number;
+}[];
+memory_history: {
+[x: string]: unknown;
+timestamp: Date;
+value: number;
+}[];
+logs: string | undefined;
+last_modified_timestamp?: Date | undefined;
+}[];
+next_instance_progressive_number?: number | undefined;
+}[], Error, {
+[x: string]: unknown;
+_id: string;
+microserviceID: string | undefined;
+microservice_name: string;
+microservice_namespace: string;
+applicationID: string | undefined;
+app_name: string | undefined;
+app_ns: string | undefined;
+job_name: string | undefined;
+virtualization: string | undefined;
+code: string | undefined;
+image: string | undefined;
+state: string | undefined;
+port: string | undefined;
+memory?: number | undefined;
+vcpus?: number | undefined;
+vgpus?: number | undefined;
+vtpus?: number | undefined;
+storage?: number | undefined;
+bandwidth_in?: number | undefined;
+bandwidth_out?: number | undefined;
+cmd: string[];
+args: string[];
+environment: string[];
+volumes: {
+[x: string]: unknown;
+volume_id: string | undefined;
+csi_driver: string | undefined;
+mount_path: string | undefined;
+}[];
+added_files: string[];
+status: string | undefined;
+status_detail: string | undefined;
+addresses?: {
+[x: string]: unknown;
+rr_ip: string | undefined;
+rr_ip_v6: string | undefined;
+RR_ip: string | undefined;
+closest_ip: string | undefined;
+closest_ip_v6: string | undefined;
+instances: {
+[x: string]: unknown;
+from: string | undefined;
+to: string | undefined;
+start: string | undefined;
+}[];
+} | undefined;
+RR_ip: string | undefined;
+RR_ip_v6: string | undefined;
+constraints: {
+[x: string]: unknown;
+type: string;
+}[];
+connectivity: {
+[x: string]: unknown;
+target_microservice_id: string;
+}[];
+instance_list: {
+[x: string]: unknown;
+instance_number: number;
+status: string | undefined;
+status_detail: string | undefined;
+cluster_id: string | undefined;
+cluster_location: string | undefined;
+worker_id: string | undefined;
+publicip: string | undefined;
+host_ip: string | undefined;
+host_port?: number | undefined;
+cpu_percent?: number | undefined;
+memory_percent?: number | undefined;
+disk?: number | undefined;
+cpu_history: {
+[x: string]: unknown;
+timestamp: Date;
+value: number;
+}[];
+memory_history: {
+[x: string]: unknown;
+timestamp: Date;
+value: number;
+}[];
+logs: string | undefined;
+last_modified_timestamp?: Date | undefined;
+}[];
+next_instance_progressive_number?: number | undefined;
+}[], readonly ["platform", "services", "all"]>, "queryFn"> & {
+    queryFn?: QueryFunction<    {
+    [x: string]: unknown;
+    _id: string;
+    microserviceID: string | undefined;
+    microservice_name: string;
+    microservice_namespace: string;
+    applicationID: string | undefined;
+    app_name: string | undefined;
+    app_ns: string | undefined;
+    job_name: string | undefined;
+    virtualization: string | undefined;
+    code: string | undefined;
+    image: string | undefined;
+    state: string | undefined;
+    port: string | undefined;
+    memory?: number | undefined;
+    vcpus?: number | undefined;
+    vgpus?: number | undefined;
+    vtpus?: number | undefined;
+    storage?: number | undefined;
+    bandwidth_in?: number | undefined;
+    bandwidth_out?: number | undefined;
+    cmd: string[];
+    args: string[];
+    environment: string[];
+    volumes: {
+    [x: string]: unknown;
+    volume_id: string | undefined;
+    csi_driver: string | undefined;
+    mount_path: string | undefined;
+    }[];
+    added_files: string[];
+    status: string | undefined;
+    status_detail: string | undefined;
+    addresses?: {
+    [x: string]: unknown;
+    rr_ip: string | undefined;
+    rr_ip_v6: string | undefined;
+    RR_ip: string | undefined;
+    closest_ip: string | undefined;
+    closest_ip_v6: string | undefined;
+    instances: {
+    [x: string]: unknown;
+    from: string | undefined;
+    to: string | undefined;
+    start: string | undefined;
+    }[];
+    } | undefined;
+    RR_ip: string | undefined;
+    RR_ip_v6: string | undefined;
+    constraints: {
+    [x: string]: unknown;
+    type: string;
+    }[];
+    connectivity: {
+    [x: string]: unknown;
+    target_microservice_id: string;
+    }[];
+    instance_list: {
+    [x: string]: unknown;
+    instance_number: number;
+    status: string | undefined;
+    status_detail: string | undefined;
+    cluster_id: string | undefined;
+    cluster_location: string | undefined;
+    worker_id: string | undefined;
+    publicip: string | undefined;
+    host_ip: string | undefined;
+    host_port?: number | undefined;
+    cpu_percent?: number | undefined;
+    memory_percent?: number | undefined;
+    disk?: number | undefined;
+    cpu_history: {
+    [x: string]: unknown;
+    timestamp: Date;
+    value: number;
+    }[];
+    memory_history: {
+    [x: string]: unknown;
+    timestamp: Date;
+    value: number;
+    }[];
+    logs: string | undefined;
+    last_modified_timestamp?: Date | undefined;
+    }[];
+    next_instance_progressive_number?: number | undefined;
+    }[], readonly ["platform", "services", "all"], never> | undefined;
+} & QueryKeyWithDataTag<readonly ["platform", "services", "all"], {
+[x: string]: unknown;
+_id: string;
+microserviceID: string | undefined;
+microservice_name: string;
+microservice_namespace: string;
+applicationID: string | undefined;
+app_name: string | undefined;
+app_ns: string | undefined;
+job_name: string | undefined;
+virtualization: string | undefined;
+code: string | undefined;
+image: string | undefined;
+state: string | undefined;
+port: string | undefined;
+memory?: number | undefined;
+vcpus?: number | undefined;
+vgpus?: number | undefined;
+vtpus?: number | undefined;
+storage?: number | undefined;
+bandwidth_in?: number | undefined;
+bandwidth_out?: number | undefined;
+cmd: string[];
+args: string[];
+environment: string[];
+volumes: {
+[x: string]: unknown;
+volume_id: string | undefined;
+csi_driver: string | undefined;
+mount_path: string | undefined;
+}[];
+added_files: string[];
+status: string | undefined;
+status_detail: string | undefined;
+addresses?: {
+[x: string]: unknown;
+rr_ip: string | undefined;
+rr_ip_v6: string | undefined;
+RR_ip: string | undefined;
+closest_ip: string | undefined;
+closest_ip_v6: string | undefined;
+instances: {
+[x: string]: unknown;
+from: string | undefined;
+to: string | undefined;
+start: string | undefined;
+}[];
+} | undefined;
+RR_ip: string | undefined;
+RR_ip_v6: string | undefined;
+constraints: {
+[x: string]: unknown;
+type: string;
+}[];
+connectivity: {
+[x: string]: unknown;
+target_microservice_id: string;
+}[];
+instance_list: {
+[x: string]: unknown;
+instance_number: number;
+status: string | undefined;
+status_detail: string | undefined;
+cluster_id: string | undefined;
+cluster_location: string | undefined;
+worker_id: string | undefined;
+publicip: string | undefined;
+host_ip: string | undefined;
+host_port?: number | undefined;
+cpu_percent?: number | undefined;
+memory_percent?: number | undefined;
+disk?: number | undefined;
+cpu_history: {
+[x: string]: unknown;
+timestamp: Date;
+value: number;
+}[];
+memory_history: {
+[x: string]: unknown;
+timestamp: Date;
+value: number;
+}[];
+logs: string | undefined;
+last_modified_timestamp?: Date | undefined;
+}[];
+next_instance_progressive_number?: number | undefined;
+}[], Error>;
+
 // @public (undocumented)
 export interface ApplicationContext {
     // (undocumented)
@@ -107,6 +497,9 @@ application_desc: string;
 microservices: string[];
 userId: string | undefined;
 }[], Error>;
+
+// @public
+export function buildAddonPath(basePath: string, ...segments: readonly (string | number)[]): string;
 
 // @public
 export const CLUSTER_REFETCH_MS = 30000;
@@ -262,6 +655,65 @@ value: number;
 last_modified_timestamp?: Date | undefined;
 }[], Error>;
 
+// @public
+export type CommandAction = ContributionBase & CommandDisplay & {
+    keywords?: readonly string[];
+} & CommandTarget;
+
+// @public
+export interface CommandAddon {
+    // (undocumented)
+    readonly addonId: string;
+    readonly basePath: string;
+    readonly path: (...segments: readonly (string | number)[]) => string;
+}
+
+// @public
+export interface CommandContext {
+    readonly addon?: CommandAddon;
+    // (undocumented)
+    readonly api: OakestraApi;
+    readonly isFeatureEnabled: (id: string) => boolean;
+    readonly navigate: (path: string) => void;
+    // (undocumented)
+    readonly notify: Notify;
+    readonly queryClient: QueryClient;
+    readonly user: CurrentUser;
+}
+
+// @public
+export interface CommandDisplay {
+    description?: string;
+    // (undocumented)
+    icon?: ComponentType<IconProps>;
+    label: string;
+}
+
+// @public
+export type CommandResult = CommandDisplay & {
+    id: string;
+    tone?: CommandResultTone;
+} & CommandTarget;
+
+// @public
+export type CommandResultTone = 'warning' | 'destructive';
+
+// @public
+export interface CommandSource extends ContributionBase {
+    label: string;
+    minQueryLength?: number;
+    search: (query: string, ctx: CommandContext, signal: AbortSignal) => Promise<readonly CommandResult[]>;
+}
+
+// @public
+export type CommandTarget = {
+    path: string;
+    run?: never;
+} | {
+    run: (ctx: CommandContext) => void | Promise<void>;
+    path?: never;
+};
+
 // @public (undocumented)
 type ContextProp<P extends RenderablePointId> = EmptyContext extends SlotContext<P> ? {
     context?: SlotContext<P>;
@@ -297,7 +749,7 @@ export { describeError }
 export type EmptyContext = Record<never, never>;
 
 // @public (undocumented)
-export const EXTENSION_POINT_IDS: readonly ["nav.items", "home.widgets", "application.detail.tabs", "service.detail.tabs", "cluster.widgets"];
+export const EXTENSION_POINT_IDS: readonly ["nav.items", "home.widgets", "application.detail.tabs", "service.detail.tabs", "cluster.widgets", "command.actions", "command.sources"];
 
 // @public (undocumented)
 export type ExtensionPointId = keyof ExtensionPoints;
@@ -308,6 +760,8 @@ export interface ExtensionPoints {
     'application.detail.tabs': Tab<ApplicationContext>;
     // (undocumented)
     'cluster.widgets': Widget<ClusterContext>;
+    'command.actions': CommandAction;
+    'command.sources': CommandSource;
     // (undocumented)
     'home.widgets': Widget;
     // (undocumented)
@@ -571,6 +1025,12 @@ bandwidth_out?: number | undefined;
 cmd: string[];
 args: string[];
 environment: string[];
+volumes: {
+[x: string]: unknown;
+volume_id: string | undefined;
+csi_driver: string | undefined;
+mount_path: string | undefined;
+}[];
 added_files: string[];
 status: string | undefined;
 status_detail: string | undefined;
@@ -651,6 +1111,12 @@ bandwidth_out?: number | undefined;
 cmd: string[];
 args: string[];
 environment: string[];
+volumes: {
+[x: string]: unknown;
+volume_id: string | undefined;
+csi_driver: string | undefined;
+mount_path: string | undefined;
+}[];
 added_files: string[];
 status: string | undefined;
 status_detail: string | undefined;
@@ -732,6 +1198,12 @@ next_instance_progressive_number?: number | undefined;
     cmd: string[];
     args: string[];
     environment: string[];
+    volumes: {
+    [x: string]: unknown;
+    volume_id: string | undefined;
+    csi_driver: string | undefined;
+    mount_path: string | undefined;
+    }[];
     added_files: string[];
     status: string | undefined;
     status_detail: string | undefined;
@@ -813,6 +1285,12 @@ bandwidth_out?: number | undefined;
 cmd: string[];
 args: string[];
 environment: string[];
+volumes: {
+[x: string]: unknown;
+volume_id: string | undefined;
+csi_driver: string | undefined;
+mount_path: string | undefined;
+}[];
 added_files: string[];
 status: string | undefined;
 status_detail: string | undefined;
@@ -889,12 +1367,15 @@ export const SlotRendererContext: Context<ComponentType<SlotProps<RenderablePoin
 
 // @public
 export interface SlotSource {
+    displayName?: string;
     // (undocumented)
     id: string;
     // (undocumented)
     kind: 'core' | 'addon';
     // (undocumented)
     label: string;
+    remote?: boolean;
+    version?: string;
 }
 
 // @public (undocumented)

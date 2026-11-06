@@ -64,7 +64,11 @@ export function createAppRoutes(
       ErrorBoundary: RouteErrorPage,
       // Shown while the session is restored and the first lazy route module loads.
       HydrateFallback: PageSkeleton,
-      handle: { crumb: 'Home' } satisfies RouteHandle,
+      // Named like the sidebar entry it links to. A preset without the overview sends `/` to its own
+      // home page, which this crumb cannot name.
+      handle: {
+        crumb: modules.some((module) => module.id === 'overview') ? 'Overview' : 'Home',
+      } satisfies RouteHandle,
       children: [
         {
           // Page errors (including 403 from requireRole) render inside the layout, so the

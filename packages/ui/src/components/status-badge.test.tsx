@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { StatusBadge, StatusDot } from './status-badge';
+import { StatusBadge, StatusDot, staleSurfaceClassName } from './status-badge';
 
 describe('StatusBadge', () => {
   it('renders the label with its tone variant and a leading glyph', () => {
@@ -42,5 +42,20 @@ describe('StatusBadge', () => {
       </StatusBadge>,
     );
     expect(document.querySelector('[data-slot="status-dot"]')).toBeNull();
+  });
+
+  it('marks a stale badge with a dashed glyph and the shared hatch, keeping the tone', () => {
+    render(
+      <StatusBadge tone="success" stale>
+        Running
+      </StatusBadge>,
+    );
+    const badge = screen.getByText('Running');
+    expect(badge).toHaveAttribute('data-tone', 'success');
+    expect(badge).toHaveAttribute('data-stale', 'true');
+    expect(badge.className).toContain(staleSurfaceClassName);
+    expect(badge.querySelector('[data-slot="status-dot"] > span')?.className).toContain(
+      'border-dashed',
+    );
   });
 });

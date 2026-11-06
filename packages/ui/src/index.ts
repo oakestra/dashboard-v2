@@ -152,12 +152,26 @@ export {
 export { Collapsible, CollapsibleContent, CollapsibleTrigger } from './components/collapsible';
 export { ConfirmDialog, type ConfirmDialogProps } from './components/confirm-dialog';
 export { EmptyState, type EmptyStateProps } from './components/empty-state';
+export {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemFooter,
+  ItemGroup,
+  ItemHeader,
+  ItemMedia,
+  ItemSeparator,
+  ItemTitle,
+} from './components/item';
+export { stretchedLinkClassName } from './lib/stretched-link';
 export { PageHeader, type PageHeaderProps } from './components/page-header';
 export { SectionCard, type SectionCardProps } from './components/section-card';
 export { StatCard, StatGroup, type StatCardProps } from './components/stat-card';
 export {
   StatusBadge,
   StatusDot,
+  staleSurfaceClassName,
   type StatusBadgeProps,
   type StatusDotProps,
   type StatusTone,
@@ -173,6 +187,10 @@ export {
 } from './components/pagination';
 export { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from './components/popover';
 export { Progress } from './components/progress';
+export { Kbd } from './components/kbd';
+export { Slider } from './components/slider';
+export { PointerGauge, type PointerGaugeProps } from './components/pointer-gauge';
+export { SourceTag, type SourceTagProps } from './components/source-tag';
 export { ScrollArea, ScrollBar } from './components/scroll-area';
 export {
   Select,

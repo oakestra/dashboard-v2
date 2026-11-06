@@ -1,4 +1,4 @@
-import { act, screen, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { setEntry, type AddonRegistry } from '../../core/addons/addon-registry';
@@ -123,6 +123,24 @@ describe('<AppLayout>', () => {
     expect(support.closest('[data-sidebar="footer"]')).not.toBeNull();
     expect(support.closest('[data-sidebar="content"]')).toBeNull();
     expect(screen.getByTestId('nav-demo-apps').closest('[data-sidebar="content"]')).not.toBeNull();
+  });
+
+  it('opens a new page at the top and returns to the old offset on back', async () => {
+    const { router } = renderApp({ modules, route: '/infra' });
+    await screen.findByTestId('breadcrumbs');
+    const panel = document.querySelector<HTMLElement>('[data-slot="sidebar-inset"]')!;
+
+    panel.scrollTop = 300;
+    panel.dispatchEvent(new Event('scroll'));
+    await act(() => router.navigate('/infra?filter=a'));
+    expect(panel.scrollTop).toBe(300);
+
+    panel.dispatchEvent(new Event('scroll'));
+    await act(() => router.navigate('/'));
+    expect(panel.scrollTop).toBe(0);
+
+    await act(() => router.navigate(-1));
+    await waitFor(() => expect(panel.scrollTop).toBe(300));
   });
 
   it('shows breadcrumbs, the user menu and configured external links', async () => {

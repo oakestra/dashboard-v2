@@ -9,7 +9,7 @@ export function AuthLayout() {
   return (
     <div className="bg-background grid min-h-svh lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
       <aside className="bg-sidebar text-sidebar-foreground hidden flex-col justify-between p-10 lg:flex">
-        <OakestraLogo surface="inverse" className="h-8 self-start" />
+        <OakestraLogo className="h-8 self-start" />
         <OrchestrationTree className="w-full max-w-xl" />
         <p className="max-w-sm text-sm text-pretty">
           Run workloads across clusters and edge devices from one root orchestrator.

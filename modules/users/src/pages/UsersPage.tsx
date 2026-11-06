@@ -7,6 +7,8 @@ import {
   usersQuery,
 } from '@oakestra/dashboard-sdk';
 import {
+  Avatar,
+  AvatarFallback,
   Badge,
   Button,
   ConfirmDialog,
@@ -16,6 +18,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   EmptyState,
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
   PageHeader,
   Select,
   SelectContent,
@@ -28,15 +36,16 @@ import {
   formatDateTime,
   parseLegacyDate,
 } from '@oakestra/ui';
-import { createDataTableColumnHelper, DataTable } from '@oakestra/ui/data-table';
+import { DataList, type DataListSortOption } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
 import { EllipsisIcon, PencilIcon, PlusIcon, Trash2Icon, UsersIcon } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 
 import { useDeleteUser } from '../api/mutations';
 import { organizationUsersQuery } from '../api/queries';
 import { CreateUserDialog } from '../components/CreateUserDialog';
 import { EditRolesDialog } from '../components/EditRolesDialog';
+import { initials } from '../initials';
 
 interface UserRow {
   id: string;
@@ -49,11 +58,90 @@ interface UserRow {
   created: Date | undefined;
 }
 
-/** Compact rows show at most this many role badges; the rest is a "+N" with the names in a title. */
+/** Compact items show at most this many role badges; the rest is a "+N" with the names in a title. */
 const COMPACT_ROLE_LIMIT = 2;
 
 const ALL_ROLES = 'all';
-const column = createDataTableColumnHelper<UserRow>();
+
+const searchValue = (row: UserRow) =>
+  [row.name, row.email, ...(row.roles ?? []).map(roleLabel)].join(' ');
+
+const createdTime = (row: UserRow) => row.created?.getTime() ?? 0;
+
+const SORT_OPTIONS: readonly DataListSortOption<UserRow>[] = [
+  { id: 'name', label: 'Name', value: (row) => row.name },
+  { id: 'email', label: 'Email', value: (row) => row.email },
+  { id: 'newest', label: 'Newest first', value: createdTime, desc: true },
+  { id: 'oldest', label: 'Oldest first', value: createdTime },
+];
+
+function UserRoles({ roles, compact }: { roles: UserRow['roles']; compact: boolean }) {
+  if (roles === undefined) {
+    return <span className="text-muted-foreground text-sm">Roles unknown</span>;
+  }
+  if (roles.length === 0) return <span className="text-muted-foreground text-sm">No roles</span>;
+  const shown = compact ? roles.slice(0, COMPACT_ROLE_LIMIT) : roles;
+  const hidden = roles.slice(shown.length);
+  return (
+    <>
+      {shown.map((role) => (
+        <Badge key={role} variant="secondary">
+          {roleLabel(role)}
+        </Badge>
+      ))}
+      {hidden.length > 0 ? (
+        <Badge variant="secondary" title={hidden.map(roleLabel).join(', ')}>
+          +{hidden.length}
+        </Badge>
+      ) : null}
+    </>
+  );
+}
+
+function UserItem({
+  user,
+  isSelf,
+  compact,
+  menu,
+}: {
+  user: UserRow;
+  isSelf: boolean;
+  compact: boolean;
+  menu: ReactNode;
+}) {
+  return (
+    <Item className="rounded-none py-3">
+      <ItemMedia>
+        <Avatar aria-hidden>
+          <AvatarFallback className="text-xs font-medium">{initials(user.name)}</AvatarFallback>
+        </Avatar>
+      </ItemMedia>
+      <ItemContent>
+        <ItemTitle>
+          <span className="truncate">{user.name}</span>
+          {isSelf ? <Badge variant="neutral">You</Badge> : null}
+        </ItemTitle>
+        {user.email ? (
+          <ItemDescription className="line-clamp-1">{user.email}</ItemDescription>
+        ) : null}
+      </ItemContent>
+      {/* Below `sm` the roles take a line of their own, lined up with the name. */}
+      <div className="flex flex-wrap items-center gap-1 max-sm:order-last max-sm:basis-full max-sm:pl-12 sm:justify-end">
+        <UserRoles roles={user.roles} compact={compact} />
+      </div>
+      <div className="text-muted-foreground hidden w-24 text-right text-sm md:block">
+        {user.created ? (
+          <time dateTime={user.created.toISOString()} title={formatDateTime(user.created)}>
+            {formatDate(user.created)}
+          </time>
+        ) : (
+          user.createdRaw || '-'
+        )}
+      </div>
+      <ItemActions>{menu}</ItemActions>
+    </Item>
+  );
+}
 
 export function UsersPage() {
   const api = useOakestraApi();
@@ -98,134 +186,8 @@ export function UsersPage() {
     [rows, roleFilter],
   );
 
-  const columns = useMemo(
-    () =>
-      column.columns([
-        column.accessor('name', {
-          header: 'Name',
-          cell: ({ row }) => (
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{row.original.name}</span>
-                {row.original.name === me.username ? <Badge variant="neutral">You</Badge> : null}
-              </div>
-              {compact && row.original.email ? (
-                <div className="text-muted-foreground truncate text-xs">{row.original.email}</div>
-              ) : null}
-            </div>
-          ),
-        }),
-        ...(compact
-          ? []
-          : [
-              column.accessor('email', {
-                header: 'Email',
-                cell: (info) => (
-                  <span className="text-muted-foreground">{info.getValue() || '-'}</span>
-                ),
-              }),
-            ]),
-        column.accessor((row) => row.roles?.join(', ') ?? '', {
-          id: 'roles',
-          header: 'Roles',
-          enableSorting: false,
-          cell: ({ row }) => {
-            const roles = row.original.roles;
-            if (roles === undefined) {
-              return (
-                <span className="text-muted-foreground" title="Roles are not known for this user">
-                  -
-                </span>
-              );
-            }
-            if (roles.length === 0) return <span className="text-muted-foreground">No roles</span>;
-            const shown = compact ? roles.slice(0, COMPACT_ROLE_LIMIT) : roles;
-            const hidden = roles.slice(shown.length);
-            return (
-              <div className="flex flex-wrap gap-1">
-                {shown.map((role) => (
-                  <Badge key={role} variant="secondary">
-                    {roleLabel(role)}
-                  </Badge>
-                ))}
-                {hidden.length > 0 ? (
-                  <Badge variant="secondary" title={hidden.map(roleLabel).join(', ')}>
-                    +{hidden.length}
-                  </Badge>
-                ) : null}
-              </div>
-            );
-          },
-        }),
-        ...(compact
-          ? []
-          : [
-              column.accessor((row) => row.created?.getTime() ?? 0, {
-                id: 'created',
-                header: 'Created',
-                cell: ({ row }) =>
-                  row.original.created ? (
-                    <time
-                      className="text-muted-foreground whitespace-nowrap"
-                      dateTime={row.original.created.toISOString()}
-                      title={formatDateTime(row.original.created)}
-                    >
-                      {formatDate(row.original.created)}
-                    </time>
-                  ) : (
-                    <span className="text-muted-foreground">{row.original.createdRaw || '-'}</span>
-                  ),
-              }),
-            ]),
-        column.display({
-          id: 'actions',
-          header: () => <span className="sr-only">Actions</span>,
-          meta: { align: 'right' },
-          cell: ({ row }) => {
-            const isSelf = row.original.name === me.username;
-            return (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Actions for ${row.original.name}`}
-                  >
-                    <EllipsisIcon aria-hidden />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    disabled={!rolesKnown}
-                    onSelect={() => setEditing(row.original)}
-                  >
-                    <PencilIcon aria-hidden />
-                    Edit roles
-                  </DropdownMenuItem>
-                  {/* Hidden, not disabled: deleting yourself is never an option worth explaining. */}
-                  {isSelf ? null : (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onSelect={() => setDeleting(row.original)}
-                      >
-                        <Trash2Icon aria-hidden />
-                        Delete user
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            );
-          },
-        }),
-      ]),
-    [compact, me.username, rolesKnown],
-  );
-
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <PageHeader
         title="Users"
         actions={
@@ -251,15 +213,52 @@ export function UsersPage() {
           onRetry={() => void primary.refetch()}
         />
       ) : (
-        <DataTable
+        <DataList
           label="Users"
-          columns={columns}
+          noun="user"
           data={filtered}
           getRowId={(row) => row.id}
           isLoading={primary.isPending}
+          searchValue={searchValue}
+          sortOptions={SORT_OPTIONS}
           searchPlaceholder="Search users"
           globalFilter={search}
-          onGlobalFilterChange={(value) => setSearch(value)}
+          onGlobalFilterChange={setSearch}
+          renderItem={(row) => {
+            const isSelf = row.name === me.username;
+            return (
+              <UserItem
+                user={row}
+                isSelf={isSelf}
+                compact={compact}
+                menu={
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${row.name}`}>
+                        <EllipsisIcon aria-hidden />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem disabled={!rolesKnown} onSelect={() => setEditing(row)}>
+                        <PencilIcon aria-hidden />
+                        Edit roles
+                      </DropdownMenuItem>
+                      {/* Hidden, not disabled: deleting yourself is never an option worth explaining. */}
+                      {isSelf ? null : (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(row)}>
+                            <Trash2Icon aria-hidden />
+                            Delete user
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                }
+              />
+            );
+          }}
           emptyState={
             rows.length > 0 ? (
               <EmptyState
@@ -282,7 +281,7 @@ export function UsersPage() {
           }
           toolbar={
             <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value)}>
-              <SelectTrigger aria-label="Filter by role" className="w-full sm:w-52">
+              <SelectTrigger aria-label="Filter by role" className="w-44 sm:w-52">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

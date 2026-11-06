@@ -27,9 +27,4 @@ describe('<OakestraLogo>', () => {
       expect(img).not.toHaveClass('w-auto');
     }
   });
-
-  it('renders only the light-on-dark artwork on a dark teal surface, whatever the theme', () => {
-    render(<OakestraLogo surface="inverse" />);
-    expect(sources()).toEqual(['/brand/oakestra-wordmark-dark.png']);
-  });
 });

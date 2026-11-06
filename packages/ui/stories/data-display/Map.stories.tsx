@@ -25,7 +25,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'mapcn on MapLibre GL, imported from the `@oakestra/ui/map` subpath. Needs WebGL2 and loads VersaTiles basemap tiles from the internet; the basemap follows the `.dark` class (toolbar theme switch). The host registers the worker URL once with `setMapWorkerUrl()`, as `.storybook/preview.tsx` does.',
+          'mapcn on MapLibre GL, imported from the `@oakestra/ui/map` subpath. Needs WebGL2 and loads CARTO basemap tiles from the internet; the basemap follows the `.dark` class (toolbar theme switch). The host registers the worker URL once with `setMapWorkerUrl()`, as `.storybook/preview.tsx` does.',
       },
     },
   },

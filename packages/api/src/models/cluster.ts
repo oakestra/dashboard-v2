@@ -73,3 +73,20 @@ export function parseClusterLocation(value: string | null | undefined): ClusterL
   if (radius !== undefined && (!Number.isFinite(radius) || radius < 0)) return null;
   return radius === undefined ? { latitude, longitude } : { latitude, longitude, radius };
 }
+
+export type ClusterReportState = 'reporting' | 'silent' | 'never-reported';
+
+/**
+ * Whether a cluster is sending reports. `active` is computed by the backend on every read (last
+ * report newer than its freshness threshold), so no clock is needed here and the browser's time
+ * zone or skew cannot disagree with the server. A cluster that registered but never reported has
+ * no `last_modified_timestamp` at all (registration inserts the document without one), which is
+ * why a missing timestamp is told apart from a stale one: a silent cluster still has last-known
+ * values worth showing, a never-reported one has none.
+ */
+export function clusterReportState(
+  cluster: Pick<Cluster, 'active' | 'last_modified_timestamp'>,
+): ClusterReportState {
+  if (cluster.active) return 'reporting';
+  return cluster.last_modified_timestamp === undefined ? 'never-reported' : 'silent';
+}

@@ -1,4 +1,9 @@
-import type { AddonDefinition, Contributions, NavItem } from '@oakestra/dashboard-sdk';
+import type {
+  AddonDefinition,
+  CommandAction,
+  Contributions,
+  NavItem,
+} from '@oakestra/dashboard-sdk';
 
 import type { ContributionRegistry } from '../extensions/registry';
 import { sourceKey } from '../extensions/registry';
@@ -47,7 +52,7 @@ export function createAddonLoader(deps: AddonLoaderDeps): AddonLoader {
       const definition = parseAddonDefinition(module, addon.name);
       if (currentLoads.get(addon.name) !== token) return;
 
-      const source = addonSource(addon);
+      const source = addonSource(addon, definition.label);
       contributions
         .getState()
         .register(source, resolveAddonContributions(definition, source.addon.basePath));
@@ -157,28 +162,40 @@ function sameFailure(current: AddonEntry | undefined, next: FailedEntry): boolea
   );
 }
 
-/** Addon nav paths are written relative to the addon; the registry stores absolute paths. */
+/** Addon nav and command paths are written relative to the addon; the registry stores absolute. */
 export function resolveAddonContributions(
   definition: AddonDefinition,
   basePath: string,
 ): Contributions {
   const contributions = definition.contributions ?? {};
   const navItems = contributions['nav.items'];
-  if (!navItems) return contributions;
+  const actions = contributions['command.actions'];
   return {
     ...contributions,
-    'nav.items': navItems.map((item): NavItem => ({
-      ...item,
-      group: item.group ?? 'addons',
-      path: joinPath(basePath, item.path),
-      children: item.children?.map((child) => ({ ...child, path: joinPath(basePath, child.path) })),
-    })),
+    ...(navItems && {
+      'nav.items': navItems.map((item): NavItem => ({
+        ...item,
+        group: item.group ?? 'addons',
+        path: joinPath(basePath, item.path),
+        children: item.children?.map((child) => ({
+          ...child,
+          path: joinPath(basePath, child.path),
+        })),
+      })),
+    }),
+    ...(actions && {
+      'command.actions': actions.map((action): CommandAction =>
+        action.path === undefined ? action : { ...action, path: joinPath(basePath, action.path) },
+      ),
+    }),
   };
 }
 
 function joinPath(base: string, relative: string): string {
   const trimmed = relativeAddonPath(relative);
-  return trimmed ? `${base}/${trimmed}` : base;
+  if (!trimmed) return base;
+  // A query on the addon's index route: `/fleet?only=exceptions`, not `/fleet/?only=exceptions`.
+  return /^[?#]/.test(trimmed) ? `${base}${trimmed}` : `${base}/${trimmed}`;
 }
 
 export function errorMessage(error: unknown): string {

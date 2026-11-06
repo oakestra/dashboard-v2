@@ -54,7 +54,7 @@ describe('<MarketplacePage>', () => {
     const { user } = renderMarketplace();
     await card('flops');
 
-    await user.type(screen.getByRole('searchbox', { name: 'Search the marketplace' }), 'federated');
+    await user.type(screen.getByRole('searchbox', { name: 'Search Marketplace' }), 'federated');
 
     expect(screen.getByTestId('marketplace-card-flops')).toBeVisible();
     expect(screen.queryByTestId('marketplace-card-example')).not.toBeInTheDocument();
@@ -74,10 +74,8 @@ describe('<MarketplacePage>', () => {
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/addon-manager/installed'));
     expect(mockAddons.state.installed.filter((a) => a.name === 'flops')).toHaveLength(1);
-    // Looked up again on every try: the row is rebuilt while the status changes.
     await waitFor(() => {
-      const row = screen.getByText('flops', { selector: 'td span' }).closest('tr')!;
-      expect(within(row).getByText('Active')).toBeVisible();
+      expect(within(screen.getByTestId('installed-addon-flops')).getByText('Active')).toBeVisible();
     });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: uiAddonsQueryKey });
   });

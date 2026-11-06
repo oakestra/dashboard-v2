@@ -5,7 +5,7 @@ import { requireRole } from '../../core/auth/guards';
 import type { CoreModule } from '../../core/modules';
 import type { RouteHandle } from '../../core/router/route-handle';
 
-import { INSTALLED_PATH, MARKETPLACE_PATH } from './paths';
+import { INSTALLED_PATH } from './paths';
 
 export { addonManagerKeys } from './keys';
 export { INSTALLED_PATH, MARKETPLACE_PATH, installedAddonLink } from './paths';
@@ -61,10 +61,6 @@ export const addonManagerModule: CoreModule = {
         // See the Management ordering note in modules/infrastructure/src/index.ts.
         order: 40,
         roles: ['Admin'],
-        children: [
-          { id: 'installed', label: 'Installed', path: INSTALLED_PATH },
-          { id: 'marketplace', label: 'Marketplace', path: MARKETPLACE_PATH },
-        ],
       },
     ],
   },

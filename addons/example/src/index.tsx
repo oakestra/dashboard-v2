@@ -1,6 +1,6 @@
 import './addon.css';
 
-import { defineAddon } from '@oakestra/dashboard-sdk';
+import { defineAddon, type CommandSource } from '@oakestra/dashboard-sdk';
 import { FlaskConicalIcon } from 'lucide-react';
 import { ADDON_ID } from 'virtual:oakestra-addon';
 
@@ -15,6 +15,21 @@ import {
   ServiceTab,
   ThrowingWidget,
 } from './widgets/widgets';
+
+const SAMPLE_ITEMS = ['Alpha', 'Beta', 'Gamma'];
+
+// Real sources read through `ctx.queryClient`, see the `search` documentation.
+const searchSamples: CommandSource['search'] = (query, { addon }) =>
+  Promise.resolve(
+    addon
+      ? SAMPLE_ITEMS.map((item) => ({
+          id: item,
+          label: `Sample ${item}`,
+          description: 'Example item',
+          path: addon.path('details', item),
+        })).filter(({ label }) => label.toLowerCase().includes(query.toLowerCase()))
+      : [],
+  );
 
 export default defineAddon({
   id: ADDON_ID,
@@ -47,5 +62,14 @@ export default defineAddon({
     'application.detail.tabs': [{ id: 'tab', label: 'Example', component: ApplicationTab }],
     'service.detail.tabs': [{ id: 'tab', label: 'Example', component: ServiceTab }],
     'cluster.widgets': [{ id: 'cluster', title: 'Example', component: ClusterWidget }],
+    'command.actions': [
+      {
+        id: 'greet',
+        label: 'Say hello from the example addon',
+        keywords: ['greeting'],
+        run: (ctx) => ctx.notify.success(`Hello from the palette, ${ctx.user.username}`),
+      },
+    ],
+    'command.sources': [{ id: 'samples', label: 'Example items', search: searchSamples }],
   },
 });

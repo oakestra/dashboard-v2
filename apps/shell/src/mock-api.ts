@@ -1,4 +1,10 @@
-import { http, HttpResponse, MOCK_USERS } from '@oakestra/mocks';
+import {
+  createMockStore,
+  http,
+  HttpResponse,
+  MOCK_USERS,
+  withPlacementDemo,
+} from '@oakestra/mocks';
 import { startMockWorker } from '@oakestra/mocks/browser';
 
 import type { AppConfig } from './core/config/config';
@@ -10,6 +16,8 @@ import type { AppConfig } from './core/config/config';
 export async function startMockApi(config: AppConfig): Promise<void> {
   await startMockWorker({
     baseUrl: new URL(config.apiUrl, window.location.origin).href,
+    // Several clusters (one silent), instances across them and services that cannot be placed.
+    store: createMockStore(withPlacementDemo),
     delayMs: 300,
     instanceStartupMs: 5000,
     // The addons-manager and marketplace are mocked too (installs settle after 3s). No addon UI

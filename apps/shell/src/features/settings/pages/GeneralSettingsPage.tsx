@@ -1,14 +1,18 @@
-import { AppearancePanel } from '../components/AppearancePanel';
+import { EmptyState } from '@oakestra/ui';
+import { SlidersHorizontalIcon } from 'lucide-react';
 
 /**
- * Settings of the dashboard itself. Addons have no slot here: an addon's settings belong on its
- * own page, linked as a sub-item of its nav entry, so this page never mixes in addon concerns.
+ * Settings of the platform itself. Addons have no slot here: an addon's settings belong on its own
+ * page, linked as a sub-item of its nav entry. Preferences of one person (the theme) belong in the
+ * account menu, not here.
  */
 export function GeneralSettingsPage() {
   return (
-    <section aria-label="Appearance" className="bg-card max-w-3xl divide-y rounded-lg border">
-      <h2 className="px-4 py-2.5 text-sm font-semibold">Appearance</h2>
-      <AppearancePanel />
-    </section>
+    <EmptyState
+      icon={<SlidersHorizontalIcon />}
+      title="No platform settings yet"
+      description="Settings that apply to everyone on this dashboard will appear here. Your theme is in the account menu."
+      className="rounded-lg border border-dashed"
+    />
   );
 }

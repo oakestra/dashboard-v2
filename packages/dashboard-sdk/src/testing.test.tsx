@@ -10,7 +10,13 @@ import {
   useNotify,
   useOakestraApi,
 } from './hooks';
-import { createMockApi, createNotifyRecorder, createTestHost, renderInHost } from './testing';
+import {
+  createCommandContext,
+  createMockApi,
+  createNotifyRecorder,
+  createTestHost,
+  renderInHost,
+} from './testing';
 
 function Probe() {
   const user = useCurrentUser();
@@ -189,5 +195,31 @@ describe('createNotifyRecorder', () => {
     notify.info('a');
     notify.error('b');
     expect(notify.calls.map((call) => call.level)).toEqual(['info', 'error']);
+  });
+});
+
+describe('createCommandContext', () => {
+  it('records what a command does', () => {
+    const ctx = createCommandContext({ addon: { addonId: 'flops', basePath: '/flops' } });
+    ctx.navigate(ctx.addon?.path('jobs', 'a b') ?? '');
+    ctx.notify.success('Done');
+    expect(ctx.navigations).toEqual(['/flops/jobs/a%20b']);
+    expect(ctx.notify.calls).toEqual([{ level: 'success', message: 'Done' }]);
+  });
+
+  it('rejects relative paths like the shell', () => {
+    expect(() => createCommandContext().navigate('jobs')).toThrow(/absolute/);
+  });
+
+  it('answers features, user and api like the test host', async () => {
+    const ctx = createCommandContext({
+      user: { username: 'alice', roles: ['Admin'] },
+      features: ['fleet'],
+      api: { clusters: { list: () => Promise.resolve([]) } },
+    });
+    expect(ctx.user.roles).toEqual(['Admin']);
+    expect(ctx.isFeatureEnabled('fleet')).toBe(true);
+    expect(ctx.isFeatureEnabled('help')).toBe(false);
+    await expect(ctx.api.clusters.list()).resolves.toEqual([]);
   });
 });

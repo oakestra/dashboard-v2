@@ -14,9 +14,11 @@ import { ActivityIcon, ChevronRightIcon, CpuIcon, MemoryStickIcon, ServerIcon } 
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 
+import { placementFailureStatus } from '../placement';
 import { environmentKeys } from '../sla';
 import { describeStatus, instanceHost } from '../status';
 import { DefinitionList } from './DefinitionList';
+import { PlacementPanel } from './PlacementPanel';
 import { StatusBadge } from './StatusBadge';
 
 const mono = (value: string | undefined) =>
@@ -38,6 +40,8 @@ interface OverviewProps {
   /** Cluster names by id. */
   clusterNames: Readonly<Record<string, string>>;
   onShowInstances: () => void;
+  onRetryPlacement: () => void;
+  retryingPlacement: boolean;
 }
 
 /** What matters first: are instances running, how loaded, where. The spec comes below. */
@@ -190,6 +194,16 @@ export function ServiceOverview(props: OverviewProps) {
   return (
     <div className="space-y-4">
       <InstanceStats service={service} clusterNames={props.clusterNames} />
+      {placementFailureStatus(service) ? (
+        // Keyed because the what-if limits start from this service's request.
+        <PlacementPanel
+          key={service._id}
+          service={service}
+          appId={props.appId}
+          onRetry={props.onRetryPlacement}
+          retrying={props.retryingPlacement}
+        />
+      ) : null}
       {service.instance_list.length > 0 ? <InstancePreview {...props} /> : null}
       <SectionCard title="Specification">
         <div className="grid gap-x-8 gap-y-4 lg:grid-cols-2">

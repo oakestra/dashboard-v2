@@ -34,12 +34,12 @@ export function NeedsAttention() {
       data-testid="needs-attention"
     >
       {loading ? (
-        <div className="space-y-3 border-t px-4 py-3">
+        <div className="space-y-3 border-t px-5 py-3">
           <Skeleton className="h-9 w-full" />
           <Skeleton className="h-9 w-full" />
         </div>
       ) : items.length === 0 ? (
-        <p className="flex items-center gap-2 border-t px-4 py-3 text-sm text-muted-foreground">
+        <p className="flex items-center gap-2 border-t px-5 py-3 text-sm text-muted-foreground">
           <CircleCheckIcon aria-hidden className="size-4 text-success" />
           All services are running or on their way.
         </p>
@@ -51,7 +51,7 @@ export function NeedsAttention() {
                 to={addonPath(item.applicationId, 'services', item.service._id)}
                 className="group flex items-center gap-3 px-4 py-2 outline-none hover:bg-muted/60 focus-visible:bg-muted/60"
               >
-                <span className="w-28 shrink-0">
+                <span className="min-w-28 shrink-0 sm:min-w-44">
                   <StatusBadge status={item.status} detail={item.detail} />
                 </span>
                 <span className="min-w-0 flex-1">
