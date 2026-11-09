@@ -29,13 +29,14 @@ export function Providers({ config, services, children }: ProvidersProps) {
   const links = useMemo(() => hostLinksFromConfig(config), [config]);
   const host = useMemo(
     () =>
-      createHostContextValue(
+      createHostContextValue({
         user,
-        services.api,
-        (id) => isModuleEnabled(services.preset, id),
+        api: services.api,
+        addonBackendFetch: services.addonBackendFetch,
+        isFeatureEnabled: (id) => isModuleEnabled(services.preset, id),
         links,
-      ),
-    [user, services.api, services.preset, links],
+      }),
+    [user, services.api, services.addonBackendFetch, services.preset, links],
   );
 
   return (

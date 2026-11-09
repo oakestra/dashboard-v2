@@ -369,6 +369,11 @@ in `data-table.tsx`); the v8 `useReactTable` API does not exist there.
   and retries once. A rejected refresh token ends the session; `app/SessionWatcher` then sends the
   user to `/login`, toasts "session expired" and clears the query cache. Logout in one tab logs
   out all tabs.
+- `HostContextValue.addonBackendFetch` (`core/api/addon-backend-fetch.ts`) is the only host function
+  that sends the token to an addon backend: it attaches it only to same-origin
+  `/addon-assets/<name>/api/...` and never refreshes or retries on a 401 (that answer belongs to
+  the addon). `useAddonApi()` (SDK) is the addon-facing client; its `fetch` only accepts paths
+  below `/addon-assets/<ADDON_ID>/api`.
 - Route loaders get `auth`, `api` and `queryClient` through `context.get(appRouterContext)`
   (`core/router/app-context.ts`), since they run outside React.
 - Addon management (marketplace + installed addons) is shell-internal and NOT part of the SDK's
@@ -637,6 +642,10 @@ covered by `packages/eslint-config/boundaries.test.js`:
   | ------------------------ | --------------------------- | ---------------------------------------- |
   | `ADDONS_MANAGER_ADDRESS` | `root_addons_manager:11101` | upstream of `/ui-addons`, `/addons-api/` |
   | `MARKETPLACE_ADDRESS`    | `marketplace_manager:11102` | upstream of `/marketplace-api/`          |
+
+- `/addon-assets/<name>/api/` carries the addon's own backend (through the addon container's
+  `/api/`) and gets the same sandbox headers. In `pnpm dev`, an addon name missing from
+  `ADDON_ASSETS` answers 404 (`addonAssetsNotFound` in `vite.config.ts`), not the SPA's index.html.
 
 - In the compose stack the dashboard's `API_URL` points at `tools/mock-system-manager` on host port
   10010 (the browser calls the API directly). The e2e fixtures log in by seeding a refresh token

@@ -47,9 +47,11 @@ export { hasAnyRole, ROLE_OPTIONS, roleLabel, type RoleOption } from './permissi
 // A runtime re-export, unlike the type-only uses of @oakestra/api elsewhere in the SDK. Addons
 // still never bundle it: they get the SDK, and with it this function, from the shell's singleton.
 export { describeError } from '@oakestra/api';
+export type { AddonApi } from './addon-api';
 export {
   addonQueryKey,
   buildAddonPath,
+  useAddonApi,
   useAddonBasePath,
   useAddonContext,
   useAddonPath,

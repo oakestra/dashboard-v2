@@ -60,6 +60,7 @@ const uniqueIds = (items: readonly { id: string }[], ctx: z.RefinementCtx) => {
 const navSubItem = contributionBase.extend({
   label: z.string().min(1),
   path: relativeNavPath,
+  badge: reactComponent.optional(),
 });
 
 export const navGroupSchema = z.enum([
@@ -73,6 +74,7 @@ const navItem = contributionBase.extend({
   label: z.string().min(1),
   path: relativeNavPath,
   icon: reactComponent.optional(),
+  badge: reactComponent.optional(),
   group: navGroupSchema.optional(),
   children: z.array(navSubItem).superRefine(uniqueIds).optional(),
 });

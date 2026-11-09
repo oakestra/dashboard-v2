@@ -142,6 +142,34 @@ describe('parseAddonDefinition', () => {
     );
   });
 
+  it('keeps nav badges on items and sub-items and rejects ones that are not components', () => {
+    const withBadges = (badge: unknown) => ({
+      default: {
+        id: 'flops',
+        contributions: {
+          'nav.items': [
+            {
+              id: 'main',
+              label: 'Flops',
+              path: '',
+              badge,
+              children: [{ id: 'jobs', label: 'Jobs', path: 'jobs', badge }],
+            },
+          ],
+        },
+      },
+    });
+
+    const parsed = parseAddonDefinition(withBadges(Page), 'flops');
+    const item = parsed.contributions?.['nav.items']?.[0];
+    expect(item?.badge).toBe(Page);
+    expect(item?.children?.[0]?.badge).toBe(Page);
+
+    expect(() => parseAddonDefinition(withBadges('3'), 'flops')).toThrow(
+      /must be a React component/,
+    );
+  });
+
   it('validates nested routes', () => {
     const module = {
       default: {

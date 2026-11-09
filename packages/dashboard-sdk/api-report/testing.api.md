@@ -159,6 +159,7 @@ interface ExtensionPoints {
 
 // @public
 interface HostContextValue {
+    readonly addonBackendFetch: (request: Request) => Promise<Response>;
     // (undocumented)
     readonly api: OakestraApi;
     readonly isFeatureEnabled: (id: string) => boolean;
@@ -195,6 +196,7 @@ type NavGroup = 'main' | 'management' | 'addons' | 'footer';
 
 // @public (undocumented)
 interface NavItem extends ContributionBase {
+    badge?: ComponentType;
     children?: readonly NavSubItem[];
     // (undocumented)
     group?: NavGroup;
@@ -207,6 +209,7 @@ interface NavItem extends ContributionBase {
 
 // @public
 interface NavSubItem extends ContributionBase {
+    badge?: ComponentType;
     // (undocumented)
     label: string;
     // (undocumented)
@@ -345,6 +348,7 @@ export interface TestHost {
 export interface TestHostOptions {
     // (undocumented)
     addon?: Partial<AddonContextValue>;
+    addonFetch?: (request: Request) => Promise<Response>;
     api?: MockApiImplementation;
     contributions?: Contributions;
     contributionSource?: Pick<SlotSource, 'remote' | 'displayName' | 'version'>;

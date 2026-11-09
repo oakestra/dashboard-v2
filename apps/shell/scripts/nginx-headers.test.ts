@@ -20,6 +20,12 @@ function locationBody(selector: string): string {
   throw new Error(`unterminated location ${selector}`);
 }
 
+const SANDBOX_HEADERS = [
+  `add_header Content-Security-Policy "default-src 'none'; sandbox" always;`,
+  'add_header X-Content-Type-Options nosniff always;',
+  'add_header Content-Disposition "attachment" always;',
+];
+
 // nginx stops inheriting add_header from the server block as soon as a location has its own, so
 // every proxy location must carry the full set itself.
 describe('nginx proxy locations that serve backend bodies', () => {
@@ -27,14 +33,20 @@ describe('nginx proxy locations that serve backend bodies', () => {
     '%s sandboxes the response and disables sniffing',
     (selector) => {
       const body = locationBody(selector);
-      expect(body).toContain(
-        `add_header Content-Security-Policy "default-src 'none'; sandbox" always;`,
-      );
-      expect(body).toContain('add_header X-Content-Type-Options nosniff always;');
-      expect(body).toContain('add_header Content-Disposition "attachment" always;');
+      for (const header of SANDBOX_HEADERS) expect(body).toContain(header);
       expect(body).toContain('add_header Cache-Control "no-store" always;');
     },
   );
+
+  it('sandboxes the addon backends behind /addon-assets/<name>/api/', () => {
+    const body = locationBody('~ ^/addon-assets/([a-z0-9-]+)/(api/.*)$');
+    for (const header of SANDBOX_HEADERS) expect(body).toContain(header);
+    // Above nginx's 1m default, so the addon's container sets the effective limit.
+    expect(body).toContain('client_max_body_size 32m;');
+    expect(template.indexOf('(api/.*)$ {')).toBeLessThan(
+      template.indexOf('location ~ ^/addon-assets/([a-z0-9-]+)/(.*)$ {'),
+    );
+  });
 
   it('keeps the baseline directives on the shell entry point', () => {
     const body = locationBody('= /index.html');
