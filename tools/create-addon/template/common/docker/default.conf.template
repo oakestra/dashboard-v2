@@ -35,6 +35,9 @@ server {
     if ($api_upstream = "") {
       return 404;
     }
+    # nginx's default, written out so it is easy to find. Raise it for larger uploads; the
+    # dashboard's proxy in front of this one allows up to 32m.
+    client_max_body_size 1m;
     # A variable in proxy_pass disables the automatic prefix stripping, so do it by hand.
     rewrite ^/api/(.*)$ /$1 break;
     proxy_pass $api_upstream;

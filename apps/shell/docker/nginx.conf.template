@@ -41,6 +41,9 @@ server {
   # The backend is third-party code serving bodies on the dashboard origin, like the proxies below,
   # so it gets the same sandbox. Regex locations are tried in order, so this one wins for api/.
   location ~ ^/addon-assets/([a-z0-9-]+)/(api/.*)$ {
+    # The addon's own nginx and backend decide what they accept; nginx's default of 1m here would
+    # answer 413 before them. Not unlimited, because nginx buffers request bodies to disk first.
+    client_max_body_size 32m;
     set $addon_upstream addonui-$1;
     proxy_pass http://$addon_upstream:80/$2$is_args$args;
     proxy_http_version 1.1;

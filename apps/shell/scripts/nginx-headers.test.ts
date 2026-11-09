@@ -41,6 +41,8 @@ describe('nginx proxy locations that serve backend bodies', () => {
   it('sandboxes the addon backends behind /addon-assets/<name>/api/', () => {
     const body = locationBody('~ ^/addon-assets/([a-z0-9-]+)/(api/.*)$');
     for (const header of SANDBOX_HEADERS) expect(body).toContain(header);
+    // Above nginx's 1m default, so the addon's container sets the effective limit.
+    expect(body).toContain('client_max_body_size 32m;');
     expect(template.indexOf('(api/.*)$ {')).toBeLessThan(
       template.indexOf('location ~ ^/addon-assets/([a-z0-9-]+)/(.*)$ {'),
     );

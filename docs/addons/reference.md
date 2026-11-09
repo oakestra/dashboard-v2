@@ -779,6 +779,9 @@ the same places as `useAddonPath()` (inside UI the shell renders for your addon)
   `/addon-assets/<name>/api/...`.
 - It returns the raw `Response` and never reads the body, so streams (`response.body`,
   server-sent events) work. Like any `fetch`, it does not throw on HTTP error statuses.
+- The dashboard's nginx accepts request bodies up to 32 MiB on this path and answers 413 above
+  that. Your container sets the effective limit below it (`client_max_body_size`, 1 MiB in the
+  `create-addon` template).
 - The dashboard's nginx serves your backend's responses with `Content-Security-Policy:
 default-src 'none'; sandbox`, `Content-Disposition: attachment` and `nosniff`, because they come
   from the dashboard's origin. `fetch` ignores these; they only stop a response opened in a tab
@@ -804,6 +807,7 @@ location /api/ {
   resolver ${NGINX_LOCAL_RESOLVERS} valid=10s;
   set $api_upstream "${API_UPSTREAM}";   # e.g. http://my-addon-api:8000, no path or trailing slash
   if ($api_upstream = "") { return 404; }
+  client_max_body_size 1m;               # raise for larger uploads, the dashboard allows 32m
   rewrite ^/api/(.*)$ /$1 break;         # drop /api, a variable in proxy_pass will not
   proxy_pass $api_upstream;
   proxy_http_version 1.1;
