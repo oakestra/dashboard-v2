@@ -36,6 +36,11 @@ export interface NavItem extends ContributionBase {
   icon?: ComponentType<IconProps>;
   group?: NavGroup;
   /**
+   * A count or marker at the end of the link. Keep it cheap: it is mounted on every page while
+   * the link is visible.
+   */
+  badge?: ComponentType;
+  /**
    * Sub-items shown nested under this item. The sidebar has one level of nesting only, so a
    * sub-item has no children, icon or group of its own.
    */
@@ -46,6 +51,8 @@ export interface NavItem extends ContributionBase {
 export interface NavSubItem extends ContributionBase {
   label: string;
   path: string;
+  /** Like `NavItem.badge`. Hidden with the sub-items when the parent is collapsed. */
+  badge?: ComponentType;
 }
 
 interface RenderableContribution<C extends object> extends ContributionBase {

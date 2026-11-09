@@ -819,6 +819,7 @@ export type NavGroup = 'main' | 'management' | 'addons' | 'footer';
 
 // @public (undocumented)
 export interface NavItem extends ContributionBase {
+    badge?: ComponentType;
     children?: readonly NavSubItem[];
     // (undocumented)
     group?: NavGroup;
@@ -831,6 +832,7 @@ export interface NavItem extends ContributionBase {
 
 // @public
 export interface NavSubItem extends ContributionBase {
+    badge?: ComponentType;
     // (undocumented)
     label: string;
     // (undocumented)

@@ -196,6 +196,7 @@ type NavGroup = 'main' | 'management' | 'addons' | 'footer';
 
 // @public (undocumented)
 interface NavItem extends ContributionBase {
+    badge?: ComponentType;
     children?: readonly NavSubItem[];
     // (undocumented)
     group?: NavGroup;
@@ -208,6 +209,7 @@ interface NavItem extends ContributionBase {
 
 // @public
 interface NavSubItem extends ContributionBase {
+    badge?: ComponentType;
     // (undocumented)
     label: string;
     // (undocumented)

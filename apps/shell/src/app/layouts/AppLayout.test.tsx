@@ -1,10 +1,13 @@
+import { useAddonBasePath, type NavItem } from '@oakestra/dashboard-sdk';
+import { useQuery } from '@tanstack/react-query';
 import { act, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { setEntry, type AddonRegistry } from '../../core/addons/addon-registry';
 import type { CoreModule } from '../../core/modules';
 import type { RouteHandle } from '../../core/router/route-handle';
 import { renderApp } from '../../test/render';
+import type { AppServices } from '../services';
 
 const modules: CoreModule[] = [
   {
@@ -233,6 +236,80 @@ describe('<AppLayout>', () => {
       expect(parent).not.toBeNull();
       const links = within(parent as HTMLElement).getAllByRole('link');
       expect(links.map((link) => link.textContent)).toEqual(['Tools', 'Overview', 'Logs', 'Audit']);
+    });
+  });
+
+  describe('nav badges', () => {
+    const flopsSource = {
+      kind: 'addon' as const,
+      id: 'flops',
+      label: 'addon "flops"',
+      addon: { addonId: 'flops', version: '1.0.0', basePath: '/addons/flops' },
+    };
+
+    // Reads what an addon badge relies on: its own context and the shared query client.
+    function QueuedJobs() {
+      const basePath = useAddonBasePath();
+      const jobs = useQuery({ queryKey: ['flops', 'queued'], queryFn: () => Promise.resolve(3) });
+      return jobs.data ? <span title={basePath}>{jobs.data}</span> : null;
+    }
+
+    function register(services: AppServices, items: readonly NavItem[]) {
+      act(() => services.contributions.getState().register(flopsSource, { 'nav.items': items }));
+    }
+
+    it('renders badges of items and sub-items inside the addon context', async () => {
+      const { services } = renderApp({ modules, route: '/addons/flops/jobs' });
+      register(services, [
+        { id: 'alerts', label: 'Alerts', path: 'alerts', badge: () => <span>7</span> },
+        {
+          id: 'main',
+          label: 'FLOps',
+          path: '',
+          badge: () => <span>!</span>,
+          children: [
+            { id: 'jobs', label: 'Jobs', path: 'jobs', badge: QueuedJobs },
+            { id: 'quiet', label: 'Quiet', path: 'quiet', badge: () => null },
+          ],
+        },
+      ]);
+
+      expect(await screen.findByTestId('nav-badge-flops-alerts')).toHaveTextContent('7');
+      expect(screen.getByTestId('nav-badge-flops-main')).toHaveTextContent('!');
+      const jobs = await screen.findByTestId('nav-badge-flops-main-jobs');
+      await waitFor(() => expect(jobs).toHaveTextContent('3'));
+      expect(within(jobs).getByTitle('/addons/flops')).toBeInTheDocument();
+      // jsdom ignores the `empty:hidden` class, so this only checks the box stays empty.
+      expect(screen.getByTestId('nav-badge-flops-main-quiet')).toBeEmptyDOMElement();
+      expect(screen.getByTestId('nav-flops-main-quiet')).toBeVisible();
+    });
+
+    it('hides a badge that throws and keeps the rest of the sidebar', async () => {
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const Broken = () => {
+        throw new Error('kaputt');
+      };
+      const { services } = renderApp({ modules, route: '/addons/flops/jobs' });
+      register(services, [
+        { id: 'alerts', label: 'Alerts', path: 'alerts', badge: Broken },
+        {
+          id: 'main',
+          label: 'FLOps',
+          path: '',
+          children: [{ id: 'jobs', label: 'Jobs', path: 'jobs', badge: Broken }],
+        },
+      ]);
+
+      expect(await screen.findByTestId('nav-flops-alerts')).toBeVisible();
+      expect(screen.getByTestId('nav-flops-main-jobs')).toBeVisible();
+      expect(screen.getByTestId('nav-badge-flops-alerts')).toBeEmptyDOMElement();
+      expect(screen.getByTestId('nav-badge-flops-main-jobs')).toBeEmptyDOMElement();
+      expect(screen.queryByTestId('contribution-error')).not.toBeInTheDocument();
+      expect(screen.getByTestId('nav-demo-apps')).toBeVisible();
+      expect(errors).toHaveBeenCalledWith(
+        '[addon:flops] Badge of Alerts crashed',
+        expect.objectContaining({ message: 'kaputt' }),
+      );
     });
   });
 

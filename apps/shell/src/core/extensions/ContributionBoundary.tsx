@@ -17,6 +17,11 @@ interface ContributionBoundaryProps {
   page?: boolean;
   /** A change clears the error state, see ErrorBoundary. */
   resetKey?: unknown;
+  /**
+   * Renders nothing instead of the error message, for contributions too small to hold one (a nav
+   * badge). The error is still logged.
+   */
+  quiet?: boolean;
 }
 
 /**
@@ -31,18 +36,21 @@ export function ContributionBoundary({
   fallback = <Skeleton className="h-24 w-full" />,
   page = false,
   resetKey,
+  quiet = false,
 }: ContributionBoundaryProps) {
   const content = (
     <ErrorBoundary
-      fallback={(error, reset) => (
-        <ContributionError
-          source={source}
-          label={label}
-          error={error}
-          page={page}
-          onReload={reset}
-        />
-      )}
+      fallback={(error, reset) =>
+        quiet ? null : (
+          <ContributionError
+            source={source}
+            label={label}
+            error={error}
+            page={page}
+            onReload={reset}
+          />
+        )
+      }
       onError={(error) => console.error(`[${source.kind}:${source.id}] ${label} crashed`, error)}
       resetKey={resetKey}
     >

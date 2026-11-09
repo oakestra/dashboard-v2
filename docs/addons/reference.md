@@ -208,6 +208,7 @@ and always come first.
 | `path`     | `string`                                         | Required. **Relative** to the addon base path. `''` is the index route, `'jobs'` is `/addons/<id>/jobs`. |
 | `icon`     | `ComponentType<IconProps>`                       | Optional. Receives `className`. Lucide icons (`lucide-react`) fit.                                       |
 | `group`    | `'main' \| 'management' \| 'addons' \| 'footer'` | Optional. Addon items default to `'addons'`.                                                             |
+| `badge`    | `ComponentType`                                  | Optional. A count or marker at the end of the link. See [Badges](#badges).                               |
 | `children` | `readonly NavSubItem[]`                          | Optional. Links shown nested under this item. See [Sub-items](#sub-items).                               |
 
 The sidebar groups have these headings: `main` is "Platform", `management` is "Management",
@@ -234,10 +235,11 @@ two addons' "Settings" items cannot be told apart.
 
 `NavSubItem` has the `ContributionBase` fields (`id`, `order`, `roles`) plus:
 
-| Field   | Type     | Description                                                       |
-| ------- | -------- | ----------------------------------------------------------------- |
-| `label` | `string` | Required. Link text.                                              |
-| `path`  | `string` | Required. **Relative** to the addon base path, like `path` above. |
+| Field   | Type            | Description                                                       |
+| ------- | --------------- | ----------------------------------------------------------------- |
+| `label` | `string`        | Required. Link text.                                              |
+| `path`  | `string`        | Required. **Relative** to the addon base path, like `path` above. |
+| `badge` | `ComponentType` | Optional. Like `badge` above. See [Badges](#badges).              |
 
 ```tsx
 'nav.items': [
@@ -269,6 +271,38 @@ How the sidebar treats them:
   `details/:id`) highlight the closest one above them.
 - In the collapsed (icon-only) sidebar the sub-items are hidden and the parent is highlighted on
   their pages.
+
+#### Badges
+
+`badge` on an item or a sub-item is a component the sidebar renders at the end of the link, for a
+number such as how many things wait for the user. It takes no props and is rendered like a widget:
+inside the addon's context, so `useAddonPath()`, `useAddonApi()` and TanStack Query work. Keep it
+small (a number, a dot) and return `null` when there is nothing to show; the badge box is then
+hidden.
+
+```tsx
+function OpenAlertsBadge() {
+  const api = useAddonApi();
+  const alerts = useQuery({
+    queryKey: addonQueryKey('monitoring', 'alerts', 'open'),
+    queryFn: async ({ signal }) => {
+      const response = await api.fetch('/alerts/open', { signal });
+      return (await response.json()) as { count: number };
+    },
+    // It is mounted on every page, so poll gently and stay quiet when the backend is down.
+    refetchInterval: 30_000,
+    meta: { silent: true },
+  });
+  const count = alerts.data?.count ?? 0;
+  return count > 0 ? <span aria-label={`${count} open alerts`}>{count}</span> : null;
+}
+```
+
+- The badge of a sub-item is only mounted while its parent is expanded. Badges are hidden in the
+  collapsed (icon-only) sidebar.
+- A badge that throws is hidden, not replaced with an error message; the error is logged to the
+  console and the rest of the sidebar keeps working.
+- Shells that predate the field drop it, so an addon can set it and still run on them.
 
 #### Addon settings
 

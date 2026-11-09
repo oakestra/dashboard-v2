@@ -8,19 +8,23 @@ import {
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuAction,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  cn,
   useSidebar,
 } from '@oakestra/ui';
 import { ChevronRightIcon, ExternalLinkIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type ComponentType } from 'react';
 import { Link } from 'react-router';
 
 import { usePreset } from '../../core/config/preset-context';
+import { ContributionBoundary } from '../../core/extensions/ContributionBoundary';
 import { ErrorBoundary } from '../../core/extensions/ErrorBoundary';
+import type { ContributionSource } from '../../core/extensions/registry';
 import type { NavEntry as NavEntryModel } from './nav-model';
 import { useActiveNav, type ExternalLink } from './use-nav';
 
@@ -77,6 +81,14 @@ function NavMenu({
         ) : (
           <SidebarMenuItem key={entry.key}>
             <NavEntryButton entry={entry} active={activeKey === entry.key} />
+            {entry.item.badge ? (
+              <NavBadge
+                badge={entry.item.badge}
+                source={entry.source}
+                label={entry.item.label}
+                testId={`nav-badge-${entry.source.id}-${entry.item.id}`}
+              />
+            ) : null}
           </SidebarMenuItem>
         ),
       )}
@@ -165,6 +177,16 @@ function ExpandableNavEntry({
     <Collapsible asChild open={open} onOpenChange={setOpen}>
       <SidebarMenuItem>
         <NavEntryButton entry={entry} active={active} />
+        {item.badge ? (
+          <NavBadge
+            badge={item.badge}
+            source={source}
+            label={item.label}
+            testId={`nav-badge-${source.id}-${item.id}`}
+            // Left of the chevron, which takes the usual badge spot.
+            className="right-7"
+          />
+        ) : null}
         <CollapsibleTrigger asChild>
           <SidebarMenuAction
             className="data-[state=open]:rotate-90"
@@ -190,6 +212,17 @@ function ExpandableNavEntry({
                       <span>{child.item.label}</span>
                     </Link>
                   </SidebarMenuSubButton>
+                  {child.item.badge ? (
+                    <NavBadge
+                      badge={child.item.badge}
+                      source={source}
+                      label={child.item.label}
+                      testId={`nav-badge-${source.id}-${item.id}-${child.item.id}`}
+                      // SidebarMenuBadge sets its top offset from a sibling menu-button peer,
+                      // which a sub-item does not have.
+                      className="top-1"
+                    />
+                  ) : null}
                 </SidebarMenuSubItem>
               );
             })}
@@ -197,5 +230,29 @@ function ExpandableNavEntry({
         </CollapsibleContent>
       </SidebarMenuItem>
     </Collapsible>
+  );
+}
+
+// `quiet` because an error message does not fit in a badge; `empty:hidden` drops the box when the
+// badge renders null.
+function NavBadge({
+  badge: Badge,
+  source,
+  label,
+  testId,
+  className,
+}: {
+  badge: ComponentType;
+  source: ContributionSource;
+  label: string;
+  testId: string;
+  className?: string;
+}) {
+  return (
+    <SidebarMenuBadge data-testid={testId} className={cn('empty:hidden', className)}>
+      <ContributionBoundary source={source} label={`Badge of ${label}`} fallback={null} quiet>
+        <Badge />
+      </ContributionBoundary>
+    </SidebarMenuBadge>
   );
 }
