@@ -159,6 +159,7 @@ interface ExtensionPoints {
 
 // @public
 interface HostContextValue {
+    readonly addonBackendFetch: (request: Request) => Promise<Response>;
     // (undocumented)
     readonly api: OakestraApi;
     readonly isFeatureEnabled: (id: string) => boolean;
@@ -345,6 +346,7 @@ export interface TestHost {
 export interface TestHostOptions {
     // (undocumented)
     addon?: Partial<AddonContextValue>;
+    addonFetch?: (request: Request) => Promise<Response>;
     api?: MockApiImplementation;
     contributions?: Contributions;
     contributionSource?: Pick<SlotSource, 'remote' | 'displayName' | 'version'>;

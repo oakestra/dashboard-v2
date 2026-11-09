@@ -1,9 +1,4 @@
-import type {
-  CurrentUser,
-  HostContextValue,
-  HostLinks,
-  OakestraApi,
-} from '@oakestra/dashboard-sdk';
+import type { HostContextValue, HostLinks } from '@oakestra/dashboard-sdk';
 import { SDK_VERSION } from '@oakestra/dashboard-sdk';
 
 import type { AppConfig } from '../config/config';
@@ -15,10 +10,7 @@ export function hostLinksFromConfig(config: Pick<AppConfig, 'grafanaUrl'>): Host
 }
 
 export function createHostContextValue(
-  user: CurrentUser | null,
-  api: OakestraApi,
-  isFeatureEnabled: (id: string) => boolean,
-  links: HostLinks,
+  values: Omit<HostContextValue, 'sdkVersion' | 'notify'>,
 ): HostContextValue {
-  return { sdkVersion: SDK_VERSION, user, api, notify, isFeatureEnabled, links };
+  return { sdkVersion: SDK_VERSION, notify, ...values };
 }

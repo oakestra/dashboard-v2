@@ -170,6 +170,12 @@ export interface TestHostOptions {
   features?: readonly string[];
   /** What useHostLinks() returns. Defaults to no links. */
   links?: HostLinks;
+  /**
+   * Stands in for the shell's addon backend fetch behind useAddonApi(). It receives the final
+   * `Request` (absolute URL on the test origin), so a test asserts on `request.url`. Without it
+   * the hook's `fetch` throws, like an unmocked API endpoint.
+   */
+  addonFetch?: (request: Request) => Promise<Response>;
 }
 
 export interface TestHost {
@@ -205,6 +211,15 @@ export function createTestHost(options: TestHostOptions = {}): TestHost {
       sdkVersion: SDK_VERSION,
       user,
       api,
+      addonBackendFetch:
+        options.addonFetch ??
+        ((request) => {
+          // Not missing(): its hint is shaped for api endpoints and would read `api: { : ... }`.
+          throw new Error(
+            `useAddonApi().fetch(${request.url}) was called, but this test did not mock it. ` +
+              'Pass addonFetch: async (request) => new Response(...) to the test host.',
+          );
+        }),
       notify,
       isFeatureEnabled: (id) => features?.includes(id) ?? true,
       links: options.links ?? {},

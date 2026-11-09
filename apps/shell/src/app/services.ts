@@ -22,6 +22,7 @@ export interface AppServices {
   addons: AddonRegistry;
   auth: AuthSession;
   api: OakestraApi;
+  addonBackendFetch: Fetch;
   addonsAdmin: AddonsAdminApi;
   theme: ThemeStore;
   /** The deployment preset, already checked by applyPreset. */
@@ -52,7 +53,7 @@ export function createAppServices(
   }
   const addons = createAddonRegistry();
   registerLinkedAddons(options.linked ?? [], { addons, contributions });
-  const { api, auth, addonsAdmin } = createApiServices({
+  const { api, addonBackendFetch, auth, addonsAdmin } = createApiServices({
     apiUrl: config.apiUrl,
     addonsManagerUrl: config.addonsManagerUrl,
     marketplaceUrl: config.marketplaceUrl,
@@ -65,6 +66,7 @@ export function createAppServices(
     addons,
     auth,
     api,
+    addonBackendFetch,
     addonsAdmin,
     preset: options.preset ?? DEFAULT_PRESET,
     theme: createThemeStore({

@@ -7,6 +7,7 @@ import {
   type HostContextValue,
   type HostLinks,
 } from './context';
+import { addonApiBasePath, createAddonApi, type AddonApi } from './addon-api';
 import { hasAnyRole } from './permissions';
 import type { CurrentUser, Notify, OakestraApi, Role } from './types';
 
@@ -25,6 +26,13 @@ export function useHostContext(): HostContextValue {
 
 export function useOakestraApi(): OakestraApi {
   return useHostContext().api;
+}
+
+/** Client for the addon's own backend, reached through the addon's UI container. See `AddonApi`. */
+export function useAddonApi(): AddonApi {
+  const { addonBackendFetch } = useHostContext();
+  const baseUrl = addonApiBasePath(useAddonContext().addonId);
+  return useMemo(() => createAddonApi(baseUrl, addonBackendFetch), [baseUrl, addonBackendFetch]);
 }
 
 export function useCurrentUser(): CurrentUser | null {

@@ -30,6 +30,7 @@ function host(overrides: Partial<HostContextValue> = {}): HostContextValue {
     // The hooks only hand the object through; none of its endpoints are called here.
     api: { baseUrl: 'http://api', fetch: vi.fn() } as unknown as OakestraApi,
     notify: { success: vi.fn(), info: vi.fn(), warning: vi.fn(), error: vi.fn() },
+    addonBackendFetch: vi.fn(),
     isFeatureEnabled: () => true,
     links: {},
     ...overrides,

@@ -16,6 +16,13 @@ export interface HostContextValue {
   readonly sdkVersion: string;
   readonly user: CurrentUser | null;
   readonly api: OakestraApi;
+  /**
+   * Sends a request to an addon backend with the user's bearer token. The shell only accepts
+   * requests on the dashboard's own origin whose path is below `/addon-assets/<name>/api/` and
+   * rejects any other URL before sending it. A 401 is returned as it is, without a refresh. This
+   * is what useAddonApi() calls; addons use that hook.
+   */
+  readonly addonBackendFetch: (request: Request) => Promise<Response>;
   readonly notify: Notify;
   /**
    * Whether the deployment enables the feature `id`: a built-in module, a linked or preset addon.

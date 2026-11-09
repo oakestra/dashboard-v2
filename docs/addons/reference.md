@@ -573,6 +573,7 @@ All hooks read React context that the shell provides. They only work inside the 
 | `useNotify()`                       | `Notify`                       | anywhere in the shell               | Toasts: `success`, `info`, `warning`, `error`.                                                                        |
 | `useAddonContext()`                 | `AddonContextValue`            | addon pages and addon contributions | `{ addonId, version, basePath }` of the addon the component belongs to.                                               |
 | `useAddonBasePath()`                | `string`                       | addon pages and addon contributions | `basePath` from `useAddonContext()`, for example `/addons/insights`.                                                  |
+| `useAddonApi()`                     | `AddonApi`                     | addon pages and addon contributions | Client for the addon's own backend, see [Calling your addon's backend](#calling-your-addons-backend).                 |
 | `useAddonPath()`                    | `(...segments) => string`      | addon pages and addon contributions | Builds links below the base path, see below.                                                                          |
 | `buildAddonPath(basePath, ...segs)` | `string`                       | anywhere (plain function)           | What `useAddonPath()` calls, for code without hooks. In a command, `ctx.addon.path(...)` is this with your base path. |
 | `useFeatureEnabled(id)`             | `boolean`                      | anywhere in the shell               | Whether the deployment enables the feature `id` (a built-in module id or addon name), see below.                      |
@@ -746,8 +747,89 @@ export async function fetchUserRoles(api: OakestraApi, username: string): Promis
 }
 ```
 
-The API client only talks to the Oakestra system-manager. The shell has no proxy for an addon's
-own backend service; `/addon-assets/<name>/` reaches only your UI container.
+The API client only talks to the Oakestra system-manager. Your addon's own backend is reached with
+`useAddonApi()`, below.
+
+### Calling your addon's backend
+
+```ts
+import { useAddonApi } from '@oakestra/dashboard-sdk';
+
+const { baseUrl, fetch } = useAddonApi();
+const response = await fetch('/runs', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ name: 'a' }),
+});
+```
+
+`useAddonApi()` returns `{ baseUrl: string; fetch(path, init?): Promise<Response> }`. It works in
+the same places as `useAddonPath()` (inside UI the shell renders for your addon).
+
+- `baseUrl` is origin-relative: `/addon-assets/<ADDON_ID>/api`. The shell's nginx forwards
+  `/addon-assets/<name>/...` to your UI container with that prefix removed, so your container
+  receives `/api/...`. Your container must proxy `/api/` to the backend (see below).
+- `fetch` takes a path below `baseUrl` (`fetch('/runs')` calls `<baseUrl>/runs`) and sends it
+  through the shell, which adds `Authorization: Bearer <token>`. An expiring token is refreshed
+  beforehand. A 401 from your backend comes back unchanged, with no refresh or retry, because it
+  is your backend's answer and not a statement about the session.
+- Paths that leave `baseUrl` are rejected before a request goes out: absolute URLs, `//host/...`,
+  other origins and `..` segments that escape the base (also as `%2e%2e`). The shell's host
+  function repeats the check and attaches the token only to same-origin
+  `/addon-assets/<name>/api/...`.
+- It returns the raw `Response` and never reads the body, so streams (`response.body`,
+  server-sent events) work. Like any `fetch`, it does not throw on HTTP error statuses.
+- The dashboard's nginx serves your backend's responses with `Content-Security-Policy:
+default-src 'none'; sandbox`, `Content-Disposition: attachment` and `nosniff`, because they come
+  from the dashboard's origin. `fetch` ignores these; they only stop a response opened in a tab
+  from running as a page.
+- Trust model: addon code runs on the dashboard origin, so the path check guards against
+  mistakes and is not a sandbox. Your backend receives the user's full Oakestra token, not one
+  scoped to your addon. Never log or store it, and do not forward it anywhere except to the
+  system-manager.
+- Your backend must validate the token itself; the shell and your nginx do not. It has no signing
+  key, so it asks the system-manager: `GET <API_URL>/user/<sub>` with the same
+  `Authorization: Bearer <token>` header (`sub` is the username claim; that endpoint only answers
+  for the caller). 200 confirms the user, 401 means the token is invalid or expired.
+- In `pnpm dev` the shell reaches your backend only through `ADDON_ASSETS=<name>=<url>`; without
+  it the request gets a 404 with a hint instead of the page's HTML.
+- In tests, `renderInHost(ui, { addonFetch })` replaces the shell's host function. It gets the
+  final `Request` with an absolute URL; without it `fetch` throws a hint that it was not mocked.
+
+The nginx config of your UI container needs a `/api/` location. This is the block the
+`create-addon` template ships; it is inactive until `API_UPSTREAM` is set:
+
+```nginx
+location /api/ {
+  resolver ${NGINX_LOCAL_RESOLVERS} valid=10s;
+  set $api_upstream "${API_UPSTREAM}";   # e.g. http://my-addon-api:8000, no path or trailing slash
+  if ($api_upstream = "") { return 404; }
+  rewrite ^/api/(.*)$ /$1 break;         # drop /api, a variable in proxy_pass will not
+  proxy_pass $api_upstream;
+  proxy_http_version 1.1;
+  proxy_set_header Host $host;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $scheme;
+
+  # Server-sent events
+  proxy_buffering off;
+  add_header X-Accel-Buffering no always;
+  proxy_read_timeout 300s;
+
+  add_header Cache-Control "no-store" always;
+}
+```
+
+Render the file with the nginx image's templates: copy it to
+`/etc/nginx/templates/default.conf.template` and set `NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1` and
+`API_UPSTREAM` (define it as empty in the image for a UI-only addon). Drop the `rewrite` line if
+your backend serves under `/api` itself.
+
+For streams, `proxy_buffering off` and `X-Accel-Buffering: no` keep nginx from holding events back,
+in your container and in the dashboard's nginx in front of it. The dashboard's proxy has the
+default `proxy_read_timeout` of 60s between two reads, so have the backend send a comment or ping
+at least every 15 to 30 seconds. Browsers' `EventSource` cannot set an `Authorization` header, so
+read the stream with `fetch` and `response.body.getReader()` instead.
 
 ## Users and roles
 
@@ -1061,7 +1143,7 @@ The SDK also exports these. Most addons do not need them.
 | `EXTENSION_POINT_IDS`                                                                                                                                                                                                                                                                                                                                        | Array of all extension point ids.                                                                                 |
 | `HostContext`, `AddonContext`                                                                                                                                                                                                                                                                                                                                | The React contexts behind the hooks. Use the hooks instead; tests can use the providers.                          |
 | `Slot`, `SlotProps`, `SlotSource`, `SlotRendererContext`                                                                                                                                                                                                                                                                                                     | Host an extension point (see above). `SlotRendererContext` is how the shell provides the renderer; do not use it. |
-| `HostContextValue`, `AddonContextValue`, `HostLinks`                                                                                                                                                                                                                                                                                                         | Types of the context values.                                                                                      |
+| `HostContextValue`, `AddonContextValue`, `AddonApi`, `HostLinks`                                                                                                                                                                                                                                                                                             | Types of the context values.                                                                                      |
 | `AddonCrumbProps`                                                                                                                                                                                                                                                                                                                                            | Props of a `crumb` component: `{ params }`.                                                                       |
 | `ExtensionPoints`, `ExtensionPointId`, `RenderablePointId`, `SlotContext`, `Contributions`, `ContributionBase`, `NavItem`, `NavSubItem`, `NavGroup`, `Widget`, `WidgetSize`, `Tab`, `IconProps`, `EmptyContext`, `CommandAction`, `CommandSource`, `CommandContext`, `CommandAddon`, `CommandResult`, `CommandResultTone`, `CommandTarget`, `CommandDisplay` | Types for extension points.                                                                                       |
 | `seedFromLists`, `useSearchParam`                                                                                                                                                                                                                                                                                                                            | Query-cache seeding for route-less detail pages and one URL search param as state. See the API report.            |

@@ -3,10 +3,13 @@ import type { OakestraApi } from '@oakestra/dashboard-sdk';
 
 import { createAddonsAdminApi, type AddonsAdminApi } from '../addons/addons-admin';
 import { createAuthSession, type AuthSession } from '../auth/session';
+import { createAddonBackendFetch } from './addon-backend-fetch';
 import { createAuthorizedFetch, type Fetch } from './authorized-fetch';
 
 export interface ApiServices {
   api: OakestraApi;
+  /** The host context's `addonBackendFetch`, for useAddonApi(). */
+  addonBackendFetch: Fetch;
   auth: AuthSession;
   addonsAdmin: AddonsAdminApi;
 }
@@ -50,5 +53,6 @@ export function createApiServices(options: ApiServicesOptions): ApiServices {
     marketplaceUrl: options.marketplaceUrl ?? '/marketplace-api',
     send: authorizedFetch,
   });
-  return { api, auth, addonsAdmin };
+  const addonBackendFetch = createAddonBackendFetch(auth, send);
+  return { api, addonBackendFetch, auth, addonsAdmin };
 }

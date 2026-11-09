@@ -210,7 +210,12 @@ So `/addon-assets/insights/mf-manifest.json` becomes `http://addonui-insights:80
 The name pattern `[a-z0-9-]+` keeps the proxy from reaching other containers. Because the
 upstream is a variable, the dashboard starts even when no addon container exists; a missing
 container gives an HTTP 502 for its files. The dashboard's nginx adds no cache headers of its own
-on this path; the headers your container sends reach the browser.
+on this path; the headers your container sends reach the browser. The same path carries your
+addon's backend: `/addon-assets/insights/api/...` reaches your container as `/api/...`, which is
+what `useAddonApi()` calls. Add a `/api/` location to your container's nginx config (including the
+server-sent events settings) as described in
+[Calling your addon's backend](reference.md#calling-your-addons-backend); the `create-addon`
+template already has it, driven by the `API_UPSTREAM` environment variable.
 
 In the planned Oakestra setup the addons monitor starts the container under the name
 `addonui-<name>`. That part of the real addons engine does not exist yet. In this repository
@@ -255,6 +260,12 @@ docker build -f addons/insights/Dockerfile -t addon-insights-ui .
 | `/remoteEntry.js`   | `no-cache`                            | Same reason.                                                               |
 | `/assets/...`       | `public, max-age=31536000, immutable` | File names contain a content hash, so a new release has new names.         |
 | anything else       | none; missing files are 404           |                                                                            |
+
+An addon made with `pnpm create:addon` has this file as `docker/default.conf.template` and also an
+optional `/api/` proxy for the addon's own backend (`useAddonApi()`). Its Dockerfile copies the
+template to `/etc/nginx/templates/` and defines `API_UPSTREAM` as empty, so a UI-only addon answers
+`/api/` with 404. Run the container with `-e API_UPSTREAM=http://<backend>:<port>` to enable it
+(scheme, host and port only: a path or trailing slash would replace every request's path).
 
 `no-cache` means "revalidate before use", not "never store". Keep these headers when you write
 your own config. If a CDN or another proxy sits in front of the dashboard, it must respect them.

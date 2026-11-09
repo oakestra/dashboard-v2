@@ -18,6 +18,12 @@ import { QueryKeyWithDataTag } from '@tanstack/react-query';
 import { ReactNode } from 'react';
 import { UseQueryOptions } from '@tanstack/react-query';
 
+// @public
+export interface AddonApi {
+    readonly baseUrl: string;
+    fetch(path: string, init?: RequestInit): Promise<Response>;
+}
+
 // @public (undocumented)
 export const AddonContext: Context<AddonContextValue | null>;
 
@@ -779,6 +785,7 @@ export const HostContext: Context<HostContextValue | null>;
 
 // @public
 export interface HostContextValue {
+    readonly addonBackendFetch: (request: Request) => Promise<Response>;
     // (undocumented)
     readonly api: OakestraApi;
     readonly isFeatureEnabled: (id: string) => boolean;
@@ -1393,6 +1400,9 @@ export interface Tab<C extends object> extends RenderableContribution<C> {
     // (undocumented)
     label: string;
 }
+
+// @public
+export function useAddonApi(): AddonApi;
 
 // @public (undocumented)
 export function useAddonBasePath(): string;
