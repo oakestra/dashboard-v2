@@ -1,6 +1,7 @@
 name: Release npm packages
 
-# Publishes @oakestra/api, @oakestra/dashboard-sdk and @oakestra/ui.
+# Publishes @oakestra/api, @oakestra/dashboard-sdk and @oakestra/ui to GitHub Packages, and to
+# npmjs.com as well once the repo variable PUBLISH_TO_NPMJS is "true".
 #
 # Pushes to main that touch them publish a snapshot (0.1.1-main.<run>) under "next", like the
 # image's "latest". Releases go through Changesets: pending changesets keep a
@@ -28,6 +29,9 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  PUBLISH_TO_NPMJS: ${{ vars.PUBLISH_TO_NPMJS }}
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -36,7 +40,8 @@ jobs:
       # Push the version PR branch and the release tags.
       contents: write
       pull-requests: write
-      # npm trusted publishing and provenance.
+      packages: write
+      # npmjs trusted publishing and provenance.
       id-token: write
     steps:
       - uses: actions/checkout@v7
@@ -53,6 +58,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - run: .github/scripts/npm-auth.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Open or update the version PR
         id: changesets
         uses: changesets/action@v1
@@ -63,27 +73,23 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # With no changesets pending, package.json holds the versions to release. Those already on
-      # npm are skipped, so this is a no-op on most pushes.
+      # With no changesets pending, package.json holds the versions to release. Those already
+      # published are skipped, so this is a no-op on most pushes.
       - name: Publish releases
         if: steps.changesets.outputs.hasChangesets == 'false'
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          # Only for the very first publish: npm can't set up trusted publishing for a package
-          # that doesn't exist yet. Delete the secret once trusted publishing is configured.
-          if [ -n "$NPM_TOKEN" ]; then npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"; fi
           node tools/package-checks/src/publish.ts
           git push origin --tags
 
-  # After release, so the first ever publish of a package is a release: npm makes the first
-  # version of a package "latest" whatever dist-tag it was published with.
+  # After release, so the first ever publish of a package is a release: the registry makes the
+  # first version of a package "latest" whatever dist-tag it was published with.
   snapshot:
     needs: release
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: read
+      packages: write
       id-token: write
     steps:
       - uses: actions/checkout@v7
@@ -99,9 +105,10 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Publish snapshots
+      - run: .github/scripts/npm-auth.sh
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          if [ -n "$NPM_TOKEN" ]; then npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"; fi
-          node tools/package-checks/src/publish.ts --snapshot ${{ github.run_number }}
+
+      - name: Publish snapshots
+        run: node tools/package-checks/src/publish.ts --snapshot ${{ github.run_number }}

@@ -1,11 +1,12 @@
 /**
- * Publishes `@oakestra/api`, `@oakestra/dashboard-sdk` and `@oakestra/ui` to npm. Runs in CI
- * (`release-packages.yml`), which provides the OIDC token for trusted publishing and provenance.
+ * Publishes `@oakestra/api`, `@oakestra/dashboard-sdk` and `@oakestra/ui` to GitHub Packages,
+ * and to npmjs.com too when PUBLISH_TO_NPMJS is "true". Runs in CI (`release-packages.yml`),
+ * which sets up the auth for both.
  *
- *   publish.ts                 the versions in package.json, dist-tag latest
+ *   publish.ts                 versions in package.json, dist-tag latest
  *   publish.ts --snapshot <n>  <next patch>-main.<n>, dist-tag next
  *
- * A version that is already on npm is skipped, so a rerun after a partial failure picks up
+ * A version already in a registry is skipped there, so a rerun after a partial failure picks up
  * where the last run stopped. Releases also get a local git tag `<name>@<version>`; the
  * workflow pushes them.
  */
@@ -16,11 +17,15 @@ import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { publishedPackageDirs, repoRoot } from './packages.ts';
 
+const GITHUB = 'https://npm.pkg.github.com/';
+const NPMJS = 'https://registry.npmjs.org/';
+
 const { values: args } = parseArgs({ options: { snapshot: { type: 'string' } } });
 const snapshotId = args.snapshot;
 if (snapshotId !== undefined && !/^[1-9]\d*$/.test(snapshotId)) {
   throw new Error(`--snapshot needs a positive integer (the CI run number), got "${snapshotId}"`);
 }
+const registries = process.env.PUBLISH_TO_NPMJS === 'true' ? [GITHUB, NPMJS] : [GITHUB];
 
 interface PackageJson {
   name: string;
@@ -35,8 +40,8 @@ const packages = publishedPackageDirs.map((relativeDir) => {
   return { dir, path, pkg: JSON.parse(readFileSync(path, 'utf8')) as PackageJson };
 });
 
-// Without a license nobody can legally use the package. npm rejects provenance when
-// `repository` doesn't match the repo that publishes.
+// Without a license nobody can legally use the package. `repository` links the package to this
+// repo on GitHub, and npm rejects provenance when it doesn't match the repo that publishes.
 for (const { pkg } of packages) {
   if (!pkg.license) throw new Error(`${pkg.name} has no "license" in package.json`);
   if (!pkg.repository) throw new Error(`${pkg.name} has no "repository" in package.json`);
@@ -57,24 +62,42 @@ const tarballDir = mkdtempSync(join(tmpdir(), 'oakestra-publish-'));
 // publishedPackageDirs lists @oakestra/api before the SDK that depends on it.
 for (const { dir, pkg } of packages) {
   const id = `${pkg.name}@${pkg.version}`;
-  if (isPublished(id)) {
-    console.log(`${id} is already on npm, skipping`);
-    continue;
-  }
-  // pnpm, not npm, packs: it applies publishConfig and rewrites workspace: ranges. npm then
-  // uploads the tarball, since it is what speaks OIDC to the registry.
+  // pnpm, not npm, packs: it applies publishConfig and rewrites workspace: ranges. npm uploads
+  // the tarball, since it is what speaks OIDC to npmjs. Every registry gets the same tarball.
   const before = new Set(readdirSync(tarballDir));
   execFileSync('pnpm', ['pack', '--pack-destination', tarballDir], { cwd: dir, stdio: 'inherit' });
   const tarball = readdirSync(tarballDir).find((file) => !before.has(file));
   if (!tarball) throw new Error(`pnpm pack wrote no tarball for ${id}`);
 
-  execFileSync(
-    'npm',
-    ['publish', join(tarballDir, tarball), '--access', 'public', '--provenance', '--tag', distTag],
-    { stdio: 'inherit' },
-  );
-  console.log(`published ${id} (${distTag})`);
-  if (snapshotId === undefined) execFileSync('git', ['tag', id], { stdio: 'inherit' });
+  for (const registry of registries) {
+    if (isPublished(id, registry)) {
+      console.log(`${id} is already on ${registry}, skipping`);
+      continue;
+    }
+    // Provenance is an npmjs feature; other registries reject the flag.
+    const provenance = registry === NPMJS ? ['--provenance'] : [];
+    execFileSync(
+      'npm',
+      [
+        'publish',
+        join(tarballDir, tarball),
+        '--registry',
+        registry,
+        '--access',
+        'public',
+        '--tag',
+        distTag,
+        ...provenance,
+      ],
+      { stdio: 'inherit' },
+    );
+    console.log(`published ${id} to ${registry} (${distTag})`);
+  }
+
+  // Tagged even when every registry already had it, so a rerun after a failed push still tags.
+  if (snapshotId === undefined && !hasRemoteTag(id)) {
+    execFileSync('git', ['tag', id], { stdio: 'inherit' });
+  }
 }
 
 /** 0.1.0 -> 0.1.1-main.42, which sorts after 0.1.0 and before any 0.1.1 release. */
@@ -85,14 +108,26 @@ function snapshotVersion(version: string, id: string): string {
   return `${major}.${minor}.${Number(patch) + 1}-main.${id}`;
 }
 
-function isPublished(id: string): boolean {
+function isPublished(id: string, registry: string): boolean {
   try {
     // Prints nothing (exit 0) when the package exists but this version does not.
-    return execFileSync('npm', ['view', id, 'version'], { stdio: 'pipe' }).toString().trim() !== '';
+    const out = execFileSync('npm', ['view', id, 'version', '--registry', registry], {
+      stdio: 'pipe',
+    });
+    return out.toString().trim() !== '';
   } catch (error) {
     // Anything but "not found" (network, auth) must stop the run instead of publishing blind.
     const stderr = String((error as { stderr?: Buffer }).stderr ?? '');
     if (stderr.includes('E404')) return false;
     throw error;
   }
+}
+
+// Asks origin, because the CI checkout fetches no tags.
+function hasRemoteTag(tag: string): boolean {
+  return (
+    execFileSync('git', ['ls-remote', '--tags', 'origin', `refs/tags/${tag}`])
+      .toString()
+      .trim() !== ''
+  );
 }

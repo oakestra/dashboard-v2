@@ -68,11 +68,15 @@ the shell image to `ghcr.io/oakestra/dashboard-v2`: `latest` on every push to `m
 `v1.2` and `v1` for a `v1.2.3` tag, and just the tag name for `alpha-v*.*.*`.
 
 `release-packages.yml` publishes `@oakestra/dashboard-sdk`, `@oakestra/ui` and `@oakestra/api` to
-npm with trusted publishing. Pushes to `main` that touch them publish a snapshot
-(`<next patch>-main.<run>`, dist-tag `next`). Releases go through Changesets: pending changesets
-keep a `chore: version packages` PR open, and merging it publishes under `latest` and tags
-`<name>@<version>`. Package versions don't follow the image's `v*` tags, addons are checked
-against them. `publish.ts` refuses a package without `license` or `repository`.
+GitHub Packages (`npm.pkg.github.com`). Someone else holds the `@oakestra` scope on npmjs.com; once
+we own it, the repo variable `PUBLISH_TO_NPMJS=true` publishes there too, with trusted publishing
+and provenance. `.github/scripts/npm-auth.sh` logs in to both. Pushes to `main` that touch the
+packages publish a snapshot (`<next patch>-main.<run>`, dist-tag `next`). Releases go through
+Changesets: pending changesets keep a `chore: version packages` PR open, and merging it publishes
+under `latest` and tags `<name>@<version>`. Package versions don't follow the image's `v*` tags,
+addons are checked against them. `publish.ts` refuses a package without `license` or
+`repository`. The repo and the three packages are Apache-2.0 (`LICENSE`, copied into each package
+because npm only packs the one next to `package.json`).
 
 Nothing is published yet, so `0.1.0` is the baseline: don't add changesets before the first
 publish. After that, add one (`pnpm changeset`) for any change to the three packages. The packages

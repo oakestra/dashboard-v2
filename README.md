@@ -218,8 +218,16 @@ mutations, tests, styling, import boundaries).
 ## Releasing
 
 `@oakestra/dashboard-sdk`, `@oakestra/ui` and `@oakestra/api` are prepared for npm so that addons
-can live in their own repositories. Nothing has been published yet.
-[`release-packages.yml`](.github/workflows/release-packages.yml) publishes them:
+can live in their own repositories. [`release-packages.yml`](.github/workflows/release-packages.yml)
+publishes them to GitHub Packages for now, and to npmjs.com as well once we own the `@oakestra`
+scope there. Installing from GitHub Packages needs a GitHub token with `read:packages`, even for
+public packages:
+
+```ini
+# .npmrc
+@oakestra:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
 
 - A push to `main` that changes them publishes a snapshot like `0.1.1-main.42` under the dist-tag
   `next` (`pnpm add @oakestra/dashboard-sdk@next`).
@@ -283,3 +291,7 @@ docs                        Documentation
 - [Packaging an addon](docs/addons/packaging.md): build, container, marketplace entry and versioning.
 - [Deployment presets](docs/addons/presets.md): pick built-in features, rename sidebar items and bundle addons per deployment.
 - [Troubleshooting addons](docs/addons/troubleshooting.md): common problems and how to fix them.
+
+## License
+
+[Apache 2.0](LICENSE)
