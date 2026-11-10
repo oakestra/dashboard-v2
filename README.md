@@ -1,5 +1,10 @@
 # Oakestra Dashboard
 
+> [!WARNING]
+> Dashboard v2 is a work in progress. Until the first stable release, the addon SDK
+> (`@oakestra/dashboard-sdk`) and the other public packages may change without notice, including
+> breaking changes.
+
 The web dashboard for [Oakestra](https://www.oakestra.io/), the orchestration platform for edge
 computing. Deploy and watch applications, manage clusters, users and organizations, and install
 addons.
