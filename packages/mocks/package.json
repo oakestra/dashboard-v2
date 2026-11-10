@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@oakestra/api": "workspace:*",
-    "msw": "^3.0.3"
+    "msw": "^3.0.4"
   },
   "devDependencies": {
     "@oakestra/tsconfig": "workspace:*",
