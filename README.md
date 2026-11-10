@@ -96,8 +96,9 @@ instead. Change the API address in
 
 ## Deployment
 
-The dashboard is a static app served by nginx. Release tags publish the image
-`ghcr.io/oakestra/dashboard-v2`. The image reads its configuration from environment variables when
+The dashboard is a static app served by nginx, published as the image
+`ghcr.io/oakestra/dashboard-v2`: `latest` is the state of `main`, a release `v1.2.3` is also
+tagged `v1.2` and `v1`. The image reads its configuration from environment variables when
 the container starts:
 
 | Variable                  | Default                     | Description                                                                 |
@@ -217,9 +218,21 @@ mutations, tests, styling, import boundaries).
 ## Releasing
 
 `@oakestra/dashboard-sdk`, `@oakestra/ui` and `@oakestra/api` are prepared for npm so that addons
-can live in their own repositories. Nothing has been published yet and no workflow publishes
-them. Inside this repository every package exports its TypeScript sources, which the shell, Vite
-and Module Federation use directly. `pnpm build` also builds each of the three into `dist/` with
+can live in their own repositories. Nothing has been published yet.
+[`release-packages.yml`](.github/workflows/release-packages.yml) publishes them:
+
+- A push to `main` that changes them publishes a snapshot like `0.1.1-main.42` under the dist-tag
+  `next` (`pnpm add @oakestra/dashboard-sdk@next`).
+- Releases use [Changesets](https://github.com/changesets/changesets). Run `pnpm changeset` in a
+  PR that changes a package and describe the change. The workflow keeps a
+  `chore: version packages` PR open that bumps versions and writes changelogs. Merging it
+  publishes under `latest` and tags `<name>@<version>`.
+
+Package versions don't follow the image's `v*` tags. Addons are checked against the SDK and ui
+versions, so those only move when the packages change.
+
+Inside this repository every package exports its TypeScript sources, which the shell, Vite and
+Module Federation use directly. `pnpm build` also builds each of the three into `dist/` with
 [tsdown](https://tsdown.dev) (ES modules and type declarations), and `publishConfig` in its
 `package.json` points `exports` at `dist/` when the package is packed. `pnpm pack` and
 `pnpm publish` rebuild `dist/` first (`prepack`).

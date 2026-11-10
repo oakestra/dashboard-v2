@@ -36,7 +36,8 @@ React shell that loads addon UIs at runtime through Module Federation.
 - `tools/package-checks`: `pnpm api:check` / `pnpm api:update` (API Extractor reports, one per
   public entry, in `packages/*/api-report/`) and `pnpm pack:check` (packs the three public
   packages and builds a copy of `addons/example` and a freshly scaffolded addon outside the
-  workspace against the tarballs).
+  workspace against the tarballs), plus `src/publish.ts`, the npm publish step of
+  `release-packages.yml`.
 - `tools/create-addon`: `pnpm create:addon <name> [--prefix] [--label] [--port] [--dir]` generates
   a new addon (`addons/<name>`, or a standalone one outside the repo with `--dir`). The template is
   real files in `template/{common,workspace,standalone}` with `__NAME__`-style placeholders,
@@ -66,13 +67,17 @@ and the Storybook build, then the e2e suite against the compose stack. `release-
 the shell image to `ghcr.io/oakestra/dashboard-v2`: `latest` on every push to `main`, `v1.2.3`,
 `v1.2` and `v1` for a `v1.2.3` tag, and just the tag name for `alpha-v*.*.*`.
 
-Changesets are set up (`.changeset/config.json` lists the private packages as ignored) but not used
-yet: nothing has been released, so whatever is in the repo at the first publish is the baseline. Do
-not add changesets until then. From the first publish on, add one (`pnpm changeset`) for any change
-to `@oakestra/dashboard-sdk`, `@oakestra/ui` or `@oakestra/api`; `pnpm version-packages` applies
-pending ones. The three packages build to `dist/` with tsdown (`pnpm build`, and `prepack`);
-inside the repo `exports` stay on `src/`, and `publishConfig.exports` points them at `dist/` when
-packing. No publish workflow exists yet.
+`release-packages.yml` publishes `@oakestra/dashboard-sdk`, `@oakestra/ui` and `@oakestra/api` to
+npm with trusted publishing. Pushes to `main` that touch them publish a snapshot
+(`<next patch>-main.<run>`, dist-tag `next`). Releases go through Changesets: pending changesets
+keep a `chore: version packages` PR open, and merging it publishes under `latest` and tags
+`<name>@<version>`. Package versions don't follow the image's `v*` tags, addons are checked
+against them. `publish.ts` refuses a package without `license` or `repository`.
+
+Nothing is published yet, so `0.1.0` is the baseline: don't add changesets before the first
+publish. After that, add one (`pnpm changeset`) for any change to the three packages. The packages
+build to `dist/` with tsdown (`pnpm build`, and `prepack`); inside the repo `exports` stay on
+`src/`, and `publishConfig.exports` points them at `dist/` when packing.
 
 Running the shell locally:
 

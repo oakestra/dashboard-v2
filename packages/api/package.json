@@ -1,6 +1,11 @@
 {
   "name": "@oakestra/api",
   "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oakestra/dashboard-v2.git",
+    "directory": "packages/api"
+  },
   "description": "Typed client for the Oakestra system-manager API: generated paths, Zod models and endpoint functions",
   "type": "module",
   "sideEffects": false,

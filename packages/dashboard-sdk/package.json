@@ -1,6 +1,11 @@
 {
   "name": "@oakestra/dashboard-sdk",
   "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oakestra/dashboard-v2.git",
+    "directory": "packages/dashboard-sdk"
+  },
   "description": "Public contract between the Oakestra dashboard shell and addon UIs",
   "type": "module",
   "sideEffects": false,
