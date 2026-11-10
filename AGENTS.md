@@ -62,7 +62,7 @@ When the public types of `@oakestra/dashboard-sdk`, `@oakestra/ui` or `@oakestra
 `pnpm api:update` and commit the reports: they make every public API change visible in review.
 
 CI (`.github/workflows/ci.yml`) runs the same four commands, `pnpm api:check`, `pnpm pack:check`
-and the Storybook build, then the e2e suite against the compose stack. Pushing a `v*.*.*` or `alpha-v*.*.*` tag publishes the shell image to `ghcr.io/oakestra/dashboard`
+and the Storybook build, then the e2e suite against the compose stack. Pushing a `v*.*.*` or `alpha-v*.*.*` tag publishes the shell image to `ghcr.io/oakestra/dashboard-v2`
 (`release-image.yml`; alpha tags do not move `latest`).
 
 Changesets are set up (`.changeset/config.json` lists the private packages as ignored) but not used

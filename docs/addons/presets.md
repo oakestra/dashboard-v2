@@ -169,14 +169,14 @@ docker run -p 8080:80 \
   -e API_ADDRESS=10.0.0.5:10000 \
   -e PRESET_URL=/preset.json \
   -v "$PWD/preset.json:/usr/share/nginx/html/preset.json:ro" \
-  ghcr.io/oakestra/dashboard
+  ghcr.io/oakestra/dashboard-v2
 ```
 
 ```yaml
 # compose
 services:
   dashboard:
-    image: ghcr.io/oakestra/dashboard
+    image: ghcr.io/oakestra/dashboard-v2
     environment:
       API_ADDRESS: 10.0.0.5:10000
       PRESET_URL: /preset.json
@@ -197,7 +197,7 @@ data:
 # in the Deployment's pod spec
 containers:
   - name: dashboard
-    image: ghcr.io/oakestra/dashboard
+    image: ghcr.io/oakestra/dashboard-v2
     env:
       - { name: PRESET_URL, value: /preset.json }
     volumeMounts:
@@ -215,7 +215,7 @@ the folder, such as `index.html`, are revalidated on every load. An `index.html`
 but may not be framed:
 
 ```dockerfile
-FROM ghcr.io/oakestra/dashboard
+FROM ghcr.io/oakestra/dashboard-v2
 COPY preset.json /usr/share/nginx/html/preset.json
 COPY acme-infra/dist/ /usr/share/nginx/html/bundled-addons/acme-infra/
 ENV PRESET_URL=/preset.json

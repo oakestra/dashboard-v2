@@ -97,7 +97,7 @@ instead. Change the API address in
 ## Deployment
 
 The dashboard is a static app served by nginx. Release tags publish the image
-`ghcr.io/oakestra/dashboard`. The image reads its configuration from environment variables when
+`ghcr.io/oakestra/dashboard-v2`. The image reads its configuration from environment variables when
 the container starts:
 
 | Variable                  | Default                     | Description                                                                 |
@@ -129,7 +129,7 @@ public tile server in your privacy notice.
 Either `API_URL` or `API_ADDRESS` is required. Example:
 
 ```sh
-docker run -p 8080:80 -e API_ADDRESS=10.0.0.5:10000 ghcr.io/oakestra/dashboard
+docker run -p 8080:80 -e API_ADDRESS=10.0.0.5:10000 ghcr.io/oakestra/dashboard-v2
 ```
 
 nginx starts even when the addons manager or an addon container is missing; the addon features

@@ -16,7 +16,7 @@ ENV VITE_OAK_DEBUG=${VITE_OAK_DEBUG}
 RUN pnpm --filter @oakestra/shell build
 
 FROM nginx:1.30-alpine
-LABEL org.opencontainers.image.source="https://github.com/oakestra/dashboard"
+LABEL org.opencontainers.image.source="https://github.com/oakestra/dashboard-v2"
 
 COPY --from=build /repo/apps/shell/dist /usr/share/nginx/html
 # The dev config would otherwise be served until the entrypoint overwrites it.
