@@ -97,9 +97,10 @@ instead. Change the API address in
 ## Deployment
 
 The dashboard is a static app served by nginx, published as the image
-`ghcr.io/oakestra/dashboard-v2`: `latest` is the state of `main`, a release `v1.2.3` is also
-tagged `v1.2` and `v1`. The image reads its configuration from environment variables when
-the container starts:
+`ghcr.io/oakestra/dashboard-v2`: `latest` is the newest release, a release `v1.2.3` is also
+tagged `v1.2` and `v1`, a prerelease like `v1.3.0-rc.1` only gets its own tag, and `main` (plus
+`sha-<commit>`) is the current `main` branch. The image reads its configuration from environment
+variables when the container starts:
 
 | Variable                  | Default                     | Description                                                                 |
 | ------------------------- | --------------------------- | --------------------------------------------------------------------------- |
@@ -229,12 +230,16 @@ public packages:
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
-- A push to `main` that changes them publishes a snapshot like `0.1.1-main.42` under the dist-tag
-  `next` (`pnpm add @oakestra/dashboard-sdk@next`).
 - Releases use [Changesets](https://github.com/changesets/changesets). Run `pnpm changeset` in a
   PR that changes a package and describe the change. The workflow keeps a
   `chore: version packages` PR open that bumps versions and writes changelogs. Merging it
-  publishes under `latest` and tags `<name>@<version>`.
+  publishes under `latest` and tags `<name>@<version>`. The three packages always share one
+  version.
+- Prereleases use Changesets pre mode (`pnpm changeset pre enter beta`, see
+  [`.changeset/README.md`](.changeset/README.md)) and publish under that dist-tag
+  (`pnpm add @oakestra/dashboard-sdk@beta`).
+- To publish a snapshot of a branch, run the workflow by hand with "snapshot" checked. It gets a
+  version like `0.1.1-canary.42` under the dist-tag `canary`.
 
 Package versions don't follow the image's `v*` tags. Addons are checked against the SDK and ui
 versions, so those only move when the packages change.

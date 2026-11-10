@@ -64,17 +64,23 @@ When the public types of `@oakestra/dashboard-sdk`, `@oakestra/ui` or `@oakestra
 
 CI (`.github/workflows/ci.yml`) runs the same four commands, `pnpm api:check`, `pnpm pack:check`
 and the Storybook build, then the e2e suite against the compose stack. `release-image.yml` pushes
-the shell image to `ghcr.io/oakestra/dashboard-v2`: `latest` on every push to `main`, `v1.2.3`,
-`v1.2` and `v1` for a `v1.2.3` tag, and just the tag name for `alpha-v*.*.*`.
+the shell image to `ghcr.io/oakestra/dashboard-v2`: `main` and `sha-<short>` on every push to
+`main`; `v1.2.3`, `v1.2`, `v1` and `latest` for a `v1.2.3` tag; only the tag name for a
+prerelease tag (`v1.3.0-rc.1`). It also creates the GitHub Release for the tag (marked pre-release
+for a `-` version) unless one exists.
 
 `release-packages.yml` publishes `@oakestra/dashboard-sdk`, `@oakestra/ui` and `@oakestra/api` to
 GitHub Packages (`npm.pkg.github.com`). Someone else holds the `@oakestra` scope on npmjs.com; once
 we own it, the repo variable `PUBLISH_TO_NPMJS=true` publishes there too, with trusted publishing
-and provenance. `.github/scripts/npm-auth.sh` logs in to both. Pushes to `main` that touch the
-packages publish a snapshot (`<next patch>-main.<run>`, dist-tag `next`). Releases go through
-Changesets: pending changesets keep a `chore: version packages` PR open, and merging it publishes
-under `latest` and tags `<name>@<version>`. Package versions don't follow the image's `v*` tags,
-addons are checked against them. `publish.ts` refuses a package without `license` or
+and provenance. `.github/scripts/npm-auth.sh` logs in to both. Releases go through Changesets:
+pending changesets keep a `chore: version packages` PR open, and merging it publishes under
+`latest` and tags `<name>@<version>`. The three packages are a Changesets `fixed` group and
+always share one version. In pre mode (`pnpm changeset pre enter beta`) versions are
+`0.3.0-beta.N`, and `publish.ts` uses the prerelease name (`beta`) as the dist-tag. Snapshots are
+on demand only (workflow_dispatch with `snapshot`, any branch): `<next patch>-canary.<run>` under
+`canary`. `publish.ts` won't publish a non-`latest` version of a package that has nothing on the
+registry yet, because the registry would make it `latest`. Package versions don't follow the
+image's `v*` tags, addons are checked against them. `publish.ts` refuses a package without `license` or
 `repository`. The repo and the three packages are Apache-2.0 (`LICENSE`, copied into each package
 because npm only packs the one next to `package.json`).
 

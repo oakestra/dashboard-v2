@@ -3,9 +3,10 @@ name: Release npm packages
 # Publishes @oakestra/api, @oakestra/dashboard-sdk and @oakestra/ui to GitHub Packages, and to
 # npmjs.com as well once the repo variable PUBLISH_TO_NPMJS is "true".
 #
-# Pushes to main that touch them publish a snapshot (0.1.1-main.<run>) under "next", like the
-# image's "latest". Releases go through Changesets: pending changesets keep a
-# "chore: version packages" PR open, merging it publishes under "latest".
+# Releases go through Changesets: pending changesets keep a "chore: version packages" PR open,
+# merging it publishes under "latest", or under the prerelease's tag ("beta" for 0.3.0-beta.1)
+# while Changesets is in pre mode. Snapshots are on demand: run the workflow by hand with
+# "snapshot" checked to publish the chosen branch as 0.1.1-canary.<run> under "canary".
 # Versions don't follow the image's v* tags, addons are checked against the SDK and ui versions.
 
 on:
@@ -20,6 +21,11 @@ on:
       - 'pnpm-lock.yaml'
       - '.github/workflows/release-packages.yml'
   workflow_dispatch:
+    inputs:
+      snapshot:
+        description: Publish a canary snapshot of the selected branch instead of releasing
+        type: boolean
+        default: false
 
 # Never cancel: a publish stopped halfway leaves some packages on the new version.
 concurrency:
@@ -34,6 +40,8 @@ env:
 
 jobs:
   release:
+    # Changesets on another branch would open a version PR against that branch.
+    if: github.ref == 'refs/heads/main' && !inputs.snapshot
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -81,10 +89,8 @@ jobs:
           node tools/package-checks/src/publish.ts
           git push origin --tags
 
-  # After release, so the first ever publish of a package is a release: the registry makes the
-  # first version of a package "latest" whatever dist-tag it was published with.
   snapshot:
-    needs: release
+    if: inputs.snapshot
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:

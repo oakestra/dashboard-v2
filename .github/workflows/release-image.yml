@@ -5,10 +5,10 @@ on:
     branches:
       - main
     tags:
+      # Releases (v1.2.3) and prereleases (v1.3.0-rc.1, -beta.1, -alpha.1).
       - 'v*.*.*'
-      - 'alpha-v*.*.*'
 
-# Cancel older main runs, otherwise a slow one can push "latest" after a newer one.
+# Cancel older main runs, otherwise a slow one can push "main" after a newer one.
 # Tag runs each get their own group and always finish.
 concurrency:
   group: release-image-${{ github.ref }}
@@ -22,7 +22,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      # Create the GitHub Release for a tag.
+      contents: write
       packages: write
       # Keyless cosign signing needs an OIDC token for Fulcio.
       id-token: write
@@ -48,16 +49,19 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE_NAME }}
-          # "latest" tracks main, releases never touch it. v1.2.3 is pushed as v1.2.3, v1.2
-          # and v1. alpha-v* tags don't parse as semver, so they keep the git tag name.
+          # "latest" is the newest release, main only gets "main" and "sha-<short>". v1.2.3 is
+          # pushed as v1.2.3, v1.2, v1 and latest. A prerelease like v1.3.0-rc.1 only gets its own
+          # name (metadata-action skips the major/minor patterns for prereleases, the latest rule
+          # checks for the "-"). Careful: tagging v1.2.4 after v1.3.0 moves latest back.
           flavor: |
             latest=false
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=main,enable={{is_default_branch}}
+            type=sha,enable={{is_default_branch}}
             type=semver,pattern=v{{version}}
             type=semver,pattern=v{{major}}.{{minor}}
             type=semver,pattern=v{{major}}
-            type=ref,event=tag,enable=${{ startsWith(github.ref, 'refs/tags/alpha-') }}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') }}
           labels: |
             org.opencontainers.image.title=Oakestra Dashboard
             org.opencontainers.image.description=Oakestra dashboard shell (Module Federation host)
@@ -82,3 +86,18 @@ jobs:
           TAGS: ${{ steps.meta.outputs.tags }}
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
         run: echo "$TAGS" | xargs -I {} cosign sign --yes {}@"$DIGEST"
+
+      # Releases created in the GitHub UI push their tag too, so the release may exist already.
+      - name: Create the GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG already exists"
+            exit 0
+          fi
+          prerelease=()
+          if [[ "$TAG" == *-* ]]; then prerelease=(--prerelease); fi
+          gh release create "$TAG" --verify-tag --generate-notes "${prerelease[@]}"
