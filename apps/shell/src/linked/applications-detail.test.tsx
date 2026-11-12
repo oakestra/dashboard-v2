@@ -70,7 +70,10 @@ describe('application detail page (linked addon)', () => {
       expect(new URLSearchParams(router.state.location.search).get('tab')).toBe('topology');
 
       await user.click(within(panel).getByRole('button', { name: 'Close details' }));
-      expect(screen.queryByRole('region', { name: /^Details of / })).not.toBeInTheDocument();
+      // Closing is a router navigation, which settles after the click on a slow runner.
+      await waitFor(() =>
+        expect(screen.queryByRole('region', { name: /^Details of / })).not.toBeInTheDocument(),
+      );
       expect(new URLSearchParams(router.state.location.search).has('node')).toBe(false);
     });
 
