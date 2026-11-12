@@ -219,9 +219,12 @@ URL:
 Log in as `Admin` / `Admin`. The example addon now appears exactly as in the Docker stack.
 
 `pnpm dev:mock` seeds a richer scenario than the plain mock backend: extra clusters (one that has
-gone silent, one that never reported), more instances, and services the scheduler could not
-place. It makes the **Fleet** view (applications by cluster, in the sidebar) and the placement
-explanation on a service page worth a look. The Docker stack's mock system manager has the same
+gone silent, one that never reported), more instances, services the scheduler could not place,
+and connectivity between services. It makes the **Fleet** view (applications by cluster, in the
+sidebar), the placement explanation on a service page, the **Topology** section of
+Infrastructure (root orchestrator, clusters, workers) and the **Topology** tab of an application
+worth a look: webshop's frontend runs in two clusters and calls api, which calls cache in a third.
+The Docker stack's mock system manager has the same
 data with `PLACEMENT_DEMO=true` (set it on `tools/mock-system-manager`, for example in the
 environment of its service in `compose.dev.yml`); without it the seed is the small one the tests
 count on.

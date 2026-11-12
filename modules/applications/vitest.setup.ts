@@ -12,3 +12,12 @@ globalThis.ResizeObserver ??= class {
   disconnect() {}
 };
 Object.assign(Element.prototype, { scrollIntoView: () => {} });
+
+// React Flow reads transforms through DOMMatrixReadOnly; nodes still render without layout metrics.
+globalThis.DOMMatrixReadOnly ??= class {
+  m22 = 1;
+  constructor(transform?: string) {
+    const scale = /scale\(([\d.]+)\)/.exec(transform ?? '')?.[1];
+    this.m22 = scale ? Number(scale) : 1;
+  }
+} as unknown as typeof DOMMatrixReadOnly;

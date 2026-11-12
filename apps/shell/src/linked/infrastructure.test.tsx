@@ -1,5 +1,5 @@
 import { http, HttpResponse } from '@oakestra/mocks';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import infrastructure from '@oakestra/module-infrastructure';
@@ -36,6 +36,79 @@ describe('infrastructure (linked addon)', () => {
       'href',
       '/infrastructure',
     );
+  });
+
+  it('draws the topology with every cluster and the workers an Admin can see', async () => {
+    renderInfrastructure();
+
+    const graph = await screen.findByLabelText('Infrastructure topology');
+    expect(await within(graph).findByText('Root orchestrator')).toBeVisible();
+    for (const { cluster_name } of mockStore.data.clusters) {
+      expect(await within(graph).findByText(cluster_name)).toBeVisible();
+    }
+  });
+
+  it('draws the cluster tree for an infrastructure provider without service access', async () => {
+    renderInfrastructure({ user: { username: 'bob' } });
+
+    const graph = await screen.findByLabelText('Infrastructure topology');
+    expect(await within(graph).findByText('Root orchestrator')).toBeVisible();
+    expect(await within(graph).findByText('test-cluster')).toBeVisible();
+  });
+
+  describe('topology selection', () => {
+    const nodeOf = (graph: HTMLElement, id: string) =>
+      graph.querySelector(`.react-flow__node[data-id="${id}"]`)!;
+    // user-event crashes in d3-zoom under jsdom, so the nodes get a plain click event.
+    const cluster = () => mockStore.data.clusters[0]!;
+
+    it('selects a cluster on click, shows its panel and writes the URL', async () => {
+      const { router } = renderInfrastructure();
+      const graph = await screen.findByLabelText('Infrastructure topology');
+      await within(graph).findByText(cluster().cluster_name);
+
+      fireEvent.click(nodeOf(graph, `cluster:${cluster()._id}`));
+
+      const panel = await screen.findByRole('region', { name: 'Topology details' });
+      expect(within(panel).getByText(cluster().cluster_name)).toBeVisible();
+      expect(within(panel).getByRole('link', { name: 'Open cluster' })).toHaveAttribute(
+        'href',
+        `/infrastructure/clusters/${cluster()._id}`,
+      );
+      expect(router.state.location.search).toBe(
+        `?node=${encodeURIComponent(`cluster:${cluster()._id}`)}`,
+      );
+      expect(router.state.location.pathname).toBe('/infrastructure');
+
+      fireEvent.click(within(panel).getByRole('button', { name: 'Close details' }));
+      await waitFor(() =>
+        expect(screen.queryByRole('region', { name: 'Topology details' })).not.toBeInTheDocument(),
+      );
+      expect(router.state.location.search).toBe('');
+    });
+
+    it('opens the panel from the URL and ignores unknown ids', async () => {
+      renderInfrastructure({ route: '/infrastructure?node=root' });
+      const panel = await screen.findByRole('region', { name: 'Topology details' });
+      expect(within(panel).getByText('Root orchestrator')).toBeVisible();
+    });
+
+    it('shows no panel for an id that names nothing', async () => {
+      renderInfrastructure({ route: '/infrastructure?node=cluster:nope' });
+      await screen.findByLabelText('Infrastructure topology');
+      expect(screen.queryByRole('region', { name: 'Topology details' })).not.toBeInTheDocument();
+    });
+
+    it('lets an infrastructure provider select clusters', async () => {
+      renderInfrastructure({ user: { username: 'bob' } });
+      const graph = await screen.findByLabelText('Infrastructure topology');
+      await within(graph).findByText(cluster().cluster_name);
+
+      fireEvent.click(nodeOf(graph, `cluster:${cluster()._id}`));
+
+      const panel = await screen.findByRole('region', { name: 'Topology details' });
+      expect(within(panel).getByText(cluster().cluster_name)).toBeVisible();
+    });
   });
 
   it("links to the deployment's Grafana from the config", async () => {

@@ -1,6 +1,6 @@
 import { http, HttpResponse } from '@oakestra/mocks';
 import type { Contributions } from '@oakestra/dashboard-sdk';
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { linkedAddons } from '../app/modules';
@@ -26,14 +26,83 @@ describe('application detail page (linked addon)', () => {
 
     expect(await screen.findByRole('heading', { name: 'analytics' })).toBeVisible();
     expect(await screen.findByRole('link', { name: 'warehouse' })).toBeVisible();
-    // No contributed tabs, so no lone "Services" tab.
-    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      'Services',
+      'Topology',
+    ]);
     expect(screen.getByRole('link', { name: 'dashboard' })).toBeVisible();
     expect(screen.getByRole('link', { name: /New service/ })).toHaveAttribute(
       'href',
       `/applications/${alicesApp()._id}/services/new`,
     );
     expect(screen.getByTestId('breadcrumbs')).toHaveTextContent('Applicationsanalytics');
+  });
+
+  it('draws the services in the Topology tab', async () => {
+    const { user } = renderDetail();
+    await screen.findByRole('link', { name: 'warehouse' });
+
+    await user.click(screen.getByRole('tab', { name: 'Topology' }));
+
+    const graph = await screen.findByRole('group', { name: 'Topology of analytics' });
+    expect(graph).toHaveTextContent('warehouse');
+    expect(graph).toHaveTextContent('dashboard');
+  });
+
+  describe('topology inspector', () => {
+    const node = (graph: HTMLElement, prefix: string) =>
+      graph.querySelector<HTMLElement>(`.react-flow__node[data-id^="${prefix}"]`)!;
+
+    it('selects a node on click, keeps it in the URL and closes with the button', async () => {
+      const { user, router } = renderDetail();
+      await screen.findByRole('link', { name: 'warehouse' });
+      await user.click(screen.getByRole('tab', { name: 'Topology' }));
+      const graph = await screen.findByRole('group', { name: 'Topology of analytics' });
+      await waitFor(() => expect(node(graph, 'placement:')).toBeTruthy());
+
+      const target = node(graph, 'placement:');
+      const id = target.dataset.id!;
+      fireEvent.click(target);
+
+      const panel = await screen.findByRole('region', { name: /^Details of / });
+      expect(within(panel).getByRole('link', { name: 'Open service' })).toBeVisible();
+      expect(new URLSearchParams(router.state.location.search).get('node')).toBe(id);
+      expect(new URLSearchParams(router.state.location.search).get('tab')).toBe('topology');
+
+      await user.click(within(panel).getByRole('button', { name: 'Close details' }));
+      expect(screen.queryByRole('region', { name: /^Details of / })).not.toBeInTheDocument();
+      expect(new URLSearchParams(router.state.location.search).has('node')).toBe(false);
+    });
+
+    it('opens the tab and the panel from a link', async () => {
+      const first = renderDetail();
+      await screen.findByRole('link', { name: 'warehouse' });
+      await first.user.click(screen.getByRole('tab', { name: 'Topology' }));
+      const graph = await screen.findByRole('group', { name: 'Topology of analytics' });
+      await waitFor(() => expect(node(graph, 'placement:')).toBeTruthy());
+      const id = node(graph, 'placement:').dataset.id!;
+      first.unmount();
+
+      renderApp({
+        linked: linkedAddons,
+        route: `/applications/${alicesApp()._id}?tab=topology&node=${encodeURIComponent(id)}`,
+        user: { username: 'alice' },
+      });
+
+      expect(await screen.findByRole('region', { name: /^Details of / })).toBeVisible();
+      expect(screen.getByRole('tab', { name: 'Topology' })).toHaveAttribute('data-state', 'active');
+    });
+
+    it('ignores a node id that matches nothing', async () => {
+      renderApp({
+        linked: linkedAddons,
+        route: `/applications/${alicesApp()._id}?tab=topology&node=placement:gone:none`,
+        user: { username: 'alice' },
+      });
+
+      await screen.findByRole('group', { name: 'Topology of analytics' });
+      expect(screen.queryByRole('region', { name: /^Details of / })).not.toBeInTheDocument();
+    });
   });
 
   it('points at undeployed services and deploys them from the banner', async () => {
@@ -226,7 +295,13 @@ describe('application detail page (linked addon)', () => {
 
     act(() => services.contributions.getState().unregister('addon:flops'));
 
-    expect(screen.getByRole('tab', { name: 'Services' })).toHaveAttribute('aria-selected', 'true');
+    // The tab lives in the URL, so leaving it goes through the router and lands a tick later.
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'Services' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      ),
+    );
     expect(screen.getByRole('tabpanel', { name: 'Services' })).toBeVisible();
   });
 

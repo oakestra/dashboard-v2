@@ -160,6 +160,7 @@ const addonImportRestrictions = {
         '!@oakestra/ui/command',
         '!@oakestra/ui/map',
         '!@oakestra/ui/location-map',
+        '!@oakestra/ui/flow',
         '!@oakestra/ui/*.css',
         '!@oakestra/api',
       ],

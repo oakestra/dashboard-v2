@@ -1030,6 +1030,7 @@ with several related `StatCard`s; a `stat` widget renders a single `StatCard`.
 | `@oakestra/ui/command`      | `Command`, `CommandDialog`, `CommandInput`, `CommandList`, `CommandItem`, ... (cmdk)                                                                                                                                                                                   |
 | `@oakestra/ui/map`          | `Map`, `MapMarker`, `MarkerTooltip`, `MapControls`, `MapGeoJSON`, `useMap`, ... (MapLibre GL)                                                                                                                                                                          |
 | `@oakestra/ui/location-map` | `LocationMap`, `toMapLocation` (markers and radius circles; MapLibre loads only when a map renders)                                                                                                                                                                    |
+| `@oakestra/ui/flow`         | `FlowGraph`, `LazyFlowGraph`, types `FlowNode`, `FlowEdge`, `FlowGraphProps` (nodes and edges laid out automatically; React Flow loads only when a graph renders)                                                                                                      |
 
 Import charts from `@oakestra/ui/chart`, never from `recharts` directly:
 
@@ -1148,19 +1149,19 @@ Addons are built and deployed separately from the shell, so they can only use wh
 runtime. The ESLint config (`packages/eslint-config/index.js`) enforces this for every file in
 `addons/**`:
 
-| Import                                                                                   | Allowed?                                     |
-| ---------------------------------------------------------------------------------------- | -------------------------------------------- |
-| Your own files (inside `addons/<your-addon>/`)                                           | Yes                                          |
-| `@oakestra/dashboard-sdk`, `@oakestra/dashboard-sdk/federation`                          | Yes (`/federation` in `vite.config.ts`)      |
-| `@oakestra/dashboard-sdk/vite`                                                           | `vite.config.ts` and `vitest.config.ts` only |
-| `virtual:oakestra-addon` (`ADDON_ID`, provided by `oakestraAddon()`)                     | Yes                                          |
-| `@oakestra/dashboard-sdk/testing`                                                        | Test files only (`*.test.ts(x)`)             |
-| `@oakestra/ui`, `@oakestra/ui/chart`, `/data-table`, `/command`, `/map`, `/location-map` | Yes                                          |
-| `@oakestra/ui/theme.css` (and other `@oakestra/ui/*.css`)                                | Yes                                          |
-| `@oakestra/api`                                                                          | **Types only** (`import type`)               |
-| Any other `@oakestra/*` package, any `@oakestra/*/src/...` path                          | No                                           |
-| Files of the shell or of another addon                                                   | No                                           |
-| Third-party npm packages                                                                 | Not restricted by lint. See below.           |
+| Import                                                                                            | Allowed?                                     |
+| ------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Your own files (inside `addons/<your-addon>/`)                                                    | Yes                                          |
+| `@oakestra/dashboard-sdk`, `@oakestra/dashboard-sdk/federation`                                   | Yes (`/federation` in `vite.config.ts`)      |
+| `@oakestra/dashboard-sdk/vite`                                                                    | `vite.config.ts` and `vitest.config.ts` only |
+| `virtual:oakestra-addon` (`ADDON_ID`, provided by `oakestraAddon()`)                              | Yes                                          |
+| `@oakestra/dashboard-sdk/testing`                                                                 | Test files only (`*.test.ts(x)`)             |
+| `@oakestra/ui`, `@oakestra/ui/chart`, `/data-table`, `/command`, `/map`, `/location-map`, `/flow` | Yes                                          |
+| `@oakestra/ui/theme.css` (and other `@oakestra/ui/*.css`)                                         | Yes                                          |
+| `@oakestra/api`                                                                                   | **Types only** (`import type`)               |
+| Any other `@oakestra/*` package, any `@oakestra/*/src/...` path                                   | No                                           |
+| Files of the shell or of another addon                                                            | No                                           |
+| Third-party npm packages                                                                          | Not restricted by lint. See below.           |
 
 Third-party packages:
 

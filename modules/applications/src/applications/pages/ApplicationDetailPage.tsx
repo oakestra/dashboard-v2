@@ -33,8 +33,8 @@ import {
   Trash2Icon,
   TriangleAlertIcon,
 } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 
 import { isNotFound, NotFound } from '../../components/NotFound';
 import { seededApplicationQuery } from '../../queries';
@@ -42,6 +42,7 @@ import { useDeployAll } from '../../services/mutations';
 import { isUndeployed, usePollWhileTransitional } from '../../services/status';
 import { applicationHealth, describeServiceCounts } from '../health';
 import { ContributedTabContent } from '../../components/ContributedTabContent';
+import { ApplicationTopology } from '../components/ApplicationTopology';
 import { ServicesList } from '../components/ServicesList';
 import { ApplicationFormDialog } from '../components/ApplicationFormDialog';
 import { DeleteApplicationDialog } from '../components/DeleteApplicationDialog';
@@ -53,9 +54,38 @@ export function ApplicationDetailPage() {
   const addonPath = useAddonPath();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [tab, setTab] = useState('services');
+  // In the URL so a link can open the topology with a node selected.
+  const [params, setParams] = useSearchParams();
+  const tab = params.get('tab') ?? 'services';
+  // Stable on purpose: ContributedTabContent runs its cleanup whenever this changes, which would
+  // look like the tab being removed.
+  const setParamsRef = useRef(setParams);
+  useLayoutEffect(() => {
+    setParamsRef.current = setParams;
+  });
+  const changeTab = useCallback((value: string) => {
+    setParamsRef.current(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        if (value === 'services') next.delete('tab');
+        else next.set('tab', value);
+        // The selected node only means something on the topology tab.
+        next.delete('node');
+        return next;
+      },
+      { replace: true },
+    );
+  }, []);
   const leaveTab = useCallback((value: string) => {
-    setTab((current) => (current === value ? 'services' : current));
+    setParamsRef.current(
+      (previous) => {
+        if (previous.get('tab') !== value) return previous;
+        const next = new URLSearchParams(previous);
+        next.delete('tab');
+        return next;
+      },
+      { replace: true },
+    );
   }, []);
 
   const application = useQuery(seededApplicationQuery(api, useQueryClient(), appId));
@@ -202,46 +232,37 @@ export function ApplicationDetailPage() {
         }
       />
 
-      {/* Without contributed tabs a lone "Services" tab would only look like a stray button, so
-          the tab chrome exists only when the slot has something (`wrap`), `empty` otherwise. */}
-      <Slot
-        point="application.detail.tabs"
-        context={tabContext}
-        render={(extTab, _content, source) => (
-          <TabsTrigger value={`${source.id}:${extTab.id}`}>
-            {extTab.label}
-            {source.remote ? (
-              <SourceTag name={source.displayName ?? source.id} version={source.version} />
-            ) : null}
-          </TabsTrigger>
-        )}
-        wrap={(triggers) => (
-          <Tabs value={tab} onValueChange={setTab}>
-            <TabsList>
-              <TabsTrigger value="services">Services</TabsTrigger>
-              {triggers}
-            </TabsList>
-            <TabsContent value="services">{servicesPanel}</TabsContent>
-            <Slot
-              point="application.detail.tabs"
-              context={tabContext}
-              render={(extTab, content, source) => (
-                <ContributedTabContent value={`${source.id}:${extTab.id}`} onRemoved={leaveTab}>
-                  {content}
-                </ContributedTabContent>
-              )}
-            />
-          </Tabs>
-        )}
-        empty={
-          <section aria-labelledby="services-heading" className="space-y-3">
-            <h2 id="services-heading" className="text-sm font-semibold">
-              Services
-            </h2>
-            {servicesPanel}
-          </section>
-        }
-      />
+      <Tabs value={tab} onValueChange={changeTab}>
+        <TabsList>
+          <TabsTrigger value="services">Services</TabsTrigger>
+          <TabsTrigger value="topology">Topology</TabsTrigger>
+          <Slot
+            point="application.detail.tabs"
+            context={tabContext}
+            render={(extTab, _content, source) => (
+              <TabsTrigger value={`${source.id}:${extTab.id}`}>
+                {extTab.label}
+                {source.remote ? (
+                  <SourceTag name={source.displayName ?? source.id} version={source.version} />
+                ) : null}
+              </TabsTrigger>
+            )}
+          />
+        </TabsList>
+        <TabsContent value="services">{servicesPanel}</TabsContent>
+        <TabsContent value="topology">
+          <ApplicationTopology application={app} />
+        </TabsContent>
+        <Slot
+          point="application.detail.tabs"
+          context={tabContext}
+          render={(extTab, content, source) => (
+            <ContributedTabContent value={`${source.id}:${extTab.id}`} onRemoved={leaveTab}>
+              {content}
+            </ContributedTabContent>
+          )}
+        />
+      </Tabs>
 
       <ApplicationFormDialog open={editing} onOpenChange={setEditing} application={app} />
       <DeleteApplicationDialog

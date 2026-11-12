@@ -22,6 +22,7 @@ import {
 import { ClusterList } from '../components/ClusterList';
 import { ClusterMap } from '../components/ClusterMap';
 import { ClustersEmptyState } from '../components/ClustersEmptyState';
+import { InfrastructureTopology } from '../components/InfrastructureTopology';
 import { clusterTotals } from '../lib';
 
 export function InfrastructurePage() {
@@ -96,6 +97,7 @@ function Loaded({ clusters }: { clusters: Parameters<typeof clusterTotals>[0] })
         </StatGroup>
         <p className="text-muted-foreground text-xs">Capacity counts active clusters only.</p>
       </div>
+      <InfrastructureTopology clusters={clusters} />
       <ClusterList clusters={clusters} />
       <SectionCard
         title="Locations"

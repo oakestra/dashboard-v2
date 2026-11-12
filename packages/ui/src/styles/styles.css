@@ -170,3 +170,47 @@
     @apply bg-transparent! dark:invert;
   }
 }
+
+/* React Flow (@oakestra/ui/flow). Its base.css is unlayered and loads with the graph chunk, so, as
+   for mapcn above, these overrides need !important to win over it from inside a layer. Tokens
+   only, so both themes follow without React Flow's own dark mode. */
+@layer base {
+  .react-flow {
+    font-family: var(--font-ui) !important;
+  }
+  /* The ring goes on the node's surface, which has the node's radius (a pill for compact ones). */
+  .react-flow__node:focus-visible {
+    @apply outline-none!;
+  }
+  .react-flow__node:focus-visible > [data-slot='flow-node'] {
+    @apply ring-[3px] ring-ring/50;
+  }
+  .react-flow__controls {
+    @apply overflow-hidden! rounded-md! border! bg-background! shadow-xs!;
+  }
+  .react-flow__controls-button {
+    @apply size-7! border-0! border-b! bg-background! p-1.5! text-foreground!;
+  }
+  .react-flow__controls-button:last-child {
+    @apply border-b-0!;
+  }
+  .react-flow__controls-button:hover {
+    @apply bg-accent!;
+  }
+  .react-flow__controls-button:disabled {
+    @apply text-muted-foreground/50!;
+  }
+  .react-flow__controls-button:focus-visible {
+    @apply ring-[3px] ring-ring/50 outline-none!;
+  }
+  /* Stays visible: React Flow is MIT licensed and asks for the credit, so it is made small instead. */
+  .react-flow__attribution {
+    @apply rounded-sm! bg-background/85! text-[0.625rem]! leading-3!;
+  }
+  .react-flow__attribution a {
+    @apply text-muted-foreground!;
+  }
+  .react-flow__attribution a:hover {
+    @apply text-foreground!;
+  }
+}

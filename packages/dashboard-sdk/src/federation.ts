@@ -86,6 +86,8 @@ export const sharedDeps: SharedDependencies = {
   '@oakestra/ui/map': { singleton: true, requiredVersion: uiRange },
   // The lazy LocationMap wrapper. Its own module so importing it does not pull in `ui/map`.
   '@oakestra/ui/location-map': { singleton: true, requiredVersion: uiRange },
+  // The lazy FlowGraph wrapper; React Flow and dagre load only when a graph renders.
+  '@oakestra/ui/flow': { singleton: true, requiredVersion: uiRange },
 };
 
 /**
