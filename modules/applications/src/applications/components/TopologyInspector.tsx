@@ -1,4 +1,5 @@
 import {
+  clusterCpuPercent,
   parseClusterLocation,
   schedulerDetail,
   type Application,
@@ -177,12 +178,10 @@ function InstanceRows({
   );
 }
 
-/** The placement a link to `target` should select: in the same cluster when it runs there. */
-function placementIdNear(target: Service, clusterId: string | null): string {
-  const clusters = [...instancesByCluster(target).keys()];
-  const chosen =
-    clusterId !== null && clusters.includes(clusterId) ? clusterId : (clusters[0] ?? null);
-  return placementNodeId(target._id, chosen);
+/** The placement a link should select: in the same cluster when it runs there. */
+function placementIdNear(targetId: string, near: readonly string[], clusterId: string | null) {
+  const chosen = clusterId !== null && near.includes(clusterId) ? clusterId : (near[0] ?? null);
+  return placementNodeId(targetId, chosen);
 }
 
 function Relations({
@@ -208,7 +207,7 @@ function Relations({
           const elsewhere = near.length > 0 && !near.includes(clusterId);
           return (
             <li key={target._id}>
-              <SelectButton id={placementIdNear(target, clusterId)} onSelect={onSelect}>
+              <SelectButton id={placementIdNear(target._id, near, clusterId)} onSelect={onSelect}>
                 {target.microservice_name}
               </SelectButton>
               {elsewhere ? (
@@ -357,7 +356,7 @@ function ClusterBody({
   const canOpen = infrastructure && permissions.hasAnyRole(INFRASTRUCTURE_ROLES);
   const { cluster, clusterId } = selection;
   const reporting = clusterIsReporting(cluster);
-  const cpu = cluster?.cpu_percent ?? cluster?.aggregated_cpu_percent;
+  const cpu = cluster ? clusterCpuPercent(cluster) : undefined;
   return (
     <>
       {cluster && !reporting ? (
@@ -429,7 +428,7 @@ function UnplacedBody({
   );
 }
 
-export interface TopologyInspectorProps {
+interface TopologyInspectorProps {
   selection: TopologySelection;
   application: Application;
   services: readonly Service[];

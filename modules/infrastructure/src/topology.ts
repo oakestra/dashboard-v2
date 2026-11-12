@@ -11,14 +11,14 @@ import type { FlowEdge, FlowNode } from '@oakestra/ui/flow';
 
 import { clusterPresentation, clusterUsage } from './lib';
 
-export const ROOT_NODE_ID = 'root';
-export const CLUSTER_NODE_PREFIX = 'cluster:';
+const ROOT_NODE_ID = 'root';
+const CLUSTER_NODE_PREFIX = 'cluster:';
 
 export const UNKNOWN_WORKER = 'unknown';
-export const WORKER_NODE_PREFIX = 'worker:';
+const WORKER_NODE_PREFIX = 'worker:';
 
-// Same rule as the fleet board (modules/fleet/src/graph.ts, `shortWorker`): worker ids are long
-// hex strings whose tail tells them apart, while a hand-picked short id is shown whole.
+// Worker ids are long hex strings whose tail tells them apart, while a hand-picked short id is
+// shown whole. The applications inspector repeats this rule.
 export function shortWorker(workerId: string): string {
   return workerId.length > 10 ? workerId.slice(-6) : workerId;
 }
@@ -91,7 +91,6 @@ export function workersByCluster(services: readonly Service[], known: ReadonlySe
       const workers = result.get(clusterId) ?? new Map<string, WorkerEntry>();
       result.set(clusterId, workers);
       const status = describeStatus(instance.status);
-      const first = !workers.has(workerId);
       const entry = workers.get(workerId) ?? {
         services: new Set<string>(),
         instances: [],
@@ -101,7 +100,7 @@ export function workersByCluster(services: readonly Service[], known: ReadonlySe
       workers.set(workerId, entry);
       entry.services.add(service.microservice_name);
       entry.instances.push({ service, instance, tone: status.tone });
-      entry.tone = first ? status.tone : worseTone(entry.tone, status.tone);
+      entry.tone = worseTone(entry.tone, status.tone);
       entry.pulse ||= status.pulse;
     }
   }
@@ -116,7 +115,12 @@ export function workersByCluster(services: readonly Service[], known: ReadonlySe
 export function buildInfrastructureTopology(
   clusters: readonly Cluster[],
   services: readonly Service[],
-): { nodes: FlowNode[]; edges: FlowEdge[] } {
+): {
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+  /** The page checks a selected worker against these; returning them saves a second pass. */
+  workers: Map<string, Map<string, WorkerEntry>>;
+} {
   const sorted = [...clusters].sort((a, b) => a.cluster_name.localeCompare(b.cluster_name));
   const workers = workersByCluster(services, new Set(sorted.map((cluster) => cluster._id)));
 
@@ -175,5 +179,5 @@ export function buildInfrastructureTopology(
       });
     }
   }
-  return { nodes, edges };
+  return { nodes, edges, workers };
 }

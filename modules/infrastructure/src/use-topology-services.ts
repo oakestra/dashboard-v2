@@ -9,9 +9,21 @@ import {
   useOakestraApi,
   usePermissions,
 } from '@oakestra/dashboard-sdk';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useMemo } from 'react';
 
 const SILENT = { meta: { silent: true } };
+// One empty array for all renders, so a pending or failed list doesn't rebuild the graph each time.
+const NO_SERVICES: readonly Service[] = [];
+
+// Kept out of the hook on purpose: TanStack reruns `combine` whenever it gets a new function.
+function combineServices(results: UseQueryResult<Service[]>[]) {
+  return {
+    services: results.flatMap((result) => result.data ?? []),
+    pending: results.some((result) => result.isPending),
+    failed: results.some((result) => result.isError),
+  };
+}
 
 /**
  * The services the viewer may see, for the workers in the topology. Same split as the fleet
@@ -53,23 +65,24 @@ export function useTopologyServices(): {
       ...servicesByApplicationQuery(api, application._id),
       ...SILENT,
     })),
-    combine: (results) => ({
-      services: results.flatMap((result) => result.data ?? []),
-      pending: results.some((result) => result.isPending),
-      failed: results.some((result) => result.isError),
-    }),
+    combine: combineServices,
   });
 
-  const applicationNames = new Map(
-    (isAdmin ? (allApplications.data ?? []) : (applications.data ?? [])).map((application) => [
-      application._id,
-      application.application_name,
-    ]),
+  const visibleApplications = isAdmin ? allApplications.data : applications.data;
+  const applicationNames = useMemo(
+    () =>
+      new Map(
+        (visibleApplications ?? []).map((application) => [
+          application._id,
+          application.application_name,
+        ]),
+      ),
+    [visibleApplications],
   );
 
   if (isAdmin) {
     return {
-      services: all.data ?? [],
+      services: all.data ?? NO_SERVICES,
       applicationNames,
       pending: all.isPending,
       failed: all.isError,

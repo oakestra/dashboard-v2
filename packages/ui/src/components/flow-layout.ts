@@ -15,12 +15,12 @@ export const NODE_SIZE: Readonly<Record<Exclude<FlowNodeKind, 'group'>, Size>> =
 };
 
 /** Inner padding of a group and the height of its title row. */
-export const GROUP_PADDING = 16;
+const GROUP_PADDING = 16;
 export const GROUP_HEADER = 36;
 // As wide as a group holding one item, so an empty group's title and description fit and a row of
 // groups lines up whether they hold something or not.
 const EMPTY_GROUP: Size = {
-  width: 192 + 2 * GROUP_PADDING,
+  width: NODE_SIZE.item.width + 2 * GROUP_PADDING,
   height: GROUP_HEADER + GROUP_PADDING + 8,
 };
 
@@ -258,10 +258,9 @@ function routeEdges(
       end: Math.max(extent?.end ?? end, end),
     });
   }
-  const sorted = [...columns.entries()].sort(([a], [b]) => a - b).map(([, extent]) => extent);
-  const indexOf = new Map(
-    [...columns.keys()].sort((a, b) => a - b).map((key, index) => [key, index]),
-  );
+  const keys = [...columns.keys()].sort((a, b) => a - b);
+  const sorted = keys.map((key) => columns.get(key));
+  const indexOf = new Map(keys.map((key, index) => [key, index]));
   const columnIndex = (id: string) => indexOf.get(columnKey.get(id) ?? NaN);
 
   interface Plan {
@@ -293,7 +292,9 @@ function routeEdges(
     for (let step = 0; step < crosses.length - 1; step++) {
       const owners = arrivals.get(first + step) ?? new Map<string, number[]>();
       arrivals.set(first + step, owners);
-      owners.set(request.trunk, [...(owners.get(request.trunk) ?? []), crosses[step] ?? 0]);
+      const arrived = owners.get(request.trunk) ?? [];
+      owners.set(request.trunk, arrived);
+      arrived.push(crosses[step] ?? 0);
     }
   }
   const trunks = new Map<string, number>();
@@ -372,7 +373,10 @@ export function layoutGraph(
   const children = new Map<string, FlowNode[]>();
   for (const node of nodes) {
     const parent = parentOf(node);
-    if (parent) children.set(parent, [...(children.get(parent) ?? []), node]);
+    if (!parent) continue;
+    const members = children.get(parent) ?? [];
+    children.set(parent, members);
+    members.push(node);
   }
   const knownEdges = edges.filter((edge) => byId.has(edge.source) && byId.has(edge.target));
 

@@ -56,7 +56,6 @@ interface NodeData extends Record<string, unknown> {
   clickable: boolean;
   /** Another node is hovered and this one is not connected to it. */
   dimmed: boolean;
-  reducedMotion: boolean;
   renderLink: (props: FlowLinkProps) => ReactNode;
 }
 
@@ -88,8 +87,8 @@ const FIT_VIEW_OPTIONS = { padding: 0.15, maxZoom: 1 };
 const FIT_DURATION_MS = 250;
 
 /** Hover long enough to mean it before a card opens; a short grace keeps it while moving on. */
-export const HOVER_CARD_DELAY_MS = 350;
-export const HOVER_CARD_GRACE_MS = 100;
+const HOVER_CARD_DELAY_MS = 350;
+const HOVER_CARD_GRACE_MS = 100;
 
 // Only warning and destructive color a node, so a healthy graph stays neutral (see the Styling
 // rules); the glyph carries every other tone.
@@ -173,15 +172,10 @@ function nodeSurface(data: NodeData) {
 }
 
 function Glyph({ data }: { data: NodeData }) {
-  const { node, reducedMotion } = data;
+  const { node } = data;
   if (!node.tone && !node.stale) return null;
-  return (
-    <StatusDot
-      tone={node.tone ?? 'neutral'}
-      stale={node.stale ?? false}
-      pulse={!reducedMotion && (node.pulse ?? false)}
-    />
-  );
+  // StatusDot stops its pulse under reduced motion itself.
+  return <StatusDot tone={node.tone ?? 'neutral'} stale={node.stale ?? false} pulse={node.pulse} />;
 }
 
 function ItemNodeView({ data }: NodeProps<ItemNode>) {
@@ -287,9 +281,10 @@ function ToneEdgeView({
   data,
 }: EdgeProps<ToneEdge>) {
   const route = data?.route;
+  const points = route && route.points.length > 1 ? route.points : null;
   const [path, labelX, labelY] =
-    route && route.points.length > 1
-      ? [roundedPath(route.points), route.label.x, route.label.y]
+    route && points
+      ? [roundedPath(points), route.label.x, route.label.y]
       : getSmoothStepPath({
           sourceX,
           sourceY,
@@ -302,13 +297,8 @@ function ToneEdgeView({
   const edge = data?.edge;
   const tone = edge?.tone ?? 'neutral';
   const dimmed = data?.dimmed === true;
-  const head = edge?.arrow
-    ? arrowHead(
-        route && route.points.length > 1 ? route.points : null,
-        { x: targetX, y: targetY },
-        targetPosition,
-      )
-    : null;
+  const opacity = dimmed ? 0.15 : 1;
+  const head = edge?.arrow ? arrowHead(points, { x: targetX, y: targetY }, targetPosition) : null;
   return (
     <>
       {/* No `id`: it would become a DOM id, and two graphs on a page can share edge ids. */}
@@ -317,7 +307,7 @@ function ToneEdgeView({
         style={{
           stroke: EDGE_STROKES[tone],
           strokeWidth: data?.dimmed === false ? 2.25 : 1.5,
-          opacity: dimmed ? 0.15 : 1,
+          opacity,
           transition: 'opacity 150ms, stroke-width 150ms',
           ...(edge?.variant === 'dashed' ? { strokeDasharray: '5 4' } : {}),
         }}
@@ -327,7 +317,7 @@ function ToneEdgeView({
           d={head}
           fill={EDGE_STROKES[tone]}
           stroke="none"
-          style={{ opacity: dimmed ? 0.15 : 1, transition: 'opacity 150ms' }}
+          style={{ opacity, transition: 'opacity 150ms' }}
           aria-hidden
         />
       ) : null}
@@ -372,16 +362,17 @@ function useStableLayout(
   nodes: readonly FlowNode[],
   edges: readonly FlowEdge[],
   direction: FlowDirection,
-): { key: string; layout: GraphLayout } {
-  const key = layoutKey(nodes, edges, direction);
+): GraphLayout {
+  // Callers memoize their arrays, so hover and resize renders don't pay for the sort and stringify.
+  const key = useMemo(() => layoutKey(nodes, edges, direction), [nodes, edges, direction]);
   const [state, setState] = useState(() => ({
     key,
     layout: layoutGraph(nodes, edges, direction),
   }));
-  if (state.key === key) return state;
+  if (state.key === key) return state.layout;
   const next = { key, layout: layoutGraph(nodes, edges, direction) };
   setState(next);
-  return next;
+  return next.layout;
 }
 
 /** Width of the frame, 0 until measured (and always in jsdom, which has no layout). */
@@ -531,9 +522,9 @@ export default function FlowGraphImpl({
   inspector,
 }: FlowGraphProps) {
   const reducedMotion = usePrefersReducedMotion();
-  const { layout } = useStableLayout(nodes, edges, direction);
+  const layout = useStableLayout(nodes, edges, direction);
   const [frameRef, frameWidth, frameElement] = useFrameWidth();
-  const hasInspector = inspector !== null && inspector !== undefined && inspector !== false;
+  const hasInspector = inspector != null && inspector !== false;
   // Unmeasured (0) counts as wide, as in tests.
   const inspectorOverlay =
     hasInspector && (frameWidth === 0 || frameWidth >= INSPECTOR_OVERLAY_MIN_WIDTH);
@@ -557,19 +548,17 @@ export default function FlowGraphImpl({
   // that is the quickest way to follow one node to everything it touches. Without a hover, the
   // selection is traced, so a selected node keeps its connections highlighted.
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const tracedId =
-    hoveredId ?? (selectedId !== null && layout.nodes.has(selectedId) ? selectedId : null);
+  const tracedId = [hoveredId, selectedId].find((id) => id != null && layout.nodes.has(id)) ?? null;
   const trace = useMemo(() => {
-    const hoveredId = tracedId;
-    if (!hoveredId || !layout.nodes.has(hoveredId)) return null;
+    if (!tracedId) return null;
     const parentOf = (id: string) => layout.nodes.get(id)?.parent;
     // A group counts as its children too, and a child as part of its group.
-    const touches = (id: string) => id === hoveredId || parentOf(id) === hoveredId;
+    const touches = (id: string) => id === tracedId || parentOf(id) === tracedId;
     const edgeIds = new Set<string>();
-    const nodeIds = new Set<string>([hoveredId]);
-    for (const [id, box] of layout.nodes) if (box.parent === hoveredId) nodeIds.add(id);
-    const hoveredParent = parentOf(hoveredId);
-    if (hoveredParent) nodeIds.add(hoveredParent);
+    const nodeIds = new Set<string>([tracedId]);
+    for (const [id, box] of layout.nodes) if (box.parent === tracedId) nodeIds.add(id);
+    const tracedParent = parentOf(tracedId);
+    if (tracedParent) nodeIds.add(tracedParent);
     for (const edge of edges) {
       if (!touches(edge.source) && !touches(edge.target)) continue;
       edgeIds.add(edge.id);
@@ -586,6 +575,9 @@ export default function FlowGraphImpl({
   const cardNode = hoverCard.cardId ? byId.get(hoverCard.cardId) : undefined;
   const cardContent = cardNode && renderHoverCard ? renderHoverCard(cardNode) : null;
 
+  // Only whether there is a handler matters. Callers pass inline arrows, so depending on the
+  // handler itself would rebuild every node whenever the parent renders.
+  const clickable = Boolean(onNodeClick);
   const flowNodes = useMemo(() => {
     const placed = nodes.flatMap((node) => {
       const box = layout.nodes.get(node.id);
@@ -595,9 +587,8 @@ export default function FlowGraphImpl({
         node,
         direction,
         selected: node.id === selectedId,
-        clickable: Boolean(onNodeClick),
+        clickable,
         dimmed: trace !== null && !trace.nodeIds.has(node.id),
-        reducedMotion,
         renderLink,
       };
       const flowNode: ItemNode | GroupNode = {
@@ -617,7 +608,7 @@ export default function FlowGraphImpl({
       ...placed.filter((node) => node.type === 'flowGroup'),
       ...placed.filter((node) => node.type !== 'flowGroup'),
     ];
-  }, [nodes, layout, direction, selectedId, onNodeClick, reducedMotion, renderLink, trace]);
+  }, [nodes, layout, direction, selectedId, clickable, renderLink, trace]);
 
   const flowEdges = useMemo(
     () =>
@@ -674,6 +665,11 @@ export default function FlowGraphImpl({
     if (isNodeElement(event.target)) hoverCard.hide();
   };
 
+  const handleMouseLeave = () => {
+    setHoveredId(null);
+    hoverCard.hide();
+  };
+
   const graph = (
     // The handlers only listen to events bubbling up from the focusable nodes inside.
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
@@ -700,14 +696,8 @@ export default function FlowGraphImpl({
             setHoveredId(flowNode.id);
             if (renderHoverCard) hoverCard.show(flowNode.id);
           }}
-          onNodeMouseLeave={() => {
-            setHoveredId(null);
-            hoverCard.hide();
-          }}
-          onPaneMouseLeave={() => {
-            setHoveredId(null);
-            hoverCard.hide();
-          }}
+          onNodeMouseLeave={handleMouseLeave}
+          onPaneMouseLeave={handleMouseLeave}
           onPaneClick={() => onBackgroundClick?.()}
           // A card pinned to a node that slides away under a pan or zoom looks broken; it comes back
           // on the next hover.
@@ -785,7 +775,6 @@ export default function FlowGraphImpl({
           // Away from where the graph continues: below in a left to right graph, beside in a top
           // to bottom one, so the card covers the node's own column rather than the next one.
           side={direction === 'LR' ? 'bottom' : 'right'}
-          reducedMotion={reducedMotion}
           onClose={hoverCard.close}
         >
           {cardContent}

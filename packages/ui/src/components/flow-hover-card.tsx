@@ -1,13 +1,12 @@
 import { Popover as PopoverPrimitive } from 'radix-ui';
 import { useMemo, type ReactNode } from 'react';
 
-import { cn } from '../lib/utils';
-
 /** The rendered node in the frame, looked up on every measure: pan and zoom move it. */
 function nodeElement(frame: HTMLElement | null, nodeId: string) {
   if (!frame) return undefined;
-  return [...frame.querySelectorAll<HTMLElement>('.react-flow__node')].find(
-    (element) => element.dataset.id === nodeId,
+  return (
+    frame.querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(nodeId)}"]`) ??
+    undefined
   );
 }
 
@@ -21,14 +20,12 @@ export function FlowHoverCard({
   frame,
   nodeId,
   side,
-  reducedMotion,
   onClose,
   children,
 }: {
   frame: HTMLElement | null;
   nodeId: string;
   side: 'bottom' | 'right';
-  reducedMotion: boolean;
   onClose: () => void;
   children: ReactNode;
 }) {
@@ -58,10 +55,7 @@ export function FlowHoverCard({
           onCloseAutoFocus={(event) => event.preventDefault()}
           onFocusOutside={(event) => event.preventDefault()}
           onPointerDownOutside={(event) => event.preventDefault()}
-          className={cn(
-            'pointer-events-none z-50 max-w-72 rounded-xl border bg-popover p-3 text-sm text-popover-foreground shadow-md outline-hidden',
-            !reducedMotion && 'animate-in fade-in-0',
-          )}
+          className="pointer-events-none z-50 max-w-72 rounded-xl border bg-popover p-3 text-sm text-popover-foreground shadow-md outline-hidden motion-safe:animate-in motion-safe:fade-in-0"
         >
           {children}
         </PopoverPrimitive.Content>

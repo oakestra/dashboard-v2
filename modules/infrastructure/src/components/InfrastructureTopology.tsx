@@ -4,12 +4,7 @@ import { SectionCard, Skeleton } from '@oakestra/ui';
 import { FlowGraph, type FlowNode } from '@oakestra/ui/flow';
 import { useMemo } from 'react';
 
-import {
-  buildInfrastructureTopology,
-  parseInfraNodeId,
-  workersByCluster,
-  type InfraNodeRef,
-} from '../topology';
+import { buildInfrastructureTopology, parseInfraNodeId, type InfraNodeRef } from '../topology';
 import {
   clusterHoverLines,
   rootHoverLine,
@@ -43,14 +38,11 @@ export function InfrastructureTopology({ clusters }: { clusters: readonly Cluste
   const { services, applicationNames, pending, failed } = useTopologyServices();
   const [nodeParam, setNodeParam] = useSearchParam('node', '');
 
-  const workers = useMemo(
-    () => workersByCluster(services, new Set(clusters.map((cluster) => cluster._id))),
-    [clusters, services],
-  );
   const graph = useMemo(
     () => buildInfrastructureTopology(clusters, services),
     [clusters, services],
   );
+  const { workers } = graph;
 
   // The URL is user input and the workers arrive late, so an id only counts once it names
   // something that is drawn. Until then it is ignored rather than dropped from the URL.

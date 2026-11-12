@@ -1,5 +1,5 @@
 import { clusterReportState, type Cluster, type Service } from '@oakestra/api';
-import type { StatusTone } from '@oakestra/ui';
+import { plural, type StatusTone } from '@oakestra/ui';
 import type { FlowEdge, FlowNode } from '@oakestra/ui/flow';
 
 import {
@@ -57,7 +57,9 @@ export function instancesByCluster(service: Service): Map<string, Service['insta
     if (!instance.cluster_id || (!instance.worker_id && isPlacementFailure(instance.status))) {
       continue;
     }
-    perCluster.set(instance.cluster_id, [...(perCluster.get(instance.cluster_id) ?? []), instance]);
+    const instances = perCluster.get(instance.cluster_id) ?? [];
+    perCluster.set(instance.cluster_id, instances);
+    instances.push(instance);
   }
   return perCluster;
 }
@@ -168,7 +170,9 @@ export function buildApplicationTopology(
         },
       };
       own.push(placement);
-      byCluster.set(clusterId, [...(byCluster.get(clusterId) ?? []), placement]);
+      const onCluster = byCluster.get(clusterId) ?? [];
+      byCluster.set(clusterId, onCluster);
+      onCluster.push(placement);
     }
 
     if (own.length === 0) {
@@ -195,15 +199,10 @@ export function buildApplicationTopology(
 
   const nodes: FlowNode[] = [];
   const groups = [...byCluster]
-    .map(([clusterId, members]) => ({
-      clusterId,
-      members,
-      cluster: clusterById.get(clusterId),
-    }))
-    .map((entry) => ({
-      ...entry,
-      name: clusterDisplayName(entry.clusterId, entry.cluster),
-    }))
+    .map(([clusterId, members]) => {
+      const cluster = clusterById.get(clusterId);
+      return { clusterId, members, cluster, name: clusterDisplayName(clusterId, cluster) };
+    })
     .sort((a, b) => a.name.localeCompare(b.name));
 
   for (const { clusterId, members, cluster, name } of groups) {
@@ -212,9 +211,7 @@ export function buildApplicationTopology(
       id: clusterGroupId(clusterId),
       label: name,
       kind: 'group',
-      description: silent
-        ? 'Not reporting'
-        : `${members.length} ${members.length === 1 ? 'service' : 'services'}`,
+      description: silent ? 'Not reporting' : plural(members.length, 'service'),
       tone: silent ? 'neutral' : undefined,
       stale: silent || undefined,
     });
@@ -226,7 +223,7 @@ export function buildApplicationTopology(
       id: UNPLACED_GROUP_ID,
       label: 'Not running',
       kind: 'group',
-      description: `${unplaced.length} ${unplaced.length === 1 ? 'service' : 'services'}`,
+      description: plural(unplaced.length, 'service'),
       tone: unplaced.some((member) => isAbnormalTone(member.node.tone ?? 'neutral'))
         ? 'warning'
         : 'neutral',

@@ -43,10 +43,10 @@ export type TopologySelection =
     }
   | { kind: 'unplaced'; services: Service[] };
 
-export const servicesOnCluster = (services: readonly Service[], clusterId: string) =>
+const servicesOnCluster = (services: readonly Service[], clusterId: string) =>
   services.filter((service) => instancesByCluster(service).has(clusterId));
 
-export const unplacedServices = (services: readonly Service[]) =>
+const unplacedServices = (services: readonly Service[]) =>
   services.filter((service) => instancesByCluster(service).size === 0);
 
 /**
@@ -110,7 +110,7 @@ export function clusterIsReporting(cluster: Cluster | undefined): boolean {
 }
 
 /** Mean usage over the workers, never "of" a capacity (see the cluster quirks in AGENTS.md). */
-export function clusterUsageLine(cluster: Cluster): string | undefined {
+function clusterUsageLine(cluster: Cluster): string | undefined {
   const parts: string[] = [];
   const cpu = clusterCpuPercent(cluster);
   if (cpu !== undefined) parts.push(`CPU ${formatPercent(cpu, 0)}`);

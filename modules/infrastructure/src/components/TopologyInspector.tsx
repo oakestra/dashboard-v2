@@ -16,6 +16,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 
 import { clusterPresentation, clusterUsage } from '../lib';
+import { ClusterStatusBadge } from './ClusterStatusBadge';
 import {
   clusterNodeId,
   shortWorker,
@@ -310,7 +311,7 @@ function WorkerBody({
   );
 }
 
-export type Select = (nodeId: string) => void;
+type Select = (nodeId: string) => void;
 
 /**
  * The inspector of the topology: what the selected node is, in more detail than its hover card and
@@ -342,16 +343,11 @@ export function TopologyInspector({
   if (!cluster) return null;
   const onCluster = workers.get(cluster._id) ?? new Map<string, WorkerEntry>();
   if (target.kind === 'cluster') {
-    const { tone, label, stale } = clusterPresentation(cluster);
     return (
       <Frame
         kind="Cluster"
         title={cluster.cluster_name}
-        badge={
-          <StatusBadge tone={tone} stale={stale}>
-            {label}
-          </StatusBadge>
-        }
+        badge={<ClusterStatusBadge cluster={cluster} />}
         onClose={onClose}
       >
         <ClusterBody cluster={cluster} workers={onCluster} onSelect={onSelect} />
