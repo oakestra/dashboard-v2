@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react';
 import type { ConsentOutcome } from '../api/mutations';
 import type { ConsentReview } from './ConsentDialog';
 
-type ConsentCopy = Pick<ConsentReview, 'title' | 'description' | 'confirmLabel'>;
+type ConsentCopy = Pick<ConsentReview, 'title' | 'description' | 'confirmLabel' | 'versionInTitle'>;
 
 /**
  * State of the `ConsentDialog` for one page: `target` is what the confirmed hash is sent for.

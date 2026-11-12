@@ -23,6 +23,7 @@ import { DataList, type DataListSortOption } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowUpCircleIcon,
+  LoaderCircleIcon,
   PowerOffIcon,
   PuzzleIcon,
   ShieldCheckIcon,
@@ -85,7 +86,7 @@ const CONSENT_COPY = {
     confirmLabel: 'Accept and update',
   }),
   approve: (addon: InstalledAddon) => ({
-    title: `Approve ${addon.name} again`,
+    title: `Approve ${addon.name} again?`,
     description:
       'Approving signs the grant again for this definition. A failed addon is deployed again.',
     confirmLabel: 'Accept and approve',
@@ -131,6 +132,7 @@ function InstalledAddonItem({
   uiEntry,
   stuck,
   busy,
+  working,
   onOpen,
   onAction,
   onUpdate,
@@ -141,6 +143,8 @@ function InstalledAddonItem({
   stuck: boolean;
   /** An update or approval of this page is in flight. */
   busy: boolean;
+  /** Which of this addon's consent calls is in flight, for the spinner on its button. */
+  working: ConsentKind | null;
   onOpen: () => void;
   onAction: (kind: AddonAction) => void;
   onUpdate: () => void;
@@ -190,7 +194,11 @@ function InstalledAddonItem({
             disabled={busy}
             onClick={onApprove}
           >
-            <ShieldCheckIcon aria-hidden />
+            {working === 'approve' ? (
+              <LoaderCircleIcon className="animate-spin" aria-hidden />
+            ) : (
+              <ShieldCheckIcon aria-hidden />
+            )}
             Approve
           </Button>
         ) : null}
@@ -202,7 +210,11 @@ function InstalledAddonItem({
             disabled={busy}
             onClick={onUpdate}
           >
-            <ArrowUpCircleIcon aria-hidden />
+            {working === 'update' ? (
+              <LoaderCircleIcon className="animate-spin" aria-hidden />
+            ) : (
+              <ArrowUpCircleIcon aria-hidden />
+            )}
             Update to {addon.latest_version}
           </Button>
         ) : null}
@@ -261,6 +273,11 @@ export function InstalledPage() {
   const update = useUpdateAddon();
   const approve = useApproveAddon();
   const busy = update.isPending || approve.isPending;
+  const workingOn = (addon: InstalledAddon): ConsentKind | null => {
+    if (update.isPending && update.variables.id === addon._id) return 'update';
+    if (approve.isPending && approve.variables.id === addon._id) return 'approve';
+    return null;
+  };
 
   const addons = installed.data;
   const stuckIds = useStuckAddonIds(api, addons);
@@ -342,6 +359,7 @@ export function InstalledPage() {
               uiEntry={uiEntries[addon.addon_id]}
               stuck={stuckIds.has(addon._id)}
               busy={busy}
+              working={workingOn(addon)}
               onOpen={() => setSelectedId(addon._id)}
               onAction={(kind) => setPending({ kind, addon })}
               onUpdate={() => run('update', addon)}
@@ -373,6 +391,7 @@ export function InstalledPage() {
         uiEntry={selected ? uiEntries[selected.addon_id] : undefined}
         stuck={selected ? stuckIds.has(selected._id) : false}
         busy={busy}
+        working={selected ? workingOn(selected) : null}
         onClose={() => setSelectedId('')}
         onAction={(kind, addon) => setPending({ kind, addon })}
         onUpdate={(addon) => run('update', addon)}

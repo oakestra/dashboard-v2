@@ -1,4 +1,8 @@
-import type { InstalledAddon, MarketplaceAddon } from '@oakestra/api';
+import {
+  isTransitionalAddonStatus,
+  type InstalledAddon,
+  type MarketplaceAddon,
+} from '@oakestra/api';
 import {
   Alert,
   AlertDescription,
@@ -11,7 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
   ScrollArea,
-  SourceTag,
 } from '@oakestra/ui';
 import { DownloadIcon, SettingsIcon } from 'lucide-react';
 import { Link } from 'react-router';
@@ -21,6 +24,7 @@ import { installedAddonLink } from '../paths';
 import { uiIncompatibility } from '../ui-compat';
 import { DefinitionDetails } from './DefinitionDetails';
 import { PermissionList } from './PermissionList';
+import { SourceLabel } from './SourceLabel';
 
 interface MarketplaceDetailsDialogProps {
   addon: MarketplaceAddon | null;
@@ -44,6 +48,10 @@ export function MarketplaceDetailsDialog({
 }: MarketplaceDetailsDialogProps) {
   const incompatible = addon ? uiIncompatibility(addon.ui) : null;
   const homepage = safeHref(addon?.homepage);
+  // Same rules as the card: a disabled record does not block a new install, and nothing can be
+  // installed while the previous record is still changing.
+  const manageable = installed?.status === 'disabled' ? undefined : installed;
+  const busy = installed !== undefined && isTransitionalAddonStatus(installed.status);
   return (
     <Dialog open={addon !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-xl">
@@ -63,9 +71,8 @@ export function MarketplaceDetailsDialog({
               <div className="space-y-4">
                 <dl className="grid grid-cols-[7rem_1fr] items-center gap-x-6 gap-y-1.5 text-sm">
                   <dt className="text-muted-foreground">Source</dt>
-                  <dd className="flex items-center gap-2">
-                    <SourceTag name={addon.source.name} />
-                    <span className="text-muted-foreground">{addon.source.kind}</span>
+                  <dd>
+                    <SourceLabel source={addon.source} />
                   </dd>
                   {homepage ? (
                     <>
@@ -121,16 +128,16 @@ export function MarketplaceDetailsDialog({
               <Button variant="outline" onClick={onClose}>
                 Close
               </Button>
-              {installed ? (
+              {manageable ? (
                 <Button asChild>
-                  <Link to={installedAddonLink(installed._id)}>
+                  <Link to={installedAddonLink(manageable._id)}>
                     <SettingsIcon aria-hidden />
                     Manage
                   </Link>
                 </Button>
               ) : (
                 <Button
-                  disabled={!canInstall || incompatible !== null}
+                  disabled={busy || !canInstall || incompatible !== null}
                   onClick={() => {
                     onClose();
                     onInstall(addon);

@@ -93,7 +93,7 @@ export function MarketplaceCard({
       <div className="mt-auto flex items-center justify-between gap-3 px-5">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {installed ? <AddonStatusBadge status={installed.status} /> : null}
-          {installed?.update_available ? <Badge variant="secondary">Update</Badge> : null}
+          {installed?.update_available ? <Badge variant="secondary">Update available</Badge> : null}
           {addon.ui ? (
             incompatible ? (
               <StatusBadge tone="warning" title={incompatible}>

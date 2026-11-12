@@ -13,6 +13,8 @@ interface PermissionListProps {
 /** Every permission with what it means, dangerous ones first and marked as such. */
 export function PermissionList({ permissions, previous }: PermissionListProps) {
   const entries = permissionEntries(permissions, previous);
+  // The spacer keeps labels aligned under the shield icons; without any it is only an indent.
+  const anyDangerous = entries.some((entry) => entry.dangerous);
   if (entries.length === 0) {
     return (
       <p className="text-muted-foreground text-sm">
@@ -34,9 +36,9 @@ export function PermissionList({ permissions, previous }: PermissionListProps) {
         >
           {entry.dangerous ? (
             <ShieldAlertIcon className="text-destructive mt-0.5 size-4 shrink-0" aria-hidden />
-          ) : (
+          ) : anyDangerous ? (
             <span className="size-4 shrink-0" aria-hidden />
-          )}
+          ) : null}
           <div className="min-w-0 flex-1">
             <p className="flex flex-wrap items-center gap-2 font-medium">
               <span

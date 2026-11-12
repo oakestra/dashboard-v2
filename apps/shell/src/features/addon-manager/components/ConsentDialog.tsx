@@ -13,7 +13,7 @@ import {
   DialogTitle,
   Label,
 } from '@oakestra/ui';
-import { ShieldAlertIcon, TriangleAlertIcon } from 'lucide-react';
+import { LoaderCircleIcon, ShieldAlertIcon, TriangleAlertIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
 import { hasDangerousPermissions } from '../permissions';
@@ -24,6 +24,8 @@ export interface ConsentReview {
   title: string;
   description?: ReactNode;
   confirmLabel: string;
+  /** The title already names the version, so the body does not repeat it (installs). */
+  versionInTitle?: boolean;
   request: ConsentRequest;
   /**
    * The backend answered with another definition than the one the admin was shown (the catalog
@@ -100,18 +102,21 @@ function ReviewBody({
               </AlertDescription>
             </Alert>
           ) : null}
-          <p className="text-sm" data-testid="consent-version">
-            {request.previousVersion ? (
-              <>
-                Version <span className="tabular-nums">{request.previousVersion}</span> to{' '}
-                <span className="font-medium tabular-nums">{definition.version}</span>
-              </>
-            ) : (
-              <>
-                Version <span className="font-medium tabular-nums">{definition.version}</span>
-              </>
-            )}
-          </p>
+          {/* An update always gets the line: the title names only the new version. */}
+          {review.versionInTitle && !request.previousVersion ? null : (
+            <p className="text-sm" data-testid="consent-version">
+              {request.previousVersion ? (
+                <>
+                  Version <span className="tabular-nums">{request.previousVersion}</span> to{' '}
+                  <span className="font-medium tabular-nums">{definition.version}</span>
+                </>
+              ) : (
+                <>
+                  Version <span className="font-medium tabular-nums">{definition.version}</span>
+                </>
+              )}
+            </p>
+          )}
           {request.permissionsGrow ? (
             <Alert variant="warning" data-testid="permissions-grow">
               <TriangleAlertIcon aria-hidden />
@@ -174,7 +179,8 @@ function ReviewBody({
           disabled={pending || (dangerous && !acknowledged)}
           onClick={() => onConfirm(request.definitionHash)}
         >
-          {pending ? 'Working...' : review.confirmLabel}
+          {pending ? <LoaderCircleIcon className="animate-spin" aria-hidden /> : null}
+          {review.confirmLabel}
         </Button>
       </DialogFooter>
     </>

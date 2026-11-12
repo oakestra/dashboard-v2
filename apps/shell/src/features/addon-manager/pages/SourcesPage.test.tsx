@@ -20,13 +20,13 @@ describe('<SourcesPage>', () => {
     renderSources();
 
     const official = await row('official');
-    expect(official).toHaveTextContent('Official');
     expect(official).toHaveTextContent('community-marketplace');
     // Configured by the environment: neither deletable nor flagged as relaxed.
     expect(within(official).queryByRole('button', { name: 'Delete official' })).toBeNull();
     expect(official).not.toHaveTextContent('http allowed');
 
     const acme = await row('acme');
+    expect(acme).toHaveTextContent('Tap');
     expect(acme).toHaveTextContent('Token');
     expect(acme).not.toHaveTextContent('fake-acme-token');
     expect(within(acme).getByRole('button', { name: 'Sync acme' })).toBeVisible();

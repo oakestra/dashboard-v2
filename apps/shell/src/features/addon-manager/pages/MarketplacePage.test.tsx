@@ -57,13 +57,13 @@ describe('<MarketplacePage>', () => {
     ).toBeVisible();
 
     const analytics = await card('analytics');
-    await waitFor(() => expect(within(analytics).getByText('Update')).toBeVisible());
+    await waitFor(() => expect(within(analytics).getByText('Update available')).toBeVisible());
     expect(screen.getByTestId('breadcrumbs')).toHaveTextContent('HomeAddonsMarketplace');
   });
 
   it('offers Install again for an addon whose only record is disabled', async () => {
     for (const addon of installedNamed('example')) addon.status = 'disabled';
-    renderMarketplace();
+    const { user } = renderMarketplace();
 
     const example = await card('example');
     await waitFor(() => expect(within(example).getByText('Disabled')).toBeVisible());
@@ -71,19 +71,25 @@ describe('<MarketplacePage>', () => {
     await waitFor(() =>
       expect(within(example).getByRole('button', { name: 'Install example' })).toBeEnabled(),
     );
+
+    // The details dialog agrees with the card.
+    await user.click(within(example).getByRole('button', { name: 'Details of example' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).queryByRole('link', { name: /Manage/ })).toBeNull();
+    expect(within(dialog).getByRole('button', { name: 'Install' })).toBeEnabled();
   });
 
   it('filters by source and by search text', async () => {
     const { user, router } = renderMarketplace();
     await card('flops');
 
-    await user.click(screen.getByRole('combobox', { name: 'Source' }));
+    await user.click(screen.getByRole('combobox', { name: 'Filter by source' }));
     await user.click(await screen.findByRole('option', { name: 'acme (1)' }));
     expect(router.state.location.search).toContain('source=acme');
     expect(screen.getByTestId('marketplace-card-acme/node-exporter')).toBeVisible();
     expect(screen.queryByTestId('marketplace-card-flops')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('combobox', { name: 'Source' }));
+    await user.click(screen.getByRole('combobox', { name: 'Filter by source' }));
     await user.click(await screen.findByRole('option', { name: 'All sources' }));
     await user.type(screen.getByRole('searchbox', { name: 'Search Marketplace' }), 'federated');
     expect(screen.getByTestId('marketplace-card-flops')).toBeVisible();

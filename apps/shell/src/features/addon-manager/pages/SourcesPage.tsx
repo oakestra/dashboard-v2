@@ -2,6 +2,7 @@ import { ADDON_SOURCE_KINDS, type MarketplaceSource } from '@oakestra/api';
 import {
   Alert,
   AlertDescription,
+  AlertTitle,
   Badge,
   Button,
   ConfirmDialog,
@@ -26,13 +27,8 @@ import { useAddonsAdminApi } from '../../../core/addons/addons-admin';
 import { useDeleteSource, useSyncSource } from '../api/mutations';
 import { marketplaceSourcesQuery } from '../api/queries';
 import { AddTapDialog } from '../components/AddTapDialog';
+import { SOURCE_KIND_LABELS, showsSourceKind } from '../components/SourceLabel';
 import { marketplaceSourceLink } from '../paths';
-
-const KIND_LABELS: Readonly<Record<MarketplaceSource['kind'], string>> = {
-  official: 'Official',
-  tap: 'Tap',
-  local: 'Local',
-};
 
 // The marketplace's own order: official first, then taps by name, then local. ADDON_SOURCE_KINDS
 // is declared in that order.
@@ -73,11 +69,17 @@ function SourceItem({
           >
             {source.name}
           </Link>
-          <Badge variant="outline">{KIND_LABELS[source.kind]}</Badge>
-          {source.has_token ? <Badge variant="secondary">Token</Badge> : null}
+          {showsSourceKind(source) ? (
+            <Badge variant="outline">{SOURCE_KIND_LABELS[source.kind]}</Badge>
+          ) : null}
+          {source.has_token ? (
+            <Badge variant="secondary" title="Fetched with a bearer token">
+              Token
+            </Badge>
+          ) : null}
           {/* The official source is trusted with both by configuration, not by an admin. */}
           {source.kind === 'tap' && source.allow_insecure ? (
-            <Badge variant="secondary">http allowed</Badge>
+            <Badge variant="secondary">Plain http allowed</Badge>
           ) : null}
           {source.kind === 'tap' && source.allow_private ? (
             <Badge variant="secondary">Private addresses allowed</Badge>
@@ -89,9 +91,15 @@ function SourceItem({
           <ItemDescription>Definitions registered on this marketplace.</ItemDescription>
         )}
         {source.last_error ? (
-          <Alert variant="destructive" className="mt-2" data-testid={`source-error-${source.name}`}>
+          // Warning, not destructive: the marketplace keeps serving what it had, and the tab
+          // marks the same state with a warning dot.
+          <Alert variant="warning" className="mt-2" data-testid={`source-error-${source.name}`}>
+            <AlertTitle>The last sync failed</AlertTitle>
             <AlertDescription className="break-words">
-              {source.last_error}. The last good index stays listed.
+              {source.last_error.replace(/\.$/, '')}.{' '}
+              {source.last_synced_at
+                ? 'The addons of the last good index stay listed.'
+                : 'No index has been fetched from it yet.'}
             </AlertDescription>
           </Alert>
         ) : null}

@@ -13,10 +13,15 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SourceTag,
   CopyButton,
 } from '@oakestra/ui';
-import { ArrowUpCircleIcon, PowerOffIcon, ShieldCheckIcon, Trash2Icon } from 'lucide-react';
+import {
+  ArrowUpCircleIcon,
+  LoaderCircleIcon,
+  PowerOffIcon,
+  ShieldCheckIcon,
+  Trash2Icon,
+} from 'lucide-react';
 
 import type { AddonEntry } from '../../../core/addons/addon-registry';
 import { addonAction, canApprove, canUpdate, type AddonAction } from '../addon-action';
@@ -25,6 +30,7 @@ import { DashboardUiBadge, dashboardUiProblem } from './DashboardUiBadge';
 import { DefinitionDetails } from './DefinitionDetails';
 import { navItemKeys, NavItemKeys } from './NavItemKeys';
 import { PermissionList } from './PermissionList';
+import { SourceLabel } from './SourceLabel';
 
 interface AddonDetailSheetProps {
   addon: InstalledAddon | undefined;
@@ -37,6 +43,8 @@ interface AddonDetailSheetProps {
   onApprove: (addon: InstalledAddon) => void;
   /** An update or approval of this page is in flight. */
   busy: boolean;
+  /** Which of this addon's consent calls is in flight, for the spinner on its button. */
+  working: 'update' | 'approve' | null;
 }
 
 export function AddonDetailSheet({
@@ -48,6 +56,7 @@ export function AddonDetailSheet({
   onUpdate,
   onApprove,
   busy,
+  working,
 }: AddonDetailSheetProps) {
   const transitional = addon ? isTransitionalAddonStatus(addon.status) : false;
   const action = addon ? addonAction(addon, stuck) : undefined;
@@ -88,9 +97,8 @@ export function AddonDetailSheet({
                     ) : null}
                   </dd>
                   <dt className="text-muted-foreground">Source</dt>
-                  <dd className="flex items-center gap-2">
-                    <SourceTag name={addon.source.name} />
-                    <span className="text-muted-foreground">{addon.source.kind}</span>
+                  <dd>
+                    <SourceLabel source={addon.source} />
                   </dd>
                   <dt className="text-muted-foreground">Services</dt>
                   <dd className="tabular-nums">{addon.services.length}</dd>
@@ -185,13 +193,21 @@ export function AddonDetailSheet({
             <SheetFooter className="border-t sm:flex-row sm:justify-end">
               {canApprove(addon) ? (
                 <Button variant="outline" disabled={busy} onClick={() => onApprove(addon)}>
-                  <ShieldCheckIcon aria-hidden />
+                  {working === 'approve' ? (
+                    <LoaderCircleIcon className="animate-spin" aria-hidden />
+                  ) : (
+                    <ShieldCheckIcon aria-hidden />
+                  )}
                   Approve again
                 </Button>
               ) : null}
               {canUpdate(addon) ? (
                 <Button variant="outline" disabled={busy} onClick={() => onUpdate(addon)}>
-                  <ArrowUpCircleIcon aria-hidden />
+                  {working === 'update' ? (
+                    <LoaderCircleIcon className="animate-spin" aria-hidden />
+                  ) : (
+                    <ArrowUpCircleIcon aria-hidden />
+                  )}
                   Update to {addon.latest_version}
                 </Button>
               ) : null}

@@ -184,7 +184,7 @@ describe('addons-manager endpoints', () => {
     await expect(bad.manager.get('a1')).rejects.toMatchObject({ kind: 'invalid-response' });
   });
 
-  it('reports an unreachable upstream, but shows the service's own gateway message', async () => {
+  it("reports an unreachable upstream, but shows the service's own gateway message", async () => {
     const gateway = setup(() => new Response('<html>502 Bad Gateway</html>', { status: 502 }));
     await expect(gateway.manager.list()).rejects.toMatchObject({
       status: 502,

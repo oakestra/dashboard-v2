@@ -36,8 +36,8 @@ const searchValue = (addon: MarketplaceAddon) =>
   ].join(' ');
 
 // The marketplace's own order: official first, then taps by name, then local registrations.
-// ADDON_SOURCE_KINDS is declared in that order.
-
+// ADDON_SOURCE_KINDS is declared in that order. One option only, so DataList shows no sort picker:
+// next to the source filter it looked like a second filter.
 const SORT_OPTIONS: readonly DataListSortOption<MarketplaceAddon>[] = [
   {
     id: 'source',
@@ -45,7 +45,6 @@ const SORT_OPTIONS: readonly DataListSortOption<MarketplaceAddon>[] = [
     value: (addon) =>
       `${ADDON_SOURCE_KINDS.indexOf(addon.source.kind)}:${addon.source.name}:${addon.name}`,
   },
-  { id: 'name', label: 'Name', value: (addon) => addon.name },
 ];
 
 const ALL_SOURCES = 'all';
@@ -112,6 +111,7 @@ export function MarketplacePage() {
             description:
               'Review what this addon runs and may do on the host. Installing accepts exactly this definition.',
             confirmLabel: 'Accept and install',
+            versionInTitle: true,
           }));
           // The installed tab shows the progress of the new addon.
           if (outcome.kind === 'done') void navigate(INSTALLED_PATH);
@@ -136,7 +136,7 @@ export function MarketplacePage() {
         value={sourceFilter || ALL_SOURCES}
         onValueChange={(value) => setSourceFilter(value === ALL_SOURCES ? '' : value)}
       >
-        <SelectTrigger aria-label="Source" className="w-44">
+        <SelectTrigger aria-label="Filter by source" className="w-44">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
