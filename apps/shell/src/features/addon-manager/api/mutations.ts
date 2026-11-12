@@ -1,27 +1,98 @@
-import { isApiError, type RegisterAddonInput } from '@oakestra/api';
+import {
+  isApiError,
+  isConsentRequiredError,
+  type AddTapInput,
+  type ConsentRequest,
+  type InstalledAddon,
+  type RegisterAddonInput,
+} from '@oakestra/api';
 import { useNotify } from '@oakestra/dashboard-sdk';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useAddonsAdminApi } from '../../../core/addons/addons-admin';
 import { addonManagerKeys } from '../keys';
-import { pendingReviewsFor } from './pending-reviews';
+
+/**
+ * Install, update and approve either go through or come back with the definition the admin has
+ * to accept first. The first call never carries a hash (the catalog serves none), so that answer
+ * is a step of the flow, not a failure: it is a result here and the global mutation error toast
+ * never sees it.
+ */
+export type ConsentOutcome =
+  { kind: 'done'; addon: InstalledAddon } | { kind: 'consent'; request: ConsentRequest };
+
+async function withConsent(run: () => Promise<InstalledAddon>): Promise<ConsentOutcome> {
+  try {
+    return { kind: 'done', addon: await run() };
+  } catch (error) {
+    if (isConsentRequiredError(error)) return { kind: 'consent', request: error.consentRequest };
+    throw error;
+  }
+}
+
+interface AcceptVariables {
+  /** The definition hash the admin accepted in the dialog; absent for the first call. */
+  acceptDefinition?: string;
+}
 
 export function useInstallAddon() {
   const { manager } = useAddonsAdminApi();
   const queryClient = useQueryClient();
   const notify = useNotify();
   return useMutation({
-    mutationFn: (addon: { marketplaceId: string; name: string }) =>
-      manager.install(addon.marketplaceId),
+    mutationFn: ({
+      qualifiedName,
+      acceptDefinition,
+    }: AcceptVariables & { qualifiedName: string }) =>
+      withConsent(() => manager.install(qualifiedName, { acceptDefinition })),
     meta: { errorMessage: 'Could not install the addon' },
-    onSuccess: async (_installed, addon) => {
+    onSuccess: async (outcome, { qualifiedName }) => {
+      if (outcome.kind !== 'done') return;
       // Not a success: the install has only been accepted. The outcome toast comes from
       // useInstallOutcomeToasts once the status settles.
-      notify.info(`Installing ${addon.name}`, {
+      notify.info(`Installing ${qualifiedName}`, {
         description: 'You will be notified when it is active or if it fails.',
       });
       // The marketplace itself is unchanged: its "Installed" badges come from the installed list
       // too, like the new row in the table.
+      await queryClient.invalidateQueries({ queryKey: addonManagerKeys.installed() });
+    },
+  });
+}
+
+/** Moves an installed addon to the catalog's latest version. */
+export function useUpdateAddon() {
+  const { manager } = useAddonsAdminApi();
+  const queryClient = useQueryClient();
+  const notify = useNotify();
+  return useMutation({
+    mutationFn: ({ id, acceptDefinition }: AcceptVariables & { id: string; name: string }) =>
+      withConsent(() => manager.update(id, { acceptDefinition })),
+    meta: { errorMessage: 'Could not update the addon' },
+    onSuccess: async (outcome, { name }) => {
+      if (outcome.kind !== 'done') return;
+      notify.info(`Updating ${name} to ${outcome.addon.version}`);
+      await queryClient.invalidateQueries({ queryKey: addonManagerKeys.installed() });
+    },
+  });
+}
+
+/** Signs the grant again; a failed addon is deployed again. */
+export function useApproveAddon() {
+  const { manager } = useAddonsAdminApi();
+  const queryClient = useQueryClient();
+  const notify = useNotify();
+  return useMutation({
+    mutationFn: ({ id, acceptDefinition }: AcceptVariables & { id: string; name: string }) =>
+      withConsent(() => manager.approve(id, { acceptDefinition })),
+    meta: { errorMessage: 'Could not approve the addon' },
+    onSuccess: async (outcome, { name }) => {
+      if (outcome.kind !== 'done') return;
+      notify.success(
+        outcome.addon.status === 'installing'
+          ? `Approved ${name}, deploying it again`
+          : `Approved ${name}`,
+      );
       await queryClient.invalidateQueries({ queryKey: addonManagerKeys.installed() });
     },
   });
@@ -101,37 +172,95 @@ export function useRemoveAddon() {
   });
 }
 
-export function useRegisterAddon() {
-  const api = useAddonsAdminApi();
-  const queryClient = useQueryClient();
-  const notify = useNotify();
-  return useMutation({
-    mutationFn: (input: RegisterAddonInput) => api.marketplace.register(input),
-    // The dialog shows the reason next to the input.
-    meta: { silent: true },
-    onSuccess: async (definition) => {
-      if (definition.status === 'under_review') {
-        // useReviewOutcomes (in the layout) polls it and announces the result.
-        pendingReviewsFor(api).add(definition);
-        notify.success(`Submitted ${definition.name} for review`, {
-          description: 'You will be notified when it is listed in the marketplace.',
-        });
-      } else notify.success(`Registered ${definition.name}`);
-      await queryClient.invalidateQueries({ queryKey: addonManagerKeys.marketplace() });
-    },
-  });
+/** The catalog and the source counts both change with the local source. */
+async function invalidateCatalog(queryClient: ReturnType<typeof useQueryClient>) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: addonManagerKeys.marketplace() }),
+    queryClient.invalidateQueries({ queryKey: addonManagerKeys.sources() }),
+  ]);
 }
 
-export function useDeleteDefinition() {
+export function useRegisterAddon() {
   const { marketplace } = useAddonsAdminApi();
   const queryClient = useQueryClient();
   const notify = useNotify();
   return useMutation({
-    mutationFn: (definition: { id: string; name: string }) => marketplace.remove(definition.id),
+    mutationFn: (input: RegisterAddonInput) => marketplace.register(input),
+    // The dialog shows the reason next to the input.
+    meta: { silent: true },
+    onSuccess: async (item) => {
+      notify.success(`Registered ${item.qualified_name} ${item.version}`);
+      await invalidateCatalog(queryClient);
+    },
+  });
+}
+
+export function useDeleteLocalAddon() {
+  const { marketplace } = useAddonsAdminApi();
+  const queryClient = useQueryClient();
+  const notify = useNotify();
+  return useMutation({
+    mutationFn: (item: { name: string; qualifiedName: string }) =>
+      marketplace.removeLocal(item.name),
     meta: { errorMessage: 'Could not delete the addon definition' },
-    onSuccess: async (_result, definition) => {
-      notify.success(`Deleted ${definition.name} from the marketplace`);
-      await queryClient.invalidateQueries({ queryKey: addonManagerKeys.marketplace() });
+    onSuccess: async (_result, item) => {
+      notify.success(`Deleted ${item.qualifiedName} from the marketplace`);
+      await invalidateCatalog(queryClient);
+    },
+  });
+}
+
+export function useAddTap() {
+  const { marketplace } = useAddonsAdminApi();
+  const queryClient = useQueryClient();
+  const notify = useNotify();
+  return useMutation({
+    mutationFn: (input: AddTapInput) => marketplace.sources.add(input),
+    // The dialog shows the reason next to the input.
+    meta: { silent: true },
+    onSuccess: async (source) => {
+      // A failing first sync does not undo the tap; the list shows its error.
+      if (source.last_error) {
+        notify.warning(`Added ${source.name}, but its index could not be fetched`, {
+          description: source.last_error,
+        });
+      } else {
+        notify.success(`Added ${source.name}`, {
+          description: `${source.addon_count} addons synced.`,
+        });
+      }
+      await invalidateCatalog(queryClient);
+    },
+  });
+}
+
+export function useSyncSource() {
+  const { marketplace } = useAddonsAdminApi();
+  const queryClient = useQueryClient();
+  const notify = useNotify();
+  return useMutation({
+    mutationFn: (name: string) => marketplace.sources.sync(name),
+    meta: { errorMessage: 'Could not sync the source' },
+    onSuccess: (source) => {
+      notify.success(`Synced ${source.name}`, {
+        description: `${source.addon_count} addons listed.`,
+      });
+    },
+    // A failed sync is recorded on the source as well, so refetch either way.
+    onSettled: () => invalidateCatalog(queryClient),
+  });
+}
+
+export function useDeleteSource() {
+  const { marketplace } = useAddonsAdminApi();
+  const queryClient = useQueryClient();
+  const notify = useNotify();
+  return useMutation({
+    mutationFn: (name: string) => marketplace.sources.remove(name),
+    meta: { errorMessage: 'Could not delete the source' },
+    onSuccess: async (_result, name) => {
+      notify.success(`Deleted ${name}`);
+      await invalidateCatalog(queryClient);
     },
   });
 }

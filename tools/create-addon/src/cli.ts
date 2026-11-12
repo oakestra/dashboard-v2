@@ -57,9 +57,10 @@ function nextSteps(
       ? `  docker build -t addon-${name}-ui .`
       : `  docker build -f addons/${name}/Dockerfile -t addon-${name}-ui .   # from the repository root`,
     '',
-    'To install it in a dashboard: push the image, then register marketplace-definition.json',
-    `(set the image) in the addon manager's marketplace page. The container must be named`,
-    `addonui-${name}.`,
+    'To install it in a dashboard: push the image, set it in marketplace-definition.json and',
+    'publish the definition in an index (the official one or a tap). The addons engine runs the',
+    `UI as addonui-${name}. A local registration is installed as local--${name}, which the`,
+    `UI built as ${name} does not match.`,
   );
   return lines.join('\n');
 }

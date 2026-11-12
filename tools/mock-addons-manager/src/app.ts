@@ -1,38 +1,41 @@
 import type { Server } from 'node:http';
 
 import {
+  addonId,
   createAddonsBackend,
   createAddonsFetchHandler,
-  createObjectId,
+  noPermissions,
+  qualifiedName,
   type AddonsBackend,
+  type MockDefinition,
   type MockInstalledAddon,
-  type MockMarketplaceAddon,
 } from '@oakestra/mocks';
 import { createMockHttpServer } from '@oakestra/mocks/http';
 
 /**
- * Mock of the addons-manager AND the marketplace-manager on one port (their paths differ), for the
- * e2e stack and `compose.dev.yml`. The behaviour lives in `@oakestra/mocks` (shared with
+ * Mock of the Go addons engine (addons-manager and marketplace) on one port, since their paths differ,
+ * for the e2e stack and `compose.dev.yml`. The behaviour lives in `@oakestra/mocks` (shared with
  * the MSW handlers); this file only serves it over HTTP and adds the `/__test` control API.
  *
  * Endpoints:
- * - `/api/v1/addons[/<id>]`: addons-manager
- * - `/api/v1/marketplace/addons[/<id>]`: marketplace-manager
+ * - `/api/v1/addons[/<id>[/update|/approve]]`: addons-manager
+ * - `/api/v1/marketplace/addons...`, `/api/v1/marketplace/sources...`: marketplace
  * - `GET /api/v1/ui-addons`: `[{name, version, sdk}]` of active addons whose definition has `ui`
  *
- * Test API, which predates the two backends and keeps working on top of them. The old model was a
- * flat list of `{name, version, sdk, enabled}`; it maps onto the new one like this:
- * - `enabled: true`  -> the addon is installed and `active` (installed on the spot if needed,
- *   with a marketplace definition that has a ui block created for unknown names)
+ * Test API, which predates the backends and keeps working on top of them. Addons are named by
+ * their id (the name in `/ui-addons`). The old model was a flat list of
+ * `{name, version, sdk, enabled}`; it maps onto the new one like this:
+ * - `enabled: true`  -> the addon is installed and `active` (installed on the spot, definition
+ *   accepted, with an official catalog definition that has a ui block created for unknown names)
  * - `enabled: false` -> the installed addon is `disabled` (no `disabling` phase, no timers)
- * - `sdk`            -> `ui.sdk` of its marketplace definition (a ui block is added if missing)
- * - `version`        -> the version reported by `/ui-addons` (stored apart: no model has it yet)
+ * - `sdk`            -> `ui.sdk` of its catalog and installed definition (a ui block is added)
+ * - `version`        -> the version reported by `/ui-addons`
  *
  *   GET    /__test/addons          legacy view of all installed addons
- *   PUT    /__test/addons/<name>   body {enabled?, version?, sdk?}; PATCH is the same
- *   DELETE /__test/addons/<name>   drops the installed record
- *   GET    /__test/state           raw {marketplace, installed}
- *   PUT    /__test/config          body {installDelayMs?, disableDelayMs?, reviewDelayMs?, monitorDelayMs?}
+ *   PUT    /__test/addons/<id>     body {enabled?, version?, sdk?}; PATCH is the same
+ *   DELETE /__test/addons/<id>     drops the installed records
+ *   GET    /__test/state           raw {sources, catalog, installed}
+ *   PUT    /__test/config          body {installDelayMs?, disableDelayMs?, monitorDelayMs?}
  *   POST   /__test/reset           restores the seed (delays are kept)
  */
 export interface LegacyAddon {
@@ -48,8 +51,6 @@ export interface MockAddonsManagerOptions {
   installDelayMs?: number;
   /** Delay between `active` and the monitor noticing a crash (flaky and broken fixtures). */
   monitorDelayMs?: number;
-  /** Accept and return the planned marketplace `ui` block. Off like the real marketplace. */
-  uiBlockSupport?: boolean;
 }
 
 // Handlers match on absolute URLs. Requests are rebuilt against this origin, whatever Host header
@@ -63,7 +64,6 @@ export function createMockAddonsManager(options: MockAddonsManagerOptions = {}):
   const backend = createAddonsBackend({
     installDelayMs: options.installDelayMs,
     monitorDelayMs: options.monitorDelayMs,
-    uiBlockSupport: options.uiBlockSupport,
   });
   seed();
 
@@ -79,7 +79,7 @@ export function createMockAddonsManager(options: MockAddonsManagerOptions = {}):
   const handleBackends = createAddonsFetchHandler({
     backend,
     managerUrl: `${INTERNAL_ORIGIN}/api/v1/addons`,
-    marketplaceUrl: `${INTERNAL_ORIGIN}/api/v1/marketplace/addons`,
+    marketplaceUrl: `${INTERNAL_ORIGIN}/api/v1/marketplace`,
   });
 
   return createMockHttpServer({ name: 'mock-addons-manager', origin: INTERNAL_ORIGIN, handle });
@@ -105,7 +105,6 @@ export function createMockAddonsManager(options: MockAddonsManagerOptions = {}):
       backend.setDelays({
         installDelayMs: numbers('installDelayMs'),
         disableDelayMs: numbers('disableDelayMs'),
-        reviewDelayMs: numbers('reviewDelayMs'),
         monitorDelayMs: numbers('monitorDelayMs'),
       });
       return Response.json({ ok: true });
@@ -121,7 +120,9 @@ export function createMockAddonsManager(options: MockAddonsManagerOptions = {}):
       return Response.json(legacyView(backend, applyPatch(backend, test[1]!, patch)));
     }
     if (test && method === 'DELETE') {
-      backend.state.installed = backend.state.installed.filter((addon) => addon.name !== test[1]);
+      backend.state.installed = backend.state.installed.filter(
+        (addon) => addon.addon_id !== test[1],
+      );
       return new Response(null, { status: 204 });
     }
 
@@ -130,38 +131,41 @@ export function createMockAddonsManager(options: MockAddonsManagerOptions = {}):
 }
 
 function legacyView(backend: AddonsBackend, addon: MockInstalledAddon): LegacyAddon {
-  const definition = backend.state.marketplace.find((item) => item._id === addon.marketplace_id);
   return {
-    name: addon.name,
-    version: backend.versions.get(addon.name) ?? DEFAULT_VERSION,
-    sdk: definition?.ui?.sdk ?? DEFAULT_SDK,
+    name: addon.addon_id,
+    version: backend.versions.get(addon.addon_id) ?? DEFAULT_VERSION,
+    sdk: addon.definition.ui?.sdk ?? DEFAULT_SDK,
     enabled: addon.status === 'active',
   };
 }
 
-/** The `/__test/addons/<name>` semantics described at the top of this file. */
+/** The `/__test/addons/<id>` semantics described at the top of this file. */
 function applyPatch(
   backend: AddonsBackend,
-  name: string,
+  id: string,
   patch: Partial<LegacyAddon>,
 ): MockInstalledAddon {
   const { state } = backend;
-  let definition: MockMarketplaceAddon | undefined = state.marketplace.find(
-    (item) => item.name === name,
+  let definition: MockDefinition | undefined = state.catalog.find(
+    (item) => addonId(item.source, item.name) === id,
   );
-  let installed = state.installed.find((item) => item.name === name);
+  const current = () =>
+    state.installed.find((item) => item.addon_id === id && item.status !== 'disabled') ??
+    state.installed.find((item) => item.addon_id === id);
+  let installed = current();
 
   const unknownName = !definition;
   if (!definition) {
-    const service = `${name}-ui`;
+    const service = `${id}-ui`;
     definition = {
-      _id: createObjectId(),
-      name,
-      description: `Addon created through the test API`,
+      name: id,
+      source: { kind: 'official', name: 'official' },
+      version: DEFAULT_VERSION,
+      description: 'Addon created through the test API',
       services: [
         {
           service_name: service,
-          image: `ghcr.io/oakestra/${name}:${DEFAULT_VERSION}`,
+          image: `ghcr.io/oakestra/${id}:${DEFAULT_VERSION}`,
           networks: [],
           volumes: [],
           ports: {},
@@ -171,36 +175,43 @@ function applyPatch(
       ],
       volumes: [],
       networks: [],
-      status: 'approved',
+      permissions: noPermissions(),
       ui: { service, sdk: DEFAULT_SDK },
     };
-    state.marketplace.push(definition);
+    state.catalog.push(definition);
   }
 
   if (typeof patch.sdk === 'string') {
-    definition.ui = {
-      service: definition.ui?.service ?? definition.services[0]!.service_name,
-      sdk: patch.sdk,
-    };
+    for (const def of [definition, installed?.definition]) {
+      if (!def) continue;
+      def.ui = { service: def.ui?.service ?? def.services[0]!.service_name, sdk: patch.sdk };
+    }
   }
-  if (typeof patch.version === 'string') backend.versions.set(name, patch.version);
+  if (typeof patch.version === 'string') backend.versions.set(id, patch.version);
 
   // The old API treated an unknown name as an enabled addon unless told otherwise.
   const enabled = patch.enabled ?? (unknownName ? true : undefined);
-  if (enabled === true && !installed) {
-    backend.manager.install({ marketplace_id: definition._id });
-    installed = state.installed.find((item) => item.name === name)!;
+  if (enabled === true && (!installed || installed.status === 'disabled')) {
+    backend.manager.install({
+      name: qualifiedName(definition.source, definition.name),
+      accept_definition: backend.definitionHash(definition),
+    });
+    installed = current()!;
   }
   if (installed && enabled !== undefined) {
     backend.forceStatus(installed._id, enabled ? 'active' : 'disabled');
     if (enabled) {
-      delete installed.status_details;
+      installed.status_details = {};
       delete installed.logs;
     }
   }
   return (
     installed ??
-    ({ name, marketplace_id: definition._id, status: 'disabled' } as MockInstalledAddon)
+    ({
+      addon_id: id,
+      status: 'disabled',
+      definition,
+    } as MockInstalledAddon)
   );
 }
 

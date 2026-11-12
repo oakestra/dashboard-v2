@@ -1,8 +1,8 @@
 import type { ProxyOptions } from 'vite';
 
 /**
- * Same response headers as the nginx locations for these proxies: the addons-manager answers JSON
- * as text/html with unescaped user input, so it must not be renderable on the dev origin.
+ * Same response headers as the nginx locations for these proxies: the addon services answer with
+ * unescaped user input (addon names, logs), which must not be renderable on the dev origin.
  */
 export const BACKEND_RESPONSE_HEADERS = {
   'content-security-policy': "default-src 'none'; sandbox",

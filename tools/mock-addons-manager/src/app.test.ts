@@ -8,7 +8,7 @@ let baseUrl: string;
 let close: () => Promise<void>;
 
 beforeEach(async () => {
-  const server = createMockAddonsManager({ installDelayMs: 30, uiBlockSupport: true });
+  const server = createMockAddonsManager({ installDelayMs: 30 });
   await new Promise<void>((resolve) => server.listen(0, resolve));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   close = () => new Promise((resolve) => server.close(() => resolve()));
@@ -51,28 +51,43 @@ describe('test API (legacy model on top of the two backends)', () => {
   });
 });
 
+/** POSTs an install; with `accept`, first fetches the definition hash from the consent 409. */
+async function installRequest(name: string, accept = true) {
+  const post = (hash: string) =>
+    fetch(`${baseUrl}/api/v1/addons`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, accept_definition: hash }),
+    });
+  const first = await post('');
+  if (!accept || first.status !== 409) return first;
+  const body = (await first.json()) as { definition_hash?: string };
+  return body.definition_hash ? post(body.definition_hash) : first;
+}
+
 describe('addons-manager and marketplace over HTTP', () => {
-  it('serves JSON as text/html from the addons-manager and application/json from the marketplace', async () => {
+  it('serves JSON from both services', async () => {
     const manager = await fetch(`${baseUrl}/api/v1/addons/`);
-    expect(manager.headers.get('content-type')).toContain('text/html');
+    expect(manager.headers.get('content-type')).toBe('application/json');
     const market = await fetch(`${baseUrl}/api/v1/marketplace/addons/`);
     expect(market.headers.get('content-type')).toBe('application/json');
-    expect(manager.headers.get('access-control-allow-origin')).toBe('*');
+    const sources = await json<{ name: string }[]>('/api/v1/marketplace/sources');
+    expect(sources.map((s) => s.name)).toEqual(['official', 'acme', 'lab', 'local']);
   });
 
-  it('runs the install and remove lifecycle, and ui-addons follows', async () => {
-    const [flops] = await json<{ _id: string }[]>('/api/v1/marketplace/addons/?name=flops');
-    const post = () =>
-      fetch(`${baseUrl}/api/v1/addons`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ marketplace_id: flops!._id }),
-      });
-    const created = await post();
+  it('runs the consent, install and remove lifecycle, and ui-addons follows', async () => {
+    const refused = await installRequest('flops', false);
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toMatchObject({
+      definition_hash: expect.stringMatching(/^sha256:/),
+      permissions: { core_network: true },
+    });
+
+    const created = await installRequest('flops');
     expect(created.status).toBe(201);
-    const addon = JSON.parse(await created.text()) as { _id: string; status: string };
+    const addon = (await created.json()) as { _id: string; status: string };
     expect(addon.status).toBe('installing');
-    expect((await post()).status).toBe(400);
+    expect((await installRequest('flops')).status).toBe(409);
 
     await wait(80);
     expect((await json<{ status: string }>(`/api/v1/addons/${addon._id}`)).status).toBe('active');
@@ -87,15 +102,12 @@ describe('addons-manager and marketplace over HTTP', () => {
   });
 
   it('installs the example again after disabling it, bringing its ui back', async () => {
-    const [example] = await json<{ _id: string; marketplace_id: string }[]>('/api/v1/addons/');
+    const [example] = await json<{ _id: string }[]>('/api/v1/addons/');
     await fetch(`${baseUrl}/api/v1/addons/${example!._id}`, { method: 'DELETE' });
     await wait(80);
     expect(await uiAddons()).toEqual([]);
     await fetch(`${baseUrl}/api/v1/addons/${example!._id}`, { method: 'DELETE' });
-    await fetch(`${baseUrl}/api/v1/addons`, {
-      method: 'POST',
-      body: JSON.stringify({ marketplace_id: example!.marketplace_id }),
-    });
+    expect((await installRequest('example')).status).toBe(201);
     await wait(80);
     expect(await uiAddons()).toEqual([{ name: 'example', version: '0.1.0', sdk: '^0.1.0' }]);
   });
@@ -105,35 +117,8 @@ describe('addons-manager and marketplace over HTTP', () => {
       method: 'PUT',
       body: JSON.stringify({ installDelayMs: 0 }),
     });
-    const [flops] = await json<{ _id: string }[]>('/api/v1/marketplace/addons/?name=flops');
-    const addon = await json<{ _id: string }>('/api/v1/addons/', {
-      method: 'POST',
-      body: JSON.stringify({ marketplace_id: flops!._id }),
-    });
+    const addon = (await (await installRequest('flops')).json()) as { _id: string };
     await wait(20);
     expect((await json<{ status: string }>(`/api/v1/addons/${addon._id}`)).status).toBe('active');
-  });
-});
-
-describe('without ui block support (the default, like the real marketplace)', () => {
-  it('rejects ui and serves no ui-addons for the seed', async () => {
-    const server = createMockAddonsManager({});
-    await new Promise<void>((resolve) => server.listen(0, resolve));
-    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-    try {
-      expect(await (await fetch(`${url}/api/v1/ui-addons`)).json()).toEqual([]);
-      const response = await fetch(`${url}/api/v1/marketplace/addons/`, {
-        method: 'POST',
-        body: JSON.stringify({
-          name: 'x',
-          services: [{ service_name: 'a', image: 'b' }],
-          ui: { service: 'a', sdk: '^0.1.0' },
-        }),
-      });
-      expect(response.status).toBe(422);
-      expect(await response.json()).toMatchObject({ errors: { json: { ui: ['Unknown field.'] } } });
-    } finally {
-      await new Promise((resolve) => server.close(resolve));
-    }
   });
 });

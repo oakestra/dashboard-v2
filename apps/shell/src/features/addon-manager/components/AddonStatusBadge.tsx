@@ -4,6 +4,7 @@ import { LoaderCircleIcon } from 'lucide-react';
 
 const LABELS: Readonly<Record<AddonStatus, string>> = {
   installing: 'Installing',
+  updating: 'Updating',
   active: 'Active',
   partially_active: 'Partially active',
   failed: 'Failed',
@@ -14,6 +15,7 @@ const LABELS: Readonly<Record<AddonStatus, string>> = {
 /** The one place that decides which color an addon status gets. */
 const ADDON_STATUS_TONES: Readonly<Record<AddonStatus, StatusTone>> = {
   installing: 'info',
+  updating: 'info',
   disabling: 'info',
   active: 'success',
   partially_active: 'warning',

@@ -20,11 +20,10 @@ export const addonsManager = {
   async remove(name: string): Promise<void> {
     await fetch(`${mockAddonsManagerUrl}/__test/addons/${name}`, { method: 'DELETE' });
   },
-  /** How long installs, removals and reviews stay in their transitional status. */
+  /** How long installs (and updates, approvals) and removals stay in their transitional status. */
   async setDelays(delays: {
     installDelayMs: number;
     disableDelayMs: number;
-    reviewDelayMs: number;
     /** How long after `active` the monitor notices a crashed container (flaky, broken). */
     monitorDelayMs?: number;
   }): Promise<void> {

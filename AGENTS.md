@@ -30,7 +30,7 @@ React shell that loads addon UIs at runtime through Module Federation.
   the reference. See "Module packages". `modules/fleet` is a board of cluster cards, each listing its services by
   application, behind an Unplaced card (`/fleet`, lenses, inspector, exceptions list); its state lives
   in search params. The board's columns use container queries, because the inspector narrows the page.
-- `tools/mock-addons-manager`: one server mocking the addons-manager, the marketplace-manager and
+- `tools/mock-addons-manager`: one server mocking the Go addons-manager, the marketplace and
   `GET /api/v1/ui-addons` (see "Mock addons manager"), with a `/__test` control API.
 - `tools/mock-system-manager`: the `@oakestra/mocks` backend served over HTTP for the e2e stack.
 - `tools/package-checks`: `pnpm api:check` / `pnpm api:update` (API Extractor reports, one per
@@ -106,8 +106,8 @@ The dev override (load an addon from a local Vite server) is checked by hand: ru
 `http://localhost:5173/?addon-override=example=http://localhost:5174/mf-manifest.json`.
 `pnpm dev` proxies `/ui-addons` and `/addons-api` to `ADDONS_MANAGER_URL` (default
 `http://localhost:11101`, where the compose stack or `pnpm --filter @oakestra/mock-addons-manager
-start` serves it) and `/marketplace-api` to `MARKETPLACE_URL` (default `http://localhost:11102`;
-with the mock set it to the same `http://localhost:11101`). `pnpm dev:mock` also mocks both addon
+start` serves it) and `/marketplace-api` to `MARKETPLACE_URL` (default `http://localhost:11102`,
+rewritten to its `/api/v1/marketplace`; with the mock set it to the same `http://localhost:11101`). `pnpm dev:mock` also mocks both addon
 backends in the browser (installs settle after 3s; `/ui-addons` stays empty).
 
 ## Contribution model
@@ -392,14 +392,30 @@ in `data-table.tsx`); the v8 `useReactTable` API does not exist there.
   below `/addon-assets/<ADDON_ID>/api`.
 - Route loaders get `auth`, `api` and `queryClient` through `context.get(appRouterContext)`
   (`core/router/app-context.ts`), since they run outside React.
-- Addon management (marketplace + installed addons) is shell-internal and NOT part of the SDK's
-  `OakestraApi`: the addons-manager and marketplace-manager have their own base URLs (config
-  `addonsManagerUrl` `/addons-api`, `marketplaceUrl` `/marketplace-api`, both proxied by nginx).
-  `@oakestra/api` has `createAddonsManagerApi(client)` and `createMarketplaceApi(client)` on top of
-  `createAddonsClient({ baseUrl, fetch })`, which parses the body text as JSON whatever the
-  Content-Type is. Components call `useAddonsAdminApi()` (`core/addons/addons-admin`) for
-  `{ manager, marketplace }`; loaders use `context.get(appRouterContext).addonsAdmin`. Both use the
-  authorized fetch. When an addon becomes or stops being `active`, `/ui-addons` must be refetched
+- Addon management (marketplace, sources, installed addons) is shell-internal and NOT part of the
+  SDK's `OakestraApi`: the Go addons-manager and marketplace have their own base URLs (config
+  `addonsManagerUrl` `/addons-api` for `/api/v1/addons`, `marketplaceUrl` `/marketplace-api` for
+  the marketplace's API root `/api/v1/marketplace`, so `addons/...` and `sources/...` below it;
+  both proxied by nginx). Both verify the Oakestra JWT: every addons-manager endpoint except
+  `/ui-addons` needs it, marketplace reads are open, writes need Admin.
+  `@oakestra/api` has `createAddonsManagerApi(client)` (`list`, `get`, `install(qualifiedName,
+{acceptDefinition})`, `update`, `approve`, `remove`) and `createMarketplaceApi(client)` (`list`,
+  `get({source, name})`, `register`, `removeLocal`, `sources.{list, add, remove, sync,
+importIndex}`) on top of `createAddonsClient({ baseUrl, fetch })`, which parses the body text as
+  JSON whatever the Content-Type is. Install, update and approve take `{accept_definition}`, the
+  hash of the whole canonical definition (images with digests, commands, environment, mounts,
+  permissions). The catalog serves no hash on purpose, so the first call always goes without one
+  and gets a 409 `{definition, definition_hash, permissions}` (updates add `previous_version`,
+  `previous_permissions`, `permissions_grow`; every update asks). The client throws that as
+  `ConsentRequiredError` (`isConsentRequiredError`, carrying `consentRequest`), recognised by
+  `definition_hash`; other 409s carry only `{message}` and stay plain ApiErrors. The shell's
+  mutations turn it into a `{ kind: 'consent' }` outcome for `ConsentDialog` and retry with the
+  hash; a changed catalog answers 409 again with a new hash. Unknown body fields are a 400, so
+  never send anything else. Catalog items are identified by
+  `(source.name, name)` / `qualified_name`; installed addons match them by `addon_id` (= item
+  `id`, also the name in `/ui-addons`). Components call `useAddonsAdminApi()`
+  (`core/addons/addons-admin`) for `{ manager, marketplace }`; loaders use
+  `context.get(appRouterContext).addonsAdmin`. Both use the authorized fetch. When an addon becomes or stops being `active`, `/ui-addons` must be refetched
   at once instead of at the next poll: inside the addon manager `useUiAddonsSync` (mounted in its
   layout) does that from the installed list, so mutations there do not call it themselves;
   elsewhere call `useRefreshUiAddons()` (or `refreshUiAddons(queryClient)`). `manager.remove(id)` returns `{ kind: 'disabling', addon }` or
@@ -642,9 +658,10 @@ covered by `packages/eslint-config/boundaries.test.js`:
   (`no-cache`) and `/bundled-addons/<name>/` from the html
   root (only `assets/` is immutable, everything else `no-cache` plus `frame-ancestors 'none'`), where derived images copy a preset and addon `dist/` folders.
 - `/addons-api/*` and `/marketplace-api/*` are rewritten by nginx to `/api/v1/addons/*` and
-  `/api/v1/marketplace/addons/*` of the upstreams below (`no-store`, 502 while they are missing).
-- Those two and `/ui-addons` serve backend bodies on the dashboard origin, and the addons-manager
-  sends unescaped user strings (addon names, monitor logs) as `text/html`. They therefore carry
+  `/api/v1/marketplace/*` of the upstreams below (`no-store`, 502 while they are missing).
+- Those two and `/ui-addons` serve backend bodies with unescaped user strings (addon names,
+  container logs, tap errors) on the dashboard origin, and an older addons-manager labelled them
+  `text/html`. They therefore carry
   `Content-Security-Policy: default-src 'none'; sandbox`, `Content-Disposition: attachment` and
   `X-Content-Type-Options: nosniff`, so opening `/addons-api/<id>` in a tab cannot run script next
   to the refresh token in localStorage (fetch ignores all three). `add_header` in a location
@@ -707,22 +724,17 @@ Checked against a real system-manager; the mocks reproduce them.
 - A new instance request sets the service to `REQUESTED` at once but adds the instance to
   `instance_list` only after scheduling, so "no instances" does not mean "nothing requested".
 - `PUT /service/{id}` returns 501 "Not implemented"; editing a service is not possible yet.
-- addons-manager (11101, `/api/v1/addons`) and marketplace-manager (11102,
-  `/api/v1/marketplace/addons`) do not authenticate requests (CORS only), so the Admin-only addon
-  pages are a convenience, not a security boundary, until both verify the Oakestra JWT. The shell
-  sends the bearer token anyway. The addons-manager returns `json.dumps(...)` strings (Content-Type
-  `text/html`), the marketplace real JSON. `POST /addons` is 400 if the definition is installed
-  (installing unapproved ones works), 500 for an unknown marketplace id. `DELETE /addons/<id>`
-  only moves a not yet `disabled` addon to `disabling` (200 with the addon); a `disabled` one is
-  deleted (204); one stuck in `installing` can be sent to `disabling` too. A path id that is
-  not an ObjectId is an unhandled exception in both backends (500 HTML). The marketplace list
-  shows approved definitions only; its schema rejects unknown fields with a flask-smorest 422
-  (`{code, status, errors: {json: {ui: ["Unknown field."]}}}`, nested as `services.0.image`) and
-  does not return `ui`. The `ui` block (`{service, sdk}`) and `GET /ui-addons` are planned, the
-  models treat `ui` as optional. The monitor only sees a container crash on a later 30s loop
-  (one restart first): an install goes `installing` -> `active` (`docker run` is detached), and
-  `failed` / `partially_active` with logs follows 30-90s later. A failure while installing is
-  `failed` with `status_details: {}` and no logs.
+- The addons engine (Go, `addons/` in the oakestra repo): addons-manager (11101, `/api/v1/addons`)
+  and marketplace (11102, `/api/v1/marketplace`). Both answer JSON, errors as `{message}` (422s add
+  `errors: [{path, message}]`). There is no PATCH: install `POST /addons {name, accept_definition}`,
+  `POST /addons/<id>/update` and `/approve` (`{accept_definition}`, unknown fields are a 400), `DELETE
+/addons/<id>` only moves a not yet `disabled` addon to `disabling` (200 with the addon), a
+  `disabled` one is deleted (204). A disabled record no longer blocks a new install of the same
+  addon. Logs are only sent to admins. Statuses include `updating`; failures carry
+  `status_details.message` (policy violations, `grant signature invalid`, pull errors). The
+  marketplace lists every source at once (no review state); local registrations need a version
+  higher than the one they replace (409). A 502 with `{message}` is the service speaking (the
+  marketplace is down, a tap fetch failed); without a body it is nginx.
 - The token's `organization` claim is an organization id, the root organization's id when the
   user logged in without one (never the string "root"). Use it as the SLA `customerID`.
 - Cluster figures are sums over the workers, not capacities: `memory_in_mb` is the memory still
@@ -799,52 +811,67 @@ timestamps relative to when the store is built.
 
 ## Mock addons manager
 
-`tools/mock-addons-manager` serves the shared `@oakestra/mocks` addon backend (also behind the MSW
-handlers `createAddonsHandlers`, `mockAddons` in unit tests) on one port: `/api/v1/addons`,
-`/api/v1/marketplace/addons` and `/api/v1/ui-addons` (active installed addons whose definition has
-a `ui` block). Installs go `installing` -> `active` after `INSTALL_DELAY_MS` (default 1500, compose
-500), removals `disabling` -> `disabled`. `flaky-addon` and `broken-addon` go `active` first and
-turn `partially_active` / `failed` (with `status_details` and `logs`) `MONITOR_DELAY_MS` later
-(default 4000), like the real monitor; `install-error-addon` goes `failed` at once with `{}` and
-no logs. Marketplace behavior follows the real one: unknown fields (including `ui`) are a 422,
-responses never contain `ui`, non-ObjectId ids are a 500, and PATCH is a plain `$set` (it keeps
-`status_details` and `logs`). The `uiBlockSupport` backend option (`UI_BLOCK_SUPPORT=true` for
-the HTTP mock, set by the compose file and the shell's unit-test setup) stands in for the planned
-backend: it accepts and returns `ui`, keeps the `ui` block of the `example` seed and thereby
-`/ui-addons`. Without it the seed has no `ui` anywhere. Seed: `example` (ui block, installed, active),
-`analytics` (partially_active), `legacy-exporter` (failed) installed; `flops`, `flaky-addon`,
-`broken-addon`, `install-error-addon` installable; `community-tool` (under_review) and `rejected-addon`
-(verification_failed) reachable by id only, like the real list that shows approved ones.
+`tools/mock-addons-manager` serves the shared `@oakestra/mocks` mock of the Go addons engine (also
+behind the MSW handlers `createAddonsHandlers`, `mockAddons` in unit tests) on one port:
+`/api/v1/addons`, `/api/v1/marketplace/{addons,sources}` and `/api/v1/ui-addons` (active
+installed addons whose definition has a `ui` block, named by addon id). Installs (and approvals of failed addons) go
+`installing` -> `active`, updates `updating` -> `active` after `INSTALL_DELAY_MS` (default 1500,
+compose 500), removals `disabling` -> `disabled`. `flaky-addon` and `broken-addon` go `active`
+first and turn `partially_active` / `failed` (with `status_details` and `logs`)
+`MONITOR_DELAY_MS` later (default 4000), like the real reconcile loop; `install-error-addon` goes
+`failed` at once with a `status_details.message` and no logs. Install, update and approve answer
+the consent 409 like the real engine (the catalog serves no hash); the mock's hash is a stable
+FNV hash of the canonical definition, not SHA-256 (`backend.definitionHash(definition)` computes
+it for tests). Registrations go
+to `local`, are listed at once, are decoded strictly (422 `{message, errors: [{path, message}]}`)
+and must declare what their services use. A tap URL containing `unreachable` or `invalid` fails
+to sync. Seed (`packages/mocks/src/fixtures/addons.ts`): sources `official`, `acme` (with a token),
+`lab` (failing) and `local`; `example` (ui block, active), `analytics` (1.1.0 partially_active,
+catalog 1.2.0 adds a port), `legacy-exporter` (failed, `grant signature invalid`) installed;
+`flops` (core_network), `flaky-addon`, `broken-addon`, `install-error-addon`,
+`acme/node-exporter` (host_network, host_root) and `local/docker-inspector` (docker_socket)
+installable.
 
 The `/__test` API predates the two backends and maps onto them: `PUT /__test/addons/<name>`
-`{enabled?, version?, sdk?}` installs and activates (`enabled: true`) or sets `disabled`
-(`enabled: false`) at once, `sdk` edits `ui.sdk` of the definition, `version` is only reported by
-`/ui-addons`; unknown names get a definition with a ui block. Also `GET /__test/addons|state`,
-`DELETE /__test/addons/<name>`, `PUT /__test/config {installDelayMs, disableDelayMs, reviewDelayMs, monitorDelayMs}`
+`{enabled?, version?, sdk?}` (name = addon id) installs with accepted permissions and activates
+(`enabled: true`) or sets `disabled` (`enabled: false`) at once, `sdk` edits `ui.sdk` of the
+catalog and installed definition, `version` overrides what `/ui-addons` reports (default: the UI
+image's tag); unknown names get an official definition with a ui block. Also
+`GET /__test/addons|state`, `DELETE /__test/addons/<name>`,
+`PUT /__test/config {installDelayMs, disableDelayMs, monitorDelayMs}`
 and `POST /__test/reset` (keeps the delays).
 
 ## Addon manager
 
-`features/addon-manager` (Admin only, one nav item "Addons", its page tabs are the only switch between the two) has two real routes under `/addon-manager`:
-`installed` (DataTable, detail sheet, disable then remove, "Dashboard UI" column from the addon
-registry showing `addonLabel(entry)`, the definition's `label` once loaded, plus a section for registry UIs without an installed record such as dev overrides) and
-`marketplace` (card grid, install, register, delete a definition). `/addon-manager` and the old
-`/settings/addons` redirect to `installed`; the prefix is not `/addons` because `/addons/:addonId/*`
-belongs to addon pages. The installed query polls every 2.5s while an addon is installing or
-disabling and every 10s otherwise (while the tab is visible), because the monitor reports crashes
-of already `active` addons later. After 2 minutes in `installing` or `disabling` on the page
-(`STUCK_AFTER_MS`; records have no timestamps) fast polling stops and an install offers "Disable
-anyway", with a warning that a monitor mid-install may overwrite the status. A failed background
-poll keeps the table and shows a banner (the query is `silent`, no toast per poll). The layout
-calls `refreshUiAddons` when an addon becomes or stops being `active`. Disable reads the addon
-first and does not send DELETE for one that is already `disabled` (the backend would delete it);
-a 404 on remove counts as removed. A definition registered from the page starts `under_review` and is
-not listed yet, so `useReviewOutcomes` (in the layout) polls it by id (`marketplace.get`) until it
-is `approved` or `verification_failed`, then refetches the marketplace and toasts the result; it
-polls every `REVIEW_POLL_MS`, and less often after `REVIEW_SLOW_AFTER_MS`, because a real review
-pulls every image. Environment values are never rendered, only their names.
-Marketplace 422s are flattened by `messageFromErrorBody` into `ui: Unknown field.`; the register
-dialog never shows JSON.parse's message, which quotes the pasted text, only line and column.
+`features/addon-manager` (Admin only, one nav item "Addons", its page tabs are the only switch between them) has three real routes under `/addon-manager`:
+`installed` (list, detail sheet, disable then remove, Update to `latest_version` when
+`update_available`, Approve for `failed` addons, `status_details.message` in the row and sheet,
+granted permissions, "Dashboard UI" column from the addon registry matched by `addon_id` and
+showing `addonLabel(entry)`, plus a section for registry UIs without an installed record such as
+dev overrides), `marketplace` (card grid of the merged catalog with a source filter in
+`?source=`, qualified name, version and permission badges, install, register, delete a local
+registration) and `sources` (official, taps, local with sync state and `last_error`; add a tap,
+sync, delete a tap). `/addon-manager` and the old `/settings/addons` redirect to `installed`; the
+prefix is not `/addons` because `/addons/:addonId/*` belongs to addon pages. Install, update and
+approve call without a hash first and open `ConsentDialog` on the consent 409: version (from and
+to for an update, with a warning when `permissions_grow`), the permissions (`previous_permissions`
+marks new ones) and the services with their pinned images (environment names only). Confirming
+repeats the call with `definition_hash`. A 409 with another hash while the dialog is open means
+the catalog changed: it shows the new definition with a notice. `docker_socket`, `host_root`,
+`core_network` and `host_network` are dangerous (`permissions.ts`) and need a ticked checkbox. A
+UI whose `ui.sdk` excludes this shell's SDK (`ui-compat.ts`, same check as the loader) cannot be
+installed. The installed query polls every 2.5s while an addon is installing, updating or
+disabling and every 10s otherwise (while the tab is visible), because the reconcile loop reports
+crashes of already `active` addons later. After 2 minutes in a transitional status on the page
+(`STUCK_AFTER_MS`, measured in the browser) fast polling stops and an install or update offers
+"Disable anyway", with a warning that the reconcile loop may overwrite the status. A failed
+background poll keeps the table and shows a banner (the query is `silent`, no toast per poll). The
+layout calls `refreshUiAddons` when an addon becomes or stops being `active`. Disable reads the
+addon first and does not send DELETE for one that is already `disabled` (the backend would delete
+it); a 404 on remove counts as removed. Environment values are never rendered, only their names.
+Errors of the addon services (`{message}`, 422 `errors: [{path, message}]`) are flattened by
+`messageFromErrorBody`; the register dialog never shows JSON.parse's message, which quotes the
+pasted text, only line and column.
 
 E2E: compose sets `ADDONS_POLL_INTERVAL_MS=1000`, which would mask a missing `refreshUiAddons`,
 so addon-manager tests serve a `config.json` with a one hour interval (`withoutUiAddonsPolling`)

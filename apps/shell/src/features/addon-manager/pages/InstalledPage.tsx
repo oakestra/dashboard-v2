@@ -1,5 +1,10 @@
 import { useSearchParam } from '@oakestra/dashboard-sdk';
-import { isTransitionalAddonStatus, type InstalledAddon } from '@oakestra/api';
+import {
+  isProblemAddonStatus,
+  isTransitionalAddonStatus,
+  type ConsentRequest,
+  type InstalledAddon,
+} from '@oakestra/api';
 import {
   Button,
   ConfirmDialog,
@@ -10,12 +15,20 @@ import {
   ItemDescription,
   ItemTitle,
   QueryErrorAlert,
+  SourceTag,
   plural,
   stretchedLinkClassName,
 } from '@oakestra/ui';
 import { DataList, type DataListSortOption } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
-import { PowerOffIcon, PuzzleIcon, StoreIcon, Trash2Icon } from 'lucide-react';
+import {
+  ArrowUpCircleIcon,
+  PowerOffIcon,
+  PuzzleIcon,
+  ShieldCheckIcon,
+  StoreIcon,
+  Trash2Icon,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { useStore } from 'zustand';
@@ -23,17 +36,19 @@ import { useStore } from 'zustand';
 import type { AddonEntry } from '../../../core/addons/addon-registry';
 import { useAddonRegistry } from '../../../core/addons/addon-registry-context';
 import { useAddonsAdminApi } from '../../../core/addons/addons-admin';
-import { addonAction, type AddonAction } from '../addon-action';
-import { useDisableAddon, useRemoveAddon } from '../api/mutations';
+import { addonAction, canApprove, canUpdate, type AddonAction } from '../addon-action';
+import { useApproveAddon, useDisableAddon, useRemoveAddon, useUpdateAddon } from '../api/mutations';
 import { installedAddonsQuery, useStuckAddonIds } from '../api/queries';
 import { AddonDetailSheet } from '../components/AddonDetailSheet';
+import { ConsentDialog } from '../components/ConsentDialog';
+import { useConsentReview } from '../components/use-consent-review';
 import { AddonStatusBadge, addonStatusLabel } from '../components/AddonStatusBadge';
 import { DashboardUiBadge } from '../components/DashboardUiBadge';
 import { UnmatchedDashboardUis } from '../components/UnmatchedDashboardUis';
 import { MARKETPLACE_PATH } from '../paths';
 
 const searchValue = (addon: InstalledAddon) =>
-  [addon.name, addon.description, addonStatusLabel(addon.status)].join(' ');
+  [addon.name, addon.description, addon.source.name, addonStatusLabel(addon.status)].join(' ');
 
 const SORT_OPTIONS: readonly DataListSortOption<InstalledAddon>[] = [
   { id: 'name', label: 'Name', value: (addon) => addon.name },
@@ -46,9 +61,13 @@ const SORT_OPTIONS: readonly DataListSortOption<InstalledAddon>[] = [
   },
 ];
 
-/** "1 of 2 services failing" under the badge, so a broken addon explains itself in the list. */
-function failingServicesHint(addon: InstalledAddon): string | null {
-  if (addon.status !== 'failed' && addon.status !== 'partially_active') return null;
+/**
+ * Under the badge, so a broken addon explains itself in the list: the engine's reason (a policy
+ * violation, a bad grant signature, an image that cannot be pulled) or "1 of 2 services failing".
+ */
+function problemHint(addon: InstalledAddon): string | null {
+  if (!isProblemAddonStatus(addon.status)) return null;
+  if (addon.status_details?.message) return addon.status_details.message;
   const failing = addon.status_details?.failed_services.length ?? 0;
   if (failing === 0) return null;
   return `${failing} of ${plural(addon.services.length, 'service')} failing`;
@@ -56,29 +75,54 @@ function failingServicesHint(addon: InstalledAddon): string | null {
 
 type Pending = { kind: AddonAction; addon: InstalledAddon };
 
+type ConsentKind = 'update' | 'approve';
+
+const CONSENT_COPY = {
+  update: (addon: InstalledAddon, request: ConsentRequest) => ({
+    title: `Update ${addon.name} to ${request.definition.version}?`,
+    description:
+      'Its containers are replaced by the new version below. Volumes and their data are kept.',
+    confirmLabel: 'Accept and update',
+  }),
+  approve: (addon: InstalledAddon) => ({
+    title: `Approve ${addon.name} again`,
+    description:
+      'Approving signs the grant again for this definition. A failed addon is deployed again.',
+    confirmLabel: 'Accept and approve',
+  }),
+} as const;
+
 const CONFIRM_COPY: Readonly<
   Record<
     AddonAction,
-    { title: (name: string) => string; description: string; confirmLabel: string }
+    {
+      title: (addon: InstalledAddon) => string;
+      description: string;
+      confirmLabel: string;
+      destructive: boolean;
+    }
   >
 > = {
   disable: {
-    title: (name) => `Disable ${name}?`,
+    title: (addon) => `Disable ${addon.name}?`,
     description:
       'All containers of this addon are stopped and its dashboard UI disappears. You can remove it afterwards.',
     confirmLabel: 'Disable addon',
+    destructive: true,
   },
   'force-disable': {
-    title: (name) => `Disable ${name} anyway?`,
+    title: (addon) => `Disable ${addon.name} anyway?`,
     description:
-      'This addon has been installing for a long time. Disabling it now stops its containers, but the addons monitor may still be working on the installation and can overwrite the status afterwards. Check the list again once it settled.',
+      'This addon has been installing or updating for a long time. Disabling it now stops its containers, but the reconcile loop may still be working on it and can overwrite the status afterwards. Check the list again once it settled.',
     confirmLabel: 'Disable anyway',
+    destructive: true,
   },
   remove: {
-    title: (name) => `Remove ${name}?`,
+    title: (addon) => `Remove ${addon.name}?`,
     description:
-      'The addon is deleted from this platform. You can install it again from the marketplace.',
+      'The addon record is deleted from this platform. Its volumes stay on the host, so a later install finds its data again.',
     confirmLabel: 'Remove addon',
+    destructive: true,
   },
 };
 
@@ -86,18 +130,25 @@ function InstalledAddonItem({
   addon,
   uiEntry,
   stuck,
+  busy,
   onOpen,
   onAction,
+  onUpdate,
+  onApprove,
 }: {
   addon: InstalledAddon;
   uiEntry: AddonEntry | undefined;
   stuck: boolean;
+  /** An update or approval of this page is in flight. */
+  busy: boolean;
   onOpen: () => void;
   onAction: (kind: AddonAction) => void;
+  onUpdate: () => void;
+  onApprove: () => void;
 }) {
   const action = addonAction(addon, stuck);
   const transitional = isTransitionalAddonStatus(addon.status);
-  const hint = failingServicesHint(addon);
+  const hint = problemHint(addon);
   return (
     <Item data-testid={`installed-addon-${addon.name}`}>
       <ItemContent className="basis-64">
@@ -111,10 +162,16 @@ function InstalledAddonItem({
           </button>
           <AddonStatusBadge status={addon.status} />
         </ItemTitle>
-        {hint ? <span className="text-muted-foreground text-xs">{hint}</span> : null}
+        {hint ? (
+          <span className="text-muted-foreground line-clamp-2 text-xs break-words">{hint}</span>
+        ) : null}
         <ItemDescription>{addon.description || 'No description'}</ItemDescription>
       </ItemContent>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+        <span className="flex items-center gap-2">
+          <span className="text-muted-foreground tabular-nums">v{addon.version}</span>
+          <SourceTag name={addon.source.name} />
+        </span>
         <span className="text-muted-foreground tabular-nums">
           {plural(addon.services.length, 'service')}
         </span>
@@ -125,6 +182,30 @@ function InstalledAddonItem({
         </span>
       </div>
       <ItemActions className="ml-auto">
+        {canApprove(addon) ? (
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={`Approve ${addon.name} again`}
+            disabled={busy}
+            onClick={onApprove}
+          >
+            <ShieldCheckIcon aria-hidden />
+            Approve
+          </Button>
+        ) : null}
+        {canUpdate(addon) ? (
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={`Update ${addon.name} to ${addon.latest_version}`}
+            disabled={busy}
+            onClick={onUpdate}
+          >
+            <ArrowUpCircleIcon aria-hidden />
+            Update to {addon.latest_version}
+          </Button>
+        ) : null}
         {action === 'force-disable' ? (
           <Button
             variant="outline"
@@ -174,8 +255,12 @@ export function InstalledPage() {
   const [search, setSearch] = useSearchParam('q');
 
   const [pending, setPending] = useState<Pending | null>(null);
+  const consent = useConsentReview<{ kind: ConsentKind; addon: InstalledAddon }>();
   const disable = useDisableAddon();
   const remove = useRemoveAddon();
+  const update = useUpdateAddon();
+  const approve = useApproveAddon();
+  const busy = update.isPending || approve.isPending;
 
   const addons = installed.data;
   const stuckIds = useStuckAddonIds(api, addons);
@@ -184,7 +269,8 @@ export function InstalledPage() {
   const unmatched = useMemo(() => {
     // Wait for the list: before it arrives every UI would look unmatched.
     if (!addons) return [];
-    const names = new Set(addons.map((addon) => addon.name));
+    // `/ui-addons` names addons by id (`<tap>--<name>` for non-official ones).
+    const names = new Set(addons.map((addon) => addon.addon_id));
     return (
       Object.values(uiEntries)
         // Linked addons are part of the shell build, like core modules, so not addons to manage.
@@ -195,6 +281,20 @@ export function InstalledPage() {
 
   // While the dialog animates closed `pending` is already null; the disable copy stands in.
   const confirmCopy = CONFIRM_COPY[pending?.kind ?? 'disable'];
+
+  // The first call goes without a hash: the catalog serves none, the backend's 409 brings the
+  // definition the dialog shows.
+  function run(kind: ConsentKind, addon: InstalledAddon, acceptDefinition?: string) {
+    const mutation = kind === 'update' ? update : approve;
+    mutation.mutate(
+      { id: addon._id, name: addon.name, acceptDefinition },
+      {
+        onSuccess: (outcome) =>
+          consent.show({ kind, addon }, outcome, (request) => CONSENT_COPY[kind](addon, request)),
+        onError: consent.clear,
+      },
+    );
+  }
 
   const confirm = () => {
     if (!pending) return;
@@ -239,10 +339,13 @@ export function InstalledPage() {
           renderItem={(addon) => (
             <InstalledAddonItem
               addon={addon}
-              uiEntry={uiEntries[addon.name]}
+              uiEntry={uiEntries[addon.addon_id]}
               stuck={stuckIds.has(addon._id)}
+              busy={busy}
               onOpen={() => setSelectedId(addon._id)}
               onAction={(kind) => setPending({ kind, addon })}
+              onUpdate={() => run('update', addon)}
+              onApprove={() => run('approve', addon)}
             />
           )}
           emptyState={
@@ -267,10 +370,22 @@ export function InstalledPage() {
 
       <AddonDetailSheet
         addon={selected}
-        uiEntry={selected ? uiEntries[selected.name] : undefined}
+        uiEntry={selected ? uiEntries[selected.addon_id] : undefined}
         stuck={selected ? stuckIds.has(selected._id) : false}
+        busy={busy}
         onClose={() => setSelectedId('')}
         onAction={(kind, addon) => setPending({ kind, addon })}
+        onUpdate={(addon) => run('update', addon)}
+        onApprove={(addon) => run('approve', addon)}
+      />
+
+      <ConsentDialog
+        review={consent.review}
+        pending={busy}
+        onCancel={consent.clear}
+        onConfirm={(hash) => {
+          if (consent.review) run(consent.review.target.kind, consent.review.target.addon, hash);
+        }}
       />
 
       <ConfirmDialog
@@ -278,10 +393,10 @@ export function InstalledPage() {
         onOpenChange={(open) => {
           if (!open) setPending(null);
         }}
-        title={confirmCopy.title(pending?.addon.name ?? 'addon')}
+        title={pending ? confirmCopy.title(pending.addon) : ''}
         description={confirmCopy.description}
         confirmLabel={confirmCopy.confirmLabel}
-        destructive
+        destructive={confirmCopy.destructive}
         pending={disable.isPending || remove.isPending}
         onConfirm={confirm}
       />

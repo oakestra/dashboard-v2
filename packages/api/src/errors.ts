@@ -108,10 +108,24 @@ function collectFieldErrors(node: unknown, path: string, out: string[]): void {
  * typed, so it is left out of the text; other locations keep their name.
  */
 function messageFromFieldErrors(errors: unknown): string | undefined {
-  if (typeof errors !== 'object' || errors === null || Array.isArray(errors)) return undefined;
+  if (typeof errors !== 'object' || errors === null) return undefined;
   const entries: string[] = [];
-  for (const [location, tree] of Object.entries(errors)) {
-    collectFieldErrors(tree, location === 'json' ? '' : location, entries);
+  if (Array.isArray(errors)) {
+    // The addon services list problems as `[{path: "services[0].image", message: "..."}]`.
+    for (const item of errors as unknown[]) {
+      const record = (typeof item === 'object' && item !== null ? item : {}) as Record<
+        string,
+        unknown
+      >;
+      const message = stringField(record.message);
+      if (!message) continue;
+      const path = typeof record.path === 'string' ? record.path : '';
+      entries.push(path ? `${path}: ${message}` : message);
+    }
+  } else {
+    for (const [location, tree] of Object.entries(errors)) {
+      collectFieldErrors(tree, location === 'json' ? '' : location, entries);
+    }
   }
   if (entries.length === 0) return undefined;
   const shown = entries.slice(0, MAX_FIELD_ERRORS).join(' ');

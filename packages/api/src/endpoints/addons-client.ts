@@ -9,8 +9,8 @@ export interface AddonsClientOptions {
 }
 
 export interface AddonsRequest extends RequestOptions {
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-  /** Path below the base URL. A trailing slash is kept: Flask redirects the collection without. */
+  method: 'GET' | 'POST' | 'DELETE';
+  /** Path below the base URL. Both services accept collections with and without a slash. */
   path: string;
   query?: Record<string, string | undefined>;
   body?: unknown;
@@ -33,9 +33,9 @@ export interface AddonsClient {
 }
 
 /**
- * The addons-manager returns `json.dumps(...)` strings, so the Content-Type is `text/html` and
- * `response.json()` based helpers would not be reliable. The text is parsed here regardless of
- * the header. Anything that does not parse (an nginx HTML error page) stays a string.
+ * The text is parsed regardless of the Content-Type: older addons-managers answered JSON as
+ * `text/html`, and proxies in between may relabel it. Anything that does not parse (an nginx HTML
+ * error page) stays a string.
  */
 function parseBody(text: string): unknown {
   if (text.trim() === '') return undefined;
@@ -44,6 +44,15 @@ function parseBody(text: string): unknown {
   } catch {
     return text;
   }
+}
+
+function hasMessage(body: unknown): boolean {
+  return (
+    typeof body === 'object' &&
+    body !== null &&
+    typeof (body as { message?: unknown }).message === 'string' &&
+    (body as { message: string }).message.trim() !== ''
+  );
 }
 
 export function createAddonsClient(options: AddonsClientOptions): AddonsClient {
@@ -86,9 +95,13 @@ export function createAddonsClient(options: AddonsClientOptions): AddonsClient {
 
       const parsed = parseBody(text);
       if (!response.ok) {
-        // A gateway error means the addons engine or marketplace is not deployed or is down.
+        // A gateway error without a JSON message comes from the proxy: the addons engine or
+        // marketplace is not deployed or is down. With one, the service itself explains it (the
+        // marketplace is down, a tap could not be fetched, the JWT key is not loaded yet).
+        const gateway =
+          response.status === 502 || response.status === 503 || response.status === 504;
         const message =
-          response.status === 502 || response.status === 503 || response.status === 504
+          gateway && !hasMessage(parsed)
             ? 'The addons service is not reachable. It may not be installed or is currently down.'
             : messageFromErrorBody(parsed, response.status);
         throw new ApiError(message, {

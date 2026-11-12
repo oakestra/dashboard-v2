@@ -28,7 +28,7 @@ export const appConfigSchema = z.object({
   grafanaUrl: optionalUrl,
   /** Base URL of the addons-manager (installed addons); nginx proxies it to `/api/v1/addons`. */
   addonsManagerUrl: z.string().min(1).default('/addons-api'),
-  /** Base URL of the marketplace-manager (addon definitions), proxied to `/api/v1/marketplace/addons`. */
+  /** API root of the marketplace (addons and sources), proxied to `/api/v1/marketplace`. */
   marketplaceUrl: z.string().min(1).default('/marketplace-api'),
   /**
    * MapLibre style of the basemap, for deployments that serve their own tiles. Unset means the

@@ -25,9 +25,10 @@ server {
 
   add_header X-Content-Type-Options nosniff always;
 
-  # The three proxies below serve backend bodies on the dashboard's own origin, and the
-  # addons-manager answers JSON as text/html with unescaped user input (addon names, monitor
-  # logs). Opened as a page, that is script on the dashboard origin with access to localStorage.
+  # The three proxies below serve backend bodies on the dashboard's own origin, with user input
+  # (addon names, container logs, tap error messages) in them. An older addons-manager answered
+  # JSON as text/html, and a proxy in between may relabel it; opened as a page, that would be
+  # script on the dashboard origin with access to localStorage.
   # `sandbox` gives such a document an opaque origin, `default-src 'none'` stops it from loading
   # anything, and attachment keeps browsers from rendering it at all; fetch() ignores all three.
   # add_header does not inherit once a location sets its own, so each of them repeats the
@@ -72,8 +73,9 @@ server {
   }
 
   # Addon management API for the admin pages. The dashboard's own paths differ from the backends
-  # so the prefix is rewritten; the rest (id, query string) is passed through. Variable upstreams
-  # as above, so a missing addons engine yields 502 instead of a failing nginx start.
+  # so the prefix is rewritten; the rest (id, query string) is passed through, and with it the
+  # Authorization header both services verify. Variable upstreams as above, so a missing addons
+  # engine yields 502 instead of a failing nginx start.
   location /addons-api/ {
     set $addons_manager ${ADDONS_MANAGER_ADDRESS};
     rewrite ^/addons-api/(.*)$ /api/v1/addons/$1 break;
@@ -84,9 +86,11 @@ server {
     add_header X-Content-Type-Options nosniff always;
   }
 
+  # The marketplace's whole API root: addons/ and sources/ (and the public JWT key, which is not
+  # secret). Reads there need no token, writes need an admin token, which the dashboard sends.
   location /marketplace-api/ {
     set $marketplace_manager ${MARKETPLACE_ADDRESS};
-    rewrite ^/marketplace-api/(.*)$ /api/v1/marketplace/addons/$1 break;
+    rewrite ^/marketplace-api/(.*)$ /api/v1/marketplace/$1 break;
     proxy_pass http://$marketplace_manager;
     add_header Cache-Control "no-store" always;
     add_header Content-Security-Policy "default-src 'none'; sandbox" always;

@@ -25,10 +25,16 @@ import { useRegisterAddon } from '../api/mutations';
 
 const PLACEHOLDER = `{
   "name": "my-addon",
+  "version": "1.0.0",
   "description": "What the addon does",
   "services": [
-    { "service_name": "my-addon", "image": "ghcr.io/me/my-addon:1.0.0" }
-  ]
+    {
+      "service_name": "my-addon",
+      "image": "ghcr.io/me/my-addon:1.0.0",
+      "ports": { "8080": "8080" }
+    }
+  ],
+  "permissions": { "host_ports": [8080] }
 }`;
 
 /**
@@ -112,8 +118,9 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
       <DialogHeader>
         <DialogTitle>Register an addon</DialogTitle>
         <DialogDescription>
-          Paste an addon definition or import a JSON file. New definitions are reviewed before they
-          appear in the marketplace.
+          Paste an addon definition or import a JSON file. It is registered in the{' '}
+          <code>local</code> source as <code>local/&lt;name&gt;</code> and listed at once. To
+          replace a registration, register it again with a higher version.
         </DialogDescription>
       </DialogHeader>
 
@@ -167,13 +174,26 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
             aria-describedby="addon-definition-help"
           />
           <FieldDescription id="addon-definition-help">
-            Environment values are stored in the marketplace as entered.
+            Environment values are stored in the marketplace as entered. Image tags are resolved to
+            digests when the definition is registered.
           </FieldDescription>
+          <details className="text-muted-foreground text-sm">
+            <summary className="cursor-pointer">Permissions</summary>
+            <p className="mt-1">
+              Declare everything the services use in <code>permissions</code>:{' '}
+              <code>host_paths</code> for bind mounts (<code>/path</code> or <code>/path:ro</code>),{' '}
+              <code>host_ports</code> for published ports, and <code>docker_socket</code>,{' '}
+              <code>host_root</code>, <code>host_network</code> or <code>core_network</code> (to
+              join the <code>oakestra</code> network). Undeclared use and unknown fields such as{' '}
+              <code>privileged</code> are rejected.
+            </p>
+          </details>
           <details className="text-muted-foreground text-sm">
             <summary className="cursor-pointer">Dashboard UI</summary>
             <p className="mt-1">
               Add a <code>ui</code> block (<code>{'{ "service", "sdk" }'}</code>) to ship a
-              dashboard UI. Marketplaces that do not support it yet reject such definitions.
+              dashboard UI. The UI is loaded under the addon id, <code>local--&lt;name&gt;</code>{' '}
+              for a local registration.
             </p>
           </details>
           {errors.length > 0 ? (
@@ -203,7 +223,7 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
             Cancel
           </Button>
           <Button type="submit" disabled={register.isPending}>
-            {register.isPending ? 'Submitting...' : 'Submit for review'}
+            {register.isPending ? 'Registering...' : 'Register'}
           </Button>
         </DialogFooter>
       </form>

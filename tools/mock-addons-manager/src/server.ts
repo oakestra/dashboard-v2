@@ -5,7 +5,6 @@ const server = createMockAddonsManager({
   seed: seedFromEnv(process.env.MOCK_ADDONS),
   installDelayMs: process.env.INSTALL_DELAY_MS ? Number(process.env.INSTALL_DELAY_MS) : undefined,
   monitorDelayMs: process.env.MONITOR_DELAY_MS ? Number(process.env.MONITOR_DELAY_MS) : undefined,
-  uiBlockSupport: process.env.UI_BLOCK_SUPPORT === 'true',
 });
 
 server.listen(port, () => {

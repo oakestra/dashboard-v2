@@ -46,8 +46,8 @@ export function createApiServices(options: ApiServicesOptions): ApiServices {
     fetch: (path, init) =>
       authorizedFetch(new Request(`${baseUrl}/${path.replace(/^\/+/, '')}`, init)),
   };
-  // Same authorized fetch as the main API: the addon backends do not check the token yet, but
-  // will once they verify the Oakestra JWT.
+  // Same authorized fetch as the main API: both addon services verify the Oakestra JWT (every
+  // addons-manager endpoint, and marketplace writes).
   const addonsAdmin = createAddonsAdminApi({
     addonsManagerUrl: options.addonsManagerUrl ?? '/addons-api',
     marketplaceUrl: options.marketplaceUrl ?? '/marketplace-api',

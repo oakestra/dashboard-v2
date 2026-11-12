@@ -13,16 +13,18 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  SourceTag,
   CopyButton,
 } from '@oakestra/ui';
-import { PowerOffIcon, Trash2Icon } from 'lucide-react';
+import { ArrowUpCircleIcon, PowerOffIcon, ShieldCheckIcon, Trash2Icon } from 'lucide-react';
 
 import type { AddonEntry } from '../../../core/addons/addon-registry';
-import { addonAction, type AddonAction } from '../addon-action';
+import { addonAction, canApprove, canUpdate, type AddonAction } from '../addon-action';
 import { AddonStatusBadge } from './AddonStatusBadge';
 import { DashboardUiBadge, dashboardUiProblem } from './DashboardUiBadge';
 import { DefinitionDetails } from './DefinitionDetails';
 import { navItemKeys, NavItemKeys } from './NavItemKeys';
+import { PermissionList } from './PermissionList';
 
 interface AddonDetailSheetProps {
   addon: InstalledAddon | undefined;
@@ -31,6 +33,10 @@ interface AddonDetailSheetProps {
   /** Installing for so long that it is probably stuck. */
   stuck: boolean;
   onAction: (action: AddonAction, addon: InstalledAddon) => void;
+  onUpdate: (addon: InstalledAddon) => void;
+  onApprove: (addon: InstalledAddon) => void;
+  /** An update or approval of this page is in flight. */
+  busy: boolean;
 }
 
 export function AddonDetailSheet({
@@ -39,11 +45,15 @@ export function AddonDetailSheet({
   onClose,
   stuck,
   onAction,
+  onUpdate,
+  onApprove,
+  busy,
 }: AddonDetailSheetProps) {
   const transitional = addon ? isTransitionalAddonStatus(addon.status) : false;
   const action = addon ? addonAction(addon, stuck) : undefined;
   const uiProblem = dashboardUiProblem(uiEntry);
   const failedServices = addon?.status_details?.failed_services ?? [];
+  const statusMessage = addon?.status_details?.message;
 
   return (
     <Sheet open={addon !== undefined} onOpenChange={(open) => !open && onClose()}>
@@ -68,6 +78,20 @@ export function AddonDetailSheet({
             <ScrollArea className="min-h-0 flex-1">
               <div className="space-y-4 px-4 pb-4">
                 <dl className="grid grid-cols-[7rem_1fr] items-center gap-x-6 gap-y-1.5 text-sm">
+                  <dt className="text-muted-foreground">Version</dt>
+                  <dd className="flex flex-wrap items-center gap-2 tabular-nums">
+                    {addon.version}
+                    {addon.update_available && addon.latest_version ? (
+                      <span className="text-muted-foreground" data-testid="update-available">
+                        {addon.latest_version} available
+                      </span>
+                    ) : null}
+                  </dd>
+                  <dt className="text-muted-foreground">Source</dt>
+                  <dd className="flex items-center gap-2">
+                    <SourceTag name={addon.source.name} />
+                    <span className="text-muted-foreground">{addon.source.kind}</span>
+                  </dd>
                   <dt className="text-muted-foreground">Services</dt>
                   <dd className="tabular-nums">{addon.services.length}</dd>
                   <dt className="text-muted-foreground">Dashboard UI</dt>
@@ -82,15 +106,26 @@ export function AddonDetailSheet({
                       </dd>
                     </>
                   ) : null}
-                  <dt className="text-muted-foreground">Marketplace id</dt>
+                  <dt className="text-muted-foreground">Addon id</dt>
                   <dd className="flex min-w-0 items-center gap-1">
-                    <code className="truncate font-mono text-xs">{addon.marketplace_id}</code>
-                    <CopyButton value={addon.marketplace_id} label="Copy marketplace id" />
+                    <code className="truncate font-mono text-xs">{addon.addon_id}</code>
+                    <CopyButton value={addon.addon_id} label="Copy addon id" />
                   </dd>
                 </dl>
 
-                {failedServices.length > 0 || uiProblem || addon.logs ? (
+                {failedServices.length > 0 || statusMessage || uiProblem || addon.logs ? (
                   <section className="space-y-3 border-t pt-4" aria-label="Problems">
+                    {statusMessage ? (
+                      <Alert
+                        variant={addon.status === 'failed' ? 'destructive' : 'warning'}
+                        data-testid="status-message"
+                      >
+                        <AlertTitle>
+                          {addon.status === 'failed' ? 'Why it failed' : 'Status'}
+                        </AlertTitle>
+                        <AlertDescription className="break-words">{statusMessage}</AlertDescription>
+                      </Alert>
+                    ) : null}
                     {failedServices.length > 0 ? (
                       <Alert
                         variant={addon.status === 'failed' ? 'destructive' : 'warning'}
@@ -135,6 +170,10 @@ export function AddonDetailSheet({
                 ) : null}
 
                 <Separator />
+                <section className="space-y-2" aria-label="Granted permissions">
+                  <h3 className="text-sm font-semibold">Granted permissions</h3>
+                  <PermissionList permissions={addon.permissions} />
+                </section>
                 <DefinitionDetails
                   services={addon.services}
                   volumes={addon.volumes}
@@ -144,6 +183,18 @@ export function AddonDetailSheet({
               </div>
             </ScrollArea>
             <SheetFooter className="border-t sm:flex-row sm:justify-end">
+              {canApprove(addon) ? (
+                <Button variant="outline" disabled={busy} onClick={() => onApprove(addon)}>
+                  <ShieldCheckIcon aria-hidden />
+                  Approve again
+                </Button>
+              ) : null}
+              {canUpdate(addon) ? (
+                <Button variant="outline" disabled={busy} onClick={() => onUpdate(addon)}>
+                  <ArrowUpCircleIcon aria-hidden />
+                  Update to {addon.latest_version}
+                </Button>
+              ) : null}
               {action === 'remove' ? (
                 <Button variant="destructive" onClick={() => onAction(action, addon)}>
                   <Trash2Icon aria-hidden />

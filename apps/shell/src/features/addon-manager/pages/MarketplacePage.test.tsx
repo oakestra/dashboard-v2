@@ -6,15 +6,11 @@ import { uiAddonsQueryKey } from '../../../core/addons/ui-addons';
 import { mockAddons, mockServer, TEST_MARKETPLACE_URL } from '../../../test/msw';
 import { renderApp } from '../../../test/render';
 import { addonManagerModule } from '../index';
-import { addonManagerKeys } from '../keys';
 
 vi.mock('../api/polling', () => ({
   INSTALLED_POLL_MS: 40,
   INSTALLED_IDLE_POLL_MS: 60_000,
   STUCK_AFTER_MS: 60_000,
-  REVIEW_POLL_MS: 40,
-  REVIEW_IDLE_POLL_MS: 60_000,
-  REVIEW_SLOW_AFTER_MS: 60_000,
 }));
 
 function renderMarketplace(options: Partial<Parameters<typeof renderApp>[0]> = {}) {
@@ -26,14 +22,17 @@ function renderMarketplace(options: Partial<Parameters<typeof renderApp>[0]> = {
 }
 
 const card = (name: string) => screen.findByTestId(`marketplace-card-${name}`);
+const installedNamed = (name: string) =>
+  mockAddons.state.installed.filter((a) => a.qualified_name === name);
 
 describe('<MarketplacePage>', () => {
-  it('lists approved addons with their images, UI badge and installed state', async () => {
+  it('lists the catalog of every source with version, permissions and installed state', async () => {
     renderMarketplace();
 
     const example = await card('example');
     expect(within(example).getByText('Dashboard UI')).toBeVisible();
-    expect(within(example).getByText(/\d services?/)).toBeVisible();
+    expect(within(example).getByText('v0.1.0')).toBeVisible();
+    expect(within(example).getByText('1 host port')).toBeVisible();
     await waitFor(() => expect(within(example).getByText('Active')).toBeVisible());
     // Installed addons offer Manage instead of a disabled Install button.
     expect(within(example).queryByRole('button', { name: 'Install example' })).toBeNull();
@@ -42,20 +41,51 @@ describe('<MarketplacePage>', () => {
       expect.stringContaining('/addon-manager/installed?addon='),
     );
 
-    const flops = await card('flops');
-    expect(within(flops).queryByText('Dashboard UI')).not.toBeInTheDocument();
-    expect(within(flops).getByRole('button', { name: 'Install flops' })).toBeEnabled();
-    // Only approved definitions are listed.
-    expect(screen.queryByTestId('marketplace-card-community-tool')).not.toBeInTheDocument();
+    const tap = await card('acme/node-exporter');
+    expect(within(tap).getByText('acme', { selector: '[data-slot=source-tag]' })).toBeVisible();
+    expect(within(tap).getByText('Host network')).toBeVisible();
+    expect(within(tap).getByText('System host paths')).toBeVisible();
+    await waitFor(() =>
+      expect(within(tap).getByRole('button', { name: 'Install acme/node-exporter' })).toBeEnabled(),
+    );
+    // Only local registrations can be deleted here.
+    expect(within(tap).queryByRole('button', { name: /More actions/ })).toBeNull();
+    expect(
+      within(await card('local/docker-inspector')).getByRole('button', {
+        name: 'More actions for local/docker-inspector',
+      }),
+    ).toBeVisible();
+
+    const analytics = await card('analytics');
+    await waitFor(() => expect(within(analytics).getByText('Update')).toBeVisible());
     expect(screen.getByTestId('breadcrumbs')).toHaveTextContent('HomeAddonsMarketplace');
   });
 
-  it('filters by name, description and image', async () => {
-    const { user } = renderMarketplace();
+  it('offers Install again for an addon whose only record is disabled', async () => {
+    for (const addon of installedNamed('example')) addon.status = 'disabled';
+    renderMarketplace();
+
+    const example = await card('example');
+    await waitFor(() => expect(within(example).getByText('Disabled')).toBeVisible());
+    expect(within(example).queryByRole('link', { name: 'Manage example' })).toBeNull();
+    await waitFor(() =>
+      expect(within(example).getByRole('button', { name: 'Install example' })).toBeEnabled(),
+    );
+  });
+
+  it('filters by source and by search text', async () => {
+    const { user, router } = renderMarketplace();
     await card('flops');
 
-    await user.type(screen.getByRole('searchbox', { name: 'Search Marketplace' }), 'federated');
+    await user.click(screen.getByRole('combobox', { name: 'Source' }));
+    await user.click(await screen.findByRole('option', { name: 'acme (1)' }));
+    expect(router.state.location.search).toContain('source=acme');
+    expect(screen.getByTestId('marketplace-card-acme/node-exporter')).toBeVisible();
+    expect(screen.queryByTestId('marketplace-card-flops')).not.toBeInTheDocument();
 
+    await user.click(screen.getByRole('combobox', { name: 'Source' }));
+    await user.click(await screen.findByRole('option', { name: 'All sources' }));
+    await user.type(screen.getByRole('searchbox', { name: 'Search Marketplace' }), 'federated');
     expect(screen.getByTestId('marketplace-card-flops')).toBeVisible();
     expect(screen.queryByTestId('marketplace-card-example')).not.toBeInTheDocument();
 
@@ -66,18 +96,52 @@ describe('<MarketplacePage>', () => {
     expect(await card('flops')).toBeVisible();
   });
 
-  it('installs an addon, follows it to the installed tab and refreshes the addon UIs when active', async () => {
+  it('shows the definition before installing and installs with its hash', async () => {
     const { user, services, router } = renderMarketplace();
     const invalidate = vi.spyOn(services.queryClient, 'invalidateQueries');
+    const install = vi.spyOn(mockAddons.manager, 'install');
 
-    await user.click(await screen.findByRole('button', { name: 'Install flops' }));
+    const button = await screen.findByRole('button', { name: 'Install flops' });
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+
+    const dialog = await screen.findByTestId('consent-dialog');
+    expect(dialog).toHaveTextContent('Install flops 1.0.0?');
+    expect(within(dialog).getByTestId('permission-core_network')).toHaveTextContent('Dangerous');
+    // The admin sees the images that will run, pinned by digest.
+    expect(within(dialog).getByTestId('service-flops-manager')).toHaveTextContent('@sha256:');
+    // The first call only fetched the definition; nothing is installed yet.
+    expect(install).toHaveBeenCalledTimes(1);
+    expect(installedNamed('flops')).toHaveLength(0);
+    await user.click(within(dialog).getByLabelText(/I understand/));
+    await user.click(within(dialog).getByRole('button', { name: 'Accept and install' }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/addon-manager/installed'));
-    expect(mockAddons.state.installed.filter((a) => a.name === 'flops')).toHaveLength(1);
+    expect(install).toHaveBeenCalledTimes(2);
+    expect(installedNamed('flops')).toHaveLength(1);
     await waitFor(() => {
       expect(within(screen.getByTestId('installed-addon-flops')).getByText('Active')).toBeVisible();
     });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: uiAddonsQueryKey });
+  });
+
+  it('shows the dialog again when the definition changed before it was accepted', async () => {
+    const { user } = renderMarketplace();
+    const button = await screen.findByRole('button', { name: 'Install flaky-addon' });
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+    const dialog = await screen.findByTestId('consent-dialog');
+    expect(within(dialog).queryByTestId('permission-host_ports:7000')).toBeNull();
+
+    // The catalog changes while the admin reads the dialog.
+    mockAddons.state.catalog.find((d) => d.name === 'flaky-addon')!.permissions.host_ports = [7000];
+    await user.click(within(dialog).getByRole('button', { name: 'Accept and install' }));
+
+    expect(await within(dialog).findByTestId('definition-changed')).toBeVisible();
+    expect(within(dialog).getByTestId('permission-host_ports:7000')).toBeVisible();
+    expect(installedNamed('flaky-addon')).toHaveLength(0);
+    await user.click(within(dialog).getByRole('button', { name: 'Accept and install' }));
+    await waitFor(() => expect(installedNamed('flaky-addon')).toHaveLength(1));
   });
 
   it('cannot install an addon twice', async () => {
@@ -89,34 +153,55 @@ describe('<MarketplacePage>', () => {
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).queryByRole('button', { name: 'Install' })).toBeNull();
     expect(within(dialog).getByRole('link', { name: 'Manage' })).toBeVisible();
-
-    expect(mockAddons.state.installed.filter((a) => a.name === 'example')).toHaveLength(1);
+    expect(installedNamed('example')).toHaveLength(1);
   });
 
   it('toasts the backend refusal when an install races another admin', async () => {
     const { user } = renderMarketplace();
-    const flops = mockAddons.state.marketplace.find((a) => a.name === 'flops')!;
-    const button = await screen.findByRole('button', { name: 'Install flops' });
+    const button = await screen.findByRole('button', { name: 'Install broken-addon' });
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+    const dialog = await screen.findByTestId('consent-dialog');
     // Another admin installs it after this page loaded its lists.
-    const response = mockAddons.manager.install({ marketplace_id: flops._id });
+    const item = mockAddons.state.catalog.find((d) => d.name === 'broken-addon')!;
+    const response = mockAddons.manager.install({
+      name: 'broken-addon',
+      accept_definition: mockAddons.definitionHash(item),
+    });
     expect(response.status).toBe(201);
 
-    await user.click(button);
+    await user.click(within(dialog).getByRole('button', { name: 'Accept and install' }));
 
     expect(await screen.findByText('Could not install the addon')).toBeVisible();
-    expect(mockAddons.state.installed.filter((a) => a.name === 'flops')).toHaveLength(1);
+    expect(installedNamed('broken-addon')).toHaveLength(1);
   });
 
-  it('shows the details of a definition with environment names only', async () => {
+  it('blocks installing a UI built for another SDK', async () => {
+    mockAddons.state.catalog.find((d) => d.name === 'flops')!.ui = {
+      service: 'flops-manager',
+      sdk: '^99.0.0',
+    };
+    const { user } = renderMarketplace();
+
+    const flops = await card('flops');
+    expect(within(flops).getByText('UI incompatible')).toBeVisible();
+    expect(within(flops).getByRole('button', { name: 'Install flops' })).toBeDisabled();
+    await user.click(within(flops).getByRole('button', { name: 'Details of flops' }));
+    expect(await screen.findByTestId('ui-incompatible')).toHaveTextContent('^99.0.0');
+  });
+
+  it('shows the details of a definition with permissions and environment names only', async () => {
     const { user } = renderMarketplace();
     await user.click(await screen.findByRole('button', { name: 'Details of example' }));
 
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText('EXAMPLE_API_TOKEN')).toBeVisible();
     expect(within(dialog).getByText('example-data')).toBeVisible();
-    expect(
-      within(dialog).getByText('oakestra-net', { selector: '[data-slot=badge]' }),
-    ).toBeVisible();
+    expect(within(dialog).getByTestId('permission-host_ports:9100')).toBeVisible();
+    expect(within(dialog).getByRole('link', { name: /github.com/ })).toHaveAttribute(
+      'href',
+      'https://github.com/oakestra/dashboard-v2',
+    );
     expect(document.body).not.toHaveTextContent('sk-fake-example-token');
   });
 
@@ -124,12 +209,12 @@ describe('<MarketplacePage>', () => {
     const { user } = renderMarketplace();
     await user.click(await screen.findByRole('button', { name: 'Register addon' }));
     const dialog = await screen.findByRole('dialog');
-    expect(dialog).toHaveTextContent('reviewed before they appear');
+    expect(dialog).toHaveTextContent('local/<name>');
 
     const input = within(dialog).getByLabelText('Definition (JSON)');
     await user.click(input);
     await user.paste('{ nope');
-    await user.click(within(dialog).getByRole('button', { name: 'Submit for review' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Register' }));
     expect(await within(dialog).findByTestId('register-errors')).toHaveTextContent(
       'This is not valid JSON',
     );
@@ -139,19 +224,21 @@ describe('<MarketplacePage>', () => {
     await user.paste(
       JSON.stringify({
         name: '',
+        version: 'v1',
         services: [{ service_name: 'a', image: '' }],
         ui: { service: 'zzz', sdk: 'not a range' },
       }),
     );
-    await user.click(within(dialog).getByRole('button', { name: 'Submit for review' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Register' }));
     const errors = await within(dialog).findByTestId('register-errors');
     expect(errors).toHaveTextContent('name: Name is required');
+    expect(errors).toHaveTextContent('version: Not a semantic version');
     expect(errors).toHaveTextContent('services[0].image: Image is required');
     expect(errors).toHaveTextContent('ui.sdk: Not a valid semver range');
     expect(errors).toHaveTextContent(
       'ui.service: The UI service must be one of the addon services',
     );
-    expect(mockAddons.state.marketplace.some((a) => a.name === '')).toBe(false);
+    expect(mockAddons.state.catalog.some((a) => a.name === '')).toBe(false);
   });
 
   it('never echoes pasted text in the JSON error', async () => {
@@ -162,7 +249,7 @@ describe('<MarketplacePage>', () => {
     await user.click(input);
     // Typed into a snippet that V8 would quote back in its error message.
     await user.paste('{\n  "env": "sk-live-SECRET-1234",\n  oops');
-    await user.click(within(dialog).getByRole('button', { name: 'Submit for review' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Register' }));
 
     const errors = await within(dialog).findByTestId('register-errors');
     expect(errors).toHaveTextContent(/^This is not valid JSON( \(line 3, column \d+\))?\.$/);
@@ -175,78 +262,61 @@ describe('<MarketplacePage>', () => {
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByLabelText('Definition (JSON)'));
     await user.paste(JSON.stringify(definition));
-    await user.click(within(dialog).getByRole('button', { name: 'Submit for review' }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await user.click(within(dialog).getByRole('button', { name: 'Register' }));
+    return dialog;
   }
 
-  it('registers a definition, which then waits for review', async () => {
-    mockAddons.setDelays({ reviewDelayMs: 60_000 });
+  it('registers a definition in the local source and lists it at once', async () => {
     const { user } = renderMarketplace();
     await card('example');
 
     await register(user, {
       name: 'my-addon',
-      services: [{ service_name: 'main', image: 'ghcr.io/me/x:1' }],
+      version: '1.0.0',
+      services: [{ service_name: 'main', image: 'ghcr.io/me/x:1', ports: { '80': '8080' } }],
+      permissions: { host_ports: [8080] },
     });
 
-    expect(mockAddons.state.marketplace.find((a) => a.name === 'my-addon')?.status).toBe(
-      'under_review',
-    );
-    expect(await screen.findByText('Submitted my-addon for review')).toBeVisible();
-    expect(screen.queryByTestId('marketplace-card-my-addon')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(await screen.findByText('Registered local/my-addon 1.0.0')).toBeVisible();
+    expect(await card('local/my-addon')).toBeVisible();
   });
 
-  it('lists a registered definition once the review approved it, without a reload', async () => {
-    mockAddons.setDelays({ reviewDelayMs: 150 });
+  it('shows the marketplace refusal inside the dialog', async () => {
     const { user } = renderMarketplace();
     await card('example');
-
-    await register(user, {
-      name: 'my-addon',
-      services: [{ service_name: 'main', image: 'ghcr.io/me/x:1' }],
+    // Undeclared core network use: only the marketplace checks permissions against services.
+    const dialog = await register(user, {
+      name: 'x',
+      version: '1.0.0',
+      services: [{ service_name: 'a', image: 'b', networks: ['oakestra'] }],
     });
 
-    expect(await card('my-addon')).toBeVisible();
-    expect(await screen.findByText('my-addon is now in the marketplace')).toBeVisible();
-  });
-
-  it('says so when a registered definition fails the review', async () => {
-    mockAddons.setDelays({ reviewDelayMs: 150 });
-    const { user } = renderMarketplace();
-    await card('example');
-
-    await register(user, {
-      name: 'bad-addon',
-      services: [{ service_name: 'main', image: 'ghcr.io/me/does-not-exist:1' }],
-    });
-
-    expect(await screen.findByText('bad-addon did not pass the review')).toBeVisible();
-    expect(mockAddons.state.marketplace.find((a) => a.name === 'bad-addon')?.status).toBe(
-      'verification_failed',
+    expect(await within(dialog).findByTestId('register-error')).toHaveTextContent(
+      'permissions.core_network: is used but not declared',
     );
-    expect(screen.queryByTestId('marketplace-card-bad-addon')).not.toBeInTheDocument();
+    expect(dialog).toBeVisible();
   });
 
-  it('stops waiting for a definition that is deleted while under review', async () => {
-    mockAddons.setDelays({ reviewDelayMs: 60_000 });
-    const { user, services } = renderMarketplace();
-    await card('example');
-    await register(user, {
-      name: 'gone-addon',
-      services: [{ service_name: 'main', image: 'ghcr.io/me/x:1' }],
+  it('explains a strict decoding error for an unknown field', async () => {
+    mockServer.use(
+      http.post(`${TEST_MARKETPLACE_URL}/addons`, () =>
+        HttpResponse.json(
+          { message: 'invalid request body: json: unknown field "privileged"' },
+          { status: 422 },
+        ),
+      ),
+    );
+    const { user } = renderMarketplace();
+    const dialog = await register(user, {
+      name: 'x',
+      version: '1.0.0',
+      services: [{ service_name: 'a', image: 'b', privileged: true }],
     });
-    const definition = mockAddons.state.marketplace.find((a) => a.name === 'gone-addon')!;
-    const review = () =>
-      services.queryClient
-        .getQueryCache()
-        .find({ queryKey: addonManagerKeys.review(definition._id) });
-    await waitFor(() => expect(review()?.getObserversCount()).toBe(1));
 
-    mockAddons.marketplace.remove(definition._id);
-
-    // The next poll gets a 404, which drops the review and with it the polling query.
-    await waitFor(() => expect(review()?.getObserversCount() ?? 0).toBe(0));
-    expect(screen.queryByText(/gone-addon (is now|did not)/)).not.toBeInTheDocument();
+    expect(await within(dialog).findByTestId('register-error')).toHaveTextContent(
+      'unknown field "privileged"',
+    );
   });
 
   it('imports a definition from a file', async () => {
@@ -254,91 +324,40 @@ describe('<MarketplacePage>', () => {
     await user.click(await screen.findByRole('button', { name: 'Register addon' }));
     const dialog = await screen.findByRole('dialog');
 
-    const file = new File([JSON.stringify({ name: 'from-file', services: [] })], 'addon.json', {
-      type: 'application/json',
-    });
+    const text = JSON.stringify({ name: 'from-file', version: '1.0.0', services: [] });
+    const file = new File([text], 'addon.json', { type: 'application/json' });
     await user.upload(within(dialog).getByLabelText('Import a definition file'), file);
 
     await waitFor(() =>
-      expect(within(dialog).getByLabelText('Definition (JSON)')).toHaveValue(
-        '{"name":"from-file","services":[]}',
-      ),
+      expect(within(dialog).getByLabelText('Definition (JSON)')).toHaveValue(text),
     );
-    await user.click(within(dialog).getByRole('button', { name: 'Submit for review' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Register' }));
     expect(await within(dialog).findByTestId('register-errors')).toHaveTextContent(
       'At least one service is required',
     );
   });
 
-  it('shows the marketplace refusal inside the dialog', async () => {
-    mockServer.use(
-      http.post(`${TEST_MARKETPLACE_URL}/`, () =>
-        HttpResponse.json({ message: 'Name already taken' }, { status: 400 }),
-      ),
-    );
+  it('deletes a local registration', async () => {
     const { user } = renderMarketplace();
-    await user.click(await screen.findByRole('button', { name: 'Register addon' }));
-    const dialog = await screen.findByRole('dialog');
-    await user.click(within(dialog).getByLabelText('Definition (JSON)'));
-    await user.paste(JSON.stringify({ name: 'x', services: [{ service_name: 'a', image: 'b' }] }));
-    await user.click(within(dialog).getByRole('button', { name: 'Submit for review' }));
-
-    expect(await within(dialog).findByTestId('register-error')).toHaveTextContent(
-      'Name already taken',
+    await user.click(
+      await screen.findByRole('button', { name: 'More actions for local/docker-inspector' }),
     );
-    expect(dialog).toBeVisible();
-  });
-
-  it('explains the real marketplace 422 for an unknown field', async () => {
-    mockServer.use(
-      http.post(`${TEST_MARKETPLACE_URL}/`, () =>
-        HttpResponse.json(
-          {
-            code: 422,
-            status: 'Unprocessable Entity',
-            errors: {
-              json: { ui: ['Unknown field.'], services: { '0': { restart: ['Unknown field.'] } } },
-            },
-          },
-          { status: 422 },
-        ),
-      ),
-    );
-    const { user } = renderMarketplace();
-    await user.click(await screen.findByRole('button', { name: 'Register addon' }));
-    const dialog = await screen.findByRole('dialog');
-    await user.click(within(dialog).getByLabelText('Definition (JSON)'));
-    await user.paste(
-      JSON.stringify({
-        name: 'x',
-        services: [{ service_name: 'a', image: 'b' }],
-        ui: { service: 'a', sdk: '^0.1.0' },
-      }),
-    );
-    await user.click(within(dialog).getByRole('button', { name: 'Submit for review' }));
-
-    const alert = await within(dialog).findByTestId('register-error');
-    expect(alert).toHaveTextContent('ui: Unknown field. services[0].restart: Unknown field.');
-  });
-
-  it('deletes a definition after a warning that it is installed', async () => {
-    const { user } = renderMarketplace();
-    await user.click(await screen.findByRole('button', { name: 'More actions for example' }));
     await user.click(await screen.findByRole('menuitem', { name: 'Delete from marketplace' }));
-    // The warning needs the installed list.
     const dialog = await screen.findByRole('alertdialog');
-    await waitFor(() => expect(dialog).toHaveTextContent('It keeps running'));
+    expect(dialog).toHaveTextContent('can no longer be installed');
     await user.click(within(dialog).getByRole('button', { name: 'Delete definition' }));
 
     await waitFor(() =>
-      expect(screen.queryByTestId('marketplace-card-example')).not.toBeInTheDocument(),
+      expect(
+        screen.queryByTestId('marketplace-card-local/docker-inspector'),
+      ).not.toBeInTheDocument(),
     );
-    expect(mockAddons.state.marketplace.some((a) => a.name === 'example')).toBe(false);
+    expect(mockAddons.state.catalog.some((a) => a.name === 'docker-inspector')).toBe(false);
   });
 
   it('shows an inline error with a retry when the marketplace is unreachable', async () => {
     mockServer.use(
-      http.get(`${TEST_MARKETPLACE_URL}/`, () => new HttpResponse(null, { status: 502 })),
+      http.get(`${TEST_MARKETPLACE_URL}/addons`, () => new HttpResponse(null, { status: 502 })),
     );
     const { user } = renderMarketplace();
 

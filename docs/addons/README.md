@@ -125,9 +125,9 @@ If an addon disappears from `/ui-addons` (disabled or uninstalled), the shell re
 contributions. If a new version appears while the old one runs, the shell asks the user once to
 reload the page. Details are in [packaging](packaging.md#upgrades).
 
-> **Status of the backend:** the `ui` block in the addon definition and the `GET /ui-addons`
-> endpoint are planned for the real Oakestra addons-manager and marketplace, but not implemented
-> there yet. This repository has a mock that implements them (`tools/mock-addons-manager`). See
+> **Backend:** the `ui` block and `GET /ui-addons` are implemented by the Oakestra addons engine
+> (the Go `addons_manager` and `marketplace_manager`). This repository also has a mock of both
+> (`tools/mock-addons-manager`). See
 > [packaging](packaging.md#the-marketplace-definition-and-ui-addons).
 
 ## Tutorial: build your first addon UI
@@ -173,9 +173,15 @@ shell cannot find or accept your addon. The generator fills them in for you:
 | `vite.config.ts`               | `oakestraAddon({ name: 'insights', prefix: 'ins', port: 5175 })`        |
 | `package.json`                 | `@oakestra/addon-insights` (the npm package name, the only one that differs) |
 | `Dockerfile`                   | the package name and `addons/insights/...` paths                        |
-| `marketplace-definition.json`  | `"name": "insights"` (this becomes the `name` in `/ui-addons`)          |
-| The container                  | `addonui-insights`                                                      |
+| `marketplace-definition.json`  | `"name": "insights"` (the addon id in `/ui-addons`, see below)          |
+| The container                  | `addonui-insights` (named by the addons engine)                         |
 | `index.html`                   | the override hint with the dev port                                     |
+
+The addons engine names an addon by its id: the bare name for an addon from the official index,
+`<source>--<name>` for one from a tap or a local registration (`acme--insights`,
+`local--insights`). `/ui-addons` and the container use that id, so a UI built as `insights` only
+loads when the addon comes from the official index; for another source, build it with the id as
+its name.
 
 Your source files never repeat the name: the `oakestraAddon()` plugin provides it as `ADDON_ID`,
 which the template passes to `defineAddon({ id: ADDON_ID })` and `addonQueryKey(ADDON_ID, ...)`:
