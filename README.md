@@ -59,6 +59,10 @@ entries, widgets and tabs without a new dashboard release.
 | ![Addon marketplace](docs/images/addon-manager-marketplace.png) | ![Installed addons](docs/images/addon-manager-installed.png) |
 | **A page contributed by an addon**                      | **A tab contributed by an addon**                           |
 | ![Example addon page](docs/images/addon-page.png)       | ![Addon tab on an application](docs/images/application-detail-addon-tab.png) |
+| **Application topology**                                | **Infrastructure topology**                                 |
+| ![Services placed in clusters, with the details of one service](docs/images/topology-application.png) | ![Root orchestrator, clusters and workers, with a failed worker selected](docs/images/topology-infrastructure.png) |
+| **Hover preview**                                       | **Why a service cannot be placed**                          |
+| ![Preview card of a cluster](docs/images/topology-hover.png) | ![Placement diagram of a service no cluster can take](docs/images/placement-diagram.png) |
 
 ## Quick start
 

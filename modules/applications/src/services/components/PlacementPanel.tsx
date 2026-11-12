@@ -35,6 +35,7 @@ import {
   type PlacementRow,
 } from '../placement';
 import { describeStatus } from '../status';
+import { PlacementDiagram } from './PlacementDiagram';
 
 interface PlacementPanelProps {
   service: Service;
@@ -137,7 +138,8 @@ function ClusterChecks({
 
   return (
     <>
-      <div className="border-t">
+      <div className="border-t pt-3">
+        <PlacementDiagram service={service} rows={rows} />
         <ClusterList service={service} rows={rows} limits={limits} />
       </div>
       {skipped ? (

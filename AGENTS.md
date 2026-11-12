@@ -30,6 +30,9 @@ React shell that loads addon UIs at runtime through Module Federation.
   the reference. See "Module packages". `modules/fleet` is a board of cluster cards, each listing its services by
   application, behind an Unplaced card (`/fleet`, lenses, inspector, exceptions list); its state lives
   in search params. The board's columns use container queries, because the inspector narrows the page.
+  `modules/infrastructure` also draws a Topology section (`src/topology.ts`, a `FlowGraph` of the root
+  orchestrator, every cluster as a group and the workers seen in the viewer's instance data; the
+  system-manager has no worker list, so idle workers are not listed).
 - `tools/mock-addons-manager`: one server mocking the addons-manager, the marketplace-manager and
   `GET /api/v1/ui-addons` (see "Mock addons manager"), with a `/__test` control API.
 - `tools/mock-system-manager`: the `@oakestra/mocks` backend served over HTTP for the e2e stack.
@@ -364,6 +367,38 @@ passes a router `Link`, since `@oakestra/ui` has no router). Without WebGL2 it s
 instead of the map. It is its own subpath, not part of `./map`, so a page that only imports it
 does not load MapLibre until a map renders; its implementation imports `@oakestra/ui/map` by
 package name (never `./map`), so the shared map module stays the only MapLibre copy.
+
+`@oakestra/ui/flow` has `FlowGraph` (and `LazyFlowGraph`): a graph of `FlowNode`s (`kind`
+`primary`, `item`, `group` around the nodes naming it as `group`, `compact`; `tone`, `stale`,
+`pulse`, `href`, `column`) and `FlowEdge`s (`tone`, `dashed`, `animated`, `label`), laid out with
+dagre (`flow-layout.ts`, pure) and drawn with React Flow, both only in the lazy chunk; no React Flow
+primitive is exported. The layout reruns only when the ids, kinds, groups, columns or direction
+change, so status updates recolor in place; nodes keep their input order within a column.
+`column` is handed to dagre as fixed ranks (a custom ranker), so an edge that skips columns gets
+dummy nodes there, and `layoutGraph` returns an orthogonal route per edge that turns only in the
+gaps between columns and runs along dagre's lanes, never through a node. Edges from one node share
+a trunk per gap; labels sit near the target, or on the edge's own lane when several edges merge
+into one target. Edges within a column or against the columns get no route and fall back to a
+step line. The frame's height follows the graph (`fitViewport` in `flow-viewport.ts`): the zoom that fits
+the frame's width, never below 0.6 so text stays readable (the rest is a pan away, starting at the
+first column), bounded by `minHeight`/`maxHeight` (160/600). Callers set width and frame look in
+`className`, never a height. A ResizeObserver refits when the frame changes width; status
+updates never move the camera.
+`onNodeClick` fires on click and Enter (select), `onBackgroundClick` on a pane click and on Escape
+without an open card (clear). `selectedId` draws the ring, traces the selection while nothing is
+hovered and pans a selection outside the visible part into view. `renderHoverCard(node)` (null for
+none) is a Radix popover on the node's screen rect (`flow-hover-card.tsx`): 350 ms hover delay,
+100 ms grace, at once on keyboard focus, closed by Escape, blur and pan. Hovering a node fades
+everything not connected to it. `inspector` (the selection's detail card) floats over the frame's
+right edge from 768px frame width, keeping the graph's size, and the selection pans into the free
+part; narrower, it renders below the graph. Both topologies (the application tab and
+Infrastructure) keep the selection in `?node=` and navigate only from that panel. Selectable graphs
+leave `href` out (label link and select click
+compete); `renderLink` works as for `LocationMap`. A wheel scrolls the page
+(zoom on the controls, hidden below 480px, and pinch). `animated` edges carry a travelling dot,
+never React Flow's marching dashes, which would look like `dashed`; reduced motion stops it, the
+pulse and animated fits. The `.react-flow__*` theming sits next to the mapcn block in
+`styles.css`.
 
 `@oakestra/dashboard-sdk` root also exports `seedFromLists`, `useSearchParam(key, fallback)` (one
 search param as state, replacing the history entry) and, for `command.sources`, `readCached`,
@@ -791,8 +826,9 @@ plus `app/layouts/command-palette/`. Its contract (`command.actions`, `command.s
 ## Demo data
 
 `packages/mocks/src/scenarios.ts` has `withPlacementDemo`, a `customize` function for
-`createMockStore` that adds clusters (one silent, one never reported), instances and unplaced
-services for the Fleet view and the placement panel. It is not in `backend.json` because unit
+`createMockStore` that adds clusters (one silent, one never reported), instances, unplaced
+services and service `connectivity` (frontend -> api -> cache, ingest -> process) for the Fleet
+view, the topology graphs and the placement panel. It is not in `backend.json` because unit
 tests count the seed. `pnpm dev:mock` (`apps/shell/src/mock-api.ts`) always uses it, the HTTP
 mock only with `PLACEMENT_DEMO=true` (`tools/mock-system-manager`). Ids are fixed and
 timestamps relative to when the store is built.

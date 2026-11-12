@@ -24,6 +24,14 @@ globalThis.ResizeObserver ??= class {
   unobserve() {}
   disconnect() {}
 };
+// React Flow reads transforms through DOMMatrixReadOnly; nodes still render without it measuring.
+globalThis.DOMMatrixReadOnly ??= class {
+  m22 = 1;
+  constructor(transform?: string) {
+    const scale = /scale\(([\d.]+)\)/.exec(transform ?? '')?.[1];
+    this.m22 = scale ? Number(scale) : 1;
+  }
+} as unknown as typeof DOMMatrixReadOnly;
 Object.assign(Element.prototype, {
   scrollIntoView: () => {},
   hasPointerCapture: () => false,

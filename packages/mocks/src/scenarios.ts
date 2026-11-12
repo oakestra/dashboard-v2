@@ -1,7 +1,7 @@
 import type { MockApplication, MockCluster, MockData, MockInstance, MockService } from './store.ts';
 
 /**
- * Extra data for demos of the fleet board and the placement explanation. It is a `customize`
+ * Extra data for demos of the fleet board, the topology graphs and the placement explanation. It is a `customize`
  * function for `createMockStore` instead of a change to `backend.json`, because unit tests count
  * the seed's clusters and instances. All ids are fixed (the store resets on every page reload and
  * ids end up in URLs) and every timestamp is relative to the moment the store is (re)built.
@@ -347,6 +347,19 @@ export function withPlacementDemo(data: MockData): void {
     now,
   );
   findService(data, SERVICE_IDS.warehouse).status = 'RUNNING';
+
+  // Gives the topology graphs dependency edges to draw. Targets are service `_id`s, which is what
+  // the SLA form's connectivity picker writes.
+  const links: [from: keyof typeof SERVICE_IDS, to: keyof typeof SERVICE_IDS][] = [
+    ['frontend', 'api'],
+    ['api', 'cache'],
+    ['ingest', 'process'],
+  ];
+  for (const [from, to] of links) {
+    findService(data, SERVICE_IDS[from]).connectivity = [
+      { target_microservice_id: SERVICE_IDS[to] },
+    ];
+  }
 
   const mlbatch = data.applications.find((app) => app.applicationID === MLBATCH_APP_ID);
   if (!mlbatch) throw new Error('withPlacementDemo: mlbatch is missing from the seed');
