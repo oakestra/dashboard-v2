@@ -9,6 +9,11 @@ import { Middleware } from 'openapi-fetch';
 import { z } from 'zod';
 
 // @public (undocumented)
+export interface AcceptDefinitionOptions extends RequestOptions {
+    acceptDefinition?: string;
+}
+
+// @public (undocumented)
 export type AccessTokenClaims = z.infer<typeof accessTokenClaimsSchema>;
 
 // @public (undocumented)
@@ -21,7 +26,139 @@ export const accessTokenClaimsSchema: z.ZodObject<{
 }, z.core.$loose>;
 
 // @public
-export const ADDON_STATUSES: readonly ["installing", "active", "partially_active", "failed", "disabling", "disabled"];
+export const ADDON_ERROR_CODES: readonly ["unauthorized", "forbidden", "auth_unavailable", "not_found", "method_not_allowed", "validation_failed", "payload_too_large", "confirmation_required", "already_installed", "host_path_conflict", "no_update_available", "busy", "conflict", "sync_failed", "marketplace_unavailable", "internal_error"];
+
+// @public
+export const ADDON_SOURCE_KINDS: readonly ["official", "tap", "local"];
+
+// @public
+export const ADDON_STATUSES: readonly ["installing", "updating", "active", "partially_active", "failed", "disabling", "disabled"];
+
+// @public (undocumented)
+export type AddonDefinition = z.infer<typeof addonDefinitionSchema>;
+
+// @public
+export const addonDefinitionSchema: z.ZodObject<{
+    version: z.ZodString;
+    description: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string, string | null | undefined>>;
+    homepage: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    maintainers: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+    display_name: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    category: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    tags: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+    icon: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    services: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
+        service_name: z.ZodString;
+        image: z.ZodString;
+        command: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        networks: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+        volumes: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+        ports: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodString>>>, z.ZodTransform<Record<string, string>, Record<string, string> | null | undefined>>;
+        environment: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodString>>>, z.ZodTransform<Record<string, string>, Record<string, string> | null | undefined>>;
+        labels: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodString>>>, z.ZodTransform<Record<string, string>, Record<string, string> | null | undefined>>;
+    }, z.core.$loose>>>>, z.ZodTransform<{
+        [x: string]: unknown;
+        service_name: string;
+        image: string;
+        command?: string | null | undefined;
+        networks: string[];
+        volumes: string[];
+        ports: Record<string, string>;
+        environment: Record<string, string>;
+        labels: Record<string, string>;
+    }[], {
+        [x: string]: unknown;
+        service_name: string;
+        image: string;
+        command?: string | null | undefined;
+        networks: string[];
+        volumes: string[];
+        ports: Record<string, string>;
+        environment: Record<string, string>;
+        labels: Record<string, string>;
+    }[] | null | undefined>>;
+    volumes: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        driver: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        driver_opts: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodString>>>, z.ZodTransform<Record<string, string>, Record<string, string> | null | undefined>>;
+        labels: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodString>>>, z.ZodTransform<Record<string, string>, Record<string, string> | null | undefined>>;
+    }, z.core.$loose>>>>, z.ZodTransform<{
+        [x: string]: unknown;
+        name: string;
+        driver?: string | null | undefined;
+        driver_opts: Record<string, string>;
+        labels: Record<string, string>;
+    }[], {
+        [x: string]: unknown;
+        name: string;
+        driver?: string | null | undefined;
+        driver_opts: Record<string, string>;
+        labels: Record<string, string>;
+    }[] | null | undefined>>;
+    networks: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        driver: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        enable_ipv6: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
+    }, z.core.$loose>>>>, z.ZodTransform<{
+        [x: string]: unknown;
+        name: string;
+        driver?: string | null | undefined;
+        enable_ipv6?: boolean | null | undefined;
+    }[], {
+        [x: string]: unknown;
+        name: string;
+        driver?: string | null | undefined;
+        enable_ipv6?: boolean | null | undefined;
+    }[] | null | undefined>>;
+    permissions: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
+        host_paths: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+        host_ports: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodNumber>>>, z.ZodTransform<number[], number[] | null | undefined>>;
+        docker_socket: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+        host_root: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+        host_network: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+        core_network: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+    }, z.core.$loose>>>, z.ZodTransform<{
+        [x: string]: unknown;
+        host_paths: string[];
+        host_ports: number[];
+        docker_socket: boolean;
+        host_root: boolean;
+        host_network: boolean;
+        core_network: boolean;
+    }, {
+        [x: string]: unknown;
+        host_paths: string[];
+        host_ports: number[];
+        docker_socket: boolean;
+        host_root: boolean;
+        host_network: boolean;
+        core_network: boolean;
+    } | null | undefined>>;
+    ui: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
+        service: z.ZodString;
+        sdk: z.ZodString;
+    }, z.core.$loose>>>, z.ZodTransform<{
+        [x: string]: unknown;
+        service: string;
+        sdk: string;
+    } | undefined, {
+        [x: string]: unknown;
+        service: string;
+        sdk: string;
+    } | null | undefined>>;
+    name: z.ZodString;
+    source: z.ZodOptional<z.ZodObject<{
+        kind: z.ZodEnum<{
+            local: "local";
+            official: "official";
+            tap: "tap";
+        }>;
+        name: z.ZodString;
+    }, z.core.$loose>>;
+}, z.core.$loose>;
+
+// @public (undocumented)
+export type AddonErrorCode = (typeof ADDON_ERROR_CODES)[number];
 
 // @public (undocumented)
 export type AddonNetwork = z.infer<typeof addonNetworkSchema>;
@@ -31,6 +168,19 @@ export const addonNetworkSchema: z.ZodObject<{
     name: z.ZodString;
     driver: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     enable_ipv6: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
+}, z.core.$loose>;
+
+// @public (undocumented)
+export type AddonPermissions = z.infer<typeof addonPermissionsSchema>;
+
+// @public
+export const addonPermissionsSchema: z.ZodObject<{
+    host_paths: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+    host_ports: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodNumber>>>, z.ZodTransform<number[], number[] | null | undefined>>;
+    docker_socket: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+    host_root: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+    host_network: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+    core_network: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
 }, z.core.$loose>;
 
 // @public
@@ -64,23 +214,40 @@ export const addonServiceSchema: z.ZodObject<{
 
 // @public (undocumented)
 export interface AddonsManagerEndpoints {
+    approve(id: string, options?: AcceptDefinitionOptions): Promise<InstalledAddon>;
     // (undocumented)
     get(id: string, options?: RequestOptions): Promise<InstalledAddon>;
-    install(marketplaceId: string, options?: RequestOptions): Promise<InstalledAddon>;
+    install(qualifiedName: string, options?: AcceptDefinitionOptions): Promise<InstalledAddon>;
     list(options?: RequestOptions & {
         status?: AddonStatus;
     }): Promise<InstalledAddon[]>;
     // (undocumented)
     remove(id: string, options?: RequestOptions): Promise<RemoveAddonResult>;
-    setStatus(id: string, status: AddonStatus, options?: RequestOptions): Promise<InstalledAddon>;
+    update(id: string, options?: AcceptDefinitionOptions): Promise<InstalledAddon>;
 }
+
+// @public (undocumented)
+export type AddonSourceKind = (typeof ADDON_SOURCE_KINDS)[number];
+
+// @public (undocumented)
+export type AddonSourceRef = z.infer<typeof addonSourceRefSchema>;
+
+// @public (undocumented)
+export const addonSourceRefSchema: z.ZodObject<{
+    kind: z.ZodEnum<{
+        local: "local";
+        official: "official";
+        tap: "tap";
+    }>;
+    name: z.ZodString;
+}, z.core.$loose>;
 
 // @public (undocumented)
 export interface AddonsRequest extends RequestOptions {
     // (undocumented)
     body?: unknown;
     // (undocumented)
-    method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+    method: 'GET' | 'POST' | 'DELETE';
     path: string;
     // (undocumented)
     query?: Record<string, string | undefined>;
@@ -116,11 +283,24 @@ export const addonVolumeSchema: z.ZodObject<{
     labels: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodString>>>, z.ZodTransform<Record<string, string>, Record<string, string> | null | undefined>>;
 }, z.core.$loose>;
 
+// @public (undocumented)
+export type AddTapInput = z.input<typeof addTapInputSchema>;
+
+// @public
+export const addTapInputSchema: z.ZodObject<{
+    name: z.ZodString;
+    url: z.ZodString;
+    token: z.ZodOptional<z.ZodString>;
+    allow_insecure: z.ZodOptional<z.ZodBoolean>;
+    allow_private: z.ZodOptional<z.ZodBoolean>;
+}, z.core.$strip>;
+
 // @public
 export class ApiError extends Error {
     constructor(message: string, options: ApiErrorOptions);
     // (undocumented)
     readonly body: unknown;
+    readonly code: string | undefined;
     // (undocumented)
     readonly kind: ApiErrorKind;
     // (undocumented)
@@ -137,11 +317,12 @@ export class ApiError extends Error {
 export type ApiErrorKind = 'http' | 'network' | 'invalid-response';
 
 // @public (undocumented)
-interface ApiErrorOptions {
+export interface ApiErrorOptions {
     // (undocumented)
     body?: unknown;
     // (undocumented)
     cause?: unknown;
+    code?: string;
     // (undocumented)
     kind: ApiErrorKind;
     // (undocumented)
@@ -325,7 +506,7 @@ interface components {
                 [name: string]: unknown;
             };
             content: {
-                "application/json": components["schemas"]["Error"];
+                'application/json': components['schemas']['Error'];
             };
         };
         UNPROCESSABLE_ENTITY: {
@@ -333,7 +514,7 @@ interface components {
                 [name: string]: unknown;
             };
             content: {
-                "application/json": components["schemas"]["Error"];
+                'application/json': components['schemas']['Error'];
             };
         };
     };
@@ -355,6 +536,167 @@ interface components {
             next_page?: number;
         };
     };
+}
+
+// @public
+export interface ConsentRequest {
+    definition: AddonDefinition;
+    definitionHash: string;
+    message: string;
+    permissions: AddonPermissions;
+    permissionsGrow: boolean;
+    previousPermissions?: AddonPermissions;
+    previousVersion?: string;
+}
+
+// @public
+export const consentRequiredBodySchema: z.ZodObject<{
+    code: z.ZodLiteral<"confirmation_required">;
+    message: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    definition: z.ZodObject<{
+        version: z.ZodString;
+        description: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string, string | null | undefined>>;
+        homepage: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+        maintainers: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+        display_name: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+        category: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+        tags: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+        icon: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+        services: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
+            service_name: z.ZodString;
+            image: z.ZodString;
+            command: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+            networks: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+            volumes: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+            ports: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodString>>>, z.ZodTransform<Record<string, string>, Record<string, string> | null | undefined>>;
+            environment: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodString>>>, z.ZodTransform<Record<string, string>, Record<string, string> | null | undefined>>;
+            labels: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodString>>>, z.ZodTransform<Record<string, string>, Record<string, string> | null | undefined>>;
+        }, z.core.$loose>>>>, z.ZodTransform<{
+            [x: string]: unknown;
+            service_name: string;
+            image: string;
+            command?: string | null | undefined;
+            networks: string[];
+            volumes: string[];
+            ports: Record<string, string>;
+            environment: Record<string, string>;
+            labels: Record<string, string>;
+        }[], {
+            [x: string]: unknown;
+            service_name: string;
+            image: string;
+            command?: string | null | undefined;
+            networks: string[];
+            volumes: string[];
+            ports: Record<string, string>;
+            environment: Record<string, string>;
+            labels: Record<string, string>;
+        }[] | null | undefined>>;
+        volumes: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            driver: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+            driver_opts: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodString>>>, z.ZodTransform<Record<string, string>, Record<string, string> | null | undefined>>;
+            labels: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodString>>>, z.ZodTransform<Record<string, string>, Record<string, string> | null | undefined>>;
+        }, z.core.$loose>>>>, z.ZodTransform<{
+            [x: string]: unknown;
+            name: string;
+            driver?: string | null | undefined;
+            driver_opts: Record<string, string>;
+            labels: Record<string, string>;
+        }[], {
+            [x: string]: unknown;
+            name: string;
+            driver?: string | null | undefined;
+            driver_opts: Record<string, string>;
+            labels: Record<string, string>;
+        }[] | null | undefined>>;
+        networks: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            driver: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+            enable_ipv6: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
+        }, z.core.$loose>>>>, z.ZodTransform<{
+            [x: string]: unknown;
+            name: string;
+            driver?: string | null | undefined;
+            enable_ipv6?: boolean | null | undefined;
+        }[], {
+            [x: string]: unknown;
+            name: string;
+            driver?: string | null | undefined;
+            enable_ipv6?: boolean | null | undefined;
+        }[] | null | undefined>>;
+        permissions: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
+            host_paths: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+            host_ports: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodNumber>>>, z.ZodTransform<number[], number[] | null | undefined>>;
+            docker_socket: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+            host_root: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+            host_network: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+            core_network: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+        }, z.core.$loose>>>, z.ZodTransform<{
+            [x: string]: unknown;
+            host_paths: string[];
+            host_ports: number[];
+            docker_socket: boolean;
+            host_root: boolean;
+            host_network: boolean;
+            core_network: boolean;
+        }, {
+            [x: string]: unknown;
+            host_paths: string[];
+            host_ports: number[];
+            docker_socket: boolean;
+            host_root: boolean;
+            host_network: boolean;
+            core_network: boolean;
+        } | null | undefined>>;
+        ui: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
+            service: z.ZodString;
+            sdk: z.ZodString;
+        }, z.core.$loose>>>, z.ZodTransform<{
+            [x: string]: unknown;
+            service: string;
+            sdk: string;
+        } | undefined, {
+            [x: string]: unknown;
+            service: string;
+            sdk: string;
+        } | null | undefined>>;
+        name: z.ZodString;
+        source: z.ZodOptional<z.ZodObject<{
+            kind: z.ZodEnum<{
+                local: "local";
+                official: "official";
+                tap: "tap";
+            }>;
+            name: z.ZodString;
+        }, z.core.$loose>>;
+    }, z.core.$loose>;
+    definition_hash: z.ZodString;
+    permissions: z.ZodObject<{
+        host_paths: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+        host_ports: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodNumber>>>, z.ZodTransform<number[], number[] | null | undefined>>;
+        docker_socket: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+        host_root: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+        host_network: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+        core_network: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+    }, z.core.$loose>;
+    previous_version: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    previous_permissions: z.ZodOptional<z.ZodObject<{
+        host_paths: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+        host_ports: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodNumber>>>, z.ZodTransform<number[], number[] | null | undefined>>;
+        docker_socket: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+        host_root: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+        host_network: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+        core_network: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+    }, z.core.$loose>>;
+    permissions_grow: z.ZodOptional<z.ZodBoolean>;
+}, z.core.$loose>;
+
+// @public
+export class ConsentRequiredError extends ApiError {
+    constructor(request: ConsentRequest, options: ApiErrorOptions);
+    // (undocumented)
+    readonly consentRequest: ConsentRequest;
 }
 
 // @public (undocumented)
@@ -382,6 +724,9 @@ export function describeError(error: unknown): string;
 export function describeStatus(status: string | undefined, detail?: string): StatusDescription;
 
 // @public
+export function hasAddonErrorCode(error: unknown, code: AddonErrorCode): boolean;
+
+// @public
 export function hasMetrics(instance: Instance): boolean;
 
 // @public (undocumented)
@@ -401,10 +746,14 @@ export type InstalledAddon = z.infer<typeof installedAddonSchema>;
 
 // @public (undocumented)
 export const installedAddonSchema: z.ZodObject<{
-    _id: z.ZodString;
-    marketplace_id: z.ZodString;
-    name: z.ZodString;
+    version: z.ZodString;
     description: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string, string | null | undefined>>;
+    homepage: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    maintainers: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+    display_name: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    category: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    tags: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+    icon: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
     services: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
         service_name: z.ZodString;
         image: z.ZodString;
@@ -468,6 +817,54 @@ export const installedAddonSchema: z.ZodObject<{
         driver?: string | null | undefined;
         enable_ipv6?: boolean | null | undefined;
     }[] | null | undefined>>;
+    ui: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
+        service: z.ZodString;
+        sdk: z.ZodString;
+    }, z.core.$loose>>>, z.ZodTransform<{
+        [x: string]: unknown;
+        service: string;
+        sdk: string;
+    } | undefined, {
+        [x: string]: unknown;
+        service: string;
+        sdk: string;
+    } | null | undefined>>;
+    _id: z.ZodString;
+    name: z.ZodString;
+    qualified_name: z.ZodString;
+    addon_id: z.ZodString;
+    source: z.ZodObject<{
+        kind: z.ZodEnum<{
+            local: "local";
+            official: "official";
+            tap: "tap";
+        }>;
+        name: z.ZodString;
+    }, z.core.$loose>;
+    permissions: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
+        host_paths: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+        host_ports: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodNumber>>>, z.ZodTransform<number[], number[] | null | undefined>>;
+        docker_socket: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+        host_root: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+        host_network: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+        core_network: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+    }, z.core.$loose>>>, z.ZodTransform<{
+        [x: string]: unknown;
+        host_paths: string[];
+        host_ports: number[];
+        docker_socket: boolean;
+        host_root: boolean;
+        host_network: boolean;
+        core_network: boolean;
+    }, {
+        [x: string]: unknown;
+        host_paths: string[];
+        host_ports: number[];
+        docker_socket: boolean;
+        host_root: boolean;
+        host_network: boolean;
+        core_network: boolean;
+    } | null | undefined>>;
     status: z.ZodEnum<{
         active: "active";
         disabled: "disabled";
@@ -475,17 +872,25 @@ export const installedAddonSchema: z.ZodObject<{
         failed: "failed";
         installing: "installing";
         partially_active: "partially_active";
+        updating: "updating";
     }>;
     status_details: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
         failed_services: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+        message: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
     }, z.core.$loose>>>, z.ZodTransform<{
         [x: string]: unknown;
         failed_services: string[];
+        message: string | undefined;
     } | undefined, {
         [x: string]: unknown;
         failed_services: string[];
+        message: string | undefined;
     } | null | undefined>>;
     logs: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodUnion<readonly [z.ZodString, z.ZodArray<z.ZodString>]>>>, z.ZodTransform<string | undefined, string | string[] | null | undefined>>;
+    update_available: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+    latest_version: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    created_at: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    updated_at: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
 }, z.core.$loose>;
 
 // @public (undocumented)
@@ -561,7 +966,13 @@ export function isAbnormalTone(tone: StatusTone): tone is 'destructive' | 'warni
 export function isApiError(error: unknown): error is ApiError;
 
 // @public
+export function isConsentRequiredError(error: unknown): error is ConsentRequiredError;
+
+// @public
 export function isPlacementFailure(status: string | undefined): boolean;
+
+// @public (undocumented)
+export function isProblemAddonStatus(status: string): status is ProblemAddonStatus;
 
 // @public (undocumented)
 export function isTransitionalAddonStatus(status: string): status is TransitionalAddonStatus;
@@ -588,17 +999,27 @@ export const loginRequestSchema: z.ZodObject<{
     organization_name: z.ZodPipe<z.ZodOptional<z.ZodString>, z.ZodTransform<string | undefined, string | undefined>>;
 }, z.core.$strip>;
 
-// @public
-export const MARKETPLACE_ADDON_STATUSES: readonly ["under_review", "approved", "verification_failed"];
-
 // @public (undocumented)
 export type MarketplaceAddon = z.infer<typeof marketplaceAddonSchema>;
 
-// @public (undocumented)
+// @public
+export interface MarketplaceAddonRef {
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    source: string;
+}
+
+// @public
 export const marketplaceAddonSchema: z.ZodObject<{
-    _id: z.ZodString;
-    name: z.ZodString;
+    version: z.ZodString;
     description: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string, string | null | undefined>>;
+    homepage: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    maintainers: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+    display_name: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    category: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    tags: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+    icon: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
     services: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
         service_name: z.ZodString;
         image: z.ZodString;
@@ -662,11 +1083,30 @@ export const marketplaceAddonSchema: z.ZodObject<{
         driver?: string | null | undefined;
         enable_ipv6?: boolean | null | undefined;
     }[] | null | undefined>>;
-    status: z.ZodOptional<z.ZodEnum<{
-        approved: "approved";
-        under_review: "under_review";
-        verification_failed: "verification_failed";
-    }>>;
+    permissions: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
+        host_paths: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+        host_ports: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodNumber>>>, z.ZodTransform<number[], number[] | null | undefined>>;
+        docker_socket: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+        host_root: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+        host_network: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+        core_network: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+    }, z.core.$loose>>>, z.ZodTransform<{
+        [x: string]: unknown;
+        host_paths: string[];
+        host_ports: number[];
+        docker_socket: boolean;
+        host_root: boolean;
+        host_network: boolean;
+        core_network: boolean;
+    }, {
+        [x: string]: unknown;
+        host_paths: string[];
+        host_ports: number[];
+        docker_socket: boolean;
+        host_root: boolean;
+        host_network: boolean;
+        core_network: boolean;
+    } | null | undefined>>;
     ui: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
         service: z.ZodString;
         sdk: z.ZodString;
@@ -679,22 +1119,102 @@ export const marketplaceAddonSchema: z.ZodObject<{
         service: string;
         sdk: string;
     } | null | undefined>>;
+    name: z.ZodString;
+    qualified_name: z.ZodString;
+    id: z.ZodString;
+    source: z.ZodObject<{
+        kind: z.ZodEnum<{
+            local: "local";
+            official: "official";
+            tap: "tap";
+        }>;
+        name: z.ZodString;
+    }, z.core.$loose>;
+    required_permissions: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodObject<{
+        host_paths: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+        host_ports: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodNumber>>>, z.ZodTransform<number[], number[] | null | undefined>>;
+        docker_socket: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+        host_root: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+        host_network: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+        core_network: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+    }, z.core.$loose>>>, z.ZodTransform<{
+        [x: string]: unknown;
+        host_paths: string[];
+        host_ports: number[];
+        docker_socket: boolean;
+        host_root: boolean;
+        host_network: boolean;
+        core_network: boolean;
+    }, {
+        [x: string]: unknown;
+        host_paths: string[];
+        host_ports: number[];
+        docker_socket: boolean;
+        host_root: boolean;
+        host_network: boolean;
+        core_network: boolean;
+    } | null | undefined>>;
 }, z.core.$loose>;
 
 // @public (undocumented)
-export type MarketplaceAddonStatus = (typeof MARKETPLACE_ADDON_STATUSES)[number];
+export type MarketplaceCategory = z.infer<typeof marketplaceCategorySchema>;
+
+// @public
+export const marketplaceCategorySchema: z.ZodObject<{
+    name: z.ZodString;
+    count: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodNumber>>, z.ZodTransform<number, number | null | undefined>>;
+}, z.core.$loose>;
 
 // @public (undocumented)
 export interface MarketplaceEndpoints {
+    categories(options?: RequestOptions & {
+        source?: string;
+    }): Promise<MarketplaceCategory[]>;
     // (undocumented)
-    get(id: string, options?: RequestOptions): Promise<MarketplaceAddon>;
+    get(ref: MarketplaceAddonRef, options?: RequestOptions): Promise<MarketplaceAddon>;
     list(options?: RequestOptions & {
+        source?: string;
         name?: string;
+        category?: string;
+        tag?: string;
     }): Promise<MarketplaceAddon[]>;
     register(input: RegisterAddonInput, options?: RequestOptions): Promise<MarketplaceAddon>;
+    removeLocal(name: string, options?: RequestOptions): Promise<void>;
     // (undocumented)
-    remove(id: string, options?: RequestOptions): Promise<void>;
+    sources: {
+        list(options?: RequestOptions): Promise<MarketplaceSource[]>;
+        add(input: AddTapInput, options?: RequestOptions): Promise<MarketplaceSource>;
+        remove(name: string, options?: RequestOptions): Promise<void>;
+        sync(name: string, options?: RequestOptions): Promise<MarketplaceSource>;
+        importIndex(name: string, index: unknown, options?: RequestOptions): Promise<MarketplaceSource>;
+    };
 }
+
+// @public (undocumented)
+export type MarketplaceSource = z.infer<typeof marketplaceSourceSchema>;
+
+// @public
+export const marketplaceSourceSchema: z.ZodObject<{
+    name: z.ZodString;
+    kind: z.ZodEnum<{
+        local: "local";
+        official: "official";
+        tap: "tap";
+    }>;
+    url: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string, string | null | undefined>>;
+    has_token: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+    allow_insecure: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+    allow_private: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+    sync_enabled: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+    deletable: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodBoolean>>, z.ZodTransform<boolean, boolean | null | undefined>>;
+    created_at: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    last_attempt_at: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    last_synced_at: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    last_error: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    serial: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodNumber>>, z.ZodTransform<number, number | null | undefined>>;
+    generated_at: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    addon_count: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodNumber>>, z.ZodTransform<number, number | null | undefined>>;
+}, z.core.$loose>;
 
 // @public
 export function messageFromErrorBody(body: unknown, status: number): string;
@@ -821,7 +1341,7 @@ export interface PasswordResetRequest {
 // @public (undocumented)
 interface paths {
     // (undocumented)
-    "/application/": {
+    '/application/': {
         parameters: {
             query?: never;
             header?: never;
@@ -839,7 +1359,7 @@ interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": {
+                    'application/json': {
                         sla_version: string;
                         customerID: string;
                         applications: {
@@ -920,7 +1440,7 @@ interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
+                        'application/json': {
                             sla_version: string;
                             customerID: string;
                             applications: {
@@ -995,8 +1515,8 @@ interface paths {
                         }[];
                     };
                 };
-                422: components["responses"]["UNPROCESSABLE_ENTITY"];
-                default: components["responses"]["DEFAULT_ERROR"];
+                422: components['responses']['UNPROCESSABLE_ENTITY'];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         delete?: never;
@@ -1006,7 +1526,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/application/{appid}": {
+    '/application/{appid}': {
         parameters: {
             query?: never;
             header?: never;
@@ -1031,7 +1551,7 @@ interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
+                        'application/json': {
                             sla_version: string;
                             customerID: string;
                             applications: {
@@ -1106,7 +1626,7 @@ interface paths {
                         };
                     };
                 };
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         put: {
@@ -1120,7 +1640,7 @@ interface paths {
             };
             requestBody?: never;
             responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         post?: never;
@@ -1135,7 +1655,7 @@ interface paths {
             };
             requestBody?: never;
             responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         options?: never;
@@ -1144,7 +1664,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/applications/": {
+    '/applications/': {
         parameters: {
             query?: never;
             header?: never;
@@ -1165,7 +1685,7 @@ interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
+                        'application/json': {
                             sla_version: string;
                             customerID: string;
                             applications: {
@@ -1240,7 +1760,7 @@ interface paths {
                         }[];
                     };
                 };
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         put?: never;
@@ -1252,7 +1772,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/applications/{userid}": {
+    '/applications/{userid}': {
         parameters: {
             query?: never;
             header?: never;
@@ -1277,7 +1797,7 @@ interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
+                        'application/json': {
                             sla_version: string;
                             customerID: string;
                             applications: {
@@ -1352,7 +1872,7 @@ interface paths {
                         }[];
                     };
                 };
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         put?: never;
@@ -1364,7 +1884,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/auth/login": {
+    '/auth/login': {
         parameters: {
             query?: never;
             header?: never;
@@ -1382,7 +1902,7 @@ interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": {
+                    'application/json': {
                         username?: string;
                         password?: string;
                         organization?: string;
@@ -1390,8 +1910,8 @@ interface paths {
                 };
             };
             responses: {
-                422: components["responses"]["UNPROCESSABLE_ENTITY"];
-                default: components["responses"]["DEFAULT_ERROR"];
+                422: components['responses']['UNPROCESSABLE_ENTITY'];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         delete?: never;
@@ -1401,7 +1921,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/auth/refresh": {
+    '/auth/refresh': {
         parameters: {
             query?: never;
             header?: never;
@@ -1419,7 +1939,7 @@ interface paths {
             };
             requestBody?: never;
             responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         delete?: never;
@@ -1429,7 +1949,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/auth/register": {
+    '/auth/register': {
         parameters: {
             query?: never;
             header?: never;
@@ -1447,7 +1967,7 @@ interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": {
+                    'application/json': {
                         name?: string;
                         password?: string;
                         roles?: string[];
@@ -1455,8 +1975,8 @@ interface paths {
                 };
             };
             responses: {
-                422: components["responses"]["UNPROCESSABLE_ENTITY"];
-                default: components["responses"]["DEFAULT_ERROR"];
+                422: components['responses']['UNPROCESSABLE_ENTITY'];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         delete?: never;
@@ -1466,7 +1986,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/clusters/": {
+    '/clusters/': {
         parameters: {
             query?: never;
             header?: never;
@@ -1482,7 +2002,7 @@ interface paths {
             };
             requestBody?: never;
             responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         put?: never;
@@ -1494,7 +2014,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/clusters/active": {
+    '/clusters/active': {
         parameters: {
             query?: never;
             header?: never;
@@ -1510,7 +2030,7 @@ interface paths {
             };
             requestBody?: never;
             responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         put?: never;
@@ -1522,7 +2042,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/information/{clusterid}": {
+    '/information/{clusterid}': {
         parameters: {
             query?: never;
             header?: never;
@@ -1544,7 +2064,7 @@ interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": {
+                    'application/json': {
                         cpu_percent?: string;
                         cpu_cores?: string;
                         gpu_cores?: string;
@@ -1570,8 +2090,8 @@ interface paths {
                 };
             };
             responses: {
-                422: components["responses"]["UNPROCESSABLE_ENTITY"];
-                default: components["responses"]["DEFAULT_ERROR"];
+                422: components['responses']['UNPROCESSABLE_ENTITY'];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         delete?: never;
@@ -1581,7 +2101,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/organization/": {
+    '/organization/': {
         parameters: {
             query?: never;
             header?: never;
@@ -1602,14 +2122,14 @@ interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
+                        'application/json': {
                             _id?: string;
                             name?: string;
                             member?: Record<string, unknown>[];
                         };
                     };
                 };
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         put?: never;
@@ -1627,14 +2147,14 @@ interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
+                        'application/json': {
                             _id?: string;
                             name?: string;
                             member?: Record<string, unknown>[];
                         };
                     };
                 };
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         delete?: never;
@@ -1644,7 +2164,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/organization/{organizationid}": {
+    '/organization/{organizationid}': {
         parameters: {
             query?: never;
             header?: never;
@@ -1665,7 +2185,7 @@ interface paths {
             };
             requestBody?: never;
             responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         post?: never;
@@ -1680,7 +2200,7 @@ interface paths {
             };
             requestBody?: never;
             responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         options?: never;
@@ -1689,7 +2209,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/permission/{username}": {
+    '/permission/{username}': {
         parameters: {
             query?: never;
             header?: never;
@@ -1714,12 +2234,12 @@ interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
+                        'application/json': {
                             roles?: string[];
                         };
                     };
                 };
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         put?: never;
@@ -1731,7 +2251,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/result/deploy": {
+    '/result/deploy': {
         parameters: {
             query?: never;
             header?: never;
@@ -1749,15 +2269,15 @@ interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": {
+                    'application/json': {
                         job_id?: string;
                         candidate_id?: string;
                     };
                 };
             };
             responses: {
-                422: components["responses"]["UNPROCESSABLE_ENTITY"];
-                default: components["responses"]["DEFAULT_ERROR"];
+                422: components['responses']['UNPROCESSABLE_ENTITY'];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         delete?: never;
@@ -1767,7 +2287,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/service/": {
+    '/service/': {
         parameters: {
             query?: never;
             header?: never;
@@ -1785,7 +2305,7 @@ interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": {
+                    'application/json': {
                         sla_version: string;
                         customerID: string;
                         applications: {
@@ -1867,8 +2387,8 @@ interface paths {
                     };
                     content?: never;
                 };
-                422: components["responses"]["UNPROCESSABLE_ENTITY"];
-                default: components["responses"]["DEFAULT_ERROR"];
+                422: components['responses']['UNPROCESSABLE_ENTITY'];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         delete?: never;
@@ -1878,7 +2398,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/service/{serviceid}": {
+    '/service/{serviceid}': {
         parameters: {
             query?: never;
             header?: never;
@@ -1903,7 +2423,7 @@ interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
+                        'application/json': {
                             microserviceID?: string;
                             microservice_name: string;
                             microservice_namespace: string;
@@ -1967,7 +2487,7 @@ interface paths {
                         };
                     };
                 };
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         put: {
@@ -1981,7 +2501,7 @@ interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": {
+                    'application/json': {
                         sla_version: string;
                         customerID: string;
                         applications: {
@@ -2063,8 +2583,8 @@ interface paths {
                     };
                     content?: never;
                 };
-                422: components["responses"]["UNPROCESSABLE_ENTITY"];
-                default: components["responses"]["DEFAULT_ERROR"];
+                422: components['responses']['UNPROCESSABLE_ENTITY'];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         post?: never;
@@ -2079,7 +2599,7 @@ interface paths {
             };
             requestBody?: never;
             responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         options?: never;
@@ -2088,7 +2608,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/service/{serviceid}/instance": {
+    '/service/{serviceid}/instance': {
         parameters: {
             query?: never;
             header?: never;
@@ -2110,7 +2630,7 @@ interface paths {
             };
             requestBody?: never;
             responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         delete?: never;
@@ -2120,7 +2640,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/service/{serviceid}/instance/{instance_number}": {
+    '/service/{serviceid}/instance/{instance_number}': {
         parameters: {
             query?: never;
             header?: never;
@@ -2145,7 +2665,7 @@ interface paths {
             };
             requestBody?: never;
             responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         options?: never;
@@ -2154,7 +2674,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/services/": {
+    '/services/': {
         parameters: {
             query?: never;
             header?: never;
@@ -2175,7 +2695,7 @@ interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
+                        'application/json': {
                             microserviceID?: string;
                             microservice_name: string;
                             microservice_namespace: string;
@@ -2239,7 +2759,7 @@ interface paths {
                         }[];
                     };
                 };
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         put?: never;
@@ -2251,7 +2771,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/services/{appid}": {
+    '/services/{appid}': {
         parameters: {
             query?: never;
             header?: never;
@@ -2276,7 +2796,7 @@ interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
+                        'application/json': {
                             microserviceID?: string;
                             microservice_name: string;
                             microservice_namespace: string;
@@ -2340,7 +2860,7 @@ interface paths {
                         }[];
                     };
                 };
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         put?: never;
@@ -2352,7 +2872,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/user/": {
+    '/user/': {
         parameters: {
             query?: never;
             header?: never;
@@ -2369,7 +2889,7 @@ interface paths {
             };
             requestBody?: never;
             responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         post: {
@@ -2381,7 +2901,7 @@ interface paths {
             };
             requestBody?: never;
             responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         delete?: never;
@@ -2391,7 +2911,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/user/{username}": {
+    '/user/{username}': {
         parameters: {
             query?: never;
             header?: never;
@@ -2411,7 +2931,7 @@ interface paths {
             };
             requestBody?: never;
             responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         put: {
@@ -2425,7 +2945,7 @@ interface paths {
             };
             requestBody?: never;
             responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         post: {
@@ -2439,7 +2959,7 @@ interface paths {
             };
             requestBody?: never;
             responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         delete: {
@@ -2453,7 +2973,7 @@ interface paths {
             };
             requestBody?: never;
             responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         options?: never;
@@ -2462,7 +2982,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/users/": {
+    '/users/': {
         parameters: {
             query?: never;
             header?: never;
@@ -2478,7 +2998,7 @@ interface paths {
             };
             requestBody?: never;
             responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         put?: never;
@@ -2490,7 +3010,7 @@ interface paths {
         trace?: never;
     };
     // (undocumented)
-    "/users/{organization_id}": {
+    '/users/{organization_id}': {
         parameters: {
             query?: never;
             header?: never;
@@ -2510,7 +3030,7 @@ interface paths {
             };
             requestBody?: never;
             responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
+                default: components['responses']['DEFAULT_ERROR'];
             };
         };
         put?: never;
@@ -2528,6 +3048,12 @@ export const permissionsSchema: z.ZodObject<{
     roles: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
 }, z.core.$loose>;
 
+// @public
+export const PROBLEM_ADDON_STATUSES: readonly ["partially_active", "failed"];
+
+// @public (undocumented)
+export type ProblemAddonStatus = (typeof PROBLEM_ADDON_STATUSES)[number];
+
 // @public (undocumented)
 export const refreshResponseSchema: z.ZodObject<{
     token: z.ZodString;
@@ -2539,7 +3065,10 @@ export type RegisterAddonInput = z.input<typeof registerAddonInputSchema>;
 // @public
 export const registerAddonInputSchema: z.ZodObject<{
     name: z.ZodString;
+    version: z.ZodString;
     description: z.ZodOptional<z.ZodString>;
+    homepage: z.ZodOptional<z.ZodString>;
+    maintainers: z.ZodOptional<z.ZodArray<z.ZodString>>;
     services: z.ZodArray<z.ZodObject<{
         service_name: z.ZodString;
         image: z.ZodString;
@@ -2549,23 +3078,31 @@ export const registerAddonInputSchema: z.ZodObject<{
         ports: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
         environment: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
         labels: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-    }, z.core.$strip>>;
+    }, z.core.$loose>>;
     volumes: z.ZodOptional<z.ZodArray<z.ZodObject<{
         name: z.ZodString;
         driver: z.ZodOptional<z.ZodString>;
         driver_opts: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
         labels: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-    }, z.core.$strip>>>;
+    }, z.core.$loose>>>;
     networks: z.ZodOptional<z.ZodArray<z.ZodObject<{
         name: z.ZodString;
         driver: z.ZodOptional<z.ZodString>;
         enable_ipv6: z.ZodOptional<z.ZodBoolean>;
-    }, z.core.$strip>>>;
+    }, z.core.$loose>>>;
+    permissions: z.ZodOptional<z.ZodObject<{
+        host_paths: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        host_ports: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
+        docker_socket: z.ZodOptional<z.ZodBoolean>;
+        host_root: z.ZodOptional<z.ZodBoolean>;
+        host_network: z.ZodOptional<z.ZodBoolean>;
+        core_network: z.ZodOptional<z.ZodBoolean>;
+    }, z.core.$loose>>;
     ui: z.ZodOptional<z.ZodObject<{
         service: z.ZodString;
         sdk: z.ZodString;
-    }, z.core.$strip>>;
-}, z.core.$strip>;
+    }, z.core.$loose>>;
+}, z.core.$loose>;
 
 // @public
 export type RemoveAddonResult = {
@@ -3208,7 +3745,7 @@ export const tokenPairSchema: z.ZodObject<{
 }, z.core.$loose>;
 
 // @public
-export const TRANSITIONAL_ADDON_STATUSES: readonly ["installing", "disabling"];
+export const TRANSITIONAL_ADDON_STATUSES: readonly ["installing", "updating", "disabling"];
 
 // @public (undocumented)
 export type TransitionalAddonStatus = (typeof TRANSITIONAL_ADDON_STATUSES)[number];

@@ -35,9 +35,17 @@ export interface AddonRegistryState {
 
 export type AddonRegistry = StoreApi<AddonRegistryState>;
 
-/** The addon's name for users: the label its UI declares once loaded, its name until then. */
+/**
+ * The addon's name for users: the label its UI declares once loaded, else the catalog's display
+ * name from `/ui-addons`, else its name. The UI's own label wins because it is what the addon's
+ * pages and nav items call themselves.
+ */
 export function addonLabel(entry: AddonEntry): string {
-  return (entry.state === 'loaded' ? entry.definition.label : undefined) ?? entry.name;
+  return (
+    (entry.state === 'loaded' ? entry.definition.label : undefined) ??
+    entry.display_name ??
+    entry.name
+  );
 }
 
 export function createAddonRegistry(): AddonRegistry {

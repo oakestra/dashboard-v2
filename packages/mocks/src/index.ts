@@ -1,5 +1,7 @@
 export {
+  addonId,
   createAddonsBackend,
+  qualifiedName,
   type AddonsBackend,
   type AddonsBackendOptions,
   type AddonsBackendState,
@@ -11,11 +13,11 @@ export {
   FAILED_INSTALL_LOGS,
   INSTALL_OUTCOMES,
   installedFixtures,
-  marketplaceFixtures,
+  noPermissions,
   type MockAddonService,
+  type MockDefinition,
   type MockInstalledAddon,
   type MockInstallOutcome,
-  type MockMarketplaceAddon,
 } from './fixtures/addons.ts';
 export { createAddonsFetchHandler, createMockFetchHandler } from './fetch-handler.ts';
 export { createHandlers, LEAKED_PASSWORD_PLACEHOLDER, type MockApiOptions } from './handlers.ts';

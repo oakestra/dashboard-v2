@@ -6,10 +6,17 @@ import type { ContributionSource } from '../extensions/registry';
 /** Addon names double as container names (`addonui-<name>`) and nginx path segments. */
 export const ADDON_NAME_PATTERN = /^[a-z0-9-]+$/;
 
+/** Cosmetic, so a bad value is dropped instead of costing the addon its UI. */
+const displayString = z.string().trim().min(1).optional().catch(undefined);
+
 export const uiAddonSchema = z.object({
   name: z.string().regex(ADDON_NAME_PATTERN),
   version: z.string().min(1),
   sdk: z.string().refine((range) => semver.validRange(range) !== null, 'not a valid semver range'),
+  /** The catalog's name for people, when the definition sets one. */
+  display_name: displayString,
+  /** `https` URL of the catalog icon. Only ever rendered as an `<img src>`. */
+  icon: displayString,
 });
 
 export const uiAddonsQueryKey = ['ui-addons'] as const;
@@ -94,6 +101,15 @@ export function addonBasePath(name: string): string {
 /** Strips a leading `./` or `/` from an addon nav path. The addon's root comes out empty. */
 export function relativeAddonPath(path: string): string {
   return path.replace(/^\.?\/?/, '');
+}
+
+/** Icons come from third-party hosts; plain http would leak the page to the network as well. */
+export function isHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 export function isHttpUrl(value: string): boolean {

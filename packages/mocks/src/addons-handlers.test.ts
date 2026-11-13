@@ -2,9 +2,11 @@ import {
   createAddonsClient,
   createAddonsManagerApi,
   createMarketplaceApi,
+  isConsentRequiredError,
   isTransitionalAddonStatus,
+  type InstalledAddon,
 } from '@oakestra/api';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { createMockServer } from './node.ts';
 
@@ -22,306 +24,373 @@ afterAll(() => server.close());
 const manager = createAddonsManagerApi(createAddonsClient({ baseUrl: managerUrl }));
 const market = createMarketplaceApi(createAddonsClient({ baseUrl: marketplaceUrl }));
 
-async function definitionId(name: string): Promise<string> {
-  const [definition] = await market.list({ name });
-  return definition!._id;
+/** Like the dashboard: the first call fetches the definition, the second accepts its hash. */
+async function install(qualifiedName: string): Promise<InstalledAddon> {
+  const error = await manager.install(qualifiedName).catch((e: unknown) => e);
+  if (!isConsentRequiredError(error)) throw error;
+  return manager.install(qualifiedName, { acceptDefinition: error.consentRequest.definitionHash });
 }
 
-async function settled(id: string) {
+async function waitForStatus(id: string, status?: string) {
   let addon = await manager.get(id);
-  for (let i = 0; i < 100 && isTransitionalAddonStatus(addon.status); i += 1) {
+  const done = () =>
+    status === undefined ? !isTransitionalAddonStatus(addon.status) : addon.status === status;
+  for (let i = 0; i < 100 && !done(); i += 1) {
     await new Promise((resolve) => setTimeout(resolve, 10));
     addon = await manager.get(id);
   }
   return addon;
 }
+const settled = (id: string) => waitForStatus(id);
 
-/** Waits for a status the monitor reaches on a later loop, after the addon was `active`. */
-async function waitForStatus(id: string, status: string) {
-  let addon = await manager.get(id);
-  for (let i = 0; i < 100 && addon.status !== status; i += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    addon = await manager.get(id);
-  }
-  return addon;
-}
-
-const rawRegister = (body: unknown) =>
-  fetch(`${marketplaceUrl}/`, {
+const rawPost = (url: string, body: unknown) =>
+  fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
 
 describe('mock marketplace', () => {
-  it('lists approved definitions only, without a ui block like the real marketplace', async () => {
+  it('lists official, taps and local, each sorted by name', async () => {
     const list = await market.list();
-    expect(list.map((addon) => addon.name)).toEqual([
-      'example',
+    expect(list.map((addon) => addon.qualified_name)).toEqual([
       'analytics',
-      'legacy-exporter',
-      'flops',
-      'flaky-addon',
       'broken-addon',
+      'example',
+      'flaky-addon',
+      'flops',
       'install-error-addon',
+      'legacy-exporter',
+      'acme/node-exporter',
+      'local/docker-inspector',
     ]);
-    expect(list.filter((addon) => addon.ui)).toHaveLength(0);
-    expect(await market.list({ name: 'flops' })).toHaveLength(1);
+    expect(list.find((addon) => addon.name === 'example')?.ui).toEqual({
+      service: 'example-ui',
+      sdk: '^0.1.0',
+    });
+    expect(await market.list({ source: 'acme' })).toHaveLength(1);
+    expect(await market.list({ name: 'local/docker-inspector' })).toHaveLength(1);
   });
 
-  it('serves unapproved definitions by id', async () => {
-    const hidden = addons.state.marketplace.find((addon) => addon.name === 'community-tool')!;
-    await expect(market.get(hidden._id)).resolves.toMatchObject({ status: 'under_review' });
-    await expect(market.get('000000000000000000000000')).rejects.toMatchObject({
+  it('serves normalized display fields and filters by category and tag', async () => {
+    expect(await market.get({ source: 'official', name: 'flops' })).toMatchObject({
+      display_name: 'FLOps',
+      category: 'ai',
+      tags: ['federated-learning', 'ml'],
+      metadata: { 'oakestra.io/catalog-id': 'flops-001' },
+    });
+    const names = (list: { qualified_name: string }[]) => list.map((a) => a.qualified_name);
+    expect(names(await market.list({ category: ' Monitoring ' }))).toEqual([
+      'analytics',
+      'acme/node-exporter',
+    ]);
+    expect(names(await market.list({ category: 'monitoring', tag: 'PROMETHEUS' }))).toEqual([
+      'acme/node-exporter',
+    ]);
+    expect(names(await market.list({ source: 'official', tag: 'prometheus' }))).toEqual([]);
+  });
+
+  it('counts categories, per source or for all', async () => {
+    expect(await market.categories()).toEqual([
+      { name: 'ai', count: 1 },
+      { name: 'developer tools', count: 1 },
+      { name: 'monitoring', count: 2 },
+    ]);
+    expect(await market.categories({ source: 'acme' })).toEqual([{ name: 'monitoring', count: 1 }]);
+  });
+
+  it('stores the display fields of a registration normalized', async () => {
+    const item = await market.register({
+      name: 'shiny',
+      version: '1.0.0',
+      services: [{ service_name: 'a', image: 'b' }],
+      display_name: '  Shiny  ',
+      category: 'AI   Tools',
+      tags: ['Zeta', 'alpha', 'zeta'],
+    });
+    expect(item).toMatchObject({
+      display_name: 'Shiny',
+      category: 'ai tools',
+      tags: ['alpha', 'zeta'],
+    });
+    await expect(
+      market.register({
+        name: 'leaky',
+        version: '1.0.0',
+        services: [{ service_name: 'a', image: 'b' }],
+        icon: 'http://insecure.example/icon.png',
+      }),
+    ).rejects.toMatchObject({ status: 422, code: 'validation_failed' });
+  });
+
+  it('derives the id, the required permissions and a stable hash', async () => {
+    const item = await market.get({ source: 'acme', name: 'node-exporter' });
+    expect(item).toMatchObject({
+      id: 'acme--node-exporter',
+      source: { kind: 'tap', name: 'acme' },
+      permissions: { host_network: true, host_root: true, host_paths: ['/proc:ro', '/sys:ro'] },
+      required_permissions: { host_network: true, host_root: true },
+    });
+    // The catalog serves no hash on purpose: only the addons manager's 409 does.
+    expect(item).not.toHaveProperty('permissions_hash');
+    await expect(market.get({ source: 'acme', name: 'nope' })).rejects.toMatchObject({
       status: 404,
-      message: 'Addon not found',
     });
   });
 
-  it('registers a definition: under_review, then approved or verification_failed', async () => {
-    const ok = await market.register({
+  it('registers locally, lists it at once and needs a higher version to replace it', async () => {
+    const item = await market.register({
       name: 'mine',
-      services: [{ service_name: 'mine-ui', image: 'ghcr.io/me/ui:1' }],
+      version: '1.0.0',
+      services: [{ service_name: 'mine-ui', image: 'ghcr.io/me/ui:1', ports: { '80': '8080' } }],
+      permissions: { host_ports: [8080] },
+      ui: { service: 'mine-ui', sdk: '^1.0.0' },
     });
-    expect(ok).toMatchObject({ status: 'under_review' });
-    expect(await market.list({ name: 'mine' })).toHaveLength(0);
+    expect(item).toMatchObject({ qualified_name: 'local/mine', ui: { sdk: '^1.0.0' } });
+    expect(await market.list({ name: 'local/mine' })).toHaveLength(1);
 
-    const bad = await market.register({
-      name: 'bad',
-      services: [{ service_name: 'bad', image: 'nobody/does-not-exist:1' }],
-    });
-    await new Promise((resolve) => setTimeout(resolve, 60));
-    expect((await market.get(ok._id)).status).toBe('approved');
-    expect((await market.get(bad._id)).status).toBe('verification_failed');
-    expect(await market.list({ name: 'mine' })).toHaveLength(1);
+    await expect(
+      market.register({
+        name: 'mine',
+        version: '1.0.0',
+        services: [{ service_name: 'a', image: 'b' }],
+      }),
+    ).rejects.toMatchObject({ status: 409 });
 
-    await market.remove(ok._id);
-    await expect(market.remove(ok._id)).rejects.toMatchObject({ status: 404 });
+    await market.removeLocal('mine');
+    await expect(market.removeLocal('mine')).rejects.toMatchObject({ status: 404 });
   });
 
-  it('answers 422 in the flask-smorest shape for a malformed definition', async () => {
-    const response = await rawRegister({ name: 'x', services: [{ service_name: 'a' }] });
-    expect(response.status).toBe(422);
-    expect(await response.json()).toEqual({
-      code: 422,
-      status: 'Unprocessable Entity',
-      errors: { json: { services: { '0': { image: ['Missing data for required field.'] } } } },
-    });
-  });
-
-  it('rejects unknown fields, including the ui block and status, like the real schema', async () => {
-    const response = await rawRegister({
+  it('rejects unknown fields and undeclared permissions with 422', async () => {
+    const unknown = await rawPost(`${marketplaceUrl}/addons`, {
       name: 'x',
-      status: 'approved',
-      services: [{ service_name: 'a', image: 'b', restart: 'always' }],
-      ui: { service: 'a', sdk: '^0.1.0' },
+      version: '1.0.0',
+      services: [{ service_name: 'a', image: 'b', privileged: true }],
     });
-    expect(response.status).toBe(422);
-    expect(await response.json()).toEqual({
-      code: 422,
-      status: 'Unprocessable Entity',
-      errors: {
-        json: {
-          status: ['Unknown field.'],
-          ui: ['Unknown field.'],
-          services: { '0': { restart: ['Unknown field.'] } },
-        },
-      },
+    expect(unknown.status).toBe(422);
+    expect(await unknown.json()).toEqual({
+      code: 'validation_failed',
+      message: 'invalid request body: json: unknown field "privileged"',
     });
-    expect(addons.state.marketplace.some((a) => a.name === 'x')).toBe(false);
+
+    const undeclared = await rawPost(`${marketplaceUrl}/addons`, {
+      name: 'x',
+      version: '1.0.0',
+      services: [{ service_name: 'a', image: 'b', networks: ['oakestra'] }],
+    });
+    expect(undeclared.status).toBe(422);
+    expect(await undeclared.json()).toMatchObject({
+      errors: [{ path: 'permissions.core_network', message: 'is used but not declared' }],
+    });
+    expect(addons.state.catalog.some((def) => def.name === 'x')).toBe(false);
   });
 
-  it('answers a non-ObjectId id with a 500 page, not a 404', async () => {
-    for (const [method, url] of [
-      ['GET', `${marketplaceUrl}/nope`],
-      ['DELETE', `${marketplaceUrl}/nope`],
-      ['GET', `${managerUrl}/nope`],
-      ['DELETE', `${managerUrl}/nope`],
-    ] as const) {
-      const response = await fetch(url, { method });
-      expect(response.status, `${method} ${url}`).toBe(500);
-      expect(response.headers.get('Content-Type')).toContain('text/html');
-    }
-    const patch = await fetch(`${managerUrl}/nope`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'active' }),
+  it('manages taps', async () => {
+    expect((await market.sources.list()).map((s) => [s.name, s.kind])).toEqual([
+      ['official', 'official'],
+      ['acme', 'tap'],
+      ['lab', 'tap'],
+      ['local', 'local'],
+    ]);
+    const acme = (await market.sources.list()).find((s) => s.name === 'acme')!;
+    expect(acme).toMatchObject({ has_token: true, deletable: true, addon_count: 1 });
+    expect(acme).not.toHaveProperty('token');
+
+    const added = await market.sources.add({ name: 'new', url: 'https://new.example/index.json' });
+    expect(added).toMatchObject({ kind: 'tap', last_error: undefined });
+    expect(added.last_synced_at).toBeDefined();
+    await expect(
+      market.sources.add({ name: 'new', url: 'https://new.example/index.json' }),
+    ).rejects.toMatchObject({ status: 409 });
+    await expect(
+      market.sources.add({ name: 'plain', url: 'http://plain.example/index.json' }),
+    ).rejects.toMatchObject({ status: 422 });
+
+    // A first sync that fails keeps the tap, with the error.
+    const broken = await market.sources.add({ name: 'down', url: 'https://unreachable.example/i' });
+    expect(broken.last_error).toContain('unreachable.example');
+    await expect(market.sources.sync('down')).rejects.toMatchObject({ status: 502 });
+
+    await expect(market.sources.remove('official')).rejects.toMatchObject({ status: 409 });
+    await market.sources.remove('acme');
+    expect(await market.list({ source: 'acme' })).toEqual([]);
+  });
+
+  it('imports an index into a source', async () => {
+    const source = await market.sources.importIndex('lab', {
+      schema: 1,
+      serial: 3,
+      addons: [{ name: 'tool', version: '1.0.0', services: [{ service_name: 't', image: 'i' }] }],
     });
-    expect(patch.status).toBe(500);
+    expect(source).toMatchObject({ serial: 3, addon_count: 1, last_error: undefined });
+    expect(await market.list({ name: 'lab/tool' })).toHaveLength(1);
   });
 });
 
 describe('mock addons-manager', () => {
-  it('seeds one active, one partially_active and one failed addon', async () => {
+  it('seeds one active, one partially_active with an update and one failed addon', async () => {
     const list = await manager.list();
     expect(list.map((addon) => [addon.name, addon.status])).toEqual([
       ['example', 'active'],
       ['analytics', 'partially_active'],
       ['legacy-exporter', 'failed'],
     ]);
-    const failed = list.find((addon) => addon.status === 'failed')!;
-    expect(failed.status_details?.failed_services).toEqual(['legacy-exporter']);
+    expect(list[1]).toMatchObject({
+      version: '1.1.0',
+      update_available: true,
+      latest_version: '1.2.0',
+    });
+    const failed = list[2]!;
+    expect(failed.status_details).toMatchObject({
+      failed_services: ['legacy-exporter'],
+      message: expect.stringContaining('grant signature invalid'),
+    });
     expect(failed.logs).toContain('out of memory');
     expect(await manager.list({ status: 'failed' })).toHaveLength(1);
   });
 
-  it('sends JSON as text/html like the real addons-manager', async () => {
-    const response = await fetch(`${managerUrl}/`);
-    expect(response.headers.get('Content-Type')).toContain('text/html');
-    expect(Array.isArray(JSON.parse(await response.text()))).toBe(true);
-    const marketplaceResponse = await fetch(`${marketplaceUrl}/`);
-    expect(marketplaceResponse.headers.get('Content-Type')).toBe('application/json');
+  it('asks to accept the definition, then installs: installing, then active', async () => {
+    const error = await manager.install('flops').catch((e: unknown) => e);
+    expect(isConsentRequiredError(error)).toBe(true);
+    if (!isConsentRequiredError(error)) return;
+    expect(error.consentRequest.permissions.core_network).toBe(true);
+    expect(error.consentRequest.definition.services[0]!.image).toContain('@sha256:');
+    expect(error.consentRequest.definitionHash).toBe(
+      addons.definitionHash(addons.state.catalog.find((d) => d.name === 'flops')!),
+    );
+
+    // A changed catalog invalidates the hash the admin saw.
+    addons.state.catalog.find((d) => d.name === 'flops')!.services[1]!.image = 'other@sha256:9';
+    const stale = await manager
+      .install('flops', { acceptDefinition: error.consentRequest.definitionHash })
+      .catch((e: unknown) => e);
+    expect(isConsentRequiredError(stale)).toBe(true);
+    if (!isConsentRequiredError(stale)) return;
+
+    const created = await manager.install('flops', {
+      acceptDefinition: stale.consentRequest.definitionHash,
+    });
+    expect(created).toMatchObject({ status: 'installing', addon_id: 'flops' });
+    expect((await settled(created._id)).status).toBe('active');
+    expect(addons.uiAddons()).toEqual([
+      {
+        name: 'example',
+        version: '0.1.0',
+        sdk: '^0.1.0',
+        display_name: 'Example Addon',
+        icon: 'https://github.com/oakestra.png?size=96',
+      },
+    ]);
   });
 
-  it('installs: installing, then active', async () => {
-    const created = await manager.install(await definitionId('flops'));
-    expect(created.status).toBe('installing');
-    expect(created.services).toHaveLength(2);
-    const done = await settled(created._id);
-    expect(done.status).toBe('active');
-    expect(addons.uiAddons()).toEqual([]);
+  it('installs a tap addon under its namespaced id', async () => {
+    const created = await install('acme/node-exporter');
+    expect(created).toMatchObject({ addon_id: 'acme--node-exporter', name: 'acme/node-exporter' });
   });
 
-  it('reports a crashing container only after the addon was active, on a later monitor loop', async () => {
-    const flaky = await settled((await manager.install(await definitionId('flaky-addon')))._id);
+  it('reports a crashing container only after the addon was active', async () => {
+    const flaky = await settled((await install('flaky-addon'))._id);
     expect(flaky.status).toBe('active');
-    expect(flaky.logs).toBeUndefined();
     expect(await waitForStatus(flaky._id, 'partially_active')).toMatchObject({
       status_details: { failed_services: ['flaky-sidecar'] },
     });
 
-    const broken = await settled((await manager.install(await definitionId('broken-addon')))._id);
-    expect(broken.status).toBe('active');
+    const broken = await settled((await install('broken-addon'))._id);
     const failed = await waitForStatus(broken._id, 'failed');
     expect(failed.status_details?.failed_services).toEqual(['broken-worker']);
     expect(failed.logs).toContain('manifest');
   });
 
-  it('fails an install-time error at once, with empty details and no logs', async () => {
-    const created = await manager.install(await definitionId('install-error-addon'));
-    const failed = await settled(created._id);
+  it('fails an install-time error at once, with a message and no logs', async () => {
+    const failed = await settled((await install('install-error-addon'))._id);
     expect(failed.status).toBe('failed');
-    expect(failed.status_details?.failed_services).toEqual([]);
+    expect(failed.status_details?.message).toContain('exit status');
     expect(failed.logs).toBeUndefined();
-    const raw = JSON.parse(await (await fetch(`${managerUrl}/${created._id}`)).text()) as Record<
-      string,
-      unknown
-    >;
-    expect(raw.status_details).toEqual({});
-    expect(raw).not.toHaveProperty('logs');
   });
 
-  it('stops the pending monitor event when the addon is disabled meanwhile', async () => {
-    const flaky = await settled((await manager.install(await definitionId('flaky-addon')))._id);
-    await manager.remove(flaky._id);
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    expect((await manager.get(flaky._id)).status).toBe('disabled');
-  });
-
-  it('rejects a double install with 400', async () => {
-    await expect(manager.install(await definitionId('example'))).rejects.toMatchObject({
-      status: 400,
-      message:
-        'Addon with marketplace-id - ' + (await definitionId('example')) + ' already exists.',
+  it('rejects a double install with already_installed', async () => {
+    const error = await install('example').catch((e: unknown) => e);
+    expect(isConsentRequiredError(error)).toBe(false);
+    expect(error).toMatchObject({
+      status: 409,
+      code: 'already_installed',
+      message: 'Addon "example" is already installed.',
+    });
+    await expect(manager.install('nope')).rejects.toMatchObject({
+      status: 404,
+      code: 'not_found',
     });
   });
 
-  it('rejects an unknown marketplace id with a 500, as the real service does', async () => {
-    await expect(manager.install('000000000000000000000000')).rejects.toMatchObject({
-      status: 500,
+  it('updates only after the new version was accepted, flagging grown permissions', async () => {
+    const analytics = (await manager.list()).find((a) => a.name === 'analytics')!;
+    const error = await manager.update(analytics._id).catch((e: unknown) => e);
+    expect(isConsentRequiredError(error)).toBe(true);
+    if (!isConsentRequiredError(error)) return;
+    expect(error.consentRequest).toMatchObject({
+      definition: { version: '1.2.0' },
+      permissions: { host_ports: [8080, 9090] },
+      previousVersion: '1.1.0',
+      previousPermissions: { host_ports: [8080] },
+      permissionsGrow: true,
     });
+
+    const updating = await manager.update(analytics._id, {
+      acceptDefinition: error.consentRequest.definitionHash,
+    });
+    expect(updating).toMatchObject({ status: 'updating', version: '1.2.0' });
+    const done = await settled(analytics._id);
+    expect(done).toMatchObject({ status: 'active', update_available: false });
+    await expect(manager.update(analytics._id)).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('re-approves a failed addon, which is deployed again', async () => {
+    const legacy = (await manager.list({ status: 'failed' }))[0]!;
+    const error = await manager.approve(legacy._id).catch((e: unknown) => e);
+    expect(isConsentRequiredError(error)).toBe(true);
+    if (!isConsentRequiredError(error)) return;
+    const approved = await manager.approve(legacy._id, {
+      acceptDefinition: error.consentRequest.definitionHash,
+    });
+    expect(approved).toMatchObject({ status: 'installing', status_details: {} });
+    expect((await settled(legacy._id)).status).toBe('active');
   });
 
   it('removes in two steps: 200 disabling, then 204 removed', async () => {
     const [example] = await manager.list();
     const first = await manager.remove(example!._id);
     expect(first).toMatchObject({ kind: 'disabling', addon: { status: 'disabling' } });
-
-    // Not disabled yet: another DELETE only restarts the disabling.
     expect((await manager.remove(example!._id)).kind).toBe('disabling');
 
     expect((await settled(example!._id)).status).toBe('disabled');
     expect(addons.uiAddons()).toEqual([]);
+    // A disabled record does not block a new install.
+    await expect(install('example')).resolves.toMatchObject({ status: 'installing' });
     await expect(manager.remove(example!._id)).resolves.toEqual({ kind: 'removed' });
     await expect(manager.get(example!._id)).rejects.toMatchObject({ status: 404 });
-    // Free to install again.
-    await expect(manager.install(await definitionId('example'))).resolves.toMatchObject({
-      status: 'installing',
-    });
   });
 
-  it('patches the status and validates it', async () => {
-    const [example] = await manager.list();
-    await expect(manager.setStatus(example!._id, 'disabled')).resolves.toMatchObject({
-      status: 'disabled',
-    });
-    const reenabled = await manager.setStatus(example!._id, 'installing');
-    expect(reenabled.status).toBe('installing');
-    expect((await settled(example!._id)).status).toBe('active');
-
-    const response = await fetch(`${managerUrl}/${example!._id}`, {
-      method: 'PATCH',
+  it('rejects the old accept_permissions field with 400', async () => {
+    const response = await fetch(`${managerUrl}/`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'nonsense' }),
+      body: JSON.stringify({ name: 'flops', accept_permissions: 'x' }),
     });
-    expect(response.status).toBe(422);
-    await expect(manager.setStatus('000000000000000000000000', 'active')).rejects.toMatchObject({
-      status: 400,
-    });
+    expect(response.status).toBe(400);
   });
 
-  it('keeps status_details and logs when a PATCH sets active, like a Mongo $set', async () => {
-    const failed = (await manager.list({ status: 'failed' }))[0]!;
-    const patched = await manager.setStatus(failed._id, 'active');
-    expect(patched.status).toBe('active');
-    expect(patched.logs).toContain('out of memory');
-    expect(patched.status_details?.failed_services).toEqual(['legacy-exporter']);
+  it('answers every body as JSON and has no PATCH', async () => {
+    const response = await fetch(`${managerUrl}/`);
+    expect(response.headers.get('Content-Type')).toBe('application/json');
+    const missing = await fetch(`${managerUrl}/nope`);
+    expect(missing.status).toBe(404);
+    expect(await missing.json()).toEqual({ code: 'not_found', message: 'Addon not found' });
   });
 
-  it('has no ui-addons without ui block support', () => {
-    expect(addons.uiAddons()).toEqual([]);
-  });
-});
-
-describe('mock with uiBlockSupport', () => {
-  const withUi = createMockServer({
-    baseUrl: 'http://dash.test/api',
-    addons: { managerUrl, marketplaceUrl, installDelayMs: 20, uiBlockSupport: true },
-  });
-  const uiMarket = createMarketplaceApi(createAddonsClient({ baseUrl: marketplaceUrl }));
-  const uiManager = createAddonsManagerApi(createAddonsClient({ baseUrl: managerUrl }));
-
-  beforeEach(() => {
-    server.close();
-    withUi.server.listen({ onUnhandledFrame: 'error' });
-  });
-  afterEach(() => {
-    withUi.addons.reset();
-    withUi.server.close();
-    server.listen({ onUnhandledFrame: 'error' });
-  });
-
-  it('lists the ui block of example and accepts it on register', async () => {
-    const list = await uiMarket.list();
-    expect(list.find((addon) => addon.name === 'example')?.ui).toEqual({
-      service: 'example-ui',
-      sdk: '^0.1.0',
-    });
-    expect(list.filter((addon) => addon.ui)).toHaveLength(1);
-    const ok = await uiMarket.register({
-      name: 'mine',
-      services: [{ service_name: 'mine-ui', image: 'ghcr.io/me/ui:1' }],
-      ui: { service: 'mine-ui', sdk: '^1.0.0' },
-    });
-    expect(ok.ui).toEqual({ service: 'mine-ui', sdk: '^1.0.0' });
-  });
-
-  it('derives ui-addons from active addons whose definition has a ui block', async () => {
-    expect(withUi.addons.uiAddons()).toEqual([
-      { name: 'example', version: '0.1.0', sdk: '^0.1.0' },
-    ]);
-    const [example] = await uiManager.list();
-    withUi.addons.forceStatus(example!._id, 'failed');
-    expect(withUi.addons.uiAddons()).toEqual([]);
+  it('stops the pending monitor event when the addon is disabled meanwhile', async () => {
+    const flaky = await settled((await install('flaky-addon'))._id);
+    await manager.remove(flaky._id);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect((await manager.get(flaky._id)).status).toBe('disabled');
   });
 });

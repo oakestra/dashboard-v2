@@ -12,7 +12,7 @@ export const TEST_ADDONS_MANAGER_URL = 'http://api.test/addons-api';
 export const TEST_MARKETPLACE_URL = 'http://api.test/marketplace-api';
 
 /**
- * `mockAddons` is the in-memory addons-manager and marketplace-manager (see @oakestra/mocks).
+ * `mockAddons` is the in-memory addons-manager and marketplace (see @oakestra/mocks).
  * Installs settle after 20ms in tests; reset after every test like the store.
  */
 export const {
@@ -25,8 +25,6 @@ export const {
     managerUrl: TEST_ADDONS_MANAGER_URL,
     marketplaceUrl: TEST_MARKETPLACE_URL,
     installDelayMs: 20,
-    // The example addon's ui block stands for the planned backend; see AGENTS.md.
-    uiBlockSupport: true,
     // Long: nothing in the unit tests waits for a crash to be noticed.
     monitorDelayMs: 60_000,
   },

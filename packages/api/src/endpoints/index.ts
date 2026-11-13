@@ -45,7 +45,13 @@ export type {
 export {
   createAddonsManagerApi,
   createMarketplaceApi,
+  ConsentRequiredError,
+  hasAddonErrorCode,
+  isConsentRequiredError,
+  type AcceptDefinitionOptions,
   type AddonsManagerEndpoints,
+  type ConsentRequest,
+  type MarketplaceAddonRef,
   type MarketplaceEndpoints,
   type RemoveAddonResult,
 } from './addons.ts';

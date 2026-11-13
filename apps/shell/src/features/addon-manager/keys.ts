@@ -4,5 +4,5 @@ export const addonManagerKeys = {
   all: ['addon-manager'] as const,
   installed: () => [...addonManagerKeys.all, 'installed'] as const,
   marketplace: () => [...addonManagerKeys.all, 'marketplace'] as const,
-  review: (id: string) => [...addonManagerKeys.all, 'review', id] as const,
+  sources: () => [...addonManagerKeys.all, 'sources'] as const,
 };

@@ -31,8 +31,8 @@ prefix `[addons]`, and crashing contributions with `[addon:<name>]`.
 ## Addon states
 
 The shell keeps one state per addon UI. Admins see it in the addon manager
-(`/addon-manager/installed`, nav "Addons") in the column **Dashboard UI**, and in the detail
-sheet of an addon. On phones the column is hidden; open the detail sheet. Hover or focus a
+(`/addon-manager/installed`, nav "Addons") as the **Dashboard UI** badge in each addon's row, and
+in its details dialog. Hover or focus a
 "Failed" or "Incompatible" badge to see the reason. UIs without an installed addon (for example a
 dev override) are listed in the section "Dashboard UIs without an installed addon".
 

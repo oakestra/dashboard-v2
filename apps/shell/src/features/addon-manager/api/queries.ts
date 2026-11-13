@@ -4,15 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import type { AddonsAdminApi } from '../../../core/addons/addons-admin';
 import { addonManagerKeys } from '../keys';
-import type { PendingReview } from './pending-reviews';
-import {
-  INSTALLED_IDLE_POLL_MS,
-  INSTALLED_POLL_MS,
-  REVIEW_IDLE_POLL_MS,
-  REVIEW_POLL_MS,
-  REVIEW_SLOW_AFTER_MS,
-  STUCK_AFTER_MS,
-} from './polling';
+import { INSTALLED_IDLE_POLL_MS, INSTALLED_POLL_MS, STUCK_AFTER_MS } from './polling';
 
 /**
  * Remembers since when this page has seen an addon in its current transitional status. Shared by
@@ -67,9 +59,9 @@ function trackerFor(api: AddonsAdminApi): TransitionTracker {
 }
 
 /**
- * Installed addons. Polls fast while an addon is installing or disabling (up to `STUCK_AFTER_MS`)
- * and slowly otherwise, as long as the page is visible: the monitor reports crashes of addons that
- * already looked `active` some 30-90s later.
+ * Installed addons. Polls fast while an addon is transitional (up to `STUCK_AFTER_MS`) and slowly
+ * otherwise, as long as the page is visible: the reconcile loop reports crashes of addons that
+ * already looked `active` later, and the update check sets `update_available` on its own.
  */
 export function installedAddonsQuery(api: AddonsAdminApi) {
   const tracker = trackerFor(api);
@@ -89,7 +81,7 @@ export function installedAddonsQuery(api: AddonsAdminApi) {
 }
 
 /**
- * Ids of addons that have been `installing` or `disabling` for longer than `STUCK_AFTER_MS`.
+ * Ids of addons that have been transitional for longer than `STUCK_AFTER_MS`.
  * Re-renders when the next one crosses the line, as nothing else would: a stuck addon's list does
  * not change.
  */
@@ -117,7 +109,7 @@ export function useStuckAddonIds(
   );
 }
 
-/** Approved marketplace definitions. */
+/** The merged catalog of every source. */
 export function marketplaceAddonsQuery(api: AddonsAdminApi) {
   return queryOptions({
     queryKey: addonManagerKeys.marketplace(),
@@ -126,18 +118,11 @@ export function marketplaceAddonsQuery(api: AddonsAdminApi) {
   });
 }
 
-/**
- * One definition this page registered, polled until its review is done. `GET /<id>` returns
- * definitions of any status, unlike the list.
- */
-export function definitionReviewQuery(api: AddonsAdminApi, review: PendingReview) {
+/** The catalog's sources with their sync state. */
+export function marketplaceSourcesQuery(api: AddonsAdminApi) {
   return queryOptions({
-    queryKey: addonManagerKeys.review(review.id),
-    queryFn: ({ signal }) => api.marketplace.get(review.id, { signal }),
-    refetchInterval: () =>
-      Date.now() - review.since < REVIEW_SLOW_AFTER_MS ? REVIEW_POLL_MS : REVIEW_IDLE_POLL_MS,
-    // A failed poll waits for the next interval instead of retrying, and never toasts.
+    queryKey: addonManagerKeys.sources(),
+    queryFn: ({ signal }) => api.marketplace.sources.list({ signal }),
     retry: false,
-    meta: { silent: true },
   });
 }

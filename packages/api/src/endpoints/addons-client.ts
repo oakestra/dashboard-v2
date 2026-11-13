@@ -1,4 +1,5 @@
 import { ApiError, messageFromErrorBody } from '../errors.ts';
+import type { AddonErrorCode } from '../models/addon.ts';
 import { rethrowAsNetworkError, type RequestOptions } from './request.ts';
 
 export interface AddonsClientOptions {
@@ -9,8 +10,8 @@ export interface AddonsClientOptions {
 }
 
 export interface AddonsRequest extends RequestOptions {
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-  /** Path below the base URL. A trailing slash is kept: Flask redirects the collection without. */
+  method: 'GET' | 'POST' | 'DELETE';
+  /** Path below the base URL. Both services accept collections with and without a slash. */
   path: string;
   query?: Record<string, string | undefined>;
   body?: unknown;
@@ -33,9 +34,9 @@ export interface AddonsClient {
 }
 
 /**
- * The addons-manager returns `json.dumps(...)` strings, so the Content-Type is `text/html` and
- * `response.json()` based helpers would not be reliable. The text is parsed here regardless of
- * the header. Anything that does not parse (an nginx HTML error page) stays a string.
+ * The text is parsed regardless of the Content-Type: older addons-managers answered JSON as
+ * `text/html`, and proxies in between may relabel it. Anything that does not parse (an nginx HTML
+ * error page) stays a string.
  */
 function parseBody(text: string): unknown {
   if (text.trim() === '') return undefined;
@@ -44,6 +45,38 @@ function parseBody(text: string): unknown {
   } catch {
     return text;
   }
+}
+
+function codeOf(body: unknown): string | undefined {
+  if (typeof body !== 'object' || body === null) return undefined;
+  const { code } = body as { code?: unknown };
+  return typeof code === 'string' && code !== '' ? code : undefined;
+}
+
+/**
+ * Codes whose backend message doesn't tell the user what to do. The rest keep the
+ * service's message: it names the addon, the version or the overlapping host paths.
+ */
+const FRIENDLY_MESSAGES: Partial<Record<AddonErrorCode, string>> = {
+  auth_unavailable:
+    'The addons service is still starting and cannot check sign-ins yet. Retry shortly.',
+  marketplace_unavailable:
+    'The addons manager cannot reach the marketplace right now. Retry shortly.',
+  busy: 'The addon is still installing, updating or shutting down. Try again once it has settled.',
+  no_update_available: 'The marketplace has no newer version of this addon.',
+};
+
+/** The text an addons engine error is shown with. */
+function addonErrorMessage(body: unknown, status: number): string {
+  const code = codeOf(body);
+  const friendly = code ? FRIENDLY_MESSAGES[code as AddonErrorCode] : undefined;
+  if (friendly) return friendly;
+  // A gateway error without a code comes from the proxy, not from the service: the addons
+  // engine or marketplace is not deployed or is down.
+  if (!code && (status === 502 || status === 503 || status === 504)) {
+    return 'The addons service is not reachable. It may not be installed, or it is down.';
+  }
+  return messageFromErrorBody(body, status);
 }
 
 export function createAddonsClient(options: AddonsClientOptions): AddonsClient {
@@ -86,16 +119,13 @@ export function createAddonsClient(options: AddonsClientOptions): AddonsClient {
 
       const parsed = parseBody(text);
       if (!response.ok) {
-        // A gateway error means the addons engine or marketplace is not deployed or is down.
-        const message =
-          response.status === 502 || response.status === 503 || response.status === 504
-            ? 'The addons service is not reachable. It may not be installed or is currently down.'
-            : messageFromErrorBody(parsed, response.status);
+        const message = addonErrorMessage(parsed, response.status);
         throw new ApiError(message, {
           kind: 'http',
           status: response.status,
           ...call,
           body: parsed,
+          code: codeOf(parsed),
         });
       }
       return { status: response.status, body: parsed };

@@ -110,7 +110,7 @@ variables when the container starts:
 | `MAP_STYLE_URL`           | public CARTO styles         | Optional. MapLibre style URL of the basemap, see [Maps and privacy](#maps-and-privacy) |
 | `MAP_STYLE_DARK_URL`      | `MAP_STYLE_URL`             | Optional. Basemap for the dark theme                                        |
 | `ADDONS_MANAGER_ADDRESS`  | `root_addons_manager:11101` | Addons manager, reached by nginx (`/ui-addons`, `/addons-api/`)             |
-| `MARKETPLACE_ADDRESS`     | `marketplace_manager:11102` | Marketplace manager, reached by nginx (`/marketplace-api/`)                 |
+| `MARKETPLACE_ADDRESS`     | `marketplace_manager:11102` | Marketplace, reached by nginx (`/marketplace-api/` is its `/api/v1/marketplace/`) |
 | `ADDONS_POLL_INTERVAL_MS` | `15000`                     | How often the dashboard checks for added or removed addon UIs, in milliseconds (at least `1000`) |
 | `PRESET_URL`              |                             | Optional. URL of a [deployment preset](docs/addons/presets.md), e.g. `/preset.json` for a mounted file |
 | `DNS_RESOLVER`            | `127.0.0.11`                | DNS server nginx uses for the upstreams above (Docker's by default)         |

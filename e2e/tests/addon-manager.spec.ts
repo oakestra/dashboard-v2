@@ -16,21 +16,28 @@ const DISABLE_DELAY_MS = 3000;
 // is the backend delay plus one poll plus slack for a slow CI runner.
 const SHELL_FAST_POLL_MS = 2500;
 const SHELL_IDLE_POLL_MS = 10_000;
-// REVIEW_POLL_MS in the same file.
-const SHELL_REVIEW_POLL_MS = 2500;
-const REVIEW_DELAY_MS = 2000;
 const SLACK_MS = 5000;
 
 const exampleNav = (page: Page) => page.getByTestId('nav-example-main');
 const isUiAddonsRequest = (request: { url(): string }) =>
   new URL(request.url()).pathname === '/ui-addons';
 
+/** Installs from the marketplace: the consent dialog, then accepting exactly that definition. */
+async function installFromMarketplace(page: Page, name: string): Promise<void> {
+  await page
+    .getByTestId(`marketplace-card-${name}`)
+    .getByRole('button', { name: `Install ${name}` })
+    .click();
+  const dialog = page.getByTestId('consent-dialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Accept and install' }).click();
+}
+
 test.describe('addon manager', () => {
   test.afterEach(async () => {
     await addonsManager.setDelays({
       installDelayMs: COMPOSE_DELAY_MS,
       disableDelayMs: COMPOSE_DELAY_MS,
-      reviewDelayMs: COMPOSE_DELAY_MS,
       monitorDelayMs: COMPOSE_MONITOR_DELAY_MS,
     });
   });
@@ -41,7 +48,6 @@ test.describe('addon manager', () => {
     await addonsManager.setDelays({
       installDelayMs: COMPOSE_DELAY_MS,
       disableDelayMs: DISABLE_DELAY_MS,
-      reviewDelayMs: COMPOSE_DELAY_MS,
     });
     // The /ui-addons poll would hide a missing refresh, so only an explicit one can update the nav.
     await withoutUiAddonsPolling(page);
@@ -52,7 +58,8 @@ test.describe('addon manager', () => {
     const notReloaded = await markPage(page);
 
     const refreshed = page.waitForRequest(isUiAddonsRequest);
-    await page.getByRole('button', { name: 'Disable example' }).click();
+    await row.getByRole('button', { name: 'More actions for example' }).click();
+    await page.getByRole('menuitem', { name: 'Disable example' }).click();
     await page.getByRole('alertdialog').getByRole('button', { name: 'Disable addon' }).click();
 
     // The nav item goes as soon as the addon leaves `active`, not when the disabling is done.
@@ -76,7 +83,6 @@ test.describe('addon manager', () => {
     await addonsManager.setDelays({
       installDelayMs: INSTALL_DELAY_MS,
       disableDelayMs: COMPOSE_DELAY_MS,
-      reviewDelayMs: COMPOSE_DELAY_MS,
     });
     await withoutUiAddonsPolling(page);
     await page.goto('/addon-manager/marketplace');
@@ -91,6 +97,9 @@ test.describe('addon manager', () => {
       timeout: INSTALL_DELAY_MS + SHELL_FAST_POLL_MS + SLACK_MS,
     });
     await card.getByRole('button', { name: 'Install example' }).click();
+    const review = page.getByTestId('consent-dialog');
+    await expect(review.getByTestId('permission-host_ports:9100')).toBeVisible();
+    await review.getByRole('button', { name: 'Accept and install' }).click();
 
     await expect(page).toHaveURL(/\/addon-manager\/installed$/);
     const row = page.getByTestId('installed-addon-example');
@@ -113,14 +122,10 @@ test.describe('addon manager', () => {
     await addonsManager.setDelays({
       installDelayMs: COMPOSE_DELAY_MS,
       disableDelayMs: COMPOSE_DELAY_MS,
-      reviewDelayMs: COMPOSE_DELAY_MS,
       monitorDelayMs: 5000,
     });
     await page.goto('/addon-manager/marketplace');
-    await page
-      .getByTestId('marketplace-card-broken-addon')
-      .getByRole('button', { name: 'Install broken-addon' })
-      .click();
+    await installFromMarketplace(page, 'broken-addon');
 
     const row = page.getByTestId('installed-addon-broken-addon');
     await expect(row.getByText('Active')).toBeVisible({
@@ -136,10 +141,7 @@ test.describe('addon manager', () => {
 
   test('shows an install-time failure without logs', async ({ page }) => {
     await page.goto('/addon-manager/marketplace');
-    await page
-      .getByTestId('marketplace-card-install-error-addon')
-      .getByRole('button', { name: 'Install install-error-addon' })
-      .click();
+    await installFromMarketplace(page, 'install-error-addon');
 
     const row = page.getByTestId('installed-addon-install-error-addon');
     await expect(row.getByText('Failed')).toBeVisible({
@@ -149,16 +151,49 @@ test.describe('addon manager', () => {
     await expect(page.getByTestId('addon-detail')).toBeVisible();
     await expect(page.getByTestId('addon-logs')).toHaveCount(0);
     await expect(page.getByTestId('failed-services')).toHaveCount(0);
+    await expect(page.getByTestId('status-message')).toContainText('exit status');
   });
 
-  test('a registered addon appears in the marketplace once approved, without a reload', async ({
+  test('approves a failed addon again, which is deployed again', async ({ page }) => {
+    await page.goto('/addon-manager/installed');
+    const row = page.getByTestId('installed-addon-legacy-exporter');
+    // The engine's reason is the hint of the state button that offers the fix.
+    await expect(row.getByText('Failed')).toBeVisible();
+    await expect(page.getByTestId('addon-state-legacy-exporter-hint')).toContainText(
+      'grant signature invalid',
+    );
+
+    await row.getByRole('button', { name: 'Approve legacy-exporter again' }).click();
+    const review = page.getByTestId('consent-dialog');
+    await expect(review.getByTestId('permission-host_paths:/var/log:ro')).toBeVisible();
+    await review.getByRole('button', { name: 'Accept and approve' }).click();
+
+    await expect(row.getByText('Active')).toBeVisible({
+      timeout: COMPOSE_DELAY_MS + SHELL_FAST_POLL_MS + SLACK_MS,
+    });
+  });
+
+  test('updates an addon after accepting the new version', async ({ page }) => {
+    await page.goto('/addon-manager/installed');
+    const row = page.getByTestId('installed-addon-analytics');
+    // Partially active outranks the update on the state button, so it is in the row menu.
+    await row.getByRole('button', { name: 'More actions for analytics' }).click();
+    await page.getByRole('menuitem', { name: 'Update analytics to 1.2.0' }).click();
+
+    const review = page.getByTestId('consent-dialog');
+    await expect(review.getByTestId('consent-version')).toContainText('1.1.0 to 1.2.0');
+    await expect(review.getByTestId('permission-host_ports:9090')).toContainText('New');
+    await review.getByRole('button', { name: 'Accept and update' }).click();
+
+    await expect(row.getByText('v1.2.0')).toBeVisible();
+    await expect(row.getByText('Active')).toBeVisible({
+      timeout: COMPOSE_DELAY_MS + SHELL_FAST_POLL_MS + SLACK_MS,
+    });
+  });
+
+  test('a registered addon appears in the marketplace at once, without a reload', async ({
     page,
   }) => {
-    await addonsManager.setDelays({
-      installDelayMs: COMPOSE_DELAY_MS,
-      disableDelayMs: COMPOSE_DELAY_MS,
-      reviewDelayMs: REVIEW_DELAY_MS,
-    });
     await page.goto('/addon-manager/marketplace');
     await expect(page.getByTestId('marketplace-card-example')).toBeVisible();
     const notReloaded = await markPage(page);
@@ -168,19 +203,34 @@ test.describe('addon manager', () => {
     await dialog.getByLabel('Definition (JSON)').fill(
       JSON.stringify({
         name: 'e2e-registered',
+        version: '1.0.0',
         services: [{ service_name: 'main', image: 'ghcr.io/oakestra/e2e-registered:1' }],
       }),
     );
-    await dialog.getByRole('button', { name: 'Submit for review' }).click();
-    await expect(page.getByText('Submitted e2e-registered for review')).toBeVisible();
-    await expect(page.getByTestId('marketplace-card-e2e-registered')).toHaveCount(0);
-
-    const reviewTimeout = REVIEW_DELAY_MS + SHELL_REVIEW_POLL_MS + SLACK_MS;
-    await expect(page.getByTestId('marketplace-card-e2e-registered')).toBeVisible({
-      timeout: reviewTimeout,
-    });
-    await expect(page.getByText('e2e-registered is now in the marketplace')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Register' }).click();
+    await expect(page.getByText('Registered local/e2e-registered 1.0.0')).toBeVisible();
+    await expect(page.getByTestId('marketplace-card-local/e2e-registered')).toBeVisible();
     expect(await notReloaded()).toBe(true);
+  });
+
+  test('adds a tap and lists it with its sync state', async ({ page }) => {
+    await page.goto('/addon-manager/sources');
+    await expect(page.getByTestId('source-sync-lab-hint')).toContainText('404');
+
+    await page.getByRole('button', { name: 'Add tap' }).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByLabel('Name').fill('e2e-tap');
+    await dialog.getByLabel('Index URL').fill('https://e2e.example/index.json');
+    await dialog.getByRole('button', { name: 'Add tap' }).click();
+
+    await expect(page.getByTestId('source-e2e-tap')).toBeVisible();
+    await page
+      .getByTestId('source-e2e-tap')
+      .getByRole('button', { name: 'More actions for e2e-tap' })
+      .click();
+    await page.getByRole('menuitem', { name: 'Delete tap' }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete tap' }).click();
+    await expect(page.getByTestId('source-e2e-tap')).toHaveCount(0);
   });
 });
 

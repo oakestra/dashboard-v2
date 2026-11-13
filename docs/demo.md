@@ -86,7 +86,9 @@ docker compose -f compose.dev.yml down
 In the dashboard: **Addons > Installed**, open `example`, click **Disable addon** and confirm.
 The nav entry, the widgets and the tabs disappear without a page reload. To get it back, first
 **Remove** the disabled addon in **Addons > Installed**, then install it again from **Addons >
-Marketplace**.
+Marketplace**: the install shows the definition the addons manager will store (its images,
+pinned by digest, and the permissions it asks for, here one host port) and only goes ahead once
+you accept it.
 
 You can do the same from a terminal, as if the backend changed on its own:
 
@@ -178,10 +180,18 @@ link.
 ### Experiment 7: Installs that fail later
 
 In **Addons > Marketplace**, install `flaky-addon` or `broken-addon`. They first become `active`
-and a few seconds later turn `partially_active` or `failed`. The detail sheet lists the failed
+and a few seconds later turn `partially_active` or `failed`. The details dialog lists the failed
 services, and for `broken-addon` also the logs. This
-is how the real addons monitor behaves: it notices crashed containers only on a later check.
-`install-error-addon` fails right away. These addons have no UI; they show the management side.
+is how the real addons engine behaves: its reconcile loop notices crashed containers only on a
+later check. `install-error-addon` fails right away, with the reason in the tooltip of its status button. These addons have
+no UI; they show the management side.
+
+The seed also has an update and a re-approval to try: `analytics` is installed in 1.1.0 while
+the catalog lists 1.2.0, which publishes one more port: **Update** shows the new version and
+flags that port as new before you accept it (every update asks, even without new permissions). `legacy-exporter` failed with `grant signature invalid`; **Approve** shows its
+definition again and redeploys it. **Addons > Sources** lists the official index, the taps
+`acme` (with the `acme/node-exporter` addon and its dangerous permissions) and `lab` (whose index
+cannot be fetched) and the local registrations; add a tap there or sync one.
 
 ### Start over
 

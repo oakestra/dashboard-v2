@@ -13,13 +13,13 @@ import { uiAddonsQueryKey } from './ui-addons';
 
 /**
  * The APIs behind the addon management pages. Shell-internal: addons do not get them, and they
- * are deliberately not part of the SDK's `OakestraApi`. The UI that uses them is Admin-only, but
- * that is a convenience, not a security boundary, until the backends verify the Oakestra JWT.
+ * are deliberately not part of the SDK's `OakestraApi`. Both services verify the Oakestra JWT
+ * (writes need the Admin role), so the Admin-only UI is a convenience, not the boundary.
  */
 export interface AddonsAdminApi {
   /** Installed addons (`addonsManagerUrl`). */
   manager: AddonsManagerEndpoints;
-  /** Addon definitions that can be installed (`marketplaceUrl`). */
+  /** The catalog and its sources (`marketplaceUrl`, the marketplace's API root). */
   marketplace: MarketplaceEndpoints;
 }
 

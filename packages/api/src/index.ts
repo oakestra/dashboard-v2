@@ -11,6 +11,7 @@ export {
   isApiError,
   messageFromErrorBody,
   type ApiErrorKind,
+  type ApiErrorOptions,
 } from './errors.ts';
 export * from './endpoints/index.ts';
 export * from './models/addon.ts';

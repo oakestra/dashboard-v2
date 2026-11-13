@@ -272,66 +272,82 @@ your own config. If a CDN or another proxy sits in front of the dashboard, it mu
 
 ## The marketplace definition and `/ui-addons`
 
-> **Status:** everything in this section is **planned** for the real Oakestra addons-manager and
-> marketplace-manager. Today the real marketplace rejects a definition with a `ui` block (HTTP 422,
-> `ui: Unknown field.`), never returns `ui`, and the real addons-manager has no `GET /ui-addons`.
-> The mock in `tools/mock-addons-manager` implements the planned behavior when it runs with
-> `UI_BLOCK_SUPPORT=true` (the compose file sets it). The dashboard already supports it.
+The Oakestra addons engine (`addons/` in the oakestra repository: the `marketplace_manager`
+catalog and the `addons_manager` that runs the containers) implements this section. The mock in
+`tools/mock-addons-manager` follows it as well.
 
-### The `ui` block
+### The definition
 
-An addon is described by a definition in the marketplace: name, description, services
-(containers), volumes and networks. An addon with a UI adds a `ui` block:
+An addon is described by a definition: name, version, description, services (containers),
+volumes, networks and the permissions it needs on the host. An addon with a UI adds a `ui` block:
 
 ```json
 {
   "name": "insights",
+  "version": "0.1.0",
   "description": "Cluster insights for the dashboard.",
   "services": [
-    {
-      "service_name": "insights-ui",
-      "image": "ghcr.io/your-org/addon-insights-ui:0.1.0",
-      "networks": ["oakestra-net"]
-    }
+    { "service_name": "insights-ui", "image": "ghcr.io/your-org/addon-insights-ui@sha256:..." }
   ],
-  "networks": [{ "name": "oakestra-net", "driver": "bridge" }],
+  "permissions": {},
   "ui": { "service": "insights-ui", "sdk": "^0.1.0" }
 }
 ```
 
-| Field        | Meaning                                                                                      |
-| ------------ | -------------------------------------------------------------------------------------------- |
-| `ui.service` | The `service_name` of the service that serves the UI. Must be one of the addon's `services`. |
-| `ui.sdk`     | Semver range of the dashboard SDK the UI was built against, for example `^0.1.0`.            |
+| Field         | Meaning                                                                                       |
+| ------------- | --------------------------------------------------------------------------------------------- |
+| `version`     | Required semantic version (`1.2.3`, no `v`). A newer one in the catalog is offered as update. |
+| `permissions` | Every risky capability the services use, see below. Empty for a plain UI.                     |
+| `ui.service`  | The `service_name` of the service that serves the UI. Must be one of the addon's `services`.  |
+| `ui.sdk`      | Semver range of the dashboard SDK the UI was built against, for example `^0.1.0`.             |
 
-The definition `name` is the addon name. It must match `name` in `oakestraAddon()` (and thereby
-the `defineAddon` `id`, see [build configuration](#build-configuration)), and it gives the
-container name `addonui-<name>`.
+The engine decodes strictly: unknown fields (`privileged`, `cap_add`) and keys spelled differently
+(`Image`) are rejected. Images in the official index and in taps must be pinned by digest; a local
+registration may use a tag, which the marketplace resolves to a digest.
 
-The dashboard's addon manager (`/addon-manager/marketplace`, Admin only) can register such a
-definition. Its form checks that `ui.service` is one of the services and that `ui.sdk` is a valid
-semver range.
+`permissions` has `host_paths` (bind mount sources, `/path` or `/path:ro`), `host_ports`,
+`docker_socket`, `host_root` (root-equivalent paths such as `/etc` or `/proc`), `host_network`
+and `core_network` (joining the `oakestra` network). The marketplace refuses a definition whose
+services use more than it declares. Before an install, update or re-approval the admin sees the
+definition as the addons manager will store it (images with digests, permissions) and accepts
+exactly that definition; every update asks again. A UI service needs none of these permissions:
+the engine attaches it to the `oakestra_addon_ui` network itself, so do not list networks for it.
+
+### Names and sources
+
+The catalog merges several sources: the curated `official` index, taps (third-party indexes an
+admin adds in **Addons > Sources**) and `local` registrations (**Register addon** in the
+marketplace). The engine names an addon by its id: the bare `name` for the official index,
+`<source>--<name>` otherwise. The id is the `name` in `/ui-addons` and gives the container alias
+`addonui-<id>`, so it has to equal `name` in `oakestraAddon()` (and thereby the `defineAddon` `id`,
+see [build configuration](#build-configuration)). A UI built as `insights` therefore loads when it
+is published in the official index; from a tap `acme` it would have to be built as `acme--insights`.
+
+The dashboard's addon manager (`/addon-manager/marketplace`, Admin only) registers a definition in
+the local source. Its form checks the version, that `ui.service` is one of the services and that
+`ui.sdk` is a valid semver range; the marketplace checks everything else. The addon manager also
+refuses to install a UI whose `ui.sdk` range does not include this dashboard's SDK version.
 
 ### `GET /ui-addons`
 
 The shell calls `GET /ui-addons`. The dashboard's nginx proxies it to
-`<ADDONS_MANAGER_ADDRESS>/api/v1/ui-addons` (default `root_addons_manager:11101`). The answer is
-an array:
+`<ADDONS_MANAGER_ADDRESS>/api/v1/ui-addons` (default `root_addons_manager:11101`). It needs no
+token. The answer is an array:
 
 ```json
 [{ "name": "insights", "version": "0.1.0", "sdk": "^0.1.0" }]
 ```
 
-| Field     | Rules in the shell               | Source in the mock                                                                                                                       |
-| --------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`    | Required, matches `^[a-z0-9-]+$` | Name of the installed addon                                                                                                              |
-| `version` | Required, non-empty string       | Stored separately, default `0.1.0`; set with `PUT /__test/addons/<name>` `{ "version": "..." }`. No addon model has a version field yet. |
-| `sdk`     | Required, valid semver range     | `ui.sdk` of the addon's marketplace definition                                                                                           |
+| Field     | Rules in the shell               | Source                                                                                                                                                            |
+| --------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`    | Required, matches `^[a-z0-9-]+$` | The addon id                                                                                                                                                      |
+| `version` | Required, non-empty string       | The tag of the UI service's image, or the shortened digest if it has none. The mock lets tests override it with `PUT /__test/addons/<id>` `{ "version": "..." }`. |
+| `sdk`     | Required, valid semver range     | `ui.sdk` of the installed definition                                                                                                                              |
 
-The mock lists an addon when it is installed, its status is `active`, and its marketplace
-definition has a `ui` block. The shell ignores invalid entries (console warning) and duplicate
-names (the first one wins). How the real addons-manager will report `version` is not defined
-yet.
+An addon is listed when it is installed, its status is `active`, and its definition has a `ui`
+block. The shell ignores invalid entries (console warning) and duplicate names (the first one
+wins). Pin the UI image by tag and digest (`...:0.1.0@sha256:...`) so `version` changes with
+each release, which is what makes the shell offer a reload.
 
 If `/ui-addons` fails (no addons manager, HTTP error, no JSON), the shell treats addons as
 unavailable. It keeps addons it already loaded and does not show an error toast.
@@ -343,6 +359,7 @@ Shell config (from the dashboard container's environment, rendered into `config.
 | `UI_ADDONS_URL`           | `uiAddonsUrl`          | `/ui-addons`                |
 | `ADDONS_POLL_INTERVAL_MS` | `addonsPollIntervalMs` | `15000` (minimum `1000`)    |
 | `ADDONS_MANAGER_ADDRESS`  | nginx upstream         | `root_addons_manager:11101` |
+| `MARKETPLACE_ADDRESS`     | nginx upstream         | `marketplace_manager:11102` |
 | `DNS_RESOLVER`            | nginx `resolver`       | `127.0.0.11`                |
 
 ## Testing the production build locally
@@ -360,8 +377,8 @@ Four terminals, from the repository root:
 pnpm --filter @oakestra/addon-insights build
 pnpm --filter @oakestra/addon-insights preview
 
-# 2. Mock addons manager with ui block support, on port 11101
-UI_BLOCK_SUPPORT=true pnpm --filter @oakestra/mock-addons-manager start
+# 2. Mock addons manager and marketplace, on port 11101
+pnpm --filter @oakestra/mock-addons-manager start
 
 # 3. Mock system-manager on port 10000 (or a real one)
 pnpm --filter @oakestra/mock-system-manager start

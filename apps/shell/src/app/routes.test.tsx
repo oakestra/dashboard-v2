@@ -61,6 +61,7 @@ const cases: Case[] = [
   { url: () => '/addon-manager', heading: 'Addons', crumbs: 'AddonsInstalled' },
   { url: () => '/addon-manager/installed', heading: 'Addons', crumbs: 'AddonsInstalled' },
   { url: () => '/addon-manager/marketplace', heading: 'Addons', crumbs: 'AddonsMarketplace' },
+  { url: () => '/addon-manager/sources', heading: 'Addons', crumbs: 'AddonsSources' },
   { url: () => '/help', heading: 'Help', crumbs: 'Help' },
 ];
 

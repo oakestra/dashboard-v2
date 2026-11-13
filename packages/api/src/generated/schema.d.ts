@@ -2,1763 +2,1763 @@
 // Paths are relative to the configured apiUrl, i.e. without the backend's /api prefix.
 
 export interface paths {
-    "/service/{serviceid}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                serviceid: string;
-            };
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    serviceid: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            microserviceID?: string;
-                            microservice_name: string;
-                            microservice_namespace: string;
-                            virtualization: string;
-                            volumes?: {
-                                volume_id: string;
-                                csi_driver: string;
-                                mount_path?: string;
-                                config?: Record<string, unknown>;
-                            }[];
-                            memory?: number;
-                            vcpus?: number;
-                            vgpus?: number;
-                            vtpus?: number;
-                            bandwidth_in?: number;
-                            bandwidth_out?: number;
-                            storage?: number;
-                            code: string;
-                            state?: string;
-                            port?: string;
-                            /** @default false */
-                            one_shot: boolean;
-                            /** @default false */
-                            privileged: boolean;
-                            cmd?: string[];
-                            environment?: string[];
-                            sla_violation_strategy?: string;
-                            target_node?: string;
-                            addresses?: {
-                                rr_ip?: string;
-                                rr_ip_v6?: string;
-                                closest_ip?: string;
-                                closest_ip_v6?: string;
-                                instances?: {
-                                    from?: string;
-                                    to?: string;
-                                    start?: string;
-                                }[];
-                            };
-                            added_files?: string[];
-                            args?: string[];
-                            constraints?: {
-                                type: string;
-                                area?: string;
-                                cluster?: string;
-                                node?: string;
-                                location?: string;
-                                threshold?: number;
-                                rigidness?: number;
-                                convergence_time?: number;
-                                needs?: string[];
-                                allowed?: string[];
-                            }[];
-                            connectivity?: {
-                                target_microservice_id: string;
-                                con_constraints: {
-                                    type: string;
-                                    threshold: number;
-                                    rigidness: number;
-                                    convergence_time: number;
-                                }[];
-                            }[];
-                        };
-                    };
-                };
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    serviceid: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        sla_version: string;
-                        customerID: string;
-                        applications: {
-                            applicationID?: string;
-                            application_name: string;
-                            application_namespace: string;
-                            application_desc?: string;
-                            microservices: {
-                                microserviceID?: string;
-                                microservice_name: string;
-                                microservice_namespace: string;
-                                virtualization: string;
-                                volumes?: {
-                                    volume_id: string;
-                                    csi_driver: string;
-                                    mount_path?: string;
-                                    config?: Record<string, unknown>;
-                                }[];
-                                memory?: number;
-                                vcpus?: number;
-                                vgpus?: number;
-                                vtpus?: number;
-                                bandwidth_in?: number;
-                                bandwidth_out?: number;
-                                storage?: number;
-                                code: string;
-                                state?: string;
-                                port?: string;
-                                /** @default false */
-                                one_shot?: boolean;
-                                /** @default false */
-                                privileged?: boolean;
-                                cmd?: string[];
-                                environment?: string[];
-                                sla_violation_strategy?: string;
-                                target_node?: string;
-                                addresses?: {
-                                    rr_ip?: string;
-                                    rr_ip_v6?: string;
-                                    closest_ip?: string;
-                                    closest_ip_v6?: string;
-                                    instances?: {
-                                        from?: string;
-                                        to?: string;
-                                        start?: string;
-                                    }[];
-                                };
-                                added_files?: string[];
-                                args?: string[];
-                                constraints?: {
-                                    type: string;
-                                    area?: string;
-                                    cluster?: string;
-                                    node?: string;
-                                    location?: string;
-                                    threshold?: number;
-                                    rigidness?: number;
-                                    convergence_time?: number;
-                                    needs?: string[];
-                                    allowed?: string[];
-                                }[];
-                                connectivity?: {
-                                    target_microservice_id: string;
-                                    con_constraints: {
-                                        type: string;
-                                        threshold: number;
-                                        rigidness: number;
-                                        convergence_time: number;
-                                    }[];
-                                }[];
-                            }[];
-                        }[];
-                        args?: string[];
-                    };
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                422: components["responses"]["UNPROCESSABLE_ENTITY"];
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        post?: never;
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    serviceid: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  '/service/{serviceid}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        serviceid: string;
+      };
+      cookie?: never;
     };
-    "/service/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          serviceid: string;
         };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              microserviceID?: string;
+              microservice_name: string;
+              microservice_namespace: string;
+              virtualization: string;
+              volumes?: {
+                volume_id: string;
+                csi_driver: string;
+                mount_path?: string;
+                config?: Record<string, unknown>;
+              }[];
+              memory?: number;
+              vcpus?: number;
+              vgpus?: number;
+              vtpus?: number;
+              bandwidth_in?: number;
+              bandwidth_out?: number;
+              storage?: number;
+              code: string;
+              state?: string;
+              port?: string;
+              /** @default false */
+              one_shot: boolean;
+              /** @default false */
+              privileged: boolean;
+              cmd?: string[];
+              environment?: string[];
+              sla_violation_strategy?: string;
+              target_node?: string;
+              addresses?: {
+                rr_ip?: string;
+                rr_ip_v6?: string;
+                closest_ip?: string;
+                closest_ip_v6?: string;
+                instances?: {
+                  from?: string;
+                  to?: string;
+                  start?: string;
+                }[];
+              };
+              added_files?: string[];
+              args?: string[];
+              constraints?: {
+                type: string;
+                area?: string;
+                cluster?: string;
+                node?: string;
+                location?: string;
+                threshold?: number;
+                rigidness?: number;
+                convergence_time?: number;
+                needs?: string[];
+                allowed?: string[];
+              }[];
+              connectivity?: {
+                target_microservice_id: string;
+                con_constraints: {
+                  type: string;
+                  threshold: number;
+                  rigidness: number;
+                  convergence_time: number;
+                }[];
+              }[];
             };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        sla_version: string;
-                        customerID: string;
-                        applications: {
-                            applicationID?: string;
-                            application_name: string;
-                            application_namespace: string;
-                            application_desc?: string;
-                            microservices: {
-                                microserviceID?: string;
-                                microservice_name: string;
-                                microservice_namespace: string;
-                                virtualization: string;
-                                volumes?: {
-                                    volume_id: string;
-                                    csi_driver: string;
-                                    mount_path?: string;
-                                    config?: Record<string, unknown>;
-                                }[];
-                                memory?: number;
-                                vcpus?: number;
-                                vgpus?: number;
-                                vtpus?: number;
-                                bandwidth_in?: number;
-                                bandwidth_out?: number;
-                                storage?: number;
-                                code: string;
-                                state?: string;
-                                port?: string;
-                                /** @default false */
-                                one_shot?: boolean;
-                                /** @default false */
-                                privileged?: boolean;
-                                cmd?: string[];
-                                environment?: string[];
-                                sla_violation_strategy?: string;
-                                target_node?: string;
-                                addresses?: {
-                                    rr_ip?: string;
-                                    rr_ip_v6?: string;
-                                    closest_ip?: string;
-                                    closest_ip_v6?: string;
-                                    instances?: {
-                                        from?: string;
-                                        to?: string;
-                                        start?: string;
-                                    }[];
-                                };
-                                added_files?: string[];
-                                args?: string[];
-                                constraints?: {
-                                    type: string;
-                                    area?: string;
-                                    cluster?: string;
-                                    node?: string;
-                                    location?: string;
-                                    threshold?: number;
-                                    rigidness?: number;
-                                    convergence_time?: number;
-                                    needs?: string[];
-                                    allowed?: string[];
-                                }[];
-                                connectivity?: {
-                                    target_microservice_id: string;
-                                    con_constraints: {
-                                        type: string;
-                                        threshold: number;
-                                        rigidness: number;
-                                        convergence_time: number;
-                                    }[];
-                                }[];
-                            }[];
-                        }[];
-                        args?: string[];
-                    };
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                422: components["responses"]["UNPROCESSABLE_ENTITY"];
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
+          };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+        default: components['responses']['DEFAULT_ERROR'];
+      };
     };
-    "/services/{appid}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                appid: string;
-            };
-            cookie?: never;
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          serviceid: string;
         };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    appid: string;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            sla_version: string;
+            customerID: string;
+            applications: {
+              applicationID?: string;
+              application_name: string;
+              application_namespace: string;
+              application_desc?: string;
+              microservices: {
+                microserviceID?: string;
+                microservice_name: string;
+                microservice_namespace: string;
+                virtualization: string;
+                volumes?: {
+                  volume_id: string;
+                  csi_driver: string;
+                  mount_path?: string;
+                  config?: Record<string, unknown>;
+                }[];
+                memory?: number;
+                vcpus?: number;
+                vgpus?: number;
+                vtpus?: number;
+                bandwidth_in?: number;
+                bandwidth_out?: number;
+                storage?: number;
+                code: string;
+                state?: string;
+                port?: string;
+                /** @default false */
+                one_shot?: boolean;
+                /** @default false */
+                privileged?: boolean;
+                cmd?: string[];
+                environment?: string[];
+                sla_violation_strategy?: string;
+                target_node?: string;
+                addresses?: {
+                  rr_ip?: string;
+                  rr_ip_v6?: string;
+                  closest_ip?: string;
+                  closest_ip_v6?: string;
+                  instances?: {
+                    from?: string;
+                    to?: string;
+                    start?: string;
+                  }[];
                 };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            microserviceID?: string;
-                            microservice_name: string;
-                            microservice_namespace: string;
-                            virtualization: string;
-                            volumes?: {
-                                volume_id: string;
-                                csi_driver: string;
-                                mount_path?: string;
-                                config?: Record<string, unknown>;
-                            }[];
-                            memory?: number;
-                            vcpus?: number;
-                            vgpus?: number;
-                            vtpus?: number;
-                            bandwidth_in?: number;
-                            bandwidth_out?: number;
-                            storage?: number;
-                            code: string;
-                            state?: string;
-                            port?: string;
-                            /** @default false */
-                            one_shot: boolean;
-                            /** @default false */
-                            privileged: boolean;
-                            cmd?: string[];
-                            environment?: string[];
-                            sla_violation_strategy?: string;
-                            target_node?: string;
-                            addresses?: {
-                                rr_ip?: string;
-                                rr_ip_v6?: string;
-                                closest_ip?: string;
-                                closest_ip_v6?: string;
-                                instances?: {
-                                    from?: string;
-                                    to?: string;
-                                    start?: string;
-                                }[];
-                            };
-                            added_files?: string[];
-                            args?: string[];
-                            constraints?: {
-                                type: string;
-                                area?: string;
-                                cluster?: string;
-                                node?: string;
-                                location?: string;
-                                threshold?: number;
-                                rigidness?: number;
-                                convergence_time?: number;
-                                needs?: string[];
-                                allowed?: string[];
-                            }[];
-                            connectivity?: {
-                                target_microservice_id: string;
-                                con_constraints: {
-                                    type: string;
-                                    threshold: number;
-                                    rigidness: number;
-                                    convergence_time: number;
-                                }[];
-                            }[];
-                        }[];
-                    };
-                };
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
+                added_files?: string[];
+                args?: string[];
+                constraints?: {
+                  type: string;
+                  area?: string;
+                  cluster?: string;
+                  node?: string;
+                  location?: string;
+                  threshold?: number;
+                  rigidness?: number;
+                  convergence_time?: number;
+                  needs?: string[];
+                  allowed?: string[];
+                }[];
+                connectivity?: {
+                  target_microservice_id: string;
+                  con_constraints: {
+                    type: string;
+                    threshold: number;
+                    rigidness: number;
+                    convergence_time: number;
+                  }[];
+                }[];
+              }[];
+            }[];
+            args?: string[];
+          };
         };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        422: components['responses']['UNPROCESSABLE_ENTITY'];
+        default: components['responses']['DEFAULT_ERROR'];
+      };
     };
-    "/services/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    post?: never;
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          serviceid: string;
         };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            microserviceID?: string;
-                            microservice_name: string;
-                            microservice_namespace: string;
-                            virtualization: string;
-                            volumes?: {
-                                volume_id: string;
-                                csi_driver: string;
-                                mount_path?: string;
-                                config?: Record<string, unknown>;
-                            }[];
-                            memory?: number;
-                            vcpus?: number;
-                            vgpus?: number;
-                            vtpus?: number;
-                            bandwidth_in?: number;
-                            bandwidth_out?: number;
-                            storage?: number;
-                            code: string;
-                            state?: string;
-                            port?: string;
-                            /** @default false */
-                            one_shot: boolean;
-                            /** @default false */
-                            privileged: boolean;
-                            cmd?: string[];
-                            environment?: string[];
-                            sla_violation_strategy?: string;
-                            target_node?: string;
-                            addresses?: {
-                                rr_ip?: string;
-                                rr_ip_v6?: string;
-                                closest_ip?: string;
-                                closest_ip_v6?: string;
-                                instances?: {
-                                    from?: string;
-                                    to?: string;
-                                    start?: string;
-                                }[];
-                            };
-                            added_files?: string[];
-                            args?: string[];
-                            constraints?: {
-                                type: string;
-                                area?: string;
-                                cluster?: string;
-                                node?: string;
-                                location?: string;
-                                threshold?: number;
-                                rigidness?: number;
-                                convergence_time?: number;
-                                needs?: string[];
-                                allowed?: string[];
-                            }[];
-                            connectivity?: {
-                                target_microservice_id: string;
-                                con_constraints: {
-                                    type: string;
-                                    threshold: number;
-                                    rigidness: number;
-                                    convergence_time: number;
-                                }[];
-                            }[];
-                        }[];
-                    };
-                };
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        default: components['responses']['DEFAULT_ERROR'];
+      };
     };
-    "/permission/{username}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                username: string;
-            };
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    username: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            roles?: string[];
-                        };
-                    };
-                };
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/service/': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        username?: string;
-                        password?: string;
-                        organization?: string;
-                    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            sla_version: string;
+            customerID: string;
+            applications: {
+              applicationID?: string;
+              application_name: string;
+              application_namespace: string;
+              application_desc?: string;
+              microservices: {
+                microserviceID?: string;
+                microservice_name: string;
+                microservice_namespace: string;
+                virtualization: string;
+                volumes?: {
+                  volume_id: string;
+                  csi_driver: string;
+                  mount_path?: string;
+                  config?: Record<string, unknown>;
+                }[];
+                memory?: number;
+                vcpus?: number;
+                vgpus?: number;
+                vtpus?: number;
+                bandwidth_in?: number;
+                bandwidth_out?: number;
+                storage?: number;
+                code: string;
+                state?: string;
+                port?: string;
+                /** @default false */
+                one_shot?: boolean;
+                /** @default false */
+                privileged?: boolean;
+                cmd?: string[];
+                environment?: string[];
+                sla_violation_strategy?: string;
+                target_node?: string;
+                addresses?: {
+                  rr_ip?: string;
+                  rr_ip_v6?: string;
+                  closest_ip?: string;
+                  closest_ip_v6?: string;
+                  instances?: {
+                    from?: string;
+                    to?: string;
+                    start?: string;
+                  }[];
                 };
-            };
-            responses: {
-                422: components["responses"]["UNPROCESSABLE_ENTITY"];
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
+                added_files?: string[];
+                args?: string[];
+                constraints?: {
+                  type: string;
+                  area?: string;
+                  cluster?: string;
+                  node?: string;
+                  location?: string;
+                  threshold?: number;
+                  rigidness?: number;
+                  convergence_time?: number;
+                  needs?: string[];
+                  allowed?: string[];
+                }[];
+                connectivity?: {
+                  target_microservice_id: string;
+                  con_constraints: {
+                    type: string;
+                    threshold: number;
+                    rigidness: number;
+                    convergence_time: number;
+                  }[];
+                }[];
+              }[];
+            }[];
+            args?: string[];
+          };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        422: components['responses']['UNPROCESSABLE_ENTITY'];
+        default: components['responses']['DEFAULT_ERROR'];
+      };
     };
-    "/auth/register": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        name?: string;
-                        password?: string;
-                        roles?: string[];
-                    };
-                };
-            };
-            responses: {
-                422: components["responses"]["UNPROCESSABLE_ENTITY"];
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/services/{appid}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        appid: string;
+      };
+      cookie?: never;
     };
-    "/auth/refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          appid: string;
         };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              microserviceID?: string;
+              microservice_name: string;
+              microservice_namespace: string;
+              virtualization: string;
+              volumes?: {
+                volume_id: string;
+                csi_driver: string;
+                mount_path?: string;
+                config?: Record<string, unknown>;
+              }[];
+              memory?: number;
+              vcpus?: number;
+              vgpus?: number;
+              vtpus?: number;
+              bandwidth_in?: number;
+              bandwidth_out?: number;
+              storage?: number;
+              code: string;
+              state?: string;
+              port?: string;
+              /** @default false */
+              one_shot: boolean;
+              /** @default false */
+              privileged: boolean;
+              cmd?: string[];
+              environment?: string[];
+              sla_violation_strategy?: string;
+              target_node?: string;
+              addresses?: {
+                rr_ip?: string;
+                rr_ip_v6?: string;
+                closest_ip?: string;
+                closest_ip_v6?: string;
+                instances?: {
+                  from?: string;
+                  to?: string;
+                  start?: string;
+                }[];
+              };
+              added_files?: string[];
+              args?: string[];
+              constraints?: {
+                type: string;
+                area?: string;
+                cluster?: string;
+                node?: string;
+                location?: string;
+                threshold?: number;
+                rigidness?: number;
+                convergence_time?: number;
+                needs?: string[];
+                allowed?: string[];
+              }[];
+              connectivity?: {
+                target_microservice_id: string;
+                con_constraints: {
+                  type: string;
+                  threshold: number;
+                  rigidness: number;
+                  convergence_time: number;
+                }[];
+              }[];
+            }[];
+          };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+        default: components['responses']['DEFAULT_ERROR'];
+      };
     };
-    "/service/{serviceid}/instance": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                serviceid: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    serviceid: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/services/': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/service/{serviceid}/instance/{instance_number}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                instance_number: string;
-                serviceid: string;
-            };
-            cookie?: never;
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              microserviceID?: string;
+              microservice_name: string;
+              microservice_namespace: string;
+              virtualization: string;
+              volumes?: {
+                volume_id: string;
+                csi_driver: string;
+                mount_path?: string;
+                config?: Record<string, unknown>;
+              }[];
+              memory?: number;
+              vcpus?: number;
+              vgpus?: number;
+              vtpus?: number;
+              bandwidth_in?: number;
+              bandwidth_out?: number;
+              storage?: number;
+              code: string;
+              state?: string;
+              port?: string;
+              /** @default false */
+              one_shot: boolean;
+              /** @default false */
+              privileged: boolean;
+              cmd?: string[];
+              environment?: string[];
+              sla_violation_strategy?: string;
+              target_node?: string;
+              addresses?: {
+                rr_ip?: string;
+                rr_ip_v6?: string;
+                closest_ip?: string;
+                closest_ip_v6?: string;
+                instances?: {
+                  from?: string;
+                  to?: string;
+                  start?: string;
+                }[];
+              };
+              added_files?: string[];
+              args?: string[];
+              constraints?: {
+                type: string;
+                area?: string;
+                cluster?: string;
+                node?: string;
+                location?: string;
+                threshold?: number;
+                rigidness?: number;
+                convergence_time?: number;
+                needs?: string[];
+                allowed?: string[];
+              }[];
+              connectivity?: {
+                target_microservice_id: string;
+                con_constraints: {
+                  type: string;
+                  threshold: number;
+                  rigidness: number;
+                  convergence_time: number;
+                }[];
+              }[];
+            }[];
+          };
         };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    instance_number: string;
-                    serviceid: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+        default: components['responses']['DEFAULT_ERROR'];
+      };
     };
-    "/application/{appid}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                appid: string;
-            };
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    appid: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            sla_version: string;
-                            customerID: string;
-                            applications: {
-                                applicationID?: string;
-                                application_name: string;
-                                application_namespace: string;
-                                application_desc?: string;
-                                microservices: {
-                                    microserviceID?: string;
-                                    microservice_name: string;
-                                    microservice_namespace: string;
-                                    virtualization: string;
-                                    volumes?: {
-                                        volume_id: string;
-                                        csi_driver: string;
-                                        mount_path?: string;
-                                        config?: Record<string, unknown>;
-                                    }[];
-                                    memory?: number;
-                                    vcpus?: number;
-                                    vgpus?: number;
-                                    vtpus?: number;
-                                    bandwidth_in?: number;
-                                    bandwidth_out?: number;
-                                    storage?: number;
-                                    code: string;
-                                    state?: string;
-                                    port?: string;
-                                    /** @default false */
-                                    one_shot: boolean;
-                                    /** @default false */
-                                    privileged: boolean;
-                                    cmd?: string[];
-                                    environment?: string[];
-                                    sla_violation_strategy?: string;
-                                    target_node?: string;
-                                    addresses?: {
-                                        rr_ip?: string;
-                                        rr_ip_v6?: string;
-                                        closest_ip?: string;
-                                        closest_ip_v6?: string;
-                                        instances?: {
-                                            from?: string;
-                                            to?: string;
-                                            start?: string;
-                                        }[];
-                                    };
-                                    added_files?: string[];
-                                    args?: string[];
-                                    constraints?: {
-                                        type: string;
-                                        area?: string;
-                                        cluster?: string;
-                                        node?: string;
-                                        location?: string;
-                                        threshold?: number;
-                                        rigidness?: number;
-                                        convergence_time?: number;
-                                        needs?: string[];
-                                        allowed?: string[];
-                                    }[];
-                                    connectivity?: {
-                                        target_microservice_id: string;
-                                        con_constraints: {
-                                            type: string;
-                                            threshold: number;
-                                            rigidness: number;
-                                            convergence_time: number;
-                                        }[];
-                                    }[];
-                                }[];
-                            }[];
-                            args?: string[];
-                        };
-                    };
-                };
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    appid: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        post?: never;
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    appid: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/permission/{username}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        username: string;
+      };
+      cookie?: never;
     };
-    "/application/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          username: string;
         };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              roles?: string[];
             };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        sla_version: string;
-                        customerID: string;
-                        applications: {
-                            applicationID?: string;
-                            application_name: string;
-                            application_namespace: string;
-                            application_desc?: string;
-                            microservices: {
-                                microserviceID?: string;
-                                microservice_name: string;
-                                microservice_namespace: string;
-                                virtualization: string;
-                                volumes?: {
-                                    volume_id: string;
-                                    csi_driver: string;
-                                    mount_path?: string;
-                                    config?: Record<string, unknown>;
-                                }[];
-                                memory?: number;
-                                vcpus?: number;
-                                vgpus?: number;
-                                vtpus?: number;
-                                bandwidth_in?: number;
-                                bandwidth_out?: number;
-                                storage?: number;
-                                code: string;
-                                state?: string;
-                                port?: string;
-                                /** @default false */
-                                one_shot?: boolean;
-                                /** @default false */
-                                privileged?: boolean;
-                                cmd?: string[];
-                                environment?: string[];
-                                sla_violation_strategy?: string;
-                                target_node?: string;
-                                addresses?: {
-                                    rr_ip?: string;
-                                    rr_ip_v6?: string;
-                                    closest_ip?: string;
-                                    closest_ip_v6?: string;
-                                    instances?: {
-                                        from?: string;
-                                        to?: string;
-                                        start?: string;
-                                    }[];
-                                };
-                                added_files?: string[];
-                                args?: string[];
-                                constraints?: {
-                                    type: string;
-                                    area?: string;
-                                    cluster?: string;
-                                    node?: string;
-                                    location?: string;
-                                    threshold?: number;
-                                    rigidness?: number;
-                                    convergence_time?: number;
-                                    needs?: string[];
-                                    allowed?: string[];
-                                }[];
-                                connectivity?: {
-                                    target_microservice_id: string;
-                                    con_constraints: {
-                                        type: string;
-                                        threshold: number;
-                                        rigidness: number;
-                                        convergence_time: number;
-                                    }[];
-                                }[];
-                            }[];
-                        }[];
-                        args?: string[];
-                    };
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            sla_version: string;
-                            customerID: string;
-                            applications: {
-                                applicationID?: string;
-                                application_name: string;
-                                application_namespace: string;
-                                application_desc?: string;
-                                microservices: {
-                                    microserviceID?: string;
-                                    microservice_name: string;
-                                    microservice_namespace: string;
-                                    virtualization: string;
-                                    volumes?: {
-                                        volume_id: string;
-                                        csi_driver: string;
-                                        mount_path?: string;
-                                        config?: Record<string, unknown>;
-                                    }[];
-                                    memory?: number;
-                                    vcpus?: number;
-                                    vgpus?: number;
-                                    vtpus?: number;
-                                    bandwidth_in?: number;
-                                    bandwidth_out?: number;
-                                    storage?: number;
-                                    code: string;
-                                    state?: string;
-                                    port?: string;
-                                    /** @default false */
-                                    one_shot: boolean;
-                                    /** @default false */
-                                    privileged: boolean;
-                                    cmd?: string[];
-                                    environment?: string[];
-                                    sla_violation_strategy?: string;
-                                    target_node?: string;
-                                    addresses?: {
-                                        rr_ip?: string;
-                                        rr_ip_v6?: string;
-                                        closest_ip?: string;
-                                        closest_ip_v6?: string;
-                                        instances?: {
-                                            from?: string;
-                                            to?: string;
-                                            start?: string;
-                                        }[];
-                                    };
-                                    added_files?: string[];
-                                    args?: string[];
-                                    constraints?: {
-                                        type: string;
-                                        area?: string;
-                                        cluster?: string;
-                                        node?: string;
-                                        location?: string;
-                                        threshold?: number;
-                                        rigidness?: number;
-                                        convergence_time?: number;
-                                        needs?: string[];
-                                        allowed?: string[];
-                                    }[];
-                                    connectivity?: {
-                                        target_microservice_id: string;
-                                        con_constraints: {
-                                            type: string;
-                                            threshold: number;
-                                            rigidness: number;
-                                            convergence_time: number;
-                                        }[];
-                                    }[];
-                                }[];
-                            }[];
-                            args?: string[];
-                        }[];
-                    };
-                };
-                422: components["responses"]["UNPROCESSABLE_ENTITY"];
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
+          };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+        default: components['responses']['DEFAULT_ERROR'];
+      };
     };
-    "/applications/{userid}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                userid: string;
-            };
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    userid: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            sla_version: string;
-                            customerID: string;
-                            applications: {
-                                applicationID?: string;
-                                application_name: string;
-                                application_namespace: string;
-                                application_desc?: string;
-                                microservices: {
-                                    microserviceID?: string;
-                                    microservice_name: string;
-                                    microservice_namespace: string;
-                                    virtualization: string;
-                                    volumes?: {
-                                        volume_id: string;
-                                        csi_driver: string;
-                                        mount_path?: string;
-                                        config?: Record<string, unknown>;
-                                    }[];
-                                    memory?: number;
-                                    vcpus?: number;
-                                    vgpus?: number;
-                                    vtpus?: number;
-                                    bandwidth_in?: number;
-                                    bandwidth_out?: number;
-                                    storage?: number;
-                                    code: string;
-                                    state?: string;
-                                    port?: string;
-                                    /** @default false */
-                                    one_shot: boolean;
-                                    /** @default false */
-                                    privileged: boolean;
-                                    cmd?: string[];
-                                    environment?: string[];
-                                    sla_violation_strategy?: string;
-                                    target_node?: string;
-                                    addresses?: {
-                                        rr_ip?: string;
-                                        rr_ip_v6?: string;
-                                        closest_ip?: string;
-                                        closest_ip_v6?: string;
-                                        instances?: {
-                                            from?: string;
-                                            to?: string;
-                                            start?: string;
-                                        }[];
-                                    };
-                                    added_files?: string[];
-                                    args?: string[];
-                                    constraints?: {
-                                        type: string;
-                                        area?: string;
-                                        cluster?: string;
-                                        node?: string;
-                                        location?: string;
-                                        threshold?: number;
-                                        rigidness?: number;
-                                        convergence_time?: number;
-                                        needs?: string[];
-                                        allowed?: string[];
-                                    }[];
-                                    connectivity?: {
-                                        target_microservice_id: string;
-                                        con_constraints: {
-                                            type: string;
-                                            threshold: number;
-                                            rigidness: number;
-                                            convergence_time: number;
-                                        }[];
-                                    }[];
-                                }[];
-                            }[];
-                            args?: string[];
-                        }[];
-                    };
-                };
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/login': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/applications/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            username?: string;
+            password?: string;
+            organization?: string;
+          };
         };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            sla_version: string;
-                            customerID: string;
-                            applications: {
-                                applicationID?: string;
-                                application_name: string;
-                                application_namespace: string;
-                                application_desc?: string;
-                                microservices: {
-                                    microserviceID?: string;
-                                    microservice_name: string;
-                                    microservice_namespace: string;
-                                    virtualization: string;
-                                    volumes?: {
-                                        volume_id: string;
-                                        csi_driver: string;
-                                        mount_path?: string;
-                                        config?: Record<string, unknown>;
-                                    }[];
-                                    memory?: number;
-                                    vcpus?: number;
-                                    vgpus?: number;
-                                    vtpus?: number;
-                                    bandwidth_in?: number;
-                                    bandwidth_out?: number;
-                                    storage?: number;
-                                    code: string;
-                                    state?: string;
-                                    port?: string;
-                                    /** @default false */
-                                    one_shot: boolean;
-                                    /** @default false */
-                                    privileged: boolean;
-                                    cmd?: string[];
-                                    environment?: string[];
-                                    sla_violation_strategy?: string;
-                                    target_node?: string;
-                                    addresses?: {
-                                        rr_ip?: string;
-                                        rr_ip_v6?: string;
-                                        closest_ip?: string;
-                                        closest_ip_v6?: string;
-                                        instances?: {
-                                            from?: string;
-                                            to?: string;
-                                            start?: string;
-                                        }[];
-                                    };
-                                    added_files?: string[];
-                                    args?: string[];
-                                    constraints?: {
-                                        type: string;
-                                        area?: string;
-                                        cluster?: string;
-                                        node?: string;
-                                        location?: string;
-                                        threshold?: number;
-                                        rigidness?: number;
-                                        convergence_time?: number;
-                                        needs?: string[];
-                                        allowed?: string[];
-                                    }[];
-                                    connectivity?: {
-                                        target_microservice_id: string;
-                                        con_constraints: {
-                                            type: string;
-                                            threshold: number;
-                                            rigidness: number;
-                                            convergence_time: number;
-                                        }[];
-                                    }[];
-                                }[];
-                            }[];
-                            args?: string[];
-                        }[];
-                    };
-                };
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+      };
+      responses: {
+        422: components['responses']['UNPROCESSABLE_ENTITY'];
+        default: components['responses']['DEFAULT_ERROR'];
+      };
     };
-    "/user/{username}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                username: string;
-            };
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    username: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    username: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    username: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    username: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/register': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/user/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            name?: string;
+            password?: string;
+            roles?: string[];
+          };
         };
-        get?: never;
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+      };
+      responses: {
+        422: components['responses']['UNPROCESSABLE_ENTITY'];
+        default: components['responses']['DEFAULT_ERROR'];
+      };
     };
-    "/users/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/auth/refresh': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/users/{organization_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                organization_id: string;
-            };
-            cookie?: never;
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/service/{serviceid}/instance': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        serviceid: string;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          serviceid: string;
         };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    organization_id: string;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/service/{serviceid}/instance/{instance_number}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        instance_number: string;
+        serviceid: string;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          instance_number: string;
+          serviceid: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/application/{appid}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        appid: string;
+      };
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          appid: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              sla_version: string;
+              customerID: string;
+              applications: {
+                applicationID?: string;
+                application_name: string;
+                application_namespace: string;
+                application_desc?: string;
+                microservices: {
+                  microserviceID?: string;
+                  microservice_name: string;
+                  microservice_namespace: string;
+                  virtualization: string;
+                  volumes?: {
+                    volume_id: string;
+                    csi_driver: string;
+                    mount_path?: string;
+                    config?: Record<string, unknown>;
+                  }[];
+                  memory?: number;
+                  vcpus?: number;
+                  vgpus?: number;
+                  vtpus?: number;
+                  bandwidth_in?: number;
+                  bandwidth_out?: number;
+                  storage?: number;
+                  code: string;
+                  state?: string;
+                  port?: string;
+                  /** @default false */
+                  one_shot: boolean;
+                  /** @default false */
+                  privileged: boolean;
+                  cmd?: string[];
+                  environment?: string[];
+                  sla_violation_strategy?: string;
+                  target_node?: string;
+                  addresses?: {
+                    rr_ip?: string;
+                    rr_ip_v6?: string;
+                    closest_ip?: string;
+                    closest_ip_v6?: string;
+                    instances?: {
+                      from?: string;
+                      to?: string;
+                      start?: string;
+                    }[];
+                  };
+                  added_files?: string[];
+                  args?: string[];
+                  constraints?: {
+                    type: string;
+                    area?: string;
+                    cluster?: string;
+                    node?: string;
+                    location?: string;
+                    threshold?: number;
+                    rigidness?: number;
+                    convergence_time?: number;
+                    needs?: string[];
+                    allowed?: string[];
+                  }[];
+                  connectivity?: {
+                    target_microservice_id: string;
+                    con_constraints: {
+                      type: string;
+                      threshold: number;
+                      rigidness: number;
+                      convergence_time: number;
+                    }[];
+                  }[];
+                }[];
+              }[];
+              args?: string[];
+            };
+          };
+        };
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          appid: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    post?: never;
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          appid: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/application/': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            sla_version: string;
+            customerID: string;
+            applications: {
+              applicationID?: string;
+              application_name: string;
+              application_namespace: string;
+              application_desc?: string;
+              microservices: {
+                microserviceID?: string;
+                microservice_name: string;
+                microservice_namespace: string;
+                virtualization: string;
+                volumes?: {
+                  volume_id: string;
+                  csi_driver: string;
+                  mount_path?: string;
+                  config?: Record<string, unknown>;
+                }[];
+                memory?: number;
+                vcpus?: number;
+                vgpus?: number;
+                vtpus?: number;
+                bandwidth_in?: number;
+                bandwidth_out?: number;
+                storage?: number;
+                code: string;
+                state?: string;
+                port?: string;
+                /** @default false */
+                one_shot?: boolean;
+                /** @default false */
+                privileged?: boolean;
+                cmd?: string[];
+                environment?: string[];
+                sla_violation_strategy?: string;
+                target_node?: string;
+                addresses?: {
+                  rr_ip?: string;
+                  rr_ip_v6?: string;
+                  closest_ip?: string;
+                  closest_ip_v6?: string;
+                  instances?: {
+                    from?: string;
+                    to?: string;
+                    start?: string;
+                  }[];
                 };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
+                added_files?: string[];
+                args?: string[];
+                constraints?: {
+                  type: string;
+                  area?: string;
+                  cluster?: string;
+                  node?: string;
+                  location?: string;
+                  threshold?: number;
+                  rigidness?: number;
+                  convergence_time?: number;
+                  needs?: string[];
+                  allowed?: string[];
+                }[];
+                connectivity?: {
+                  target_microservice_id: string;
+                  con_constraints: {
+                    type: string;
+                    threshold: number;
+                    rigidness: number;
+                    convergence_time: number;
+                  }[];
+                }[];
+              }[];
+            }[];
+            args?: string[];
+          };
         };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+      };
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              sla_version: string;
+              customerID: string;
+              applications: {
+                applicationID?: string;
+                application_name: string;
+                application_namespace: string;
+                application_desc?: string;
+                microservices: {
+                  microserviceID?: string;
+                  microservice_name: string;
+                  microservice_namespace: string;
+                  virtualization: string;
+                  volumes?: {
+                    volume_id: string;
+                    csi_driver: string;
+                    mount_path?: string;
+                    config?: Record<string, unknown>;
+                  }[];
+                  memory?: number;
+                  vcpus?: number;
+                  vgpus?: number;
+                  vtpus?: number;
+                  bandwidth_in?: number;
+                  bandwidth_out?: number;
+                  storage?: number;
+                  code: string;
+                  state?: string;
+                  port?: string;
+                  /** @default false */
+                  one_shot: boolean;
+                  /** @default false */
+                  privileged: boolean;
+                  cmd?: string[];
+                  environment?: string[];
+                  sla_violation_strategy?: string;
+                  target_node?: string;
+                  addresses?: {
+                    rr_ip?: string;
+                    rr_ip_v6?: string;
+                    closest_ip?: string;
+                    closest_ip_v6?: string;
+                    instances?: {
+                      from?: string;
+                      to?: string;
+                      start?: string;
+                    }[];
+                  };
+                  added_files?: string[];
+                  args?: string[];
+                  constraints?: {
+                    type: string;
+                    area?: string;
+                    cluster?: string;
+                    node?: string;
+                    location?: string;
+                    threshold?: number;
+                    rigidness?: number;
+                    convergence_time?: number;
+                    needs?: string[];
+                    allowed?: string[];
+                  }[];
+                  connectivity?: {
+                    target_microservice_id: string;
+                    con_constraints: {
+                      type: string;
+                      threshold: number;
+                      rigidness: number;
+                      convergence_time: number;
+                    }[];
+                  }[];
+                }[];
+              }[];
+              args?: string[];
+            }[];
+          };
+        };
+        422: components['responses']['UNPROCESSABLE_ENTITY'];
+        default: components['responses']['DEFAULT_ERROR'];
+      };
     };
-    "/result/deploy": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        job_id?: string;
-                        candidate_id?: string;
-                    };
-                };
-            };
-            responses: {
-                422: components["responses"]["UNPROCESSABLE_ENTITY"];
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/applications/{userid}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        userid: string;
+      };
+      cookie?: never;
     };
-    "/information/{clusterid}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                clusterid: string;
-            };
-            cookie?: never;
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          userid: string;
         };
-        get?: never;
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    clusterid: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        cpu_percent?: string;
-                        cpu_cores?: string;
-                        gpu_cores?: string;
-                        gpu_percent?: string;
-                        cumulative_memory_in_mb?: string;
-                        number_of_nodes?: string;
-                        virtualization?: string[];
-                        csi_drivers?: string[];
-                        more?: Record<string, unknown>;
-                        worker_groups?: string;
-                        supported_addons?: string[];
-                        jobs?: {
-                            _id?: string;
-                            status?: string;
-                            instance_list?: {
-                                instance_number?: string;
-                                status?: string;
-                                status_detail?: string;
-                                publicip?: string;
-                            }[];
-                        }[];
-                    };
-                };
-            };
-            responses: {
-                422: components["responses"]["UNPROCESSABLE_ENTITY"];
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              sla_version: string;
+              customerID: string;
+              applications: {
+                applicationID?: string;
+                application_name: string;
+                application_namespace: string;
+                application_desc?: string;
+                microservices: {
+                  microserviceID?: string;
+                  microservice_name: string;
+                  microservice_namespace: string;
+                  virtualization: string;
+                  volumes?: {
+                    volume_id: string;
+                    csi_driver: string;
+                    mount_path?: string;
+                    config?: Record<string, unknown>;
+                  }[];
+                  memory?: number;
+                  vcpus?: number;
+                  vgpus?: number;
+                  vtpus?: number;
+                  bandwidth_in?: number;
+                  bandwidth_out?: number;
+                  storage?: number;
+                  code: string;
+                  state?: string;
+                  port?: string;
+                  /** @default false */
+                  one_shot: boolean;
+                  /** @default false */
+                  privileged: boolean;
+                  cmd?: string[];
+                  environment?: string[];
+                  sla_violation_strategy?: string;
+                  target_node?: string;
+                  addresses?: {
+                    rr_ip?: string;
+                    rr_ip_v6?: string;
+                    closest_ip?: string;
+                    closest_ip_v6?: string;
+                    instances?: {
+                      from?: string;
+                      to?: string;
+                      start?: string;
+                    }[];
+                  };
+                  added_files?: string[];
+                  args?: string[];
+                  constraints?: {
+                    type: string;
+                    area?: string;
+                    cluster?: string;
+                    node?: string;
+                    location?: string;
+                    threshold?: number;
+                    rigidness?: number;
+                    convergence_time?: number;
+                    needs?: string[];
+                    allowed?: string[];
+                  }[];
+                  connectivity?: {
+                    target_microservice_id: string;
+                    con_constraints: {
+                      type: string;
+                      threshold: number;
+                      rigidness: number;
+                      convergence_time: number;
+                    }[];
+                  }[];
+                }[];
+              }[];
+              args?: string[];
+            }[];
+          };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+        default: components['responses']['DEFAULT_ERROR'];
+      };
     };
-    "/clusters/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/applications/': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/clusters/active": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              sla_version: string;
+              customerID: string;
+              applications: {
+                applicationID?: string;
+                application_name: string;
+                application_namespace: string;
+                application_desc?: string;
+                microservices: {
+                  microserviceID?: string;
+                  microservice_name: string;
+                  microservice_namespace: string;
+                  virtualization: string;
+                  volumes?: {
+                    volume_id: string;
+                    csi_driver: string;
+                    mount_path?: string;
+                    config?: Record<string, unknown>;
+                  }[];
+                  memory?: number;
+                  vcpus?: number;
+                  vgpus?: number;
+                  vtpus?: number;
+                  bandwidth_in?: number;
+                  bandwidth_out?: number;
+                  storage?: number;
+                  code: string;
+                  state?: string;
+                  port?: string;
+                  /** @default false */
+                  one_shot: boolean;
+                  /** @default false */
+                  privileged: boolean;
+                  cmd?: string[];
+                  environment?: string[];
+                  sla_violation_strategy?: string;
+                  target_node?: string;
+                  addresses?: {
+                    rr_ip?: string;
+                    rr_ip_v6?: string;
+                    closest_ip?: string;
+                    closest_ip_v6?: string;
+                    instances?: {
+                      from?: string;
+                      to?: string;
+                      start?: string;
+                    }[];
+                  };
+                  added_files?: string[];
+                  args?: string[];
+                  constraints?: {
+                    type: string;
+                    area?: string;
+                    cluster?: string;
+                    node?: string;
+                    location?: string;
+                    threshold?: number;
+                    rigidness?: number;
+                    convergence_time?: number;
+                    needs?: string[];
+                    allowed?: string[];
+                  }[];
+                  connectivity?: {
+                    target_microservice_id: string;
+                    con_constraints: {
+                      type: string;
+                      threshold: number;
+                      rigidness: number;
+                      convergence_time: number;
+                    }[];
+                  }[];
+                }[];
+              }[];
+              args?: string[];
+            }[];
+          };
         };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+        default: components['responses']['DEFAULT_ERROR'];
+      };
     };
-    "/organization/{organizationid}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                organizationid: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    organizationid: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        post?: never;
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    organizationid: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/user/{username}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        username: string;
+      };
+      cookie?: never;
     };
-    "/organization/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          username: string;
         };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            _id?: string;
-                            name?: string;
-                            member?: Record<string, unknown>[];
-                        };
-                    };
-                };
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            _id?: string;
-                            name?: string;
-                            member?: Record<string, unknown>[];
-                        };
-                    };
-                };
-                default: components["responses"]["DEFAULT_ERROR"];
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        default: components['responses']['DEFAULT_ERROR'];
+      };
     };
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          username: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          username: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          username: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/user/': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/users/': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/users/{organization_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        organization_id: string;
+      };
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          organization_id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/result/deploy': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            job_id?: string;
+            candidate_id?: string;
+          };
+        };
+      };
+      responses: {
+        422: components['responses']['UNPROCESSABLE_ENTITY'];
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/information/{clusterid}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        clusterid: string;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          clusterid: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            cpu_percent?: string;
+            cpu_cores?: string;
+            gpu_cores?: string;
+            gpu_percent?: string;
+            cumulative_memory_in_mb?: string;
+            number_of_nodes?: string;
+            virtualization?: string[];
+            csi_drivers?: string[];
+            more?: Record<string, unknown>;
+            worker_groups?: string;
+            supported_addons?: string[];
+            jobs?: {
+              _id?: string;
+              status?: string;
+              instance_list?: {
+                instance_number?: string;
+                status?: string;
+                status_detail?: string;
+                publicip?: string;
+              }[];
+            }[];
+          };
+        };
+      };
+      responses: {
+        422: components['responses']['UNPROCESSABLE_ENTITY'];
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/clusters/': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/clusters/active': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/organization/{organizationid}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        organizationid: string;
+      };
+      cookie?: never;
+    };
+    get?: never;
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          organizationid: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    post?: never;
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          organizationid: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/organization/': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              _id?: string;
+              name?: string;
+              member?: Record<string, unknown>[];
+            };
+          };
+        };
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    put?: never;
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description OK */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              _id?: string;
+              name?: string;
+              member?: Record<string, unknown>[];
+            };
+          };
+        };
+        default: components['responses']['DEFAULT_ERROR'];
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        Error: {
-            /** @description Error name */
-            status?: string;
-            /** @description Error message */
-            message?: string;
-            /** @description Errors */
-            errors?: Record<string, unknown>;
-            /** @description Error code */
-            code?: number;
-        };
-        PaginationMetadata: {
-            total?: number;
-            total_pages?: number;
-            first_page?: number;
-            last_page?: number;
-            page?: number;
-            previous_page?: number;
-            next_page?: number;
-        };
+  schemas: {
+    Error: {
+      /** @description Error name */
+      status?: string;
+      /** @description Error message */
+      message?: string;
+      /** @description Errors */
+      errors?: Record<string, unknown>;
+      /** @description Error code */
+      code?: number;
     };
-    responses: {
-        /** @description Default error response */
-        DEFAULT_ERROR: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
-        /** @description Unprocessable Entity */
-        UNPROCESSABLE_ENTITY: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["Error"];
-            };
-        };
+    PaginationMetadata: {
+      total?: number;
+      total_pages?: number;
+      first_page?: number;
+      last_page?: number;
+      page?: number;
+      previous_page?: number;
+      next_page?: number;
     };
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  };
+  responses: {
+    /** @description Default error response */
+    DEFAULT_ERROR: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        'application/json': components['schemas']['Error'];
+      };
+    };
+    /** @description Unprocessable Entity */
+    UNPROCESSABLE_ENTITY: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        'application/json': components['schemas']['Error'];
+      };
+    };
+  };
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;

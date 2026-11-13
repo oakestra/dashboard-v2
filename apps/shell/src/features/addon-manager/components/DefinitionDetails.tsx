@@ -62,8 +62,9 @@ export function DefinitionDetails({
           <ul className="divide-y">
             {services.map((service) => {
               const failing = failingServices.includes(service.service_name);
+              // Keyed by container port, like docker's PortBindings; shown as host:container.
               const ports = Object.entries(service.ports).map(
-                ([host, container]) => `${host}:${container}`,
+                ([container, host]) => `${host}:${container}`,
               );
               const environment = Object.keys(service.environment);
               return (

@@ -8,6 +8,8 @@ export interface ApiErrorOptions {
   /** Path relative to the API base URL, e.g. `/user/Admin`. */
   path: string;
   body?: unknown;
+  /** Machine-readable reason from the body, for services that send one (the addons engine). */
+  code?: string;
   cause?: unknown;
 }
 
@@ -22,6 +24,12 @@ export class ApiError extends Error {
   readonly method: string;
   readonly path: string;
   readonly body: unknown;
+  /**
+   * Stable reason of the failure when the backend sends one, such as `already_installed`. Branch
+   * on this rather than on `status` or the message text: one status can have several meanings
+   * and messages may change. Undefined for the system-manager, whose codes are HTTP statuses.
+   */
+  readonly code: string | undefined;
 
   constructor(message: string, options: ApiErrorOptions) {
     super(message, { cause: options.cause });
@@ -30,6 +38,7 @@ export class ApiError extends Error {
     this.method = options.method;
     this.path = options.path;
     this.body = options.body;
+    this.code = options.code;
   }
 }
 
@@ -108,10 +117,24 @@ function collectFieldErrors(node: unknown, path: string, out: string[]): void {
  * typed, so it is left out of the text; other locations keep their name.
  */
 function messageFromFieldErrors(errors: unknown): string | undefined {
-  if (typeof errors !== 'object' || errors === null || Array.isArray(errors)) return undefined;
+  if (typeof errors !== 'object' || errors === null) return undefined;
   const entries: string[] = [];
-  for (const [location, tree] of Object.entries(errors)) {
-    collectFieldErrors(tree, location === 'json' ? '' : location, entries);
+  if (Array.isArray(errors)) {
+    // The addon services list problems as `[{path: "services[0].image", message: "..."}]`.
+    for (const item of errors as unknown[]) {
+      const record = (typeof item === 'object' && item !== null ? item : {}) as Record<
+        string,
+        unknown
+      >;
+      const message = stringField(record.message);
+      if (!message) continue;
+      const path = typeof record.path === 'string' ? record.path : '';
+      entries.push(path ? `${path}: ${message}` : message);
+    }
+  } else {
+    for (const [location, tree] of Object.entries(errors)) {
+      collectFieldErrors(tree, location === 'json' ? '' : location, entries);
+    }
   }
   if (entries.length === 0) return undefined;
   const shown = entries.slice(0, MAX_FIELD_ERRORS).join(' ');

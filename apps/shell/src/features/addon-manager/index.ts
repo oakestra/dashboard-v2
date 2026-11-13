@@ -8,12 +8,12 @@ import type { RouteHandle } from '../../core/router/route-handle';
 import { INSTALLED_PATH } from './paths';
 
 export { addonManagerKeys } from './keys';
-export { INSTALLED_PATH, MARKETPLACE_PATH, installedAddonLink } from './paths';
+export { INSTALLED_PATH, MARKETPLACE_PATH, SOURCES_PATH, installedAddonLink } from './paths';
 
 const requireAdmin = requireRole('Admin');
 
 /**
- * Installed addons and the marketplace, Admin only. The prefix is `addon-manager` because
+ * Installed addons, the marketplace and its sources, Admin only. The prefix is `addon-manager` because
  * `/addons/:addonId/*` belongs to the pages of the addons themselves.
  */
 export const addonManagerModule: CoreModule = {
@@ -46,6 +46,11 @@ export const addonManagerModule: CoreModule = {
           handle: { crumb: 'Marketplace' } satisfies RouteHandle,
           lazy: () =>
             import('./pages/MarketplacePage').then((m) => ({ Component: m.MarketplacePage })),
+        },
+        {
+          path: 'sources',
+          handle: { crumb: 'Sources' } satisfies RouteHandle,
+          lazy: () => import('./pages/SourcesPage').then((m) => ({ Component: m.SourcesPage })),
         },
       ],
     },

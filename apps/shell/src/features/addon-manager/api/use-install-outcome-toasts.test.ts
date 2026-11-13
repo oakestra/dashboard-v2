@@ -9,6 +9,11 @@ describe('installOutcome', () => {
     expect(installOutcome('installing', 'partially_active')).toBe('partially_active');
   });
 
+  it('announces how an update ended', () => {
+    expect(installOutcome('updating', 'active')).toBe('active');
+    expect(installOutcome('updating', 'failed')).toBe('failed');
+  });
+
   it('announces a crash the monitor finds after the install looked fine', () => {
     expect(installOutcome('active', 'failed')).toBe('failed');
     expect(installOutcome('active', 'partially_active')).toBe('partially_active');

@@ -85,7 +85,7 @@ const proxy: Record<string, ProxyOptions> = {
   '/marketplace-api': isolated({
     target: marketplaceUrl,
     changeOrigin: true,
-    rewrite: (path) => path.replace(/^\/marketplace-api/, '/api/v1/marketplace/addons'),
+    rewrite: (path) => path.replace(/^\/marketplace-api/, '/api/v1/marketplace'),
   }),
 
   ...addonAssetProxies(),
