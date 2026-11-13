@@ -4,7 +4,7 @@ export const INSTALLED_PATH = '/addon-manager/installed';
 export const MARKETPLACE_PATH = '/addon-manager/marketplace';
 export const SOURCES_PATH = '/addon-manager/sources';
 
-/** The installed tab with the detail sheet of one addon open. */
+/** The installed tab with the details dialog of one addon open. */
 export function installedAddonLink(id: string): string {
   return `${INSTALLED_PATH}?addon=${encodeURIComponent(id)}`;
 }

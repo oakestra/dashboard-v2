@@ -1,10 +1,11 @@
 import type { InstalledAddon } from '@oakestra/api';
+import { PowerOffIcon, Trash2Icon, type LucideIcon } from 'lucide-react';
 
 export type AddonAction = 'disable' | 'force-disable' | 'remove';
 
 /**
  * The one lifecycle action an installed addon offers, shared by the table row and the detail
- * sheet so both always agree. A `disabled` addon can only be removed, and an install or update
+ * dialog so both always agree. A `disabled` addon can only be removed, and an install or update
  * that has been running for too long (`stuck`) gets "Disable anyway". A plain disable is still the
  * action while an addon is changing; callers show it disabled then.
  */
@@ -15,6 +16,18 @@ export function addonAction(addon: InstalledAddon, stuck: boolean): AddonAction 
   }
   return 'disable';
 }
+
+/**
+ * How each lifecycle action is shown: `label` in the row menu, `buttonLabel` in the detail
+ * dialog, where the button stands without the row's context.
+ */
+export const ADDON_ACTION_UI: Readonly<
+  Record<AddonAction, { icon: LucideIcon; label: string; buttonLabel: string }>
+> = {
+  disable: { icon: PowerOffIcon, label: 'Disable', buttonLabel: 'Disable addon' },
+  'force-disable': { icon: PowerOffIcon, label: 'Disable anyway', buttonLabel: 'Disable anyway' },
+  remove: { icon: Trash2Icon, label: 'Remove', buttonLabel: 'Remove addon' },
+};
 
 /** The backend only updates and re-approves addons with nothing in flight. */
 const settled = (addon: InstalledAddon) =>

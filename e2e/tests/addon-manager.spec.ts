@@ -58,7 +58,8 @@ test.describe('addon manager', () => {
     const notReloaded = await markPage(page);
 
     const refreshed = page.waitForRequest(isUiAddonsRequest);
-    await page.getByRole('button', { name: 'Disable example' }).click();
+    await row.getByRole('button', { name: 'More actions for example' }).click();
+    await page.getByRole('menuitem', { name: 'Disable example' }).click();
     await page.getByRole('alertdialog').getByRole('button', { name: 'Disable addon' }).click();
 
     // The nav item goes as soon as the addon leaves `active`, not when the disabling is done.
@@ -156,7 +157,11 @@ test.describe('addon manager', () => {
   test('approves a failed addon again, which is deployed again', async ({ page }) => {
     await page.goto('/addon-manager/installed');
     const row = page.getByTestId('installed-addon-legacy-exporter');
-    await expect(row.getByText(/grant signature invalid/)).toBeVisible();
+    // The engine's reason is the hint of the state button that offers the fix.
+    await expect(row.getByText('Failed')).toBeVisible();
+    await expect(page.getByTestId('addon-state-legacy-exporter-hint')).toContainText(
+      'grant signature invalid',
+    );
 
     await row.getByRole('button', { name: 'Approve legacy-exporter again' }).click();
     const review = page.getByTestId('consent-dialog');
@@ -171,7 +176,9 @@ test.describe('addon manager', () => {
   test('updates an addon after accepting the new version', async ({ page }) => {
     await page.goto('/addon-manager/installed');
     const row = page.getByTestId('installed-addon-analytics');
-    await row.getByRole('button', { name: 'Update analytics to 1.2.0' }).click();
+    // Partially active outranks the update on the state button, so it is in the row menu.
+    await row.getByRole('button', { name: 'More actions for analytics' }).click();
+    await page.getByRole('menuitem', { name: 'Update analytics to 1.2.0' }).click();
 
     const review = page.getByTestId('consent-dialog');
     await expect(review.getByTestId('consent-version')).toContainText('1.1.0 to 1.2.0');
@@ -208,7 +215,7 @@ test.describe('addon manager', () => {
 
   test('adds a tap and lists it with its sync state', async ({ page }) => {
     await page.goto('/addon-manager/sources');
-    await expect(page.getByTestId('source-error-lab')).toContainText('404');
+    await expect(page.getByTestId('source-sync-lab-hint')).toContainText('404');
 
     await page.getByRole('button', { name: 'Add tap' }).click();
     const dialog = page.getByRole('dialog');
@@ -219,8 +226,9 @@ test.describe('addon manager', () => {
     await expect(page.getByTestId('source-e2e-tap')).toBeVisible();
     await page
       .getByTestId('source-e2e-tap')
-      .getByRole('button', { name: 'Delete e2e-tap' })
+      .getByRole('button', { name: 'More actions for e2e-tap' })
       .click();
+    await page.getByRole('menuitem', { name: 'Delete tap' }).click();
     await page.getByRole('alertdialog').getByRole('button', { name: 'Delete tap' }).click();
     await expect(page.getByTestId('source-e2e-tap')).toHaveCount(0);
   });

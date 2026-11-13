@@ -1,5 +1,5 @@
 import { isProblemAddonStatus } from '@oakestra/api';
-import { PageHeader, StatusDot, cn } from '@oakestra/ui';
+import { PageHeader, cn } from '@oakestra/ui';
 import { useQuery } from '@tanstack/react-query';
 import { NavLink, Outlet } from 'react-router';
 
@@ -44,7 +44,10 @@ export function AddonManagerLayout() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Addons" />
+      <PageHeader
+        title="Addons"
+        description="Extend the platform with addons: install them from the marketplace, keep them up to date and choose where they come from."
+      />
       <nav aria-label="Addon sections" className="flex gap-1 border-b">
         {tabs.map((tab) => (
           <NavLink
@@ -52,7 +55,7 @@ export function AddonManagerLayout() {
             to={tab.to}
             className={({ isActive }) =>
               cn(
-                '-mb-px border-b-2 px-3 py-1.5 text-sm font-medium',
+                '-mb-px inline-flex h-9 items-center border-b-2 px-3 text-sm font-medium transition-colors',
                 isActive
                   ? 'border-primary text-foreground'
                   : 'text-muted-foreground hover:text-foreground border-transparent',
@@ -60,17 +63,18 @@ export function AddonManagerLayout() {
             }
           >
             {tab.label}
+            {/* Amber instead of a separate warning marker next to the count. */}
             {tab.count !== undefined ? (
-              <span className="text-muted-foreground ml-1.5 text-xs font-normal tabular-nums">
+              <span
+                className={cn(
+                  'ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-medium tabular-nums',
+                  tab.problem ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground',
+                )}
+              >
                 {tab.count}
               </span>
             ) : null}
-            {tab.problem ? (
-              <span className="ml-1.5 inline-flex align-middle">
-                <StatusDot tone="warning" />
-                <span className="sr-only">{tab.problem}</span>
-              </span>
-            ) : null}
+            {tab.problem ? <span className="sr-only">{tab.problem}</span> : null}
           </NavLink>
         ))}
       </nav>

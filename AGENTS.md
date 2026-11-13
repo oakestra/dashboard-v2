@@ -859,12 +859,12 @@ and `POST /__test/reset` (keeps the delays).
 ## Addon manager
 
 `features/addon-manager` (Admin only, one nav item "Addons", its page tabs are the only switch between them) has three real routes under `/addon-manager`:
-`installed` (list, detail sheet, disable then remove, Update to `latest_version` when
-`update_available`, Approve for `failed` addons, `status_details.message` in the row and sheet,
-granted permissions, "Dashboard UI" column from the addon registry matched by `addon_id` and
+`installed` (list, details dialog, disable then remove, Update to `latest_version` when
+`update_available`, Approve for `failed` addons, `status_details.message` in the row and dialog,
+granted permissions, a "Dashboard UI" badge from the addon registry matched by `addon_id` and
 showing `addonLabel(entry)`, plus a section for registry UIs without an installed record such as
-dev overrides), `marketplace` (card grid of the merged catalog with a source filter in
-`?source=`, qualified name, version and permission badges, install, register, delete a local
+dev overrides), `marketplace` (card grid of the merged catalog with the Filter menu below,
+qualified name, version and permission facts, install, register, delete a local
 registration) and `sources` (official, taps, local with sync state and `last_error`; add a tap,
 sync, delete a tap). `/addon-manager` and the old `/settings/addons` redirect to `installed`; the
 prefix is not `/addons` because `/addons/:addonId/*` belongs to addon pages. Install, update and
@@ -887,6 +887,25 @@ it); a 404 on remove counts as removed. Environment values are never rendered, o
 Errors of the addon services (`{message}`, 422 `errors: [{path, message}]`) are flattened by
 `messageFromErrorBody`; the register dialog never shows JSON.parse's message, which quotes the
 pasted text, only line and column.
+
+Rows and cards follow one pattern. Each has one `StateButton` (`components/StateButton.tsx`) that
+shows the state at rest and turns into the action that answers it on hover or focus ("Sync failed"
+becomes "Retry sync", "Failed" becomes "Approve again"), with the reason as its tooltip and its
+screen reader description (a visually hidden copy, `<testid>-hint`). Normal states are quiet text,
+abnormal ones get a colored frame. Every other action, destructive ones included, sits in the row
+menu, which every row and card has so the columns never shift. Marketplace cards have fixed
+one-line rows (header, two-line description, one tag line, footer with icon facts and the state
+button). The marketplace is filtered in one Filter menu next to the search
+(`MarketplaceFilterMenu`): the filters on the left with their current selection, the chosen one on
+the right. Category, source and tag are checkbox lists (any checked value matches, filters combine
+with AND; repeated URL parameters, read and written in one navigation by `readFilters` and
+`writeFilters`); a list gets a search field from eight values. Dashboard UI and dangerous
+permissions are single checkboxes under Properties (`ui=with`, `dangerous=without`; only those
+directions are offered, other values are ignored). A footer shows the result count. Active filters
+show as removable chips. Every count comes from `facetCounts`: each filter under the others. Details of an
+addon open in a dialog on both tabs (`MarketplaceDetailsDialog`, `AddonDetailDialog`), laid out
+alike. `OfficialMark` (a check after the name) goes by `source.kind === 'official'`, never by the
+source name, which any tap can choose.
 
 E2E: compose sets `ADDONS_POLL_INTERVAL_MS=1000`, which would mask a missing `refreshUiAddons`,
 so addon-manager tests serve a `config.json` with a one hour interval (`withoutUiAddonsPolling`)

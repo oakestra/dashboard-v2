@@ -5,26 +5,31 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
+  CopyButton,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   ScrollArea,
   Separator,
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  CopyButton,
 } from '@oakestra/ui';
 import {
   ArrowUpCircleIcon,
   LoaderCircleIcon,
-  PowerOffIcon,
   ShieldCheckIcon,
-  Trash2Icon,
+  type LucideIcon,
 } from 'lucide-react';
 
 import type { AddonEntry } from '../../../core/addons/addon-registry';
-import { addonAction, canApprove, canUpdate, type AddonAction } from '../addon-action';
+import {
+  ADDON_ACTION_UI,
+  addonAction,
+  canApprove,
+  canUpdate,
+  type AddonAction,
+} from '../addon-action';
 import { AddonClassificationRows, AddonHeading } from './AddonHeading';
 import { AddonStatusBadge } from './AddonStatusBadge';
 import { DashboardUiBadge, dashboardUiProblem } from './DashboardUiBadge';
@@ -33,7 +38,7 @@ import { navItemKeys, NavItemKeys } from './NavItemKeys';
 import { PermissionList } from './PermissionList';
 import { SourceLabel } from './SourceLabel';
 
-interface AddonDetailSheetProps {
+interface AddonDetailDialogProps {
   addon: InstalledAddon | undefined;
   uiEntry: AddonEntry | undefined;
   onClose: () => void;
@@ -48,7 +53,8 @@ interface AddonDetailSheetProps {
   working: 'update' | 'approve' | null;
 }
 
-export function AddonDetailSheet({
+/** Same layout as MarketplaceDetailsDialog; keep the two in step. */
+export function AddonDetailDialog({
   addon,
   uiEntry,
   onClose,
@@ -58,17 +64,19 @@ export function AddonDetailSheet({
   onApprove,
   busy,
   working,
-}: AddonDetailSheetProps) {
+}: AddonDetailDialogProps) {
   const transitional = addon ? isTransitionalAddonStatus(addon.status) : false;
-  const action = addon ? addonAction(addon, stuck) : undefined;
+  // Only read while an addon is shown; the fallback just keeps the type simple.
+  const action: AddonAction = addon ? addonAction(addon, stuck) : 'disable';
+  const ActionIcon = ADDON_ACTION_UI[action].icon;
   const uiProblem = dashboardUiProblem(uiEntry);
   const failedServices = addon?.status_details?.failed_services ?? [];
   const statusMessage = addon?.status_details?.message;
 
   return (
-    <Sheet open={addon !== undefined} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent
-        className="w-full gap-0 sm:max-w-xl"
+    <Dialog open={addon !== undefined} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        className="flex max-h-[85vh] flex-col sm:max-w-xl"
         data-testid="addon-detail"
         // Radix would focus the first button, a copy button that then opens with a focus ring.
         onOpenAutoFocus={(event) => {
@@ -78,14 +86,17 @@ export function AddonDetailSheet({
       >
         {addon ? (
           <>
-            <SheetHeader className="pr-12">
-              <AddonHeading addon={addon} title={SheetTitle}>
+            <DialogHeader>
+              <AddonHeading addon={addon} title={DialogTitle}>
+                <span className="text-muted-foreground text-sm font-normal tabular-nums">
+                  v{addon.version}
+                </span>
                 <AddonStatusBadge status={addon.status} />
               </AddonHeading>
-              <SheetDescription>{addon.description || 'No description.'}</SheetDescription>
-            </SheetHeader>
-            <ScrollArea className="min-h-0 flex-1">
-              <div className="space-y-4 px-4 pb-4">
+              <DialogDescription>{addon.description || 'No description.'}</DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="-mx-2 min-h-0 flex-1 px-2">
+              <div className="space-y-4">
                 <dl className="grid grid-cols-[7rem_1fr] items-center gap-x-6 gap-y-1.5 text-sm">
                   <dt className="text-muted-foreground">Version</dt>
                   <dd className="flex flex-wrap items-center gap-2 tabular-nums">
@@ -191,51 +202,47 @@ export function AddonDetailSheet({
                 />
               </div>
             </ScrollArea>
-            <SheetFooter className="border-t sm:flex-row sm:justify-end">
-              {canApprove(addon) ? (
-                <Button variant="outline" disabled={busy} onClick={() => onApprove(addon)}>
-                  {working === 'approve' ? (
-                    <LoaderCircleIcon className="animate-spin" aria-hidden />
-                  ) : (
-                    <ShieldCheckIcon aria-hidden />
-                  )}
-                  Approve again
+            <DialogFooter className="sm:justify-between">
+              <Button
+                variant="ghost"
+                className="text-destructive hover:text-destructive"
+                // A plain disable waits for the running change; a stuck one may force it.
+                disabled={action === 'disable' && transitional}
+                onClick={() => onAction(action, addon)}
+              >
+                <ActionIcon aria-hidden data-icon="inline-start" />
+                {ADDON_ACTION_UI[action].buttonLabel}
+              </Button>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                <Button variant="outline" onClick={onClose}>
+                  Close
                 </Button>
-              ) : null}
-              {canUpdate(addon) ? (
-                <Button variant="outline" disabled={busy} onClick={() => onUpdate(addon)}>
-                  {working === 'update' ? (
-                    <LoaderCircleIcon className="animate-spin" aria-hidden />
-                  ) : (
-                    <ArrowUpCircleIcon aria-hidden />
-                  )}
-                  Update to {addon.latest_version}
-                </Button>
-              ) : null}
-              {action === 'remove' ? (
-                <Button variant="destructive" onClick={() => onAction(action, addon)}>
-                  <Trash2Icon aria-hidden />
-                  Remove addon
-                </Button>
-              ) : action === 'force-disable' ? (
-                <Button variant="outline" onClick={() => onAction(action, addon)}>
-                  <PowerOffIcon aria-hidden />
-                  Disable anyway
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  disabled={transitional}
-                  onClick={() => onAction('disable', addon)}
-                >
-                  <PowerOffIcon aria-hidden />
-                  Disable addon
-                </Button>
-              )}
-            </SheetFooter>
+                {canApprove(addon) ? (
+                  <Button disabled={busy} onClick={() => onApprove(addon)}>
+                    <PendingIcon pending={working === 'approve'} icon={ShieldCheckIcon} />
+                    Approve again
+                  </Button>
+                ) : null}
+                {canUpdate(addon) ? (
+                  <Button disabled={busy} onClick={() => onUpdate(addon)}>
+                    <PendingIcon pending={working === 'update'} icon={ArrowUpCircleIcon} />
+                    Update to {addon.latest_version}
+                  </Button>
+                ) : null}
+              </div>
+            </DialogFooter>
           </>
         ) : null}
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** A button's icon, swapped for a spinner while its call is in flight. */
+function PendingIcon({ pending, icon: Icon }: { pending: boolean; icon: LucideIcon }) {
+  return pending ? (
+    <LoaderCircleIcon className="animate-spin" aria-hidden data-icon="inline-start" />
+  ) : (
+    <Icon aria-hidden data-icon="inline-start" />
   );
 }

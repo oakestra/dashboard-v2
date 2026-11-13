@@ -101,7 +101,7 @@ function ReviewBody({
       <div className="-mx-2 min-h-0 flex-1 overflow-y-auto px-2" data-testid="consent-body">
         <div className="space-y-4">
           <div className="flex items-center gap-3" data-testid="consent-subject">
-            <AddonIcon icon={definition.icon} size="sm" />
+            <AddonIcon icon={definition.icon} name={addonTitle(subject)} size="sm" />
             <div className="min-w-0">
               <div className="truncate text-sm font-medium">{addonTitle(subject)}</div>
               <QualifiedName addon={subject} />

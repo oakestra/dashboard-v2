@@ -1,27 +1,31 @@
+import type { AddonSourceRef } from '@oakestra/api';
+import { cn } from '@oakestra/ui';
 import type { ComponentType, ReactNode } from 'react';
 
 import { addonTitle, hasDisplayName } from '../display';
 import { AddonIcon } from './AddonIcon';
+import { OfficialMark } from './OfficialMark';
 
 interface AddonHeadingProps {
-  addon: { display_name?: string; qualified_name: string; icon?: string };
-  /** The dialog's or sheet's own title component, so Radix still labels the dialog with it. */
+  addon: { display_name?: string; qualified_name: string; icon?: string; source?: AddonSourceRef };
+  /** The dialog's own title component, so Radix still labels the dialog with it. */
   title: ComponentType<{ className?: string; children?: ReactNode }>;
   /** Shown after the title on the same line (version, status). */
   children?: ReactNode;
 }
 
 /**
- * The header of an addon's sheet or dialog, laid out like its marketplace card: icon, title and
+ * The header of an addon's details dialog, laid out like its marketplace card: icon, title and
  * the qualified name under a display name.
  */
 export function AddonHeading({ addon, title: Title, children }: AddonHeadingProps) {
   return (
     <div className="flex items-center gap-3">
-      <AddonIcon icon={addon.icon} />
+      <AddonIcon icon={addon.icon} name={addonTitle(addon)} />
       <div className="min-w-0 flex-1">
         <Title className="flex flex-wrap items-center gap-x-2 gap-y-1">
           {addonTitle(addon)}
+          <OfficialMark source={addon.source} />
           {children}
         </Title>
         <QualifiedName addon={addon} />
@@ -36,14 +40,19 @@ export function AddonHeading({ addon, title: Title, children }: AddonHeadingProp
  */
 export function QualifiedName({
   addon,
+  className,
 }: {
   addon: { display_name?: string; qualified_name: string };
+  className?: string;
 }) {
   if (!hasDisplayName(addon)) return null;
   return (
-    <div className="text-muted-foreground truncate font-mono text-xs" data-testid="qualified-name">
+    <span
+      className={cn('text-muted-foreground block truncate font-mono text-xs', className)}
+      data-testid="qualified-name"
+    >
       {addon.qualified_name}
-    </div>
+    </span>
   );
 }
 

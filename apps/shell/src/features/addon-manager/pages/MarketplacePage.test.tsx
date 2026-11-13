@@ -25,9 +25,36 @@ const card = (name: string) => screen.findByTestId(`marketplace-card-${name}`);
 const installedNamed = (name: string) =>
   mockAddons.state.installed.filter((a) => a.qualified_name === name);
 
+// The Filter button is "Filter", or "Filter, 2 active"; the cards' chips start with "Filter by".
+const FILTER_BUTTON = /^Filter(, \d+ active)?$/;
+
+type FilterPane = 'Category' | 'Source' | 'Tag' | 'Properties';
+
+/** Opens the Filter menu if needed, shows `pane` and returns its checkbox `name` ("acme (1)"). */
+async function filterCheckbox(
+  user: ReturnType<typeof renderApp>['user'],
+  pane: FilterPane,
+  name: string | RegExp,
+) {
+  if (!screen.queryByRole('dialog', { name: 'Filters' })) {
+    await user.click(screen.getByRole('button', { name: FILTER_BUTTON }));
+  }
+  await user.click(await screen.findByRole('tab', { name: new RegExp(`^${pane}`) }));
+  return screen.findByRole('checkbox', { name });
+}
+
+/** Toggles checkbox `name` of `pane` in the Filter menu; the menu stays open. */
+async function toggleFilter(
+  user: ReturnType<typeof renderApp>['user'],
+  pane: FilterPane,
+  name: string | RegExp,
+) {
+  await user.click(await filterCheckbox(user, pane, name));
+}
+
 describe('<MarketplacePage>', () => {
   it('lists the catalog of every source with version, permissions and installed state', async () => {
-    renderMarketplace();
+    const { user } = renderMarketplace();
 
     const example = await card('example');
     expect(within(example).getByText('Dashboard UI')).toBeVisible();
@@ -41,15 +68,23 @@ describe('<MarketplacePage>', () => {
       expect.stringContaining('/addon-manager/installed?addon='),
     );
 
+    expect(within(example).getByTestId('official-mark')).toHaveTextContent('Official');
+
     const tap = await card('acme/node-exporter');
     expect(within(tap).getByText('acme', { selector: '[data-slot=source-tag]' })).toBeVisible();
+    expect(within(tap).queryByTestId('official-mark')).toBeNull();
     expect(within(tap).getByText('Host network')).toBeVisible();
     expect(within(tap).getByText('System host paths')).toBeVisible();
     await waitFor(() =>
       expect(within(tap).getByRole('button', { name: 'Install acme/node-exporter' })).toBeEnabled(),
     );
-    // Only local registrations can be deleted here.
-    expect(within(tap).queryByRole('button', { name: /More actions/ })).toBeNull();
+    // Every card has a menu, but only local registrations can be deleted from it.
+    await user.click(
+      within(tap).getByRole('button', { name: 'More actions for acme/node-exporter' }),
+    );
+    expect(await screen.findByRole('menuitem', { name: 'Details' })).toBeVisible();
+    expect(screen.queryByRole('menuitem', { name: 'Delete from marketplace' })).toBeNull();
+    await user.keyboard('{Escape}');
     expect(
       within(await card('local/docker-inspector')).getByRole('button', {
         name: 'More actions for local/docker-inspector',
@@ -57,7 +92,16 @@ describe('<MarketplacePage>', () => {
     ).toBeVisible();
 
     const analytics = await card('analytics');
-    await waitFor(() => expect(within(analytics).getByText('Update available')).toBeVisible());
+    // A problem outranks the newer version on the state button, which leads to the installed
+    // tab; the update is noted next to it.
+    await waitFor(() =>
+      expect(within(analytics).getByRole('link', { name: 'Manage analytics' })).toHaveAttribute(
+        'href',
+        expect.stringContaining('/addon-manager/installed?addon='),
+      ),
+    );
+    expect(within(analytics).getByText('Partially active')).toBeVisible();
+    expect(screen.getByTestId('card-state-analytics-hint')).toHaveTextContent('1.2.0 is available');
     expect(screen.getByTestId('breadcrumbs')).toHaveTextContent('HomeAddonsMarketplace');
   });
 
@@ -104,30 +148,83 @@ describe('<MarketplacePage>', () => {
     expect(within(flops).getByTestId('addon-icon-placeholder')).toBeInTheDocument();
   });
 
-  it('filters by category with the counts of the selected source', async () => {
+  it('filters by any of several categories, with counts that follow the other filters', async () => {
     const { user, router } = renderMarketplace();
     await card('flops');
 
-    const categories = screen.getByRole('combobox', { name: 'Filter by category' });
-    await user.click(categories);
-    expect(await screen.findByRole('option', { name: 'monitoring (2)' })).toBeVisible();
-    expect(screen.getByRole('option', { name: 'ai (1)' })).toBeVisible();
-    await user.click(screen.getByRole('option', { name: 'monitoring (2)' }));
+    expect(await filterCheckbox(user, 'Category', 'AI (1)')).not.toBeChecked();
+    await toggleFilter(user, 'Category', 'Monitoring (2)');
     expect(router.state.location.search).toContain('category=monitoring');
+    await waitFor(() =>
+      expect(screen.queryByTestId('marketplace-card-flops')).not.toBeInTheDocument(),
+    );
     expect(screen.getByTestId('marketplace-card-analytics')).toBeVisible();
     expect(screen.getByTestId('marketplace-card-acme/node-exporter')).toBeVisible();
-    expect(screen.queryByTestId('marketplace-card-flops')).not.toBeInTheDocument();
 
-    // Combined with the source filter, and the counts follow the source.
-    await user.click(screen.getByRole('combobox', { name: 'Filter by source' }));
-    await user.click(await screen.findByRole('option', { name: 'acme (1)' }));
-    expect(screen.getByTestId('marketplace-card-acme/node-exporter')).toBeVisible();
-    expect(screen.queryByTestId('marketplace-card-analytics')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('combobox', { name: 'Filter by category' }));
-    expect(await screen.findByRole('option', { name: 'monitoring (1)' })).toBeVisible();
-    expect(screen.queryByRole('option', { name: /^ai/ })).toBeNull();
-    await user.click(screen.getByRole('option', { name: 'All categories' }));
-    expect(router.state.location.search).not.toContain('category=');
+    await toggleFilter(user, 'Category', 'AI (1)');
+    expect(await card('flops')).toBeVisible();
+    expect(screen.getByTestId('marketplace-card-analytics')).toBeVisible();
+    // Filters apply through a navigation, so what they render can follow a tick later.
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: /^Category/ })).toHaveTextContent('2 selected'),
+    );
+
+    await toggleFilter(user, 'Source', 'acme (1)');
+    await waitFor(() =>
+      expect(screen.queryByTestId('marketplace-card-analytics')).not.toBeInTheDocument(),
+    );
+    // The checked AI stays listed, with nothing left under the source.
+    expect(await filterCheckbox(user, 'Category', 'AI (0)')).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Monitoring (1)' })).toBeChecked();
+    await waitFor(() =>
+      expect(screen.getByRole('dialog', { name: 'Filters' })).toHaveTextContent('1 addon'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Clear the category filter' }));
+    await waitFor(() => expect(router.state.location.search).not.toContain('category='));
+    expect(router.state.location.search).toContain('source=acme');
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.queryByRole('dialog', { name: 'Filters' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Filter, 1 active' })).toBeVisible();
+  });
+
+  it('filters by dashboard UI and by dangerous permissions with one checkbox each', async () => {
+    const { user, router } = renderMarketplace();
+    await card('flops');
+
+    await toggleFilter(user, 'Properties', /^No dangerous permissions/);
+    expect(router.state.location.search).toContain('dangerous=without');
+    await waitFor(() =>
+      expect(screen.queryByTestId('marketplace-card-acme/node-exporter')).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId('marketplace-card-flops')).not.toBeInTheDocument();
+    expect(screen.getByTestId('marketplace-card-example')).toBeVisible();
+
+    await toggleFilter(user, 'Properties', /^Has a dashboard UI/);
+    expect(router.state.location.search).toContain('ui=with');
+    await waitFor(() =>
+      expect(screen.queryByTestId('marketplace-card-analytics')).not.toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('marketplace-card-example')).toBeVisible();
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: /^Properties/ })).toHaveTextContent('2 selected'),
+    );
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.getByTestId('active-filters')).toHaveTextContent('Has a dashboard UI');
+    expect(screen.getByTestId('active-filters')).toHaveTextContent('No dangerous permissions');
+    expect(screen.getByRole('button', { name: 'Filter, 2 active' })).toBeVisible();
+
+    await user.click(
+      screen.getByRole('button', { name: 'Remove the filter No dangerous permissions' }),
+    );
+    await waitFor(() => expect(router.state.location.search).not.toContain('dangerous='));
+    expect(router.state.location.search).toContain('ui=with');
+  });
+
+  it('ignores a property in a link with a direction the menu does not offer', async () => {
+    renderMarketplace({ route: '/addon-manager/marketplace?ui=without&dangerous=with' });
+    expect(await card('flops')).toBeVisible();
+    expect(screen.queryByTestId('active-filters')).toBeNull();
   });
 
   it('filters by a tag from a card and clears the filters', async () => {
@@ -137,25 +234,38 @@ describe('<MarketplacePage>', () => {
     await user.click(within(tap).getByRole('button', { name: 'Filter by tag metrics' }));
     expect(router.state.location.search).toContain('tag=metrics');
     expect(screen.getByTestId('marketplace-card-analytics')).toBeVisible();
-    expect(screen.queryByTestId('marketplace-card-example')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByTestId('marketplace-card-example')).not.toBeInTheDocument(),
+    );
     expect(
       within(screen.getByTestId('marketplace-card-analytics')).getByRole('button', {
         name: 'Filter by tag metrics',
       }),
     ).toHaveAttribute('aria-pressed', 'true');
 
-    // A tag no addon of the source has: the empty state clears every filter at once.
-    await user.click(screen.getByRole('combobox', { name: 'Filter by source' }));
-    await user.click(await screen.findByRole('option', { name: 'local (1)' }));
+    expect(screen.getByTestId('active-filters')).toHaveTextContent('Tag#metrics');
+
+    await user.click(screen.getByRole('button', { name: 'Remove the tag filter metrics' }));
+    expect(await card('example')).toBeVisible();
+    expect(router.state.location.search).not.toContain('tag=');
+
+    await user.click(within(await card('flops')).getByRole('button', { name: 'Filter by tag ml' }));
+    await toggleFilter(user, 'Source', 'official (1)');
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: 'Clear all' }));
+    expect(await card('example')).toBeVisible();
+    expect(router.state.location.search).not.toMatch(/tag=|source=/);
+  });
+
+  it('offers to clear filters that a link combined into nothing', async () => {
+    // The menu only offers values with results, but a link can still ask for none.
+    const { user, router } = renderMarketplace({
+      route: '/addon-manager/marketplace?source=local&tag=metrics',
+    });
     expect(await screen.findByText('No addons match these filters')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Clear filters' }));
     expect(await card('example')).toBeVisible();
     expect(router.state.location.search).not.toMatch(/tag=|source=/);
-
-    // The chip in the toolbar removes the tag filter alone.
-    await user.click(within(await card('flops')).getByRole('button', { name: 'Filter by tag ml' }));
-    await user.click(screen.getByRole('button', { name: 'Remove the tag filter ml' }));
-    expect(await card('example')).toBeVisible();
   });
 
   it('normalizes category and tag from a link like the marketplace does', async () => {
@@ -164,7 +274,9 @@ describe('<MarketplacePage>', () => {
     });
 
     expect(await card('acme/node-exporter')).toBeVisible();
-    expect(screen.queryByTestId('marketplace-card-analytics')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByTestId('marketplace-card-analytics')).not.toBeInTheDocument(),
+    );
   });
 
   it('searches display names and tags', async () => {
@@ -173,12 +285,16 @@ describe('<MarketplacePage>', () => {
 
     await user.type(screen.getByRole('searchbox', { name: 'Search Marketplace' }), 'prometheus');
     expect(screen.getByTestId('marketplace-card-acme/node-exporter')).toBeVisible();
-    expect(screen.queryByTestId('marketplace-card-analytics')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByTestId('marketplace-card-analytics')).not.toBeInTheDocument(),
+    );
 
     await user.clear(screen.getByRole('searchbox'));
     await user.type(screen.getByRole('searchbox'), 'Platform Analytics');
     expect(screen.getByTestId('marketplace-card-analytics')).toBeVisible();
-    expect(screen.queryByTestId('marketplace-card-flops')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByTestId('marketplace-card-flops')).not.toBeInTheDocument(),
+    );
   });
 
   it('counts the categories from the catalog, without GET /categories', async () => {
@@ -190,8 +306,7 @@ describe('<MarketplacePage>', () => {
     const { user } = renderMarketplace();
     await card('flops');
 
-    await user.click(screen.getByRole('combobox', { name: 'Filter by category' }));
-    expect(await screen.findByRole('option', { name: 'monitoring (2)' })).toBeVisible();
+    expect(await filterCheckbox(user, 'Category', 'Monitoring (2)')).toBeVisible();
     expect(screen.queryByText(/Could not/)).toBeNull();
   });
 
@@ -217,17 +332,20 @@ describe('<MarketplacePage>', () => {
     const { user, router } = renderMarketplace();
     await card('flops');
 
-    await user.click(screen.getByRole('combobox', { name: 'Filter by source' }));
-    await user.click(await screen.findByRole('option', { name: 'acme (1)' }));
+    await toggleFilter(user, 'Source', 'acme (1)');
+    await user.keyboard('{Escape}');
     expect(router.state.location.search).toContain('source=acme');
     expect(screen.getByTestId('marketplace-card-acme/node-exporter')).toBeVisible();
-    expect(screen.queryByTestId('marketplace-card-flops')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByTestId('marketplace-card-flops')).not.toBeInTheDocument(),
+    );
 
-    await user.click(screen.getByRole('combobox', { name: 'Filter by source' }));
-    await user.click(await screen.findByRole('option', { name: 'All sources' }));
+    await user.click(screen.getByRole('button', { name: 'Remove the source filter acme' }));
     await user.type(screen.getByRole('searchbox', { name: 'Search Marketplace' }), 'federated');
     expect(screen.getByTestId('marketplace-card-flops')).toBeVisible();
-    expect(screen.queryByTestId('marketplace-card-example')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByTestId('marketplace-card-example')).not.toBeInTheDocument(),
+    );
 
     await user.clear(screen.getByRole('searchbox'));
     await user.type(screen.getByRole('searchbox'), 'zzz');
@@ -525,6 +643,8 @@ describe('<MarketplacePage>', () => {
     renderMarketplace({ user: { username: 'bob' } });
 
     expect(await screen.findByText('Access denied')).toBeVisible();
-    expect(screen.queryByTestId('marketplace-card-example')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByTestId('marketplace-card-example')).not.toBeInTheDocument(),
+    );
   });
 });

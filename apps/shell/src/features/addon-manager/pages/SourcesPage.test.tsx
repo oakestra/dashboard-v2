@@ -17,13 +17,17 @@ const row = (name: string) => screen.findByTestId(`source-${name}`);
 
 describe('<SourcesPage>', () => {
   it('lists the sources with their kind, sync state and errors', async () => {
-    renderSources();
+    const { user } = renderSources();
 
     const official = await row('official');
     expect(official).toHaveTextContent('community-marketplace');
+    expect(official).toHaveTextContent('Synced');
     // Configured by the environment: neither deletable nor flagged as relaxed.
-    expect(within(official).queryByRole('button', { name: 'Delete official' })).toBeNull();
     expect(official).not.toHaveTextContent('http allowed');
+    await user.click(within(official).getByRole('button', { name: 'More actions for official' }));
+    expect(await screen.findByRole('menuitem', { name: 'Show its addons' })).toBeVisible();
+    expect(screen.queryByRole('menuitem', { name: 'Delete tap' })).toBeNull();
+    await user.keyboard('{Escape}');
 
     const acme = await row('acme');
     expect(acme).toHaveTextContent('Tap');
@@ -31,7 +35,9 @@ describe('<SourcesPage>', () => {
     expect(acme).not.toHaveTextContent('fake-acme-token');
     expect(within(acme).getByRole('button', { name: 'Sync acme' })).toBeVisible();
 
-    expect(await screen.findByTestId('source-error-lab')).toHaveTextContent('404 Not Found');
+    // The failure is the sync button's state, its reason the button's hint.
+    expect(within(await row('lab')).getByText('Sync failed')).toBeVisible();
+    expect(await screen.findByTestId('source-sync-lab-hint')).toHaveTextContent('404 Not Found');
     const local = await row('local');
     expect(within(local).queryByRole('button', { name: 'Sync local' })).toBeNull();
     expect(screen.getByTestId('breadcrumbs')).toHaveTextContent('HomeAddonsSources');
@@ -79,12 +85,15 @@ describe('<SourcesPage>', () => {
     mockAddons.state.sources.find((s) => s.name === 'acme')!.url = 'https://unreachable.example/';
     await user.click(within(await row('acme')).getByRole('button', { name: 'Sync acme' }));
     expect(await screen.findByText('Could not sync the source')).toBeVisible();
-    expect(await screen.findByTestId('source-error-acme')).toHaveTextContent('unreachable');
+    expect(await screen.findByTestId('source-sync-acme-hint')).toHaveTextContent('unreachable');
   });
 
   it('deletes a tap after a confirmation', async () => {
     const { user } = renderSources();
-    await user.click(within(await row('acme')).getByRole('button', { name: 'Delete acme' }));
+    await user.click(
+      within(await row('acme')).getByRole('button', { name: 'More actions for acme' }),
+    );
+    await user.click(await screen.findByRole('menuitem', { name: 'Delete tap' }));
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog).toHaveTextContent('This removes 1 addon from the marketplace');
     await user.click(within(dialog).getByRole('button', { name: 'Delete tap' }));

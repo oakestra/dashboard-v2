@@ -1,5 +1,5 @@
 import type { AddonPermissions } from '@oakestra/api';
-import { Badge, StatusBadge, cn, plural } from '@oakestra/ui';
+import { Badge, StatusBadge, cn } from '@oakestra/ui';
 import { ShieldAlertIcon } from 'lucide-react';
 
 import { permissionEntries } from '../permissions';
@@ -54,25 +54,5 @@ export function PermissionList({ permissions, previous }: PermissionListProps) {
         </li>
       ))}
     </ul>
-  );
-}
-
-/** A compact summary for cards and rows: the dangerous permissions by name, the rest counted. */
-export function PermissionBadges({ permissions }: { permissions: AddonPermissions }) {
-  const entries = permissionEntries(permissions);
-  const dangerous = entries.filter((entry) => entry.dangerous);
-  const paths = permissions.host_paths.length;
-  const ports = permissions.host_ports.length;
-  if (entries.length === 0) return null;
-  return (
-    <span className="flex flex-wrap items-center gap-1" data-testid="permission-badges">
-      {dangerous.map((entry) => (
-        <StatusBadge key={entry.key} tone="destructive" title={entry.detail}>
-          {entry.label}
-        </StatusBadge>
-      ))}
-      {paths > 0 ? <Badge variant="outline">{plural(paths, 'host path')}</Badge> : null}
-      {ports > 0 ? <Badge variant="outline">{plural(ports, 'host port')}</Badge> : null}
-    </span>
   );
 }

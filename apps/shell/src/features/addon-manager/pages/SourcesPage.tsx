@@ -1,25 +1,35 @@
 import { ADDON_SOURCE_KINDS, type MarketplaceSource } from '@oakestra/api';
 import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
   Badge,
   Button,
   ConfirmDialog,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   EmptyState,
   Item,
-  ItemActions,
   ItemContent,
   ItemDescription,
   ItemTitle,
   QueryErrorAlert,
+  RowMenu,
   formatDateTime,
   formatRelativeTime,
   plural,
 } from '@oakestra/ui';
 import { DataList, type DataListSortOption } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
-import { DatabaseIcon, PlusIcon, RefreshCwIcon, Trash2Icon } from 'lucide-react';
+import {
+  BadgeCheckIcon,
+  DatabaseIcon,
+  GlobeIcon,
+  HardDriveIcon,
+  HistoryIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  StoreIcon,
+  Trash2Icon,
+  type LucideIcon,
+} from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 
@@ -27,7 +37,9 @@ import { useAddonsAdminApi } from '../../../core/addons/addons-admin';
 import { useDeleteSource, useSyncSource } from '../api/mutations';
 import { marketplaceSourcesQuery } from '../api/queries';
 import { AddTapDialog } from '../components/AddTapDialog';
+import { RegisterAddonDialog } from '../components/RegisterAddonDialog';
 import { SOURCE_KIND_LABELS, showsSourceKind } from '../components/SourceLabel';
+import { StateButton } from '../components/StateButton';
 import { marketplaceSourceLink } from '../paths';
 
 // The marketplace's own order: official first, then taps by name, then local. ADDON_SOURCE_KINDS
@@ -38,12 +50,72 @@ const SORT_OPTIONS: readonly DataListSortOption<MarketplaceSource>[] = [
 
 const searchValue = (source: MarketplaceSource) => [source.name, source.kind, source.url].join(' ');
 
-function timeText(value: string | undefined): { text: string; title?: string } {
-  if (!value) return { text: 'never' };
+const KIND_ICONS: Readonly<Record<MarketplaceSource['kind'], LucideIcon>> = {
+  official: BadgeCheckIcon,
+  tap: GlobeIcon,
+  local: HardDriveIcon,
+};
+
+// Fixed columns, so counts and state buttons line up from row to row; below md the count moves
+// under the URL (its cell is placed in the second column, second row).
+const ROW_GRID =
+  'grid w-full grid-cols-[auto_minmax(0,1fr)_10rem_auto] items-center gap-x-4 gap-y-1 md:grid-cols-[auto_minmax(0,1fr)_6rem_11rem_auto]';
+
+function parseTime(value: string | undefined): Date | undefined {
+  if (!value) return undefined;
   const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? { text: value }
-    : { text: formatRelativeTime(date), title: formatDateTime(date) };
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+/** The sync state and the sync action in one control: a failure is retried where it shows. */
+function SyncButton({
+  source,
+  syncing,
+  onSync,
+}: {
+  source: MarketplaceSource;
+  syncing: boolean;
+  onSync: () => void;
+}) {
+  const synced = parseTime(source.last_synced_at);
+  const action = {
+    label: source.last_error ? 'Retry sync' : 'Sync now',
+    icon: RefreshCwIcon,
+    ariaLabel: `Sync ${source.name}`,
+    onClick: onSync,
+  };
+  const serial = source.serial > 0 ? ` Serial ${source.serial}.` : '';
+  if (syncing) return <StateButton tone="info" state="Syncing" pending />;
+  if (source.last_error) {
+    // Warning, not destructive: the marketplace keeps serving what it had, and the tab shows the
+    // count of failing sources in the same tone.
+    return (
+      <StateButton
+        tone="warning"
+        state="Sync failed"
+        action={action}
+        data-testid={`source-sync-${source.name}`}
+        hint={
+          <>
+            <span className="block font-medium">The last sync failed</span>
+            {source.last_error.replace(/\.$/, '')}.{' '}
+            {synced
+              ? `The addons of the last good index (${formatRelativeTime(synced)}) stay listed.`
+              : 'No index has been fetched from it yet.'}
+          </>
+        }
+      />
+    );
+  }
+  return (
+    <StateButton
+      tone="neutral"
+      state={synced ? `Synced ${formatRelativeTime(synced)}` : 'Never synced'}
+      stateIcon={synced ? HistoryIcon : RefreshCwIcon}
+      action={action}
+      hint={synced ? `Last synced ${formatDateTime(synced)}.${serial}` : undefined}
+    />
+  );
 }
 
 function SourceItem({
@@ -51,101 +123,95 @@ function SourceItem({
   syncing,
   onSync,
   onDelete,
+  onRegister,
 }: {
   source: MarketplaceSource;
   syncing: boolean;
   onSync: () => void;
   onDelete: () => void;
+  onRegister: () => void;
 }) {
-  const synced = timeText(source.last_synced_at);
+  const KindIcon = KIND_ICONS[source.kind];
+  const flags = [
+    showsSourceKind(source) ? { label: SOURCE_KIND_LABELS[source.kind] } : null,
+    source.has_token ? { label: 'Token', title: 'Fetched with a bearer token' } : null,
+    // The official source is trusted with both by configuration, not by an admin.
+    source.kind === 'tap' && source.allow_insecure ? { label: 'Plain http allowed' } : null,
+    source.kind === 'tap' && source.allow_private ? { label: 'Private addresses allowed' } : null,
+  ].filter((flag) => flag !== null);
+
   return (
-    <Item data-testid={`source-${source.name}`} className="items-start">
-      <ItemContent className="basis-72">
-        <ItemTitle className="flex flex-wrap items-center gap-2">
-          <Link
-            to={marketplaceSourceLink(source.name)}
-            className="underline-offset-4 hover:underline"
-            aria-label={`Addons of ${source.name}`}
-          >
+    <Item data-testid={`source-${source.name}`}>
+      <div className={ROW_GRID}>
+        <span
+          aria-hidden
+          className="bg-background text-muted-foreground row-span-2 flex size-9 items-center justify-center self-start rounded-lg border md:row-span-1 md:self-center [&_svg]:size-4"
+        >
+          <KindIcon />
+        </span>
+
+        <ItemContent className="min-w-0 gap-0.5">
+          <ItemTitle className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             {source.name}
-          </Link>
-          {showsSourceKind(source) ? (
-            <Badge variant="outline">{SOURCE_KIND_LABELS[source.kind]}</Badge>
+            {flags.map((flag) => (
+              <Badge key={flag.label} variant="outline" title={flag.title} className="font-normal">
+                {flag.label}
+              </Badge>
+            ))}
+          </ItemTitle>
+          {source.url ? (
+            <ItemDescription
+              className="line-clamp-1 font-mono text-xs break-all"
+              title={source.url}
+            >
+              {source.url}
+            </ItemDescription>
+          ) : (
+            <ItemDescription className="line-clamp-1">
+              Definitions registered on this marketplace.
+            </ItemDescription>
+          )}
+        </ItemContent>
+
+        <Link
+          to={marketplaceSourceLink(source.name)}
+          aria-label={`Addons of ${source.name}`}
+          className="text-muted-foreground hover:text-foreground col-start-2 row-start-2 text-sm tabular-nums underline-offset-4 hover:underline md:col-start-3 md:row-start-1 md:text-right"
+        >
+          {plural(source.addon_count, 'addon')}
+        </Link>
+
+        <div className="col-start-3 row-start-1 md:col-start-4">
+          {source.sync_enabled ? (
+            <SyncButton source={source} syncing={syncing} onSync={onSync} />
+          ) : source.kind === 'local' ? (
+            <Button variant="outline" size="sm" className="w-full" onClick={onRegister}>
+              <PlusIcon aria-hidden data-icon="inline-start" />
+              Register addon
+            </Button>
           ) : null}
-          {source.has_token ? (
-            <Badge variant="secondary" title="Fetched with a bearer token">
-              Token
-            </Badge>
-          ) : null}
-          {/* The official source is trusted with both by configuration, not by an admin. */}
-          {source.kind === 'tap' && source.allow_insecure ? (
-            <Badge variant="secondary">Plain http allowed</Badge>
-          ) : null}
-          {source.kind === 'tap' && source.allow_private ? (
-            <Badge variant="secondary">Private addresses allowed</Badge>
-          ) : null}
-        </ItemTitle>
-        {source.url ? (
-          <ItemDescription className="font-mono text-xs break-all">{source.url}</ItemDescription>
-        ) : (
-          <ItemDescription>Definitions registered on this marketplace.</ItemDescription>
-        )}
-        {source.last_error ? (
-          // Warning, not destructive: the marketplace keeps serving what it had, and the tab
-          // marks the same state with a warning dot.
-          <Alert variant="warning" className="mt-2" data-testid={`source-error-${source.name}`}>
-            <AlertTitle>The last sync failed</AlertTitle>
-            <AlertDescription className="break-words">
-              {source.last_error.replace(/\.$/, '')}.{' '}
-              {source.last_synced_at
-                ? 'The addons of the last good index stay listed.'
-                : 'No index has been fetched from it yet.'}
-            </AlertDescription>
-          </Alert>
-        ) : null}
-      </ItemContent>
-      <dl className="grid grid-cols-[auto_auto] gap-x-3 gap-y-0.5 text-sm">
-        <dt className="text-muted-foreground">Addons</dt>
-        <dd className="tabular-nums">{source.addon_count}</dd>
-        {source.kind === 'local' ? null : (
-          <>
-            <dt className="text-muted-foreground">Synced</dt>
-            <dd title={synced.title}>{synced.text}</dd>
-            {source.serial > 0 ? (
+        </div>
+
+        <div className="col-start-4 row-start-1 md:col-start-5">
+          <RowMenu label={`More actions for ${source.name}`}>
+            <DropdownMenuItem asChild>
+              <Link to={marketplaceSourceLink(source.name)}>
+                <StoreIcon aria-hidden />
+                Show its addons
+              </Link>
+            </DropdownMenuItem>
+            {source.deletable ? (
               <>
-                <dt className="text-muted-foreground">Serial</dt>
-                <dd className="tabular-nums">{source.serial}</dd>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onSelect={onDelete}>
+                  <Trash2Icon aria-hidden />
+                  Delete tap
+                </DropdownMenuItem>
               </>
             ) : null}
-          </>
-        )}
-      </dl>
-      <ItemActions className="ml-auto">
-        {source.sync_enabled ? (
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label={`Sync ${source.name}`}
-            disabled={syncing}
-            onClick={onSync}
-          >
-            <RefreshCwIcon className={syncing ? 'animate-spin' : undefined} aria-hidden />
-            Sync
-          </Button>
-        ) : null}
-        {source.deletable ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-destructive hover:text-destructive"
-            aria-label={`Delete ${source.name}`}
-            onClick={onDelete}
-          >
-            <Trash2Icon aria-hidden />
-            Delete
-          </Button>
-        ) : null}
-      </ItemActions>
+          </RowMenu>
+        </div>
+      </div>
     </Item>
   );
 }
@@ -158,10 +224,11 @@ export function SourcesPage() {
   const remove = useDeleteSource();
   const [addOpen, setAddOpen] = useState(false);
   const [deleting, setDeleting] = useState<MarketplaceSource | null>(null);
+  const [registerOpen, setRegisterOpen] = useState(false);
 
   const addButton = (
     <Button onClick={() => setAddOpen(true)}>
-      <PlusIcon aria-hidden />
+      <PlusIcon aria-hidden data-icon="inline-start" />
       Add tap
     </Button>
   );
@@ -195,6 +262,7 @@ export function SourcesPage() {
               syncing={sync.isPending && sync.variables === source.name}
               onSync={() => sync.mutate(source.name)}
               onDelete={() => setDeleting(source)}
+              onRegister={() => setRegisterOpen(true)}
             />
           )}
           emptyState={
@@ -208,6 +276,7 @@ export function SourcesPage() {
       )}
 
       <AddTapDialog open={addOpen} onOpenChange={setAddOpen} />
+      <RegisterAddonDialog open={registerOpen} onOpenChange={setRegisterOpen} />
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(open) => {

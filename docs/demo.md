@@ -180,10 +180,10 @@ link.
 ### Experiment 7: Installs that fail later
 
 In **Addons > Marketplace**, install `flaky-addon` or `broken-addon`. They first become `active`
-and a few seconds later turn `partially_active` or `failed`. The detail sheet lists the failed
+and a few seconds later turn `partially_active` or `failed`. The details dialog lists the failed
 services, and for `broken-addon` also the logs. This
 is how the real addons engine behaves: its reconcile loop notices crashed containers only on a
-later check. `install-error-addon` fails right away, with the reason in the row. These addons have
+later check. `install-error-addon` fails right away, with the reason in the tooltip of its status button. These addons have
 no UI; they show the management side.
 
 The seed also has an update and a re-approval to try: `analytics` is installed in 1.1.0 while

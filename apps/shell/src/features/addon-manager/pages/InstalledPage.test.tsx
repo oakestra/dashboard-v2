@@ -29,6 +29,12 @@ function renderInstalled(options: Partial<Parameters<typeof renderApp>[0]> = {})
 
 const rowOf = (name: string) => screen.findByTestId(`installed-addon-${name}`);
 
+/** Opens the row menu of `name` and finds its item `label`. */
+async function menuItem(user: ReturnType<typeof renderApp>['user'], name: string, label: string) {
+  await user.click(await screen.findByRole('button', { name: `More actions for ${name}` }));
+  return screen.findByRole('menuitem', { name: label });
+}
+
 /** Waits until the row of `name` shows `status`. */
 const waitForStatus = (name: string, status: string) =>
   waitFor(() => {
@@ -55,12 +61,11 @@ describe('<InstalledPage>', () => {
     expect(within(example).getByText('2 services')).toBeVisible();
     const analytics = await rowOf('analytics');
     expect(within(analytics).getByText('Partially active')).toBeVisible();
-    expect(within(analytics).getByText('None')).toBeVisible();
     expect(within(analytics).getByText(/services failing/)).toBeVisible();
     expect(within(analytics).getByText('v1.1.0')).toBeVisible();
     const legacy = await rowOf('legacy-exporter');
     expect(within(legacy).getByText('Failed')).toBeVisible();
-    // The engine's reason is shown in the row instead of the failing services count.
+    // The engine's reason is the state button's hint instead of the failing services count.
     expect(within(legacy).getByText(/grant signature invalid/)).toBeVisible();
     expect(screen.getByTestId('breadcrumbs')).toHaveTextContent('HomeAddonsInstalled');
   });
@@ -97,20 +102,20 @@ describe('<InstalledPage>', () => {
     const { user } = renderInstalled();
     await user.click(await screen.findByRole('button', { name: 'Example Addon (example)' }));
 
-    const sheet = await screen.findByTestId('addon-detail');
-    expect(within(sheet).getByRole('heading', { name: /Example Addon/ })).toBeVisible();
-    expect(within(sheet).getByTestId('qualified-name')).toHaveTextContent('example');
-    const worker = within(within(sheet).getByTestId('service-example-worker'));
+    const details = await screen.findByTestId('addon-detail');
+    expect(within(details).getByRole('heading', { name: /Example Addon/ })).toBeVisible();
+    expect(within(details).getByTestId('qualified-name')).toHaveTextContent('example');
+    const worker = within(within(details).getByTestId('service-example-worker'));
     expect(worker.getByText(/^ghcr.io\/oakestra\/example-worker@sha256:/)).toBeVisible();
     expect(worker.getByText('9100:9100')).toBeVisible();
     expect(worker.getByText('EXAMPLE_API_TOKEN')).toBeVisible();
     expect(worker.getByText('LOG_LEVEL')).toBeVisible();
     // The fixtures hold fake secrets, which must never reach the DOM.
     expect(document.body).not.toHaveTextContent('sk-fake-example-token');
-    expect(sheet).not.toHaveTextContent('info');
-    expect(within(sheet).getByText('example-data:/var/lib/example')).toBeVisible();
-    expect(within(sheet).getByTestId('permission-host_ports:9100')).toBeVisible();
-    expect(within(sheet).getByText('example', { selector: 'code' })).toBeVisible();
+    expect(details).not.toHaveTextContent('info');
+    expect(within(details).getByText('example-data:/var/lib/example')).toBeVisible();
+    expect(within(details).getByTestId('permission-host_ports:9100')).toBeVisible();
+    expect(within(details).getByText('example', { selector: 'code' })).toBeVisible();
   });
 
   it('shows the display name, the qualified name and the catalog icon', async () => {
@@ -133,16 +138,19 @@ describe('<InstalledPage>', () => {
 
   it('refreshes the list and explains when an update is refused as busy', async () => {
     const { user } = renderInstalled();
-    const update = await screen.findByRole('button', { name: 'Update analytics to 1.2.0' });
     mockServer.use(
-      http.post(`${TEST_ADDONS_MANAGER_URL}/:id/update`, () =>
-        HttpResponse.json(
+      http.post(`${TEST_ADDONS_MANAGER_URL}/:id/update`, () => {
+        // Changed on the backend by the refused call itself: had a poll seen it before the
+        // click, the menu item would already be gone.
+        mockAddons.forceStatus(idOf('analytics'), 'updating');
+        return HttpResponse.json(
           { code: 'busy', message: "Addon is updating and can't be updated right now." },
           { status: 409 },
-        ),
-      ),
+        );
+      }),
     );
-    mockAddons.forceStatus(idOf('analytics'), 'updating');
+    // Partially active outranks the update on the state button, so it is in the menu.
+    const update = await menuItem(user, 'analytics', 'Update analytics to 1.2.0');
     await user.click(update);
 
     expect(await screen.findByText('Could not update the addon')).toBeVisible();
@@ -169,13 +177,15 @@ describe('<InstalledPage>', () => {
     const { user } = renderInstalled();
     await user.click(await screen.findByRole('button', { name: 'legacy-exporter' }));
 
-    const sheet = await screen.findByTestId('addon-detail');
+    const details = await screen.findByTestId('addon-detail');
     expect(
-      within(sheet.querySelector('[data-testid="failed-services"]')!).getByText('legacy-exporter'),
+      within(details.querySelector('[data-testid="failed-services"]')!).getByText(
+        'legacy-exporter',
+      ),
     ).toBeVisible();
-    expect(within(sheet).getByTestId('addon-logs')).toHaveTextContent('exited with code 137');
-    expect(within(sheet).getByRole('button', { name: 'Copy logs' })).toBeVisible();
-    expect(within(sheet).getByTestId('status-message')).toHaveTextContent(
+    expect(within(details).getByTestId('addon-logs')).toHaveTextContent('exited with code 137');
+    expect(within(details).getByRole('button', { name: 'Copy logs' })).toBeVisible();
+    expect(within(details).getByTestId('status-message')).toHaveTextContent(
       'grant signature invalid; re-approve the addon',
     );
   });
@@ -198,7 +208,7 @@ describe('<InstalledPage>', () => {
 
   it('updates an addon after the new version was accepted, flagging grown permissions', async () => {
     const { user } = renderInstalled();
-    await user.click(await screen.findByRole('button', { name: 'Update analytics to 1.2.0' }));
+    await user.click(await menuItem(user, 'analytics', 'Update analytics to 1.2.0'));
 
     const dialog = await screen.findByTestId('consent-dialog');
     expect(dialog).toHaveTextContent('Update Platform Analytics to 1.2.0?');
@@ -230,7 +240,7 @@ describe('<InstalledPage>', () => {
     catalog.permissions.host_ports = [8080];
     catalog.services[0]!.ports = {};
     const { user } = renderInstalled();
-    await user.click(await screen.findByRole('button', { name: 'Update analytics to 1.2.0' }));
+    await user.click(await menuItem(user, 'analytics', 'Update analytics to 1.2.0'));
 
     const dialog = await screen.findByTestId('consent-dialog');
     expect(within(dialog).queryByTestId('permissions-grow')).toBeNull();
@@ -255,7 +265,7 @@ describe('<InstalledPage>', () => {
     const { user, services } = renderInstalled();
     const invalidate = vi.spyOn(services.queryClient, 'invalidateQueries');
 
-    await user.click(await screen.findByRole('button', { name: 'Disable example' }));
+    await user.click(await menuItem(user, 'example', 'Disable example'));
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog).toHaveTextContent('containers of this addon are stopped');
     await user.click(within(dialog).getByRole('button', { name: 'Disable addon' }));
@@ -265,8 +275,7 @@ describe('<InstalledPage>', () => {
       'disabled',
     );
     expect(invalidate).toHaveBeenCalledWith({ queryKey: uiAddonsQueryKey });
-    // Disabled addons offer removal, not another disable.
-    expect(screen.queryByRole('button', { name: 'Disable example' })).not.toBeInTheDocument();
+    // Disabled addons offer removal on the state button, not another disable.
 
     await user.click(screen.getByRole('button', { name: 'Remove example' }));
     await user.click(
@@ -288,15 +297,20 @@ describe('<InstalledPage>', () => {
 
   it('blocks actions while an addon is changing and notices when it settled', async () => {
     byName('analytics').status = 'installing';
-    const { services } = renderInstalled();
+    const { services, user } = renderInstalled();
     const invalidate = vi.spyOn(services.queryClient, 'invalidateQueries');
 
-    expect(await screen.findByRole('button', { name: 'Disable analytics' })).toBeDisabled();
+    expect(await menuItem(user, 'analytics', 'Disable analytics')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
     // The install finishes on the backend; the next poll picks it up.
     mockAddons.forceStatus(idOf('analytics'), 'active');
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Disable analytics' })).toBeEnabled(),
+      expect(screen.getByRole('menuitem', { name: 'Disable analytics' })).not.toHaveAttribute(
+        'aria-disabled',
+      ),
     );
     expect(invalidate).toHaveBeenCalledWith({ queryKey: uiAddonsQueryKey });
   });
@@ -344,7 +358,11 @@ describe('<InstalledPage>', () => {
     const remove = vi.spyOn(mockAddons.manager, 'remove');
     const { user } = renderInstalled();
 
-    expect(await screen.findByRole('button', { name: 'Disable analytics' })).toBeDisabled();
+    expect(await menuItem(user, 'analytics', 'Disable analytics')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    await user.keyboard('{Escape}');
     expect(screen.queryByRole('button', { name: 'Disable analytics anyway' })).toBeNull();
 
     const anyway = await screen.findByRole('button', { name: 'Disable analytics anyway' });
@@ -364,7 +382,7 @@ describe('<InstalledPage>', () => {
     const remove = vi.spyOn(mockAddons.manager, 'remove');
     const { user } = renderInstalled();
 
-    const disable = await screen.findByRole('button', { name: 'Disable example' });
+    const disable = await menuItem(user, 'example', 'Disable example');
     mockAddons.forceStatus(idOf('example'), 'disabled');
     await user.click(disable);
     await user.click(
@@ -381,7 +399,7 @@ describe('<InstalledPage>', () => {
     mockServer.use(http.get(`${TEST_ADDONS_MANAGER_URL}/`, () => HttpResponse.json(stale)));
     const { user } = renderInstalled();
 
-    const disable = await screen.findByRole('button', { name: 'Disable example' });
+    const disable = await menuItem(user, 'example', 'Disable example');
     mockAddons.state.installed = mockAddons.state.installed.filter(
       (a) => a.qualified_name !== 'example',
     );
@@ -478,7 +496,7 @@ describe('<InstalledPage>', () => {
     expect(screen.queryByTestId('unmatched-uis')).not.toBeInTheDocument();
   });
 
-  it('shows the nav item keys of an installed addon in its detail sheet', async () => {
+  it('shows the nav item keys of an installed addon in its details dialog', async () => {
     const { user, services } = renderInstalled();
     await rowOf('example');
     act(() => {

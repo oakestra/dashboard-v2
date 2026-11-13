@@ -2,18 +2,15 @@ import { useSearchParam } from '@oakestra/dashboard-sdk';
 import { ADDON_SOURCE_KINDS, type InstalledAddon, type MarketplaceAddon } from '@oakestra/api';
 import {
   Button,
+  CollectionSearch,
   ConfirmDialog,
   EmptyState,
   QueryErrorAlert,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  useSearchText,
 } from '@oakestra/ui';
 import { DataList, type DataListSortOption } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
-import { FilterXIcon, PlusIcon, SearchXIcon, StoreIcon, XIcon } from 'lucide-react';
+import { FilterXIcon, PlusIcon, SearchXIcon, StoreIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
@@ -22,16 +19,21 @@ import { useDeleteLocalAddon, useInstallAddon } from '../api/mutations';
 import { installedAddonsQuery, marketplaceAddonsQuery } from '../api/queries';
 import { MarketplaceCard } from '../components/MarketplaceCard';
 import { MarketplaceDetailsDialog } from '../components/MarketplaceDetailsDialog';
+import { ActiveFilterChips, MarketplaceFilterMenu } from '../components/MarketplaceFilterMenu';
 import { ConsentDialog } from '../components/ConsentDialog';
 import { useConsentReview } from '../components/use-consent-review';
 import { RegisterAddonDialog } from '../components/RegisterAddonDialog';
 import { addonTitle } from '../display';
 import {
-  countCategories,
+  NO_FILTERS,
+  activeFilterCount,
+  facetCounts,
   filterMarketplace,
   marketplaceSearchValue,
-  normalizeCategory,
   normalizeTag,
+  readFilters,
+  writeFilters,
+  type MarketplaceFilters,
 } from '../marketplace-filters';
 import { INSTALLED_PATH } from '../paths';
 
@@ -46,10 +48,6 @@ const SORT_OPTIONS: readonly DataListSortOption<MarketplaceAddon>[] = [
       `${ADDON_SOURCE_KINDS.indexOf(addon.source.kind)}:${addon.source.name}:${addon.name}`,
   },
 ];
-
-const ALL_SOURCES = 'all';
-// Categories are letters, digits, spaces and hyphens, so this cannot clash with one.
-const ALL_CATEGORIES = '__all__';
 
 /**
  * The record an addon's card shows: a live one when there is one,
@@ -71,10 +69,7 @@ export function MarketplacePage() {
   const navigate = useNavigate();
 
   const [search, setSearch] = useSearchParam('q');
-  const [sourceFilter, setSourceFilter] = useSearchParam('source');
-  const [categoryFilter, setCategoryFilter] = useSearchParam('category');
-  const [tagFilter, setTagFilter] = useSearchParam('tag');
-  const [, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [details, setDetails] = useState<MarketplaceAddon | null>(null);
   const [deleting, setDeleting] = useState<MarketplaceAddon | null>(null);
   const consent = useConsentReview<MarketplaceAddon>();
@@ -85,43 +80,33 @@ export function MarketplacePage() {
   const installedById = useMemo(() => installedByAddonId(installed.data ?? []), [installed.data]);
   const deletingInstalled = deleting ? installedById.get(deleting.id) : undefined;
 
-  const sources = useMemo(() => {
-    const names = new Map<string, number>();
-    for (const addon of marketplace.data ?? []) {
-      names.set(addon.source.name, (names.get(addon.source.name) ?? 0) + 1);
-    }
-    return [...names];
-  }, [marketplace.data]);
+  // Lists live in repeated parameters (`?category=ai&category=monitoring`), which the
+  // single-value useSearchParam cannot hold.
+  // Keyed on the filter parameters alone: the search text is in the URL too, and every keystroke
+  // would otherwise refilter, recount and hand DataList a new array to rebuild its rows from.
+  const filterKey = writeFilters(new URLSearchParams(), readFilters(searchParams)).toString();
+  const filters = useMemo(() => readFilters(new URLSearchParams(filterKey)), [filterKey]);
+  // One navigation for every change: react-router hands every setter of the same render the same
+  // old params, so separate setters in a row would each undo the others.
+  const setFilters = (next: MarketplaceFilters) =>
+    setSearchParams((previous) => writeFilters(previous, next), { replace: true });
+  const clearFilters = () => setFilters(NO_FILTERS);
+  const filtered = activeFilterCount(filters) > 0;
+  // Filters beyond the source: with only sources set, an empty list says the sources are empty.
+  const narrowed = activeFilterCount({ ...filters, sources: [] }) > 0;
   const visible = useMemo(
-    () =>
-      marketplace.data &&
-      filterMarketplace(marketplace.data, {
-        source: sourceFilter,
-        category: categoryFilter,
-        tag: tagFilter,
-      }),
-    [marketplace.data, sourceFilter, categoryFilter, tagFilter],
+    () => marketplace.data && filterMarketplace(marketplace.data, filters),
+    [marketplace.data, filters],
   );
   // Counted from the loaded catalog rather than GET /categories, so the counts always match the
-  // cards and switching the source costs no request. They follow the source filter only.
-  const categories = useMemo(
-    () => countCategories(filterMarketplace(marketplace.data ?? [], { source: sourceFilter })),
-    [marketplace.data, sourceFilter],
+  // cards and changing a filter costs no request.
+  const counts = useMemo(
+    () => facetCounts(marketplace.data ?? [], filters),
+    [marketplace.data, filters],
   );
-  const activeCategory = normalizeCategory(categoryFilter);
-  const activeTag = normalizeTag(tagFilter);
-  const filtered = Boolean(sourceFilter || activeCategory || activeTag);
-  // One navigation: react-router hands every setter of the same render the same old params, so
-  // three useSearchParam setters in a row would each undo the others.
-  const clearFilters = () =>
-    setSearchParams(
-      (previous) => {
-        const next = new URLSearchParams(previous);
-        for (const key of ['source', 'category', 'tag']) next.delete(key);
-        return next;
-      },
-      { replace: true },
-    );
+  const toggleIn = (list: readonly string[], value: string) =>
+    list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
+  const [searchText, setSearchText] = useSearchText(search, setSearch);
 
   /**
    * The catalog serves no hash on purpose, so the first call goes without one and the 409 brings
@@ -159,60 +144,26 @@ export function MarketplacePage() {
     </Button>
   );
 
+  // DataList's own search is hidden so the Filter button can sit next to the search box.
   const toolbar = (
-    <div className="flex flex-wrap items-center gap-2">
-      <Select
-        value={sourceFilter || ALL_SOURCES}
-        onValueChange={(value) => setSourceFilter(value === ALL_SOURCES ? '' : value)}
-      >
-        <SelectTrigger aria-label="Filter by source" className="w-44">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ALL_SOURCES}>All sources</SelectItem>
-          {sources.map(([name, count]) => (
-            <SelectItem key={name} value={name}>
-              {name} ({count})
-            </SelectItem>
-          ))}
-          {sourceFilter && !sources.some(([name]) => name === sourceFilter) ? (
-            <SelectItem value={sourceFilter}>{sourceFilter} (0)</SelectItem>
-          ) : null}
-        </SelectContent>
-      </Select>
-      {categories.length > 0 || activeCategory ? (
-        <Select
-          value={activeCategory || ALL_CATEGORIES}
-          onValueChange={(value) => setCategoryFilter(value === ALL_CATEGORIES ? '' : value)}
-        >
-          <SelectTrigger aria-label="Filter by category" className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_CATEGORIES}>All categories</SelectItem>
-            {categories.map(({ name, count }) => (
-              <SelectItem key={name} value={name}>
-                {name} ({count})
-              </SelectItem>
-            ))}
-            {activeCategory && !categories.some(({ name }) => name === activeCategory) ? (
-              <SelectItem value={activeCategory}>{activeCategory} (0)</SelectItem>
-            ) : null}
-          </SelectContent>
-        </Select>
-      ) : null}
-      {activeTag ? (
-        <Button
-          variant="secondary"
-          size="sm"
-          aria-label={`Remove the tag filter ${activeTag}`}
-          onClick={() => setTagFilter('')}
-        >
-          #{activeTag}
-          <XIcon aria-hidden />
-        </Button>
-      ) : null}
-      {registerButton}
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <CollectionSearch
+          label="Marketplace"
+          placeholder="Search the marketplace"
+          value={searchText}
+          onChange={setSearchText}
+        />
+        <MarketplaceFilterMenu
+          counts={counts}
+          filters={filters}
+          resultCount={visible?.length ?? 0}
+          onChange={setFilters}
+          onClear={clearFilters}
+        />
+        <div className="ml-auto">{registerButton}</div>
+      </div>
+      <ActiveFilterChips filters={filters} onChange={setFilters} onClear={clearFilters} />
     </div>
   );
 
@@ -248,85 +199,93 @@ export function MarketplacePage() {
           />
         </>
       ) : (
-        <DataList
-          label="Marketplace"
-          noun="addon"
-          layout="grid"
-          data={visible}
-          isLoading={marketplace.isPending}
-          getRowId={(addon) => addon.qualified_name}
-          searchValue={marketplaceSearchValue}
-          sortOptions={SORT_OPTIONS}
-          searchPlaceholder="Search the marketplace"
-          globalFilter={search}
-          onGlobalFilterChange={setSearch}
-          toolbar={toolbar}
-          renderItem={(addon) => (
-            <MarketplaceCard
-              addon={addon}
-              installed={installedById.get(addon.id)}
-              installing={
-                install.isPending && install.variables?.qualifiedName === addon.qualified_name
-              }
-              canInstall={canInstall}
-              onInstall={() => runInstall(addon)}
-              onDetails={() => setDetails(addon)}
-              onDelete={addon.source.kind === 'local' ? () => setDeleting(addon) : undefined}
-              activeCategory={activeCategory}
-              activeTag={activeTag}
-              onCategory={(category) =>
-                setCategoryFilter(category === activeCategory ? '' : category)
-              }
-              onTag={(tag) => setTagFilter(normalizeTag(tag) === activeTag ? '' : tag)}
-            />
-          )}
-          emptyState={
-            activeCategory || activeTag ? (
-              <EmptyState
-                icon={<FilterXIcon />}
-                title="No addons match these filters"
-                description={
-                  sourceFilter
-                    ? `${sourceFilter} has no addons in this category or with this tag.`
-                    : 'No addon is in this category or has this tag.'
+        <>
+          {toolbar}
+          <DataList
+            label="Marketplace"
+            noun="addon"
+            layout="grid"
+            data={visible}
+            isLoading={marketplace.isPending}
+            getRowId={(addon) => addon.qualified_name}
+            searchValue={marketplaceSearchValue}
+            sortOptions={SORT_OPTIONS}
+            hideSearch
+            globalFilter={search}
+            onGlobalFilterChange={setSearch}
+            renderItem={(addon) => (
+              <MarketplaceCard
+                addon={addon}
+                installed={installedById.get(addon.id)}
+                installing={
+                  install.isPending && install.variables?.qualifiedName === addon.qualified_name
                 }
-                action={clearFiltersButton}
+                canInstall={canInstall}
+                onInstall={() => runInstall(addon)}
+                onDetails={() => setDetails(addon)}
+                onDelete={addon.source.kind === 'local' ? () => setDeleting(addon) : undefined}
+                activeCategories={filters.categories}
+                activeTags={filters.tags}
+                onCategory={(category) =>
+                  setFilters({ ...filters, categories: toggleIn(filters.categories, category) })
+                }
+                onTag={(tag) =>
+                  setFilters({ ...filters, tags: toggleIn(filters.tags, normalizeTag(tag)) })
+                }
               />
-            ) : sourceFilter ? (
+            )}
+            emptyState={
+              narrowed ? (
+                <EmptyState
+                  icon={<FilterXIcon />}
+                  title="No addons match these filters"
+                  description="No addon matches all of them. Remove one or clear them all."
+                  action={clearFiltersButton}
+                />
+              ) : filters.sources.length > 0 ? (
+                <EmptyState
+                  icon={<StoreIcon />}
+                  title={`No addons from ${filters.sources.join(' or ')}`}
+                  description={
+                    filters.sources.length === 1
+                      ? 'The source lists no addons, or its index could not be fetched yet.'
+                      : 'The sources list no addons, or their indexes could not be fetched yet.'
+                  }
+                  action={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setFilters({ ...filters, sources: [] })}
+                    >
+                      Show all sources
+                    </Button>
+                  }
+                />
+              ) : (
+                <EmptyState
+                  icon={<StoreIcon />}
+                  title="The marketplace is empty"
+                  description="Add a source or register an addon definition to make it available here."
+                />
+              )
+            }
+            noResultsState={
               <EmptyState
-                icon={<StoreIcon />}
-                title={`No addons from ${sourceFilter}`}
-                description="The source lists no addons, or its index could not be fetched yet."
+                icon={<SearchXIcon />}
+                title="No addons match your search"
+                description="Try another name, tag, source or image."
                 action={
-                  <Button variant="outline" size="sm" onClick={() => setSourceFilter('')}>
-                    Show all sources
-                  </Button>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setSearch('')}>
+                      Clear search
+                    </Button>
+                    {filtered ? clearFiltersButton : null}
+                  </div>
                 }
               />
-            ) : (
-              <EmptyState
-                icon={<StoreIcon />}
-                title="The marketplace is empty"
-                description="Add a source or register an addon definition to make it available here."
-              />
-            )
-          }
-          noResultsState={
-            <EmptyState
-              icon={<SearchXIcon />}
-              title="No addons match your search"
-              description="Try another name, tag, source or image."
-              action={
-                <div className="flex flex-wrap justify-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setSearch('')}>
-                    Clear search
-                  </Button>
-                  {filtered ? clearFiltersButton : null}
-                </div>
-              }
-            />
-          }
-        />
+            }
+          />
+        </>
       )}
 
       <MarketplaceDetailsDialog

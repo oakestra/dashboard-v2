@@ -27,6 +27,10 @@ export function addonStatusLabel(status: AddonStatus): string {
   return LABELS[status];
 }
 
+export function addonStatusTone(status: AddonStatus): StatusTone {
+  return ADDON_STATUS_TONES[status];
+}
+
 export function AddonStatusBadge({ status }: { status: AddonStatus }) {
   return (
     <StatusBadge

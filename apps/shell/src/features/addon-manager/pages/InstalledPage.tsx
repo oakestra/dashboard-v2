@@ -8,15 +8,16 @@ import {
 import {
   Button,
   ConfirmDialog,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   EmptyState,
   Item,
-  ItemActions,
   ItemContent,
-  ItemDescription,
-  ItemMedia,
   ItemTitle,
   QueryErrorAlert,
+  RowMenu,
   SourceTag,
+  cn,
   plural,
   stretchedLinkClassName,
 } from '@oakestra/ui';
@@ -24,7 +25,8 @@ import { DataList, type DataListSortOption } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowUpCircleIcon,
-  LoaderCircleIcon,
+  InfoIcon,
+  PanelsTopLeftIcon,
   PowerOffIcon,
   PuzzleIcon,
   ShieldCheckIcon,
@@ -38,16 +40,24 @@ import { useStore } from 'zustand';
 import type { AddonEntry } from '../../../core/addons/addon-registry';
 import { useAddonRegistry } from '../../../core/addons/addon-registry-context';
 import { useAddonsAdminApi } from '../../../core/addons/addons-admin';
-import { addonAction, canApprove, canUpdate, type AddonAction } from '../addon-action';
+import {
+  ADDON_ACTION_UI,
+  addonAction,
+  canApprove,
+  canUpdate,
+  type AddonAction,
+} from '../addon-action';
 import { useApproveAddon, useDisableAddon, useRemoveAddon, useUpdateAddon } from '../api/mutations';
 import { installedAddonsQuery, useStuckAddonIds } from '../api/queries';
-import { AddonDetailSheet } from '../components/AddonDetailSheet';
+import { AddonDetailDialog } from '../components/AddonDetailDialog';
 import { QualifiedName } from '../components/AddonHeading';
 import { AddonIcon } from '../components/AddonIcon';
 import { ConsentDialog } from '../components/ConsentDialog';
+import { StateButton } from '../components/StateButton';
 import { useConsentReview } from '../components/use-consent-review';
-import { AddonStatusBadge, addonStatusLabel } from '../components/AddonStatusBadge';
+import { addonStatusLabel } from '../components/AddonStatusBadge';
 import { DashboardUiBadge } from '../components/DashboardUiBadge';
+import { OfficialMark } from '../components/OfficialMark';
 import { UnmatchedDashboardUis } from '../components/UnmatchedDashboardUis';
 import { addonTitle, hasDisplayName } from '../display';
 import { MARKETPLACE_PATH } from '../paths';
@@ -116,7 +126,6 @@ const CONFIRM_COPY: Readonly<
       title: (addon: InstalledAddon) => string;
       description: string;
       confirmLabel: string;
-      destructive: boolean;
     }
   >
 > = {
@@ -125,23 +134,152 @@ const CONFIRM_COPY: Readonly<
     description:
       'All containers of this addon are stopped and its dashboard UI disappears. You can remove it afterwards.',
     confirmLabel: 'Disable addon',
-    destructive: true,
   },
   'force-disable': {
     title: (addon) => `Disable ${addonTitle(addon)} anyway?`,
     description:
       'This addon has been installing or updating for a long time. Disabling it now stops its containers, but the reconcile loop may still be working on it and can overwrite the status afterwards. Check the list again once it settled.',
     confirmLabel: 'Disable anyway',
-    destructive: true,
   },
   remove: {
     title: (addon) => `Remove ${addonTitle(addon)}?`,
     description:
       'The addon record is deleted from this platform. Its volumes stay on the host, so a later install finds its data again.',
     confirmLabel: 'Remove addon',
-    destructive: true,
   },
 };
+
+// Fixed columns, so the state buttons line up whatever the meta line holds. Below sm the state
+// moves under the meta line.
+const ROW_GRID =
+  'grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)_11rem_auto]';
+
+/**
+ * The addon's state and the one action that answers it, as a StateButton: a failure offers
+ * Approve, a newer version Update, a stuck install Disable anyway, a disabled addon Remove. The
+ * rest of the actions are in the row menu.
+ */
+function AddonStateButton({
+  addon,
+  stuck,
+  busy,
+  working,
+  onOpen,
+  onAction,
+  onUpdate,
+  onApprove,
+}: {
+  addon: InstalledAddon;
+  stuck: boolean;
+  busy: boolean;
+  working: ConsentKind | null;
+  onOpen: () => void;
+  onAction: (kind: AddonAction) => void;
+  onUpdate: () => void;
+  onApprove: () => void;
+}) {
+  const hint = problemHint(addon);
+  const testId = `addon-state-${addon.name}`;
+  if (working) {
+    return (
+      <StateButton tone="info" state={working === 'update' ? 'Updating' : 'Approving'} pending />
+    );
+  }
+  if (isTransitionalAddonStatus(addon.status)) {
+    const label = addonStatusLabel(addon.status);
+    if (addonAction(addon, stuck) === 'force-disable') {
+      return (
+        <StateButton
+          tone="warning"
+          state={`Still ${label.toLowerCase()}`}
+          action={{
+            label: 'Disable anyway',
+            icon: PowerOffIcon,
+            ariaLabel: `Disable ${addon.name} anyway`,
+            onClick: () => onAction('force-disable'),
+          }}
+          hint="This has been running for more than two minutes. The reconcile loop may still be working on it."
+          data-testid={testId}
+        />
+      );
+    }
+    return <StateButton tone="info" state={label} pending data-testid={testId} />;
+  }
+  if (canApprove(addon)) {
+    return (
+      <StateButton
+        tone="destructive"
+        state={addonStatusLabel(addon.status)}
+        action={{
+          label: 'Approve again',
+          icon: ShieldCheckIcon,
+          ariaLabel: `Approve ${addon.name} again`,
+          onClick: onApprove,
+        }}
+        disabled={busy}
+        hint={
+          <>
+            {hint ? <span className="block font-medium">{hint}</span> : null}
+            Approving signs the grant again and deploys the addon again.
+          </>
+        }
+        data-testid={testId}
+      />
+    );
+  }
+  if (addon.status === 'partially_active') {
+    // A problem outranks an update; the update stays in the menu.
+    return (
+      <StateButton
+        tone="warning"
+        state={addonStatusLabel(addon.status)}
+        action={{
+          label: 'Show details',
+          icon: InfoIcon,
+          ariaLabel: `Details of ${addon.name}`,
+          onClick: onOpen,
+        }}
+        hint={hint ?? undefined}
+        data-testid={testId}
+      />
+    );
+  }
+  if (canUpdate(addon)) {
+    return (
+      <StateButton
+        tone="info"
+        state={`${addon.latest_version} available`}
+        stateIcon={ArrowUpCircleIcon}
+        action={{
+          label: `Update to ${addon.latest_version}`,
+          icon: ArrowUpCircleIcon,
+          ariaLabel: `Update ${addon.name} to ${addon.latest_version}`,
+          onClick: onUpdate,
+        }}
+        disabled={busy}
+        hint={`Running ${addon.version}. Updating shows what changes before anything happens.`}
+        data-testid={testId}
+      />
+    );
+  }
+  if (addon.status === 'disabled') {
+    return (
+      <StateButton
+        tone="neutral"
+        state="Disabled"
+        action={{
+          label: 'Remove',
+          icon: Trash2Icon,
+          ariaLabel: `Remove ${addon.name}`,
+          onClick: () => onAction('remove'),
+        }}
+        hint="Stopped. Removing deletes the record; its volumes stay on the host."
+        data-testid={testId}
+      />
+    );
+  }
+  return <StateButton tone="success" state={addonStatusLabel(addon.status)} data-testid={testId} />;
+}
 
 function InstalledAddonItem({
   addon,
@@ -167,113 +305,107 @@ function InstalledAddonItem({
   onApprove: () => void;
 }) {
   const action = addonAction(addon, stuck);
+  const ActionIcon = ADDON_ACTION_UI[action].icon;
   const transitional = isTransitionalAddonStatus(addon.status);
-  const hint = problemHint(addon);
   return (
     <Item data-testid={`installed-addon-${addon.name}`}>
-      <ItemMedia>
-        <AddonIcon icon={addon.icon} size="sm" />
-      </ItemMedia>
-      <ItemContent className="basis-64">
-        <ItemTitle>
-          <button
-            type="button"
-            aria-label={hasDisplayName(addon) ? `${addonTitle(addon)} (${addon.name})` : undefined}
-            className={`cursor-pointer truncate ${stretchedLinkClassName}`}
-            onClick={onOpen}
-          >
-            {addonTitle(addon)}
-          </button>
-          <AddonStatusBadge status={addon.status} />
-        </ItemTitle>
-        <QualifiedName addon={addon} />
-        {hint ? (
-          <span className="text-muted-foreground line-clamp-2 text-xs break-words">{hint}</span>
-        ) : null}
-        <ItemDescription>{addon.description || 'No description'}</ItemDescription>
-      </ItemContent>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-        <span className="flex items-center gap-2">
-          <span className="text-muted-foreground tabular-nums">v{addon.version}</span>
-          <SourceTag name={addon.source.name} />
-        </span>
-        <span className="text-muted-foreground tabular-nums">
-          {plural(addon.services.length, 'service')}
-        </span>
-        {/* Above the row's button: a failed UI explains itself in a tooltip on the badge. */}
-        <span className="relative z-10 flex items-center gap-2">
-          <span className="text-muted-foreground">Dashboard UI</span>
-          <DashboardUiBadge entry={uiEntry} />
-        </span>
+      <div className={ROW_GRID}>
+        <AddonIcon icon={addon.icon} name={addonTitle(addon)} />
+        <ItemContent className="min-w-0 gap-0.5">
+          <ItemTitle className="flex min-w-0 items-center gap-1.5">
+            <button
+              type="button"
+              aria-label={
+                hasDisplayName(addon) ? `${addonTitle(addon)} (${addon.name})` : undefined
+              }
+              className={cn('cursor-pointer truncate', stretchedLinkClassName)}
+              onClick={onOpen}
+            >
+              {addonTitle(addon)}
+            </button>
+            <OfficialMark source={addon.source} />
+          </ItemTitle>
+          <div className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+            <QualifiedName addon={addon} className="inline" />
+            <span className="tabular-nums">v{addon.version}</span>
+            <SourceTag name={addon.source.name} />
+            <span aria-hidden>·</span>
+            <span className="tabular-nums">{plural(addon.services.length, 'service')}</span>
+            {uiEntry ? (
+              // Above the row's button: a failed UI explains itself in a tooltip on the badge.
+              <span className="relative z-10 flex items-center gap-1.5">
+                <span aria-hidden>·</span>
+                <PanelsTopLeftIcon className="size-3.5" aria-hidden />
+                <span className="sr-only">Dashboard UI</span>
+                <DashboardUiBadge entry={uiEntry} />
+              </span>
+            ) : null}
+            {/* Shown here when the state button is busy with a problem instead. */}
+            {addon.update_available && addon.status !== 'active' ? (
+              <span className="flex items-center gap-1">
+                <span aria-hidden>·</span>
+                <ArrowUpCircleIcon className="size-3.5" aria-hidden />
+                {addon.latest_version} available
+              </span>
+            ) : null}
+          </div>
+        </ItemContent>
+        <div className="relative z-10 col-start-2 row-start-2 w-44 sm:col-start-3 sm:row-start-1 sm:w-auto">
+          <AddonStateButton
+            addon={addon}
+            stuck={stuck}
+            busy={busy}
+            working={working}
+            onOpen={onOpen}
+            onAction={onAction}
+            onUpdate={onUpdate}
+            onApprove={onApprove}
+          />
+        </div>
+        <div className="relative z-10 col-start-3 row-start-1 sm:col-start-4">
+          <RowMenu label={`More actions for ${addon.name}`}>
+            <DropdownMenuItem onSelect={onOpen}>
+              <InfoIcon aria-hidden />
+              Details
+            </DropdownMenuItem>
+            {canUpdate(addon) ? (
+              <DropdownMenuItem
+                disabled={busy}
+                aria-label={`Update ${addon.name} to ${addon.latest_version}`}
+                onSelect={onUpdate}
+              >
+                <ArrowUpCircleIcon aria-hidden />
+                Update to {addon.latest_version}
+              </DropdownMenuItem>
+            ) : null}
+            {canApprove(addon) ? (
+              <DropdownMenuItem
+                disabled={busy}
+                aria-label={`Approve ${addon.name} again`}
+                onSelect={onApprove}
+              >
+                <ShieldCheckIcon aria-hidden />
+                Approve again
+              </DropdownMenuItem>
+            ) : null}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              aria-label={
+                action === 'force-disable'
+                  ? `Disable ${addon.name} anyway`
+                  : `${ADDON_ACTION_UI[action].label} ${addon.name}`
+              }
+              // A plain disable waits for the running change; a stuck one may force it.
+              disabled={action === 'disable' && transitional}
+              onSelect={() => onAction(action)}
+            >
+              <ActionIcon aria-hidden />
+              {ADDON_ACTION_UI[action].label}
+            </DropdownMenuItem>
+          </RowMenu>
+        </div>
       </div>
-      <ItemActions className="ml-auto">
-        {canApprove(addon) ? (
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label={`Approve ${addon.name} again`}
-            disabled={busy}
-            onClick={onApprove}
-          >
-            {working === 'approve' ? (
-              <LoaderCircleIcon className="animate-spin" aria-hidden />
-            ) : (
-              <ShieldCheckIcon aria-hidden />
-            )}
-            Approve
-          </Button>
-        ) : null}
-        {canUpdate(addon) ? (
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label={`Update ${addon.name} to ${addon.latest_version}`}
-            disabled={busy}
-            onClick={onUpdate}
-          >
-            {working === 'update' ? (
-              <LoaderCircleIcon className="animate-spin" aria-hidden />
-            ) : (
-              <ArrowUpCircleIcon aria-hidden />
-            )}
-            Update to {addon.latest_version}
-          </Button>
-        ) : null}
-        {action === 'force-disable' ? (
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label={`Disable ${addon.name} anyway`}
-            onClick={() => onAction(action)}
-          >
-            <PowerOffIcon aria-hidden />
-            Disable anyway
-          </Button>
-        ) : action === 'remove' ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-destructive hover:text-destructive"
-            aria-label={`Remove ${addon.name}`}
-            onClick={() => onAction(action)}
-          >
-            <Trash2Icon aria-hidden />
-            Remove
-          </Button>
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label={`Disable ${addon.name}`}
-            disabled={transitional}
-            title={transitional ? 'Wait until the current change has finished' : undefined}
-            onClick={() => onAction('disable')}
-          >
-            <PowerOffIcon aria-hidden />
-            Disable
-          </Button>
-        )}
-      </ItemActions>
     </Item>
   );
 }
@@ -407,7 +539,7 @@ export function InstalledPage() {
 
       <UnmatchedDashboardUis entries={unmatched} />
 
-      <AddonDetailSheet
+      <AddonDetailDialog
         addon={selected}
         uiEntry={selected ? uiEntries[selected.addon_id] : undefined}
         stuck={selected ? stuckIds.has(selected._id) : false}
@@ -436,7 +568,7 @@ export function InstalledPage() {
         title={pending ? confirmCopy.title(pending.addon) : ''}
         description={confirmCopy.description}
         confirmLabel={confirmCopy.confirmLabel}
-        destructive={confirmCopy.destructive}
+        destructive
         pending={disable.isPending || remove.isPending}
         onConfirm={confirm}
       />
