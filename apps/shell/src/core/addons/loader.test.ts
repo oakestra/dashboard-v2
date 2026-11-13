@@ -313,6 +313,25 @@ describe('resolveAddonContributions', () => {
     ]);
   });
 
+  it('gives top-level nav items without an icon the fallback icon', () => {
+    const own = () => null;
+    const fallback = () => null;
+    const contributions = resolveAddonContributions(
+      {
+        id: 'flops',
+        contributions: {
+          'nav.items': [
+            { id: 'plain', label: 'Plain', path: '' },
+            { id: 'own', label: 'Own', path: 'own', icon: own },
+          ],
+        },
+      },
+      '/addons/flops',
+      fallback,
+    );
+    expect(contributions['nav.items']?.map((item) => item.icon)).toEqual([fallback, own]);
+  });
+
   it('leaves points it has nothing to resolve in alone', () => {
     expect(resolveAddonContributions({ id: 'flops' }, '/addons/flops')).toEqual({});
   });

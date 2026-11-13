@@ -16,6 +16,11 @@ beforeEach(async () => {
 
 afterEach(() => close());
 
+/** The display fields `/ui-addons` adds for the seeded example. */
+const exampleDisplay = {
+  display_name: 'Example Addon',
+  icon: 'https://github.com/oakestra.png?size=96',
+};
 const uiAddons = async () =>
   (await (await fetch(`${baseUrl}/api/v1/ui-addons`)).json()) as { name: string }[];
 const json = async <T>(path: string, init?: RequestInit) =>
@@ -24,7 +29,9 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe('test API (legacy model on top of the two backends)', () => {
   it('lists enabled addons with only the public fields', async () => {
-    expect(await uiAddons()).toEqual([{ name: 'example', version: '0.1.0', sdk: '^0.1.0' }]);
+    expect(await uiAddons()).toEqual([
+      { ...exampleDisplay, name: 'example', version: '0.1.0', sdk: '^0.1.0' },
+    ]);
   });
 
   it('toggles and upgrades addons', async () => {
@@ -38,16 +45,22 @@ describe('test API (legacy model on top of the two backends)', () => {
     ).toBeDefined();
 
     await put('example', { enabled: true, version: '0.2.0' });
-    expect(await uiAddons()).toEqual([{ name: 'example', version: '0.2.0', sdk: '^0.1.0' }]);
+    expect(await uiAddons()).toEqual([
+      { ...exampleDisplay, name: 'example', version: '0.2.0', sdk: '^0.1.0' },
+    ]);
 
     await put('example', { sdk: '^9.0.0' });
-    expect(await uiAddons()).toEqual([{ name: 'example', version: '0.2.0', sdk: '^9.0.0' }]);
+    expect(await uiAddons()).toEqual([
+      { ...exampleDisplay, name: 'example', version: '0.2.0', sdk: '^9.0.0' },
+    ]);
 
     await put('ghost', { enabled: true });
     expect((await uiAddons()).map((a) => a.name)).toEqual(['example', 'ghost']);
 
     await fetch(`${baseUrl}/__test/reset`, { method: 'POST' });
-    expect(await uiAddons()).toEqual([{ name: 'example', version: '0.1.0', sdk: '^0.1.0' }]);
+    expect(await uiAddons()).toEqual([
+      { ...exampleDisplay, name: 'example', version: '0.1.0', sdk: '^0.1.0' },
+    ]);
   });
 });
 
@@ -109,7 +122,9 @@ describe('addons-manager and marketplace over HTTP', () => {
     await fetch(`${baseUrl}/api/v1/addons/${example!._id}`, { method: 'DELETE' });
     expect((await installRequest('example')).status).toBe(201);
     await wait(80);
-    expect(await uiAddons()).toEqual([{ name: 'example', version: '0.1.0', sdk: '^0.1.0' }]);
+    expect(await uiAddons()).toEqual([
+      { ...exampleDisplay, name: 'example', version: '0.1.0', sdk: '^0.1.0' },
+    ]);
   });
 
   it('lets e2e change the delays', async () => {

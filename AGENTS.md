@@ -725,16 +725,28 @@ Checked against a real system-manager; the mocks reproduce them.
   `instance_list` only after scheduling, so "no instances" does not mean "nothing requested".
 - `PUT /service/{id}` returns 501 "Not implemented"; editing a service is not possible yet.
 - The addons engine (Go, `addons/` in the oakestra repo): addons-manager (11101, `/api/v1/addons`)
-  and marketplace (11102, `/api/v1/marketplace`). Both answer JSON, errors as `{message}` (422s add
-  `errors: [{path, message}]`). There is no PATCH: install `POST /addons {name, accept_definition}`,
+  and marketplace (11102, `/api/v1/marketplace`). Both answer JSON, errors as `{code, message}`
+  (`validation_failed` adds `errors: [{path, message}]`). Branch on `code` (`ApiError.code`,
+  `hasAddonErrorCode`), never on the status or the text: a 409 is `confirmation_required` (the
+  consent body), `already_installed`, `host_path_conflict`, `no_update_available`, `busy` or
+  `conflict`. `createAddonsClient` rewords `auth_unavailable`, `marketplace_unavailable`, `busy`
+  and `no_update_available` for people and keeps the service's message otherwise. There is no PATCH: install `POST /addons {name, accept_definition}`,
   `POST /addons/<id>/update` and `/approve` (`{accept_definition}`, unknown fields are a 400), `DELETE
 /addons/<id>` only moves a not yet `disabled` addon to `disabling` (200 with the addon), a
   `disabled` one is deleted (204). A disabled record no longer blocks a new install of the same
   addon. Logs are only sent to admins. Statuses include `updating`; failures carry
   `status_details.message` (policy violations, `grant signature invalid`, pull errors). The
   marketplace lists every source at once (no review state); local registrations need a version
-  higher than the one they replace (409). A 502 with `{message}` is the service speaking (the
-  marketplace is down, a tap fetch failed); without a body it is nginx.
+  higher than the one they replace (409). A 502 with a `code` is the service speaking
+  (`marketplace_unavailable`, `sync_failed`); without one it is nginx. Definitions carry optional
+  display fields (`display_name`, `category`, `tags`, `icon`) and `metadata`, which the dashboard
+  ignores. Wherever a display name is shown the qualified name is visible too (any tap can pick
+  any display name), and `icon` is only ever an `<img referrerpolicy="no-referrer">` src
+  (`AddonIconImage`, https only). `/ui-addons` entries may carry `display_name` and `icon`; they
+  feed `addonLabel` (after the UI's own label) and the nav icon of items without one. The
+  marketplace page loads the whole catalog and filters source, category and tag client-side
+  (`marketplace-filters.ts`, normalized like the engine) and counts the categories from it too;
+  `GET /categories[?source=]` stays in `@oakestra/api` but the page does not call it.
 - The token's `organization` claim is an organization id, the root organization's id when the
   user logged in without one (never the string "root"). Use it as the SLA `customerID`.
 - Cluster figures are sums over the workers, not capacities: `memory_in_mb` is the memory still
@@ -813,8 +825,9 @@ timestamps relative to when the store is built.
 
 `tools/mock-addons-manager` serves the shared `@oakestra/mocks` mock of the Go addons engine (also
 behind the MSW handlers `createAddonsHandlers`, `mockAddons` in unit tests) on one port:
-`/api/v1/addons`, `/api/v1/marketplace/{addons,sources}` and `/api/v1/ui-addons` (active
-installed addons whose definition has a `ui` block, named by addon id). Installs (and approvals of failed addons) go
+`/api/v1/addons`, `/api/v1/marketplace/{addons,categories,sources}` and `/api/v1/ui-addons`
+(active installed addons whose definition has a `ui` block, named by addon id, with their
+`display_name` and `icon`). Errors carry the engine's `code`. Installs (and approvals of failed addons) go
 `installing` -> `active`, updates `updating` -> `active` after `INSTALL_DELAY_MS` (default 1500,
 compose 500), removals `disabling` -> `disabled`. `flaky-addon` and `broken-addon` go `active`
 first and turn `partially_active` / `failed` (with `status_details` and `logs`)
@@ -823,14 +836,16 @@ first and turn `partially_active` / `failed` (with `status_details` and `logs`)
 the consent 409 like the real engine (the catalog serves no hash); the mock's hash is a stable
 FNV hash of the canonical definition, not SHA-256 (`backend.definitionHash(definition)` computes
 it for tests). Registrations go
-to `local`, are listed at once, are decoded strictly (422 `{message, errors: [{path, message}]}`)
+to `local`, are listed at once, are decoded strictly (422 `{code, message, errors: [{path, message}]}`)
 and must declare what their services use. A tap URL containing `unreachable` or `invalid` fails
 to sync. Seed (`packages/mocks/src/fixtures/addons.ts`): sources `official`, `acme` (with a token),
 `lab` (failing) and `local`; `example` (ui block, active), `analytics` (1.1.0 partially_active,
 catalog 1.2.0 adds a port), `legacy-exporter` (failed, `grant signature invalid`) installed;
 `flops` (core_network), `flaky-addon`, `broken-addon`, `install-error-addon`,
 `acme/node-exporter` (host_network, host_root) and `local/docker-inspector` (docker_socket)
-installable.
+installable. `example`, `analytics`, `flops` and `acme/node-exporter` have display fields
+(categories `developer tools`, `monitoring`, `ai`); the exporter's icon host does not resolve, so
+its card shows the placeholder.
 
 The `/__test` API predates the two backends and maps onto them: `PUT /__test/addons/<name>`
 `{enabled?, version?, sdk?}` (name = addon id) installs with accepted permissions and activates

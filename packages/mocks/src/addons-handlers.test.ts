@@ -72,6 +72,57 @@ describe('mock marketplace', () => {
     expect(await market.list({ name: 'local/docker-inspector' })).toHaveLength(1);
   });
 
+  it('serves normalized display fields and filters by category and tag', async () => {
+    expect(await market.get({ source: 'official', name: 'flops' })).toMatchObject({
+      display_name: 'FLOps',
+      category: 'ai',
+      tags: ['federated-learning', 'ml'],
+      metadata: { 'oakestra.io/catalog-id': 'flops-001' },
+    });
+    const names = (list: { qualified_name: string }[]) => list.map((a) => a.qualified_name);
+    expect(names(await market.list({ category: ' Monitoring ' }))).toEqual([
+      'analytics',
+      'acme/node-exporter',
+    ]);
+    expect(names(await market.list({ category: 'monitoring', tag: 'PROMETHEUS' }))).toEqual([
+      'acme/node-exporter',
+    ]);
+    expect(names(await market.list({ source: 'official', tag: 'prometheus' }))).toEqual([]);
+  });
+
+  it('counts categories, per source or for all', async () => {
+    expect(await market.categories()).toEqual([
+      { name: 'ai', count: 1 },
+      { name: 'developer tools', count: 1 },
+      { name: 'monitoring', count: 2 },
+    ]);
+    expect(await market.categories({ source: 'acme' })).toEqual([{ name: 'monitoring', count: 1 }]);
+  });
+
+  it('stores the display fields of a registration normalized', async () => {
+    const item = await market.register({
+      name: 'shiny',
+      version: '1.0.0',
+      services: [{ service_name: 'a', image: 'b' }],
+      display_name: '  Shiny  ',
+      category: 'AI   Tools',
+      tags: ['Zeta', 'alpha', 'zeta'],
+    });
+    expect(item).toMatchObject({
+      display_name: 'Shiny',
+      category: 'ai tools',
+      tags: ['alpha', 'zeta'],
+    });
+    await expect(
+      market.register({
+        name: 'leaky',
+        version: '1.0.0',
+        services: [{ service_name: 'a', image: 'b' }],
+        icon: 'http://insecure.example/icon.png',
+      }),
+    ).rejects.toMatchObject({ status: 422, code: 'validation_failed' });
+  });
+
   it('derives the id, the required permissions and a stable hash', async () => {
     const item = await market.get({ source: 'acme', name: 'node-exporter' });
     expect(item).toMatchObject({
@@ -118,6 +169,7 @@ describe('mock marketplace', () => {
     });
     expect(unknown.status).toBe(422);
     expect(await unknown.json()).toEqual({
+      code: 'validation_failed',
       message: 'invalid request body: json: unknown field "privileged"',
     });
 
@@ -220,7 +272,15 @@ describe('mock addons-manager', () => {
     });
     expect(created).toMatchObject({ status: 'installing', addon_id: 'flops' });
     expect((await settled(created._id)).status).toBe('active');
-    expect(addons.uiAddons()).toEqual([{ name: 'example', version: '0.1.0', sdk: '^0.1.0' }]);
+    expect(addons.uiAddons()).toEqual([
+      {
+        name: 'example',
+        version: '0.1.0',
+        sdk: '^0.1.0',
+        display_name: 'Example Addon',
+        icon: 'https://github.com/oakestra.png?size=96',
+      },
+    ]);
   });
 
   it('installs a tap addon under its namespaced id', async () => {
@@ -248,11 +308,18 @@ describe('mock addons-manager', () => {
     expect(failed.logs).toBeUndefined();
   });
 
-  it('rejects a double install with a plain 409', async () => {
+  it('rejects a double install with already_installed', async () => {
     const error = await install('example').catch((e: unknown) => e);
     expect(isConsentRequiredError(error)).toBe(false);
-    expect(error).toMatchObject({ status: 409, message: 'Addon "example" is already installed.' });
-    await expect(manager.install('nope')).rejects.toMatchObject({ status: 404 });
+    expect(error).toMatchObject({
+      status: 409,
+      code: 'already_installed',
+      message: 'Addon "example" is already installed.',
+    });
+    await expect(manager.install('nope')).rejects.toMatchObject({
+      status: 404,
+      code: 'not_found',
+    });
   });
 
   it('updates only after the new version was accepted, flagging grown permissions', async () => {
@@ -317,7 +384,7 @@ describe('mock addons-manager', () => {
     expect(response.headers.get('Content-Type')).toBe('application/json');
     const missing = await fetch(`${managerUrl}/nope`);
     expect(missing.status).toBe(404);
-    expect(await missing.json()).toEqual({ message: 'Addon not found' });
+    expect(await missing.json()).toEqual({ code: 'not_found', message: 'Addon not found' });
   });
 
   it('stops the pending monitor event when the addon is disabled meanwhile', async () => {

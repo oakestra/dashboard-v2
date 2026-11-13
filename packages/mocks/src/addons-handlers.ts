@@ -68,9 +68,19 @@ export function createAddonsHandlers(options: AddonsHandlersOptions): HttpHandle
     http.get(`${market}/addons`, ({ request }) => {
       const query = new URL(request.url).searchParams;
       return respond(
-        backend.marketplace.list({ source: query.get('source'), name: query.get('name') }),
+        backend.marketplace.list({
+          source: query.get('source'),
+          name: query.get('name'),
+          category: query.get('category'),
+          tag: query.get('tag'),
+        }),
       );
     }),
+    http.get(`${market}/categories`, ({ request }) =>
+      respond(
+        backend.marketplace.categories({ source: new URL(request.url).searchParams.get('source') }),
+      ),
+    ),
     http.post(`${market}/addons`, async ({ request }) =>
       respond(backend.marketplace.register(await readJson(request))),
     ),

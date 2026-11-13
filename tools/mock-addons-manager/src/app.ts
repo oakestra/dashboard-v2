@@ -20,7 +20,8 @@ import { createMockHttpServer } from '@oakestra/mocks/http';
  * Endpoints:
  * - `/api/v1/addons[/<id>[/update|/approve]]`: addons-manager
  * - `/api/v1/marketplace/addons...`, `/api/v1/marketplace/sources...`: marketplace
- * - `GET /api/v1/ui-addons`: `[{name, version, sdk}]` of active addons whose definition has `ui`
+ * - `GET /api/v1/ui-addons`: `[{name, version, sdk, display_name?, icon?}]` of active addons
+ *   whose definition has `ui`
  *
  * Test API, which predates the backends and keeps working on top of them. Addons are named by
  * their id (the name in `/ui-addons`). The old model was a flat list of

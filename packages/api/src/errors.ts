@@ -8,6 +8,8 @@ export interface ApiErrorOptions {
   /** Path relative to the API base URL, e.g. `/user/Admin`. */
   path: string;
   body?: unknown;
+  /** Machine-readable reason from the body, for services that send one (the addons engine). */
+  code?: string;
   cause?: unknown;
 }
 
@@ -22,6 +24,12 @@ export class ApiError extends Error {
   readonly method: string;
   readonly path: string;
   readonly body: unknown;
+  /**
+   * Stable reason of the failure when the backend sends one, such as `already_installed`. Branch
+   * on this rather than on `status` or the message text: one status can have several meanings
+   * and messages may change. Undefined for the system-manager, whose codes are HTTP statuses.
+   */
+  readonly code: string | undefined;
 
   constructor(message: string, options: ApiErrorOptions) {
     super(message, { cause: options.cause });
@@ -30,6 +38,7 @@ export class ApiError extends Error {
     this.method = options.method;
     this.path = options.path;
     this.body = options.body;
+    this.code = options.code;
   }
 }
 

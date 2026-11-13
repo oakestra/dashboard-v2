@@ -14,6 +14,29 @@ describe('parseUiAddons', () => {
     expect(result).toEqual([{ name: 'flops', version: '1.0.0', sdk: '^1.0.0' }]);
   });
 
+  it('keeps the display fields and drops malformed ones without losing the addon', () => {
+    const result = parseUiAddons([
+      {
+        name: 'flops',
+        version: '1.0.0',
+        sdk: '^1.0.0',
+        display_name: 'FLOps',
+        icon: 'https://cdn.example/flops.png',
+      },
+      { name: 'other', version: '1.0.0', sdk: '^1.0.0', display_name: 7, icon: '' },
+    ]);
+    expect(result).toEqual([
+      {
+        name: 'flops',
+        version: '1.0.0',
+        sdk: '^1.0.0',
+        display_name: 'FLOps',
+        icon: 'https://cdn.example/flops.png',
+      },
+      { name: 'other', version: '1.0.0', sdk: '^1.0.0' },
+    ]);
+  });
+
   it('treats a non-array body as unavailable', () => {
     expect(() => parseUiAddons({ message: 'nope' })).toThrow(UiAddonsUnavailableError);
   });

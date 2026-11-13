@@ -16,7 +16,10 @@ import {
 import { LoaderCircleIcon, ShieldAlertIcon, TriangleAlertIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
+import { addonTitle } from '../display';
 import { hasDangerousPermissions } from '../permissions';
+import { QualifiedName } from './AddonHeading';
+import { AddonIcon } from './AddonIcon';
 import { DefinitionDetails } from './DefinitionDetails';
 import { PermissionList } from './PermissionList';
 
@@ -24,6 +27,8 @@ export interface ConsentReview {
   title: string;
   description?: ReactNode;
   confirmLabel: string;
+  /** Who the definition is accepted for. The display name alone could be any tap's choice. */
+  qualifiedName: string;
   /** The title already names the version, so the body does not repeat it (installs). */
   versionInTitle?: boolean;
   request: ConsentRequest;
@@ -80,6 +85,8 @@ function ReviewBody({
   const { definition } = request;
   const dangerous = hasDangerousPermissions(request.permissions);
   const [acknowledged, setAcknowledged] = useState(false);
+  // The definition's own display fields: they are part of what gets accepted.
+  const subject = { display_name: definition.display_name, qualified_name: review.qualifiedName };
 
   return (
     <>
@@ -93,6 +100,13 @@ function ReviewBody({
           so a long definition spilled over the acknowledgement and the footer. */}
       <div className="-mx-2 min-h-0 flex-1 overflow-y-auto px-2" data-testid="consent-body">
         <div className="space-y-4">
+          <div className="flex items-center gap-3" data-testid="consent-subject">
+            <AddonIcon icon={definition.icon} size="sm" />
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium">{addonTitle(subject)}</div>
+              <QualifiedName addon={subject} />
+            </div>
+          </div>
           {review.changed ? (
             <Alert variant="warning" data-testid="definition-changed">
               <AlertTitle>The definition changed</AlertTitle>

@@ -2,16 +2,25 @@ import type {
   AddonDefinition,
   CommandAction,
   Contributions,
+  IconProps,
   NavItem,
 } from '@oakestra/dashboard-sdk';
+import type { ComponentType } from 'react';
 
 import type { ContributionRegistry } from '../extensions/registry';
 import { sourceKey } from '../extensions/registry';
+import { addonNavIcon } from './AddonIconImage';
 import { deleteEntries, setEntry, type AddonEntry, type AddonRegistry } from './addon-registry';
 import { parseAddonDefinition } from './definition';
 import type { AddonModuleRuntime } from './federation-runtime';
 import { checkSdkCompatibility } from './sdk-compat';
-import { addonSource, relativeAddonPath, type ResolvedAddon, type UiAddon } from './ui-addons';
+import {
+  addonSource,
+  isHttpsUrl,
+  relativeAddonPath,
+  type ResolvedAddon,
+  type UiAddon,
+} from './ui-addons';
 
 export interface AddonLoaderDeps {
   sdkVersion: string;
@@ -52,10 +61,11 @@ export function createAddonLoader(deps: AddonLoaderDeps): AddonLoader {
       const definition = parseAddonDefinition(module, addon.name);
       if (currentLoads.get(addon.name) !== token) return;
 
-      const source = addonSource(addon, definition.label);
+      const source = addonSource(addon, definition.label ?? addon.display_name);
+      const icon = addon.icon && isHttpsUrl(addon.icon) ? addonNavIcon(addon.icon) : undefined;
       contributions
         .getState()
-        .register(source, resolveAddonContributions(definition, source.addon.basePath));
+        .register(source, resolveAddonContributions(definition, source.addon.basePath, icon));
       setEntry(addons, { ...addon, state: 'loaded', definition });
     } catch (error) {
       if (currentLoads.get(addon.name) !== token) return;
@@ -162,10 +172,14 @@ function sameFailure(current: AddonEntry | undefined, next: FailedEntry): boolea
   );
 }
 
-/** Addon nav and command paths are written relative to the addon; the registry stores absolute. */
+/**
+ * Addon nav and command paths are written relative to the addon; the registry stores absolute.
+ * `fallbackIcon` (the catalog icon) goes on top-level nav items that bring no icon of their own.
+ */
 export function resolveAddonContributions(
   definition: AddonDefinition,
   basePath: string,
+  fallbackIcon?: ComponentType<IconProps>,
 ): Contributions {
   const contributions = definition.contributions ?? {};
   const navItems = contributions['nav.items'];
@@ -175,6 +189,7 @@ export function resolveAddonContributions(
     ...(navItems && {
       'nav.items': navItems.map((item): NavItem => ({
         ...item,
+        icon: item.icon ?? fallbackIcon,
         group: item.group ?? 'addons',
         path: joinPath(basePath, item.path),
         children: item.children?.map((child) => ({

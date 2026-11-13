@@ -17,6 +17,11 @@
  * | acme/node-exporter      | host_network, host_root, /proc, /sys     | no                           | active                  |
  * | local/docker-inspector  | docker_socket                            | no                           | active                  |
  *
+ * Display fields: `example`, `analytics`, `flops` and `acme/node-exporter` have a display name,
+ * category and tags; `example` and `acme/node-exporter` have an icon (the exporter's host does
+ * not resolve, so its card shows the placeholder); `flops` carries metadata the UI ignores.
+ * Categories: monitoring (analytics, acme/node-exporter), ai (flops), developer tools (example).
+ *
  * Environment values are fake secrets on purpose: the UI must show keys only.
  */
 
@@ -55,6 +60,12 @@ export interface MockDefinition {
   description: string;
   homepage?: string;
   maintainers?: string[];
+  /** Display fields: the engine stores and serves them but never acts on them. */
+  display_name?: string;
+  category?: string;
+  tags?: string[];
+  icon?: string;
+  metadata?: Record<string, string>;
   services: MockAddonService[];
   volumes: {
     name: string;
@@ -229,6 +240,10 @@ export function catalogFixtures(): MockDefinition[] {
       description: 'Reference addon with a dashboard UI: a page, a widget and a nav entry.',
       homepage: 'https://github.com/oakestra/dashboard-v2',
       maintainers: ['Oakestra'],
+      display_name: 'Example Addon',
+      category: 'developer tools',
+      tags: ['example', 'ui'],
+      icon: 'https://github.com/oakestra.png?size=96',
       services: [
         service('example-ui', `ghcr.io/oakestra/dashboard-addon-example:0.1.0@${digest(1)}`, {
           networks: ['oakestra-net'],
@@ -249,6 +264,9 @@ export function catalogFixtures(): MockDefinition[] {
     definition('analytics', {
       version: '1.2.0',
       description: 'Collects and aggregates platform metrics.',
+      display_name: 'Platform Analytics',
+      category: 'monitoring',
+      tags: ['dashboards', 'metrics'],
       services: [
         service('analytics-collector', `ghcr.io/oakestra/analytics-collector:1.2.0@${digest(3)}`, {
           environment: { DB_PASSWORD: 'fake-password' },
@@ -273,6 +291,10 @@ export function catalogFixtures(): MockDefinition[] {
     definition('flops', {
       version: '1.0.0',
       description: 'Federated learning on Oakestra.',
+      display_name: 'FLOps',
+      category: 'ai',
+      tags: ['federated-learning', 'ml'],
+      metadata: { 'oakestra.io/catalog-id': 'flops-001' },
       services: [
         service('flops-manager', `ghcr.io/oakestra/flops-manager@${digest(6)}`, {
           networks: ['oakestra'],
@@ -303,6 +325,10 @@ export function catalogFixtures(): MockDefinition[] {
       source: { kind: 'tap', name: 'acme' },
       version: '1.8.2',
       description: 'Prometheus host metrics, from a third-party tap.',
+      display_name: 'Node Exporter',
+      category: 'monitoring',
+      tags: ['metrics', 'prometheus'],
+      icon: 'https://icons.acme.invalid/node-exporter.png',
       services: [
         service('node-exporter', `quay.io/prometheus/node-exporter:v1.8.2@${digest(12)}`, {
           networks: ['host'],

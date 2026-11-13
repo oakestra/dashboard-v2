@@ -22,6 +22,7 @@ import { Link } from 'react-router';
 import { isHttpUrl } from '../../../core/addons/ui-addons';
 import { installedAddonLink } from '../paths';
 import { uiIncompatibility } from '../ui-compat';
+import { AddonClassificationRows, AddonHeading } from './AddonHeading';
 import { DefinitionDetails } from './DefinitionDetails';
 import { PermissionList } from './PermissionList';
 import { SourceLabel } from './SourceLabel';
@@ -58,13 +59,12 @@ export function MarketplaceDetailsDialog({
         {addon ? (
           <>
             <DialogHeader>
-              <DialogTitle className="flex flex-wrap items-center gap-2">
-                {addon.qualified_name}
+              <AddonHeading addon={addon} title={DialogTitle}>
                 <span className="text-muted-foreground text-sm font-normal tabular-nums">
                   v{addon.version}
                 </span>
                 {addon.ui ? <Badge variant="secondary">Dashboard UI</Badge> : null}
-              </DialogTitle>
+              </AddonHeading>
               <DialogDescription>{addon.description || 'No description.'}</DialogDescription>
             </DialogHeader>
             <ScrollArea className="-mx-2 min-h-0 flex-1 px-2">
@@ -89,6 +89,7 @@ export function MarketplaceDetailsDialog({
                       </dd>
                     </>
                   ) : null}
+                  <AddonClassificationRows category={addon.category} tags={addon.tags} />
                   {addon.maintainers.length > 0 ? (
                     <>
                       <dt className="text-muted-foreground">Maintainers</dt>

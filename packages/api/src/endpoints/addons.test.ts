@@ -7,7 +7,12 @@ import {
   registerAddonInputSchema,
   type RegisterAddonInput,
 } from '../models/addon.ts';
-import { createAddonsManagerApi, createMarketplaceApi, isConsentRequiredError } from './addons.ts';
+import {
+  createAddonsManagerApi,
+  createMarketplaceApi,
+  hasAddonErrorCode,
+  isConsentRequiredError,
+} from './addons.ts';
 import { createAddonsClient } from './addons-client.ts';
 
 interface Seen {
@@ -96,6 +101,7 @@ describe('addons-manager endpoints', () => {
     const { manager, seen } = setup(() =>
       json(
         {
+          code: 'confirmation_required',
           message: 'This version has to be accepted before it is installed.',
           definition: {
             name: 'example',
@@ -116,6 +122,7 @@ describe('addons-manager endpoints', () => {
     const error = await manager.update('a1').catch((e: unknown) => e);
     expect(isApiError(error)).toBe(true);
     expect(isConsentRequiredError(error)).toBe(true);
+    expect(hasAddonErrorCode(error, 'confirmation_required')).toBe(true);
     if (!isConsentRequiredError(error)) return;
     expect(error.consentRequest).toMatchObject({
       definitionHash: 'sha256:new',
@@ -133,13 +140,62 @@ describe('addons-manager endpoints', () => {
     });
   });
 
-  it('keeps 409s without a definition hash plain', async () => {
+  it('keeps other 409s plain and exposes their code', async () => {
     const { manager } = setup(() =>
-      json({ message: 'Addon "acme/example" is already installed.' }, 409),
+      json(
+        { code: 'already_installed', message: 'Addon "acme/example" is already installed.' },
+        409,
+      ),
     );
     const error = await manager.install('acme/example').catch((e: unknown) => e);
     expect(isConsentRequiredError(error)).toBe(false);
-    expect(error).toMatchObject({ status: 409, message: expect.stringContaining('already') });
+    expect(error).toMatchObject({
+      status: 409,
+      code: 'already_installed',
+      message: 'Addon "acme/example" is already installed.',
+    });
+  });
+
+  it('only treats the confirmation_required code as consent, whatever the body looks like', async () => {
+    const consentBody = {
+      definition: { name: 'x', version: '1.0.0', services: [] },
+      definition_hash: 'sha256:x',
+      permissions,
+    };
+    // A definition-shaped body under another code is not something to accept.
+    const other = setup(() => json({ ...consentBody, code: 'conflict', message: 'no' }, 409));
+    const error = await other.manager.install('x').catch((e: unknown) => e);
+    expect(isConsentRequiredError(error)).toBe(false);
+    expect(error).toMatchObject({ code: 'conflict' });
+
+    // The code without a usable definition stays a plain error with that code.
+    const broken = setup(() => json({ code: 'confirmation_required', message: 'accept it' }, 409));
+    const plain = await broken.manager.install('x').catch((e: unknown) => e);
+    expect(isConsentRequiredError(plain)).toBe(false);
+    expect(plain).toMatchObject({ code: 'confirmation_required', message: 'accept it' });
+  });
+
+  it.each([
+    ['busy', 409, 'still installing, updating or shutting down'],
+    ['no_update_available', 409, 'no newer version'],
+    ['auth_unavailable', 503, 'Retry shortly'],
+    ['marketplace_unavailable', 502, 'cannot reach the marketplace'],
+  ])('words %s for people', async (code, status, text) => {
+    const { manager } = setup(() => json({ code, message: 'terse backend text' }, status));
+    await expect(manager.update('a1')).rejects.toMatchObject({
+      code,
+      status,
+      message: expect.stringContaining(text),
+    });
+  });
+
+  it("keeps the service's message where it names the details", async () => {
+    const message = "The addon's host paths conflict with an installed addon: /data (used by x)";
+    const { manager } = setup(() => json({ code: 'host_path_conflict', message }, 409));
+    await expect(manager.install('y')).rejects.toMatchObject({
+      code: 'host_path_conflict',
+      message,
+    });
   });
 
   it('approves with the hash', async () => {
@@ -191,9 +247,12 @@ describe('addons-manager endpoints', () => {
       message: expect.stringContaining('not reachable'),
     });
 
-    const marketDown = setup(() => json({ message: 'Marketplace is unavailable' }, 502));
-    await expect(marketDown.manager.install('x')).rejects.toMatchObject({
-      message: 'Marketplace is unavailable',
+    const syncFailed = setup(() =>
+      json({ code: 'sync_failed', message: 'fetching index: 404 Not Found' }, 502),
+    );
+    await expect(syncFailed.manager.install('x')).rejects.toMatchObject({
+      code: 'sync_failed',
+      message: 'fetching index: 404 Not Found',
     });
 
     const client = createAddonsClient({
@@ -229,6 +288,52 @@ const item = {
 
 describe('marketplace endpoints', () => {
   const base = 'http://dash.test/marketplace-api';
+
+  it('reads the display fields and drops malformed ones', async () => {
+    const { market } = setup(
+      () =>
+        json([
+          {
+            ...item,
+            display_name: ' Example ',
+            category: 'monitoring',
+            tags: ['metrics', 'ui'],
+            icon: 'https://cdn.example/icon.png',
+            metadata: { 'example.com/id': '42' },
+          },
+          { ...item, name: 'odd', display_name: 7, tags: 'metrics', icon: null },
+        ]),
+      base,
+    );
+    const [full, odd] = await market.list();
+    expect(full).toMatchObject({
+      display_name: 'Example',
+      category: 'monitoring',
+      tags: ['metrics', 'ui'],
+      icon: 'https://cdn.example/icon.png',
+    });
+    expect(odd).toMatchObject({ name: 'odd', display_name: undefined, tags: [], icon: undefined });
+  });
+
+  it('filters by category and tag and lists the categories', async () => {
+    const { market, seen } = setup(
+      (request) =>
+        request.url.includes('/categories')
+          ? json({ items: [{ name: 'ai', count: 2 }, { nonsense: true }] })
+          : json([item]),
+      base,
+    );
+    await market.list({ source: 'acme', category: 'AI', tag: 'gpu' });
+    await expect(market.categories({ source: 'acme' })).resolves.toEqual([
+      { name: 'ai', count: 2 },
+    ]);
+    await market.categories();
+    expect(seen.map((s) => s.url.slice(base.length))).toEqual([
+      '/addons?source=acme&category=AI&tag=gpu',
+      '/categories?source=acme',
+      '/categories',
+    ]);
+  });
 
   it('lists addons, filters by source and name and reads the ui block', async () => {
     const { market, seen } = setup(
@@ -317,7 +422,10 @@ describe('marketplace endpoints', () => {
   });
 
   it('shows why a sync failed', async () => {
-    const { market } = setup(() => json({ message: 'fetching index: 404 Not Found' }, 502), base);
+    const { market } = setup(
+      () => json({ code: 'sync_failed', message: 'fetching index: 404 Not Found' }, 502),
+      base,
+    );
     await expect(market.sources.sync('acme')).rejects.toMatchObject({
       message: 'fetching index: 404 Not Found',
     });

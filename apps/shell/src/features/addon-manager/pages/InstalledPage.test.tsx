@@ -95,9 +95,11 @@ describe('<InstalledPage>', () => {
 
   it('shows the details of an addon without any environment value', async () => {
     const { user } = renderInstalled();
-    await user.click(await screen.findByRole('button', { name: 'example' }));
+    await user.click(await screen.findByRole('button', { name: 'Example Addon (example)' }));
 
     const sheet = await screen.findByTestId('addon-detail');
+    expect(within(sheet).getByRole('heading', { name: /Example Addon/ })).toBeVisible();
+    expect(within(sheet).getByTestId('qualified-name')).toHaveTextContent('example');
     const worker = within(within(sheet).getByTestId('service-example-worker'));
     expect(worker.getByText(/^ghcr.io\/oakestra\/example-worker@sha256:/)).toBeVisible();
     expect(worker.getByText('9100:9100')).toBeVisible();
@@ -109,6 +111,58 @@ describe('<InstalledPage>', () => {
     expect(within(sheet).getByText('example-data:/var/lib/example')).toBeVisible();
     expect(within(sheet).getByTestId('permission-host_ports:9100')).toBeVisible();
     expect(within(sheet).getByText('example', { selector: 'code' })).toBeVisible();
+  });
+
+  it('shows the display name, the qualified name and the catalog icon', async () => {
+    renderInstalled();
+
+    const example = await rowOf('example');
+    expect(within(example).getByRole('button', { name: 'Example Addon (example)' })).toBeVisible();
+    expect(within(example).getByTestId('qualified-name')).toHaveTextContent('example');
+    const icon = example.querySelector('img');
+    expect(icon).toHaveAttribute('src', 'https://github.com/oakestra.png?size=96');
+    expect(icon).toHaveAttribute('referrerpolicy', 'no-referrer');
+    expect(icon).toHaveAttribute('loading', 'lazy');
+
+    // No display name: the qualified name is the title and is not repeated.
+    const legacy = await rowOf('legacy-exporter');
+    expect(within(legacy).getByRole('button', { name: 'legacy-exporter' })).toBeVisible();
+    expect(within(legacy).queryByTestId('qualified-name')).not.toBeInTheDocument();
+    expect(within(legacy).getByTestId('addon-icon-placeholder')).toBeInTheDocument();
+  });
+
+  it('refreshes the list and explains when an update is refused as busy', async () => {
+    const { user } = renderInstalled();
+    const update = await screen.findByRole('button', { name: 'Update analytics to 1.2.0' });
+    mockServer.use(
+      http.post(`${TEST_ADDONS_MANAGER_URL}/:id/update`, () =>
+        HttpResponse.json(
+          { code: 'busy', message: "Addon is updating and can't be updated right now." },
+          { status: 409 },
+        ),
+      ),
+    );
+    mockAddons.forceStatus(idOf('analytics'), 'updating');
+    await user.click(update);
+
+    expect(await screen.findByText('Could not update the addon')).toBeVisible();
+    expect(screen.getByText(/still installing, updating or shutting down/)).toBeVisible();
+    expect(screen.queryByTestId('consent-dialog')).not.toBeInTheDocument();
+    await waitForStatus('analytics', 'Updating');
+  });
+
+  it('asks to retry shortly while the addons service cannot check sign-ins yet', async () => {
+    mockServer.use(
+      http.get(`${TEST_ADDONS_MANAGER_URL}/`, () =>
+        HttpResponse.json(
+          { code: 'auth_unavailable', message: 'token verification is not ready' },
+          { status: 503 },
+        ),
+      ),
+    );
+    renderInstalled();
+
+    expect(await screen.findByTestId('installed-error')).toHaveTextContent('Retry shortly');
   });
 
   it('shows the failed services and the logs of a failed addon', async () => {
@@ -147,7 +201,10 @@ describe('<InstalledPage>', () => {
     await user.click(await screen.findByRole('button', { name: 'Update analytics to 1.2.0' }));
 
     const dialog = await screen.findByTestId('consent-dialog');
-    expect(dialog).toHaveTextContent('Update analytics to 1.2.0?');
+    expect(dialog).toHaveTextContent('Update Platform Analytics to 1.2.0?');
+    expect(within(dialog).getByTestId('consent-subject')).toHaveTextContent(
+      'Platform Analyticsanalytics',
+    );
     expect(within(dialog).getByTestId('consent-version')).toHaveTextContent('1.1.0 to 1.2.0');
     expect(within(dialog).getByTestId('permissions-grow')).toBeVisible();
     expect(within(dialog).getByTestId('permission-host_ports:9090')).toHaveTextContent('New');
@@ -160,7 +217,7 @@ describe('<InstalledPage>', () => {
     expect(document.body).not.toHaveTextContent('fake-password');
     await user.click(within(dialog).getByRole('button', { name: 'Accept and update' }));
 
-    expect(await screen.findByText('Updating analytics to 1.2.0')).toBeVisible();
+    expect(await screen.findByText('Updating Platform Analytics to 1.2.0')).toBeVisible();
     await waitForStatus('analytics', 'Active');
     expect(screen.queryByRole('button', { name: /Update analytics/ })).not.toBeInTheDocument();
     expect(mockAddons.state.installed.find((a) => a.qualified_name === 'analytics')?.version).toBe(
@@ -314,7 +371,7 @@ describe('<InstalledPage>', () => {
       within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Disable addon' }),
     );
 
-    expect(await screen.findByText('example was already disabled')).toBeVisible();
+    expect(await screen.findByText('Example Addon was already disabled')).toBeVisible();
     expect(remove).not.toHaveBeenCalled();
     expect(mockAddons.state.installed.some((a) => a.qualified_name === 'example')).toBe(true);
   });
@@ -333,7 +390,7 @@ describe('<InstalledPage>', () => {
       within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Disable addon' }),
     );
 
-    expect(await screen.findByText('example no longer exists')).toBeVisible();
+    expect(await screen.findByText('Example Addon no longer exists')).toBeVisible();
   });
 
   it('treats a 404 on remove as already removed', async () => {
@@ -351,7 +408,7 @@ describe('<InstalledPage>', () => {
       within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Remove addon' }),
     );
 
-    expect(await screen.findByText('example was already removed')).toBeVisible();
+    expect(await screen.findByText('Example Addon was already removed')).toBeVisible();
   });
 
   it('keeps the table and shows a banner when a background poll fails, without a toast', async () => {
@@ -437,7 +494,7 @@ describe('<InstalledPage>', () => {
         },
       });
     });
-    await user.click(await screen.findByRole('button', { name: 'example' }));
+    await user.click(await screen.findByRole('button', { name: 'Example Addon (example)' }));
 
     expect(
       await within(await screen.findByTestId('addon-detail')).findByTestId('nav-item-keys'),

@@ -25,6 +25,7 @@ import {
 
 import type { AddonEntry } from '../../../core/addons/addon-registry';
 import { addonAction, canApprove, canUpdate, type AddonAction } from '../addon-action';
+import { AddonClassificationRows, AddonHeading } from './AddonHeading';
 import { AddonStatusBadge } from './AddonStatusBadge';
 import { DashboardUiBadge, dashboardUiProblem } from './DashboardUiBadge';
 import { DefinitionDetails } from './DefinitionDetails';
@@ -78,10 +79,9 @@ export function AddonDetailSheet({
         {addon ? (
           <>
             <SheetHeader className="pr-12">
-              <SheetTitle className="flex flex-wrap items-center gap-2">
-                {addon.name}
+              <AddonHeading addon={addon} title={SheetTitle}>
                 <AddonStatusBadge status={addon.status} />
-              </SheetTitle>
+              </AddonHeading>
               <SheetDescription>{addon.description || 'No description.'}</SheetDescription>
             </SheetHeader>
             <ScrollArea className="min-h-0 flex-1">
@@ -100,6 +100,7 @@ export function AddonDetailSheet({
                   <dd>
                     <SourceLabel source={addon.source} />
                   </dd>
+                  <AddonClassificationRows category={addon.category} tags={addon.tags} />
                   <dt className="text-muted-foreground">Services</dt>
                   <dd className="tabular-nums">{addon.services.length}</dd>
                   <dt className="text-muted-foreground">Dashboard UI</dt>

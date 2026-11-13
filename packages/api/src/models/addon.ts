@@ -138,11 +138,36 @@ const description = z
   .nullish()
   .transform((value) => value ?? '');
 
+/**
+ * A display field the engine never acts on. Catalogs are third-party input, so a malformed value
+ * is dropped instead of hiding the whole addon.
+ */
+const displayString = z
+  .string()
+  .nullish()
+  .catch(undefined)
+  .transform((value) => value?.trim() || undefined);
+
 const definitionFields = {
   version: z.string(),
   description,
   homepage: optionalString,
   maintainers: list(z.string()),
+  /** Name for people, up to 64 characters. Not unique: `qualified_name` is what identifies it. */
+  display_name: displayString,
+  /** Single, lowercase (`ai tools`): the main catalog filter. */
+  category: displayString,
+  /** Up to 8, lowercase, sorted. */
+  tags: z
+    .array(z.string())
+    .nullish()
+    .catch(undefined)
+    .transform((tags) => tags ?? []),
+  /**
+   * `https` URL of an image on a third-party host. Only ever an `<img src>` with
+   * `referrerpolicy="no-referrer"`, so the dashboard URL does not end up in that host's logs.
+   */
+  icon: displayString,
   services: list(addonServiceSchema),
   volumes: list(addonVolumeSchema),
   networks: list(addonNetworkSchema),
@@ -195,6 +220,16 @@ export const installedAddonSchema = z.looseObject({
 });
 export type InstalledAddon = z.infer<typeof installedAddonSchema>;
 
+/** One entry of `GET /marketplace/categories`: a category and how many addons it has. */
+export const marketplaceCategorySchema = z.looseObject({
+  name: z.string(),
+  count: z
+    .number()
+    .nullish()
+    .transform((value) => value ?? 0),
+});
+export type MarketplaceCategory = z.infer<typeof marketplaceCategorySchema>;
+
 /** A catalog source as the marketplace lists it. Credentials are never returned, only `has_token`. */
 export const marketplaceSourceSchema = z.looseObject({
   name: z.string(),
@@ -243,11 +278,35 @@ export const addonDefinitionSchema = z.looseObject({
 export type AddonDefinition = z.infer<typeof addonDefinitionSchema>;
 
 /**
- * Body of the addons-manager's 409 when the admin has to accept a definition first (install,
- * every update, approve). Repeating the call with `definition_hash` accepts exactly
- * `definition`. Other 409s carry only `{message}`, so `definition_hash` tells them apart.
+ * `code` of an addons engine error body (`{code, message, errors?}`). Branch on it instead of the
+ * status: a 409 alone can mean six different things.
+ */
+export const ADDON_ERROR_CODES = [
+  'unauthorized',
+  'forbidden',
+  'auth_unavailable',
+  'not_found',
+  'method_not_allowed',
+  'validation_failed',
+  'payload_too_large',
+  'confirmation_required',
+  'already_installed',
+  'host_path_conflict',
+  'no_update_available',
+  'busy',
+  'conflict',
+  'sync_failed',
+  'marketplace_unavailable',
+  'internal_error',
+] as const;
+export type AddonErrorCode = (typeof ADDON_ERROR_CODES)[number];
+
+/**
+ * Body of the addons-manager's 409 `confirmation_required` (install, every update, approve).
+ * Repeating the call with `definition_hash` accepts exactly `definition`.
  */
 export const consentRequiredBodySchema = z.looseObject({
+  code: z.literal('confirmation_required'),
   message: optionalString,
   definition: addonDefinitionSchema,
   definition_hash: z.string().min(1),

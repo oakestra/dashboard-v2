@@ -13,6 +13,7 @@ import {
   ItemActions,
   ItemContent,
   ItemDescription,
+  ItemMedia,
   ItemTitle,
   QueryErrorAlert,
   SourceTag,
@@ -41,18 +42,31 @@ import { addonAction, canApprove, canUpdate, type AddonAction } from '../addon-a
 import { useApproveAddon, useDisableAddon, useRemoveAddon, useUpdateAddon } from '../api/mutations';
 import { installedAddonsQuery, useStuckAddonIds } from '../api/queries';
 import { AddonDetailSheet } from '../components/AddonDetailSheet';
+import { QualifiedName } from '../components/AddonHeading';
+import { AddonIcon } from '../components/AddonIcon';
 import { ConsentDialog } from '../components/ConsentDialog';
 import { useConsentReview } from '../components/use-consent-review';
 import { AddonStatusBadge, addonStatusLabel } from '../components/AddonStatusBadge';
 import { DashboardUiBadge } from '../components/DashboardUiBadge';
 import { UnmatchedDashboardUis } from '../components/UnmatchedDashboardUis';
+import { addonTitle, hasDisplayName } from '../display';
 import { MARKETPLACE_PATH } from '../paths';
 
 const searchValue = (addon: InstalledAddon) =>
-  [addon.name, addon.description, addon.source.name, addonStatusLabel(addon.status)].join(' ');
+  [
+    addon.display_name,
+    addon.name,
+    addon.description,
+    addon.category,
+    ...addon.tags,
+    addon.source.name,
+    addonStatusLabel(addon.status),
+  ]
+    .filter(Boolean)
+    .join(' ');
 
 const SORT_OPTIONS: readonly DataListSortOption<InstalledAddon>[] = [
-  { id: 'name', label: 'Name', value: (addon) => addon.name },
+  { id: 'name', label: 'Name', value: (addon) => addonTitle(addon).toLowerCase() },
   { id: 'status', label: 'Status', value: (addon) => addonStatusLabel(addon.status) },
   {
     id: 'services',
@@ -80,13 +94,15 @@ type ConsentKind = 'update' | 'approve';
 
 const CONSENT_COPY = {
   update: (addon: InstalledAddon, request: ConsentRequest) => ({
-    title: `Update ${addon.name} to ${request.definition.version}?`,
+    title: `Update ${addonTitle(addon)} to ${request.definition.version}?`,
+    qualifiedName: addon.qualified_name,
     description:
       'Its containers are replaced by the new version below. Volumes and their data are kept.',
     confirmLabel: 'Accept and update',
   }),
   approve: (addon: InstalledAddon) => ({
-    title: `Approve ${addon.name} again?`,
+    title: `Approve ${addonTitle(addon)} again?`,
+    qualifiedName: addon.qualified_name,
     description:
       'Approving signs the grant again for this definition. A failed addon is deployed again.',
     confirmLabel: 'Accept and approve',
@@ -105,21 +121,21 @@ const CONFIRM_COPY: Readonly<
   >
 > = {
   disable: {
-    title: (addon) => `Disable ${addon.name}?`,
+    title: (addon) => `Disable ${addonTitle(addon)}?`,
     description:
       'All containers of this addon are stopped and its dashboard UI disappears. You can remove it afterwards.',
     confirmLabel: 'Disable addon',
     destructive: true,
   },
   'force-disable': {
-    title: (addon) => `Disable ${addon.name} anyway?`,
+    title: (addon) => `Disable ${addonTitle(addon)} anyway?`,
     description:
       'This addon has been installing or updating for a long time. Disabling it now stops its containers, but the reconcile loop may still be working on it and can overwrite the status afterwards. Check the list again once it settled.',
     confirmLabel: 'Disable anyway',
     destructive: true,
   },
   remove: {
-    title: (addon) => `Remove ${addon.name}?`,
+    title: (addon) => `Remove ${addonTitle(addon)}?`,
     description:
       'The addon record is deleted from this platform. Its volumes stay on the host, so a later install finds its data again.',
     confirmLabel: 'Remove addon',
@@ -155,17 +171,22 @@ function InstalledAddonItem({
   const hint = problemHint(addon);
   return (
     <Item data-testid={`installed-addon-${addon.name}`}>
+      <ItemMedia>
+        <AddonIcon icon={addon.icon} size="sm" />
+      </ItemMedia>
       <ItemContent className="basis-64">
         <ItemTitle>
           <button
             type="button"
+            aria-label={hasDisplayName(addon) ? `${addonTitle(addon)} (${addon.name})` : undefined}
             className={`cursor-pointer truncate ${stretchedLinkClassName}`}
             onClick={onOpen}
           >
-            {addon.name}
+            {addonTitle(addon)}
           </button>
           <AddonStatusBadge status={addon.status} />
         </ItemTitle>
+        <QualifiedName addon={addon} />
         {hint ? (
           <span className="text-muted-foreground line-clamp-2 text-xs break-words">{hint}</span>
         ) : null}
@@ -304,7 +325,7 @@ export function InstalledPage() {
   function run(kind: ConsentKind, addon: InstalledAddon, acceptDefinition?: string) {
     const mutation = kind === 'update' ? update : approve;
     mutation.mutate(
-      { id: addon._id, name: addon.name, acceptDefinition },
+      { id: addon._id, name: addonTitle(addon), acceptDefinition },
       {
         onSuccess: (outcome) =>
           consent.show({ kind, addon }, outcome, (request) => CONSENT_COPY[kind](addon, request)),
@@ -315,7 +336,7 @@ export function InstalledPage() {
 
   const confirm = () => {
     if (!pending) return;
-    const target = { id: pending.addon._id, name: pending.addon.name };
+    const target = { id: pending.addon._id, name: addonTitle(pending.addon) };
     const mutation = pending.kind === 'remove' ? remove : disable;
     mutation.mutate(target, {
       onSettled: () => setPending(null),

@@ -1,5 +1,5 @@
 import {
-  isApiError,
+  hasAddonErrorCode,
   isConsentRequiredError,
   type AddTapInput,
   type ConsentRequest,
@@ -7,7 +7,7 @@ import {
   type RegisterAddonInput,
 } from '@oakestra/api';
 import { useNotify } from '@oakestra/dashboard-sdk';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
 import { useAddonsAdminApi } from '../../../core/addons/addons-admin';
 import { addonManagerKeys } from '../keys';
@@ -30,6 +30,17 @@ async function withConsent(run: () => Promise<InstalledAddon>): Promise<ConsentO
   }
 }
 
+/**
+ * These codes mean the installed list on screen was out of date (the addon is installed already,
+ * still changing, or its update is gone), so the list is refetched and the buttons catch up.
+ */
+const STALE_LIST_CODES = ['already_installed', 'busy', 'no_update_available'] as const;
+
+function refreshStaleList(queryClient: QueryClient, error: unknown): Promise<void> | undefined {
+  if (!STALE_LIST_CODES.some((code) => hasAddonErrorCode(error, code))) return undefined;
+  return queryClient.invalidateQueries({ queryKey: addonManagerKeys.installed() });
+}
+
 interface AcceptVariables {
   /** The definition hash the admin accepted in the dialog; absent for the first call. */
   acceptDefinition?: string;
@@ -46,6 +57,7 @@ export function useInstallAddon() {
     }: AcceptVariables & { qualifiedName: string }) =>
       withConsent(() => manager.install(qualifiedName, { acceptDefinition })),
     meta: { errorMessage: 'Could not install the addon' },
+    onError: (error) => refreshStaleList(queryClient, error),
     onSuccess: async (outcome, { qualifiedName }) => {
       if (outcome.kind !== 'done') return;
       // Not a success: the install has only been accepted. The outcome toast comes from
@@ -69,6 +81,7 @@ export function useUpdateAddon() {
     mutationFn: ({ id, acceptDefinition }: AcceptVariables & { id: string; name: string }) =>
       withConsent(() => manager.update(id, { acceptDefinition })),
     meta: { errorMessage: 'Could not update the addon' },
+    onError: (error) => refreshStaleList(queryClient, error),
     onSuccess: async (outcome, { name }) => {
       if (outcome.kind !== 'done') return;
       notify.info(`Updating ${name} to ${outcome.addon.version}`);
@@ -86,6 +99,7 @@ export function useApproveAddon() {
     mutationFn: ({ id, acceptDefinition }: AcceptVariables & { id: string; name: string }) =>
       withConsent(() => manager.approve(id, { acceptDefinition })),
     meta: { errorMessage: 'Could not approve the addon' },
+    onError: (error) => refreshStaleList(queryClient, error),
     onSuccess: async (outcome, { name }) => {
       if (outcome.kind !== 'done') return;
       notify.success(
@@ -101,7 +115,7 @@ export function useApproveAddon() {
 /** What `useDisableAddon` found out, so the toast can say what actually happened. */
 export type DisableOutcome = 'disabling' | 'already-disabled' | 'removed' | 'gone';
 
-const isNotFound = (error: unknown) => isApiError(error) && error.status === 404;
+const isNotFound = (error: unknown) => hasAddonErrorCode(error, 'not_found');
 
 /**
  * First DELETE: the addon moves to `disabling` and ends `disabled` on its own.
@@ -173,7 +187,7 @@ export function useRemoveAddon() {
 }
 
 /** The catalog and the source counts both change with the local source. */
-async function invalidateCatalog(queryClient: ReturnType<typeof useQueryClient>) {
+async function invalidateCatalog(queryClient: QueryClient) {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: addonManagerKeys.marketplace() }),
     queryClient.invalidateQueries({ queryKey: addonManagerKeys.sources() }),

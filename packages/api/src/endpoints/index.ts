@@ -46,6 +46,7 @@ export {
   createAddonsManagerApi,
   createMarketplaceApi,
   ConsentRequiredError,
+  hasAddonErrorCode,
   isConsentRequiredError,
   type AcceptDefinitionOptions,
   type AddonsManagerEndpoints,

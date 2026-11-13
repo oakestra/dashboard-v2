@@ -13,9 +13,9 @@ import {
 } from '@oakestra/ui';
 import { DataList, type DataListSortOption } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
-import { PlusIcon, SearchXIcon, StoreIcon } from 'lucide-react';
+import { FilterXIcon, PlusIcon, SearchXIcon, StoreIcon, XIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import { useAddonsAdminApi } from '../../../core/addons/addons-admin';
 import { useDeleteLocalAddon, useInstallAddon } from '../api/mutations';
@@ -25,15 +25,15 @@ import { MarketplaceDetailsDialog } from '../components/MarketplaceDetailsDialog
 import { ConsentDialog } from '../components/ConsentDialog';
 import { useConsentReview } from '../components/use-consent-review';
 import { RegisterAddonDialog } from '../components/RegisterAddonDialog';
+import { addonTitle } from '../display';
+import {
+  countCategories,
+  filterMarketplace,
+  marketplaceSearchValue,
+  normalizeCategory,
+  normalizeTag,
+} from '../marketplace-filters';
 import { INSTALLED_PATH } from '../paths';
-
-const searchValue = (addon: MarketplaceAddon) =>
-  [
-    addon.qualified_name,
-    addon.description,
-    addon.source.name,
-    ...addon.services.map((service) => service.image),
-  ].join(' ');
 
 // The marketplace's own order: official first, then taps by name, then local registrations.
 // ADDON_SOURCE_KINDS is declared in that order. One option only, so DataList shows no sort picker:
@@ -48,6 +48,8 @@ const SORT_OPTIONS: readonly DataListSortOption<MarketplaceAddon>[] = [
 ];
 
 const ALL_SOURCES = 'all';
+// Categories are letters, digits, spaces and hyphens, so this cannot clash with one.
+const ALL_CATEGORIES = '__all__';
 
 /**
  * The record an addon's card shows: a live one when there is one,
@@ -70,6 +72,9 @@ export function MarketplacePage() {
 
   const [search, setSearch] = useSearchParam('q');
   const [sourceFilter, setSourceFilter] = useSearchParam('source');
+  const [categoryFilter, setCategoryFilter] = useSearchParam('category');
+  const [tagFilter, setTagFilter] = useSearchParam('tag');
+  const [, setSearchParams] = useSearchParams();
   const [details, setDetails] = useState<MarketplaceAddon | null>(null);
   const [deleting, setDeleting] = useState<MarketplaceAddon | null>(null);
   const consent = useConsentReview<MarketplaceAddon>();
@@ -89,11 +94,34 @@ export function MarketplacePage() {
   }, [marketplace.data]);
   const visible = useMemo(
     () =>
-      sourceFilter
-        ? marketplace.data?.filter((addon) => addon.source.name === sourceFilter)
-        : marketplace.data,
+      marketplace.data &&
+      filterMarketplace(marketplace.data, {
+        source: sourceFilter,
+        category: categoryFilter,
+        tag: tagFilter,
+      }),
+    [marketplace.data, sourceFilter, categoryFilter, tagFilter],
+  );
+  // Counted from the loaded catalog rather than GET /categories, so the counts always match the
+  // cards and switching the source costs no request. They follow the source filter only.
+  const categories = useMemo(
+    () => countCategories(filterMarketplace(marketplace.data ?? [], { source: sourceFilter })),
     [marketplace.data, sourceFilter],
   );
+  const activeCategory = normalizeCategory(categoryFilter);
+  const activeTag = normalizeTag(tagFilter);
+  const filtered = Boolean(sourceFilter || activeCategory || activeTag);
+  // One navigation: react-router hands every setter of the same render the same old params, so
+  // three useSearchParam setters in a row would each undo the others.
+  const clearFilters = () =>
+    setSearchParams(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        for (const key of ['source', 'category', 'tag']) next.delete(key);
+        return next;
+      },
+      { replace: true },
+    );
 
   /**
    * The catalog serves no hash on purpose, so the first call goes without one and the 409 brings
@@ -107,7 +135,8 @@ export function MarketplacePage() {
       {
         onSuccess: (outcome) => {
           consent.show(item, outcome, (request) => ({
-            title: `Install ${item.qualified_name} ${request.definition.version}?`,
+            title: `Install ${addonTitle({ ...item, display_name: request.definition.display_name })} ${request.definition.version}?`,
+            qualifiedName: item.qualified_name,
             description:
               'Review what this addon runs and may do on the host. Installing accepts exactly this definition.',
             confirmLabel: 'Accept and install',
@@ -151,8 +180,47 @@ export function MarketplacePage() {
           ) : null}
         </SelectContent>
       </Select>
+      {categories.length > 0 || activeCategory ? (
+        <Select
+          value={activeCategory || ALL_CATEGORIES}
+          onValueChange={(value) => setCategoryFilter(value === ALL_CATEGORIES ? '' : value)}
+        >
+          <SelectTrigger aria-label="Filter by category" className="w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_CATEGORIES}>All categories</SelectItem>
+            {categories.map(({ name, count }) => (
+              <SelectItem key={name} value={name}>
+                {name} ({count})
+              </SelectItem>
+            ))}
+            {activeCategory && !categories.some(({ name }) => name === activeCategory) ? (
+              <SelectItem value={activeCategory}>{activeCategory} (0)</SelectItem>
+            ) : null}
+          </SelectContent>
+        </Select>
+      ) : null}
+      {activeTag ? (
+        <Button
+          variant="secondary"
+          size="sm"
+          aria-label={`Remove the tag filter ${activeTag}`}
+          onClick={() => setTagFilter('')}
+        >
+          #{activeTag}
+          <XIcon aria-hidden />
+        </Button>
+      ) : null}
       {registerButton}
     </div>
+  );
+
+  const clearFiltersButton = (
+    <Button variant="outline" size="sm" onClick={clearFilters}>
+      <FilterXIcon aria-hidden />
+      Clear filters
+    </Button>
   );
 
   return (
@@ -187,7 +255,7 @@ export function MarketplacePage() {
           data={visible}
           isLoading={marketplace.isPending}
           getRowId={(addon) => addon.qualified_name}
-          searchValue={searchValue}
+          searchValue={marketplaceSearchValue}
           sortOptions={SORT_OPTIONS}
           searchPlaceholder="Search the marketplace"
           globalFilter={search}
@@ -204,10 +272,27 @@ export function MarketplacePage() {
               onInstall={() => runInstall(addon)}
               onDetails={() => setDetails(addon)}
               onDelete={addon.source.kind === 'local' ? () => setDeleting(addon) : undefined}
+              activeCategory={activeCategory}
+              activeTag={activeTag}
+              onCategory={(category) =>
+                setCategoryFilter(category === activeCategory ? '' : category)
+              }
+              onTag={(tag) => setTagFilter(normalizeTag(tag) === activeTag ? '' : tag)}
             />
           )}
           emptyState={
-            sourceFilter ? (
+            activeCategory || activeTag ? (
+              <EmptyState
+                icon={<FilterXIcon />}
+                title="No addons match these filters"
+                description={
+                  sourceFilter
+                    ? `${sourceFilter} has no addons in this category or with this tag.`
+                    : 'No addon is in this category or has this tag.'
+                }
+                action={clearFiltersButton}
+              />
+            ) : sourceFilter ? (
               <EmptyState
                 icon={<StoreIcon />}
                 title={`No addons from ${sourceFilter}`}
@@ -230,11 +315,14 @@ export function MarketplacePage() {
             <EmptyState
               icon={<SearchXIcon />}
               title="No addons match your search"
-              description="Try another name, source or image."
+              description="Try another name, tag, source or image."
               action={
-                <Button variant="outline" size="sm" onClick={() => setSearch('')}>
-                  Clear search
-                </Button>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setSearch('')}>
+                    Clear search
+                  </Button>
+                  {filtered ? clearFiltersButton : null}
+                </div>
               }
             />
           }

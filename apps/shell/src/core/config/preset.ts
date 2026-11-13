@@ -36,7 +36,8 @@ const entrySchema = z
   );
 
 const presetAddonSchema = z.strictObject({
-  ...uiAddonSchema.shape,
+  // The display fields come from the marketplace; a preset names its addons through nav labels.
+  ...uiAddonSchema.pick({ name: true, version: true, sdk: true }).shape,
   entry: entrySchema.describe("Manifest URL (mf-manifest.json) of the addon's remote."),
   mount: z
     .string()

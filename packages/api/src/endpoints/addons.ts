@@ -1,17 +1,22 @@
+import { z } from 'zod';
+
 import { ApiError, isApiError, type ApiErrorOptions } from '../errors.ts';
 import {
   addTapInputSchema,
   installedAddonSchema,
   marketplaceAddonSchema,
+  marketplaceCategorySchema,
   marketplaceSourceSchema,
   consentRequiredBodySchema,
   registerAddonInputSchema,
   type AddonDefinition,
+  type AddonErrorCode,
   type AddonPermissions,
   type AddonStatus,
   type AddTapInput,
   type InstalledAddon,
   type MarketplaceAddon,
+  type MarketplaceCategory,
   type MarketplaceSource,
   type RegisterAddonInput,
 } from '../models/addon.ts';
@@ -22,6 +27,14 @@ import { parse, type Call, type RequestOptions } from './request.ts';
 const installedList = lenientArray(installedAddonSchema, 'installed addons');
 const marketplaceList = lenientArray(marketplaceAddonSchema, 'marketplace addons');
 const sourceList = lenientArray(marketplaceSourceSchema, 'marketplace sources');
+const categoryList = z.looseObject({
+  items: lenientArray(marketplaceCategorySchema, 'marketplace categories'),
+});
+
+/** True for an ApiError of the addons engine with this `code`. */
+export function hasAddonErrorCode(error: unknown, code: AddonErrorCode): boolean {
+  return isApiError(error) && error.code === code;
+}
 
 /** What the addons-manager wants the admin to accept before it installs, updates or re-approves. */
 export interface ConsentRequest {
@@ -42,9 +55,10 @@ export interface ConsentRequest {
 }
 
 /**
- * The 409 of install, update and approve when the definition has not been accepted (or changed
- * since its hash was read). Every other 409 (already installed, host path conflicts) is a plain
- * ApiError. `name` stays `ApiError`, so `isApiError` and `describeError` keep working.
+ * The 409 `confirmation_required` of install, update and approve: the definition has not been
+ * accepted, or changed since its hash was read. Every other 409 (`already_installed`,
+ * `host_path_conflict`, `busy`, ...) is a plain ApiError with its `code`. `name` stays
+ * `ApiError`, so `isApiError` and `describeError` keep working.
  */
 export class ConsentRequiredError extends ApiError {
   readonly consentRequest: ConsentRequest;
@@ -58,15 +72,17 @@ export class ConsentRequiredError extends ApiError {
 /** Duck-typed like `isApiError`, for the same reason. */
 export function isConsentRequiredError(error: unknown): error is ConsentRequiredError {
   return (
-    isApiError(error) &&
-    error.status === 409 &&
+    hasAddonErrorCode(error, 'confirmation_required') &&
     typeof (error as { consentRequest?: unknown }).consentRequest === 'object'
   );
 }
 
-/** Turns a consent 409 (recognised by `definition_hash`) into a ConsentRequiredError. */
+/**
+ * Turns a `confirmation_required` error into a ConsentRequiredError. One whose body does not
+ * carry a usable definition stays a plain ApiError: there is nothing to show the admin.
+ */
 function asConsentRequired(error: unknown): never {
-  if (isApiError(error) && error.kind === 'http' && error.status === 409) {
+  if (isApiError(error) && error.kind === 'http' && error.code === 'confirmation_required') {
     const body = consentRequiredBodySchema.safeParse(error.body);
     if (body.success) {
       throw new ConsentRequiredError(
@@ -85,6 +101,7 @@ function asConsentRequired(error: unknown): never {
           method: error.method,
           path: error.path,
           body: error.body,
+          code: error.code,
           cause: error,
         },
       );
@@ -116,7 +133,7 @@ export interface AddonsManagerEndpoints {
   /**
    * Installs a catalog addon by qualified name (`name`, `<tap>/name`, `local/name`). Resolves
    * with the addon in `installing`. A 409 is a `ConsentRequiredError` when the definition still
-   * has to be accepted, otherwise an ApiError (already installed, host path conflict).
+   * has to be accepted, otherwise an ApiError (`already_installed`, `host_path_conflict`).
    */
   install(qualifiedName: string, options?: AcceptDefinitionOptions): Promise<InstalledAddon>;
   /**
@@ -139,8 +156,18 @@ export interface MarketplaceAddonRef {
 }
 
 export interface MarketplaceEndpoints {
-  /** The merged catalog, optionally one source only or one name (bare or qualified). */
-  list(options?: RequestOptions & { source?: string; name?: string }): Promise<MarketplaceAddon[]>;
+  /**
+   * The merged catalog. The filters combine with AND: one source, one name (bare or qualified),
+   * one category, one tag. The backend normalizes category and tag, so `AI` finds `ai`.
+   */
+  list(
+    options?: RequestOptions & { source?: string; name?: string; category?: string; tag?: string },
+  ): Promise<MarketplaceAddon[]>;
+  /**
+   * Categories with their addon counts, sorted by name, of one source or all. Addons without a
+   * category are not counted.
+   */
+  categories(options?: RequestOptions & { source?: string }): Promise<MarketplaceCategory[]>;
   get(ref: MarketplaceAddonRef, options?: RequestOptions): Promise<MarketplaceAddon>;
   /**
    * Registers a definition in the `local` source, where it is listed at once. Validates the
@@ -243,15 +270,25 @@ export function createMarketplaceApi(client: AddonsClient): MarketplaceEndpoints
   const sourcePath = (name: string) => `/sources/${segment(name)}`;
 
   return {
-    async list({ source, name, signal } = {}) {
+    async list({ source, name, category, tag, signal } = {}) {
       const call = { method: 'GET', path: '/addons' };
       const { body } = await client.request({
         method: 'GET',
         path: call.path,
-        query: { source, name },
+        query: { source, name, category, tag },
         signal,
       });
       return parse(marketplaceList, body, call);
+    },
+    async categories({ source, signal } = {}) {
+      const call = { method: 'GET', path: '/categories' };
+      const { body } = await client.request({
+        method: 'GET',
+        path: call.path,
+        query: { source },
+        signal,
+      });
+      return parse(categoryList, body, call).items;
     },
     async get({ source, name }, { signal } = {}) {
       const call = { method: 'GET', path: `/addons/${segment(source)}/${segment(name)}` };

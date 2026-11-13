@@ -26,6 +26,9 @@ export const accessTokenClaimsSchema: z.ZodObject<{
 }, z.core.$loose>;
 
 // @public
+export const ADDON_ERROR_CODES: readonly ["unauthorized", "forbidden", "auth_unavailable", "not_found", "method_not_allowed", "validation_failed", "payload_too_large", "confirmation_required", "already_installed", "host_path_conflict", "no_update_available", "busy", "conflict", "sync_failed", "marketplace_unavailable", "internal_error"];
+
+// @public
 export const ADDON_SOURCE_KINDS: readonly ["official", "tap", "local"];
 
 // @public
@@ -40,6 +43,10 @@ export const addonDefinitionSchema: z.ZodObject<{
     description: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string, string | null | undefined>>;
     homepage: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
     maintainers: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+    display_name: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    category: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    tags: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+    icon: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
     services: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
         service_name: z.ZodString;
         image: z.ZodString;
@@ -149,6 +156,9 @@ export const addonDefinitionSchema: z.ZodObject<{
         name: z.ZodString;
     }, z.core.$loose>>;
 }, z.core.$loose>;
+
+// @public (undocumented)
+export type AddonErrorCode = (typeof ADDON_ERROR_CODES)[number];
 
 // @public (undocumented)
 export type AddonNetwork = z.infer<typeof addonNetworkSchema>;
@@ -290,6 +300,7 @@ export class ApiError extends Error {
     constructor(message: string, options: ApiErrorOptions);
     // (undocumented)
     readonly body: unknown;
+    readonly code: string | undefined;
     // (undocumented)
     readonly kind: ApiErrorKind;
     // (undocumented)
@@ -311,6 +322,7 @@ export interface ApiErrorOptions {
     body?: unknown;
     // (undocumented)
     cause?: unknown;
+    code?: string;
     // (undocumented)
     kind: ApiErrorKind;
     // (undocumented)
@@ -539,12 +551,17 @@ export interface ConsentRequest {
 
 // @public
 export const consentRequiredBodySchema: z.ZodObject<{
+    code: z.ZodLiteral<"confirmation_required">;
     message: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
     definition: z.ZodObject<{
         version: z.ZodString;
         description: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string, string | null | undefined>>;
         homepage: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
         maintainers: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+        display_name: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+        category: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+        tags: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+        icon: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
         services: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
             service_name: z.ZodString;
             image: z.ZodString;
@@ -707,6 +724,9 @@ export function describeError(error: unknown): string;
 export function describeStatus(status: string | undefined, detail?: string): StatusDescription;
 
 // @public
+export function hasAddonErrorCode(error: unknown, code: AddonErrorCode): boolean;
+
+// @public
 export function hasMetrics(instance: Instance): boolean;
 
 // @public (undocumented)
@@ -730,6 +750,10 @@ export const installedAddonSchema: z.ZodObject<{
     description: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string, string | null | undefined>>;
     homepage: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
     maintainers: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+    display_name: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    category: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    tags: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+    icon: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
     services: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
         service_name: z.ZodString;
         image: z.ZodString;
@@ -992,6 +1016,10 @@ export const marketplaceAddonSchema: z.ZodObject<{
     description: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string, string | null | undefined>>;
     homepage: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodString>>, z.ZodTransform<string | undefined, string | null | undefined>>;
     maintainers: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+    display_name: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    category: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
+    tags: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>>, z.ZodTransform<string[], string[] | null | undefined>>;
+    icon: z.ZodPipe<z.ZodCatch<z.ZodOptional<z.ZodNullable<z.ZodString>>>, z.ZodTransform<string | undefined, string | null | undefined>>;
     services: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodObject<{
         service_name: z.ZodString;
         image: z.ZodString;
@@ -1129,12 +1157,26 @@ export const marketplaceAddonSchema: z.ZodObject<{
 }, z.core.$loose>;
 
 // @public (undocumented)
+export type MarketplaceCategory = z.infer<typeof marketplaceCategorySchema>;
+
+// @public
+export const marketplaceCategorySchema: z.ZodObject<{
+    name: z.ZodString;
+    count: z.ZodPipe<z.ZodOptional<z.ZodNullable<z.ZodNumber>>, z.ZodTransform<number, number | null | undefined>>;
+}, z.core.$loose>;
+
+// @public (undocumented)
 export interface MarketplaceEndpoints {
+    categories(options?: RequestOptions & {
+        source?: string;
+    }): Promise<MarketplaceCategory[]>;
     // (undocumented)
     get(ref: MarketplaceAddonRef, options?: RequestOptions): Promise<MarketplaceAddon>;
     list(options?: RequestOptions & {
         source?: string;
         name?: string;
+        category?: string;
+        tag?: string;
     }): Promise<MarketplaceAddon[]>;
     register(input: RegisterAddonInput, options?: RequestOptions): Promise<MarketplaceAddon>;
     removeLocal(name: string, options?: RequestOptions): Promise<void>;

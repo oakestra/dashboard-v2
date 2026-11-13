@@ -1,5 +1,5 @@
 import { http, HttpResponse } from '@oakestra/mocks';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { uiAddonsQueryKey } from '../../../core/addons/ui-addons';
@@ -61,6 +61,140 @@ describe('<MarketplacePage>', () => {
     expect(screen.getByTestId('breadcrumbs')).toHaveTextContent('HomeAddonsMarketplace');
   });
 
+  it('shows the display name next to the qualified name, the icon and the category and tags', async () => {
+    renderMarketplace();
+
+    const example = await card('example');
+    expect(within(example).getByRole('button', { name: 'Details of example' })).toHaveTextContent(
+      'Example Addon',
+    );
+    expect(within(example).getByTestId('qualified-name')).toHaveTextContent('example');
+    const icon = example.querySelector('img')!;
+    expect(icon).toHaveAttribute('src', 'https://github.com/oakestra.png?size=96');
+    expect(icon).toHaveAttribute('referrerpolicy', 'no-referrer');
+    expect(icon).toHaveAttribute('loading', 'lazy');
+    expect(icon).toHaveAttribute('alt', '');
+    expect(
+      within(example).getByRole('button', { name: 'Filter by category developer tools' }),
+    ).toBeVisible();
+    expect(within(example).getByRole('button', { name: 'Filter by tag ui' })).toHaveTextContent(
+      '#ui',
+    );
+
+    // An icon that does not load falls back to the placeholder.
+    const tap = await card('acme/node-exporter');
+    expect(within(tap).queryByTestId('addon-icon-placeholder')).toBeNull();
+    fireEvent.error(tap.querySelector('img')!);
+    expect(within(tap).getByTestId('addon-icon-placeholder')).toBeInTheDocument();
+    expect(tap.querySelector('img')).toBeNull();
+
+    // Without display fields the qualified name is the title and nothing else is added.
+    const broken = await card('broken-addon');
+    expect(within(broken).queryByTestId('qualified-name')).toBeNull();
+    expect(within(broken).queryByRole('button', { name: /Filter by/ })).toBeNull();
+    expect(within(broken).getByTestId('addon-icon-placeholder')).toBeInTheDocument();
+  });
+
+  it('never loads an icon that is not https', async () => {
+    mockAddons.state.catalog.find((d) => d.name === 'flops')!.icon = 'http://plain.example/i.png';
+    renderMarketplace();
+
+    const flops = await card('flops');
+    expect(flops.querySelector('img')).toBeNull();
+    expect(within(flops).getByTestId('addon-icon-placeholder')).toBeInTheDocument();
+  });
+
+  it('filters by category with the counts of the selected source', async () => {
+    const { user, router } = renderMarketplace();
+    await card('flops');
+
+    const categories = screen.getByRole('combobox', { name: 'Filter by category' });
+    await user.click(categories);
+    expect(await screen.findByRole('option', { name: 'monitoring (2)' })).toBeVisible();
+    expect(screen.getByRole('option', { name: 'ai (1)' })).toBeVisible();
+    await user.click(screen.getByRole('option', { name: 'monitoring (2)' }));
+    expect(router.state.location.search).toContain('category=monitoring');
+    expect(screen.getByTestId('marketplace-card-analytics')).toBeVisible();
+    expect(screen.getByTestId('marketplace-card-acme/node-exporter')).toBeVisible();
+    expect(screen.queryByTestId('marketplace-card-flops')).not.toBeInTheDocument();
+
+    // Combined with the source filter, and the counts follow the source.
+    await user.click(screen.getByRole('combobox', { name: 'Filter by source' }));
+    await user.click(await screen.findByRole('option', { name: 'acme (1)' }));
+    expect(screen.getByTestId('marketplace-card-acme/node-exporter')).toBeVisible();
+    expect(screen.queryByTestId('marketplace-card-analytics')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: 'Filter by category' }));
+    expect(await screen.findByRole('option', { name: 'monitoring (1)' })).toBeVisible();
+    expect(screen.queryByRole('option', { name: /^ai/ })).toBeNull();
+    await user.click(screen.getByRole('option', { name: 'All categories' }));
+    expect(router.state.location.search).not.toContain('category=');
+  });
+
+  it('filters by a tag from a card and clears the filters', async () => {
+    const { user, router } = renderMarketplace();
+    const tap = await card('acme/node-exporter');
+
+    await user.click(within(tap).getByRole('button', { name: 'Filter by tag metrics' }));
+    expect(router.state.location.search).toContain('tag=metrics');
+    expect(screen.getByTestId('marketplace-card-analytics')).toBeVisible();
+    expect(screen.queryByTestId('marketplace-card-example')).not.toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('marketplace-card-analytics')).getByRole('button', {
+        name: 'Filter by tag metrics',
+      }),
+    ).toHaveAttribute('aria-pressed', 'true');
+
+    // A tag no addon of the source has: the empty state clears every filter at once.
+    await user.click(screen.getByRole('combobox', { name: 'Filter by source' }));
+    await user.click(await screen.findByRole('option', { name: 'local (1)' }));
+    expect(await screen.findByText('No addons match these filters')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+    expect(await card('example')).toBeVisible();
+    expect(router.state.location.search).not.toMatch(/tag=|source=/);
+
+    // The chip in the toolbar removes the tag filter alone.
+    await user.click(within(await card('flops')).getByRole('button', { name: 'Filter by tag ml' }));
+    await user.click(screen.getByRole('button', { name: 'Remove the tag filter ml' }));
+    expect(await card('example')).toBeVisible();
+  });
+
+  it('normalizes category and tag from a link like the marketplace does', async () => {
+    renderMarketplace({
+      route: '/addon-manager/marketplace?category=%20Monitoring&tag=PROMETHEUS',
+    });
+
+    expect(await card('acme/node-exporter')).toBeVisible();
+    expect(screen.queryByTestId('marketplace-card-analytics')).not.toBeInTheDocument();
+  });
+
+  it('searches display names and tags', async () => {
+    const { user } = renderMarketplace();
+    await card('flops');
+
+    await user.type(screen.getByRole('searchbox', { name: 'Search Marketplace' }), 'prometheus');
+    expect(screen.getByTestId('marketplace-card-acme/node-exporter')).toBeVisible();
+    expect(screen.queryByTestId('marketplace-card-analytics')).not.toBeInTheDocument();
+
+    await user.clear(screen.getByRole('searchbox'));
+    await user.type(screen.getByRole('searchbox'), 'Platform Analytics');
+    expect(screen.getByTestId('marketplace-card-analytics')).toBeVisible();
+    expect(screen.queryByTestId('marketplace-card-flops')).not.toBeInTheDocument();
+  });
+
+  it('counts the categories from the catalog, without GET /categories', async () => {
+    mockServer.use(
+      http.get(`${TEST_MARKETPLACE_URL}/categories`, () =>
+        HttpResponse.json({ code: 'not_found', message: 'not found' }, { status: 404 }),
+      ),
+    );
+    const { user } = renderMarketplace();
+    await card('flops');
+
+    await user.click(screen.getByRole('combobox', { name: 'Filter by category' }));
+    expect(await screen.findByRole('option', { name: 'monitoring (2)' })).toBeVisible();
+    expect(screen.queryByText(/Could not/)).toBeNull();
+  });
+
   it('offers Install again for an addon whose only record is disabled', async () => {
     for (const addon of installedNamed('example')) addon.status = 'disabled';
     const { user } = renderMarketplace();
@@ -112,7 +246,9 @@ describe('<MarketplacePage>', () => {
     await user.click(button);
 
     const dialog = await screen.findByTestId('consent-dialog');
-    expect(dialog).toHaveTextContent('Install flops 1.0.0?');
+    expect(dialog).toHaveTextContent('Install FLOps 1.0.0?');
+    // The display name is the catalog's to pick, so the qualified name is shown with it.
+    expect(within(dialog).getByTestId('consent-subject')).toHaveTextContent('FLOpsflops');
     expect(within(dialog).getByTestId('permission-core_network')).toHaveTextContent('Dangerous');
     // The admin sees the images that will run, pinned by digest.
     expect(within(dialog).getByTestId('service-flops-manager')).toHaveTextContent('@sha256:');
@@ -179,7 +315,14 @@ describe('<MarketplacePage>', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Accept and install' }));
 
     expect(await screen.findByText('Could not install the addon')).toBeVisible();
+    expect(screen.getByText('Addon "broken-addon" is already installed.')).toBeVisible();
     expect(installedNamed('broken-addon')).toHaveLength(1);
+    // already_installed means the page's installed list was stale, so it is fetched again.
+    expect(
+      await within(await card('broken-addon')).findByRole('link', {
+        name: 'Manage broken-addon',
+      }),
+    ).toBeVisible();
   });
 
   it('blocks installing a UI built for another SDK', async () => {
@@ -308,7 +451,10 @@ describe('<MarketplacePage>', () => {
     mockServer.use(
       http.post(`${TEST_MARKETPLACE_URL}/addons`, () =>
         HttpResponse.json(
-          { message: 'invalid request body: json: unknown field "privileged"' },
+          {
+            code: 'validation_failed',
+            message: 'invalid request body: json: unknown field "privileged"',
+          },
           { status: 422 },
         ),
       ),

@@ -1,3 +1,5 @@
+import type { AddonErrorCode } from '@oakestra/api';
+
 import {
   catalogFixtures,
   FAILED_INSTALL_LOGS,
@@ -21,11 +23,13 @@ import { createObjectId } from './store.ts';
  * behaviour. Imports no browser or MSW code, so plain Node can load it.
  *
  * Reproduced from the oakestra repo (addons/internal):
- * - Every body is `application/json`; errors are `{message}` (422s add `errors: [{path, message}]`).
+ * - Every body is `application/json`; errors are `{code, message}` (`validation_failed` from the
+ *   marketplace adds `errors: [{path, message}]`). Codes as in httpx: `already_installed`,
+ *   `busy`, `no_update_available`, `conflict`, `not_found`, `sync_failed`, ...
  * - `POST /addons {name, accept_definition}` installs by qualified name. Without the hash of the
- *   whole canonical definition it answers 409 `{message, definition, definition_hash,
- *   permissions}`; the catalog serves no hash. A second install of an addon that is not
- *   `disabled` is a plain 409 (`{message}` only), an unknown name a 404. Unknown body fields
+ *   whole canonical definition it answers 409 `{code: "confirmation_required", message,
+ *   definition, definition_hash, permissions}`; the catalog serves no hash. A second install of
+ *   an addon that is not `disabled` is a 409 `already_installed`, an unknown name a 404. Unknown body fields
  *   (such as the old `accept_permissions`) are a 400.
  * - `POST /addons/<id>/update {accept_definition}` needs a newer catalog version (409 otherwise)
  *   and always asks; its 409 adds `previous_version`, `previous_permissions` and
@@ -34,7 +38,8 @@ import { createObjectId } from './store.ts';
  * - `DELETE /addons/<id>`: 200 with the addon in `disabling` unless it is `disabled` already,
  *   then the record is deleted (204). There is no PATCH.
  * - The marketplace lists official, taps by name, local; registrations go to `local` and are
- *   listed at once. Decoding is strict (unknown fields are a 422), the declared permissions must
+ *   listed at once. `?category=` and `?tag=` filter (normalized like the engine), and
+ *   `GET /categories[?source=]` counts the addons per category. Decoding is strict (unknown fields are a 422), the declared permissions must
  *   cover what the services use, and a re-registration needs a higher version (409).
  * - Taps: `POST /sources` adds and syncs at once (a failing sync only sets `last_error`),
  *   official and local cannot be deleted (409), `POST /sources/<name>/sync` answers 502 for a
@@ -73,6 +78,8 @@ export interface UiAddonEntry {
   name: string;
   version: string;
   sdk: string;
+  display_name?: string;
+  icon?: string;
 }
 
 export interface AddonsBackend {
@@ -89,7 +96,14 @@ export interface AddonsBackend {
     remove(id: string): BackendResponse;
   };
   marketplace: {
-    list(query?: { source?: string | null; name?: string | null }): BackendResponse;
+    list(query?: {
+      source?: string | null;
+      name?: string | null;
+      category?: string | null;
+      tag?: string | null;
+    }): BackendResponse;
+    /** `GET /categories`: `{items: [{name, count}]}`, sorted by name. */
+    categories(query?: { source?: string | null }): BackendResponse;
     get(source: string, name: string): BackendResponse;
     register(body: unknown): BackendResponse;
     removeLocal(name: string): BackendResponse;
@@ -128,12 +142,14 @@ const json = (status: number, body: unknown): BackendResponse => ({
   text: JSON.stringify(body),
   contentType: 'application/json',
 });
-const error = (status: number, message: string) => json(status, { message });
+// Typed with the client's list, so a code the client no longer knows fails the typecheck here.
+const error = (status: number, code: AddonErrorCode, message: string) =>
+  json(status, { code, message });
 const empty = (status = 204): BackendResponse => ({ status });
 
 type FieldError = { path: string; message: string };
 const invalid = (message: string, errors: FieldError[] = []): BackendResponse =>
-  json(422, errors.length > 0 ? { message, errors } : { message });
+  json(422, { code: 'validation_failed', message, ...(errors.length > 0 ? { errors } : {}) });
 
 const NAME = /^[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?$/;
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/;
@@ -186,11 +202,31 @@ function canonicalDefinition(def: MockDefinition) {
     ...(copy.description ? { description: copy.description } : {}),
     ...(copy.homepage ? { homepage: copy.homepage } : {}),
     ...(copy.maintainers?.length ? { maintainers: copy.maintainers } : {}),
+    ...displayFields(copy),
     ...(copy.ui ? { ui: copy.ui } : {}),
     permissions: canonicalPermissions(copy.permissions),
     services: copy.services,
     volumes: copy.volumes,
     networks: copy.networks,
+  };
+}
+
+/** definition.NormalizeCategory: trimmed, lowercased, inner whitespace collapsed. */
+const normalizeCategory = (value: string) =>
+  value.toLowerCase().split(/\s+/).filter(Boolean).join(' ');
+/** definition.NormalizeTag: trimmed and lowercased. */
+const normalizeTag = (value: string) => value.trim().toLowerCase();
+
+/** The display fields and metadata as the engine stores them (normalized, empty ones left out). */
+function displayFields(def: MockDefinition) {
+  const tags = [...new Set((def.tags ?? []).map(normalizeTag))].sort();
+  const category = def.category ? normalizeCategory(def.category) : '';
+  return {
+    ...(def.display_name?.trim() ? { display_name: def.display_name.trim() } : {}),
+    ...(category ? { category } : {}),
+    ...(tags.length ? { tags } : {}),
+    ...(def.icon ? { icon: def.icon } : {}),
+    ...(def.metadata && Object.keys(def.metadata).length ? { metadata: def.metadata } : {}),
   };
 }
 
@@ -280,6 +316,11 @@ const DEFINITION_FIELDS = [
   'description',
   'homepage',
   'maintainers',
+  'display_name',
+  'category',
+  'tags',
+  'icon',
+  'metadata',
   'ui',
   'permissions',
   'services',
@@ -344,6 +385,13 @@ function decodeDefinition(body: unknown): { def: MockDefinition } | { response: 
     description: typeof body.description === 'string' ? body.description : '',
     ...(typeof body.homepage === 'string' ? { homepage: body.homepage } : {}),
     ...(Array.isArray(body.maintainers) ? { maintainers: body.maintainers as string[] } : {}),
+    ...displayFields({
+      display_name: typeof body.display_name === 'string' ? body.display_name : undefined,
+      category: typeof body.category === 'string' ? body.category : undefined,
+      tags: Array.isArray(body.tags) ? (body.tags as string[]) : undefined,
+      icon: typeof body.icon === 'string' ? body.icon : undefined,
+      metadata: isRecord(body.metadata) ? (body.metadata as Record<string, string>) : undefined,
+    } as MockDefinition),
     services: services.map((raw, index) => {
       const svc = isRecord(raw) ? raw : {};
       if (typeof svc.service_name !== 'string' || !NAME.test(svc.service_name)) {
@@ -366,6 +414,9 @@ function decodeDefinition(body: unknown): { def: MockDefinition } | { response: 
     permissions: canonicalPermissions(isRecord(body.permissions) ? body.permissions : undefined),
     ...(isRecord(body.ui) ? { ui: body.ui as MockDefinition['ui'] } : {}),
   };
+  if (def.icon && !def.icon.startsWith('https://')) {
+    errors.push({ path: 'icon', message: 'must be an https URL' });
+  }
   if (def.ui && !def.services.some((svc) => svc.service_name === def.ui?.service)) {
     errors.push({ path: 'ui.service', message: `"${def.ui.service}" is not one of the services` });
   }
@@ -394,9 +445,11 @@ const acceptOf = (body: Record<string, unknown>) =>
 
 /** The engine decodes these bodies strictly; returns the 400 for anything else. */
 function badBody(body: unknown, known: readonly string[]): BackendResponse | undefined {
-  if (!isRecord(body)) return error(400, 'Request body must be a JSON object');
+  if (!isRecord(body)) return error(400, 'validation_failed', 'Request body must be a JSON object');
   const unknown = Object.keys(body).find((key) => !known.includes(key));
-  return unknown ? error(400, `Request body has an unknown field "${unknown}"`) : undefined;
+  return unknown
+    ? error(400, 'validation_failed', `Request body has an unknown field "${unknown}"`)
+    : undefined;
 }
 
 export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsBackend {
@@ -506,6 +559,7 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
       description: def.description,
       ...(def.homepage ? { homepage: def.homepage } : {}),
       ...(def.maintainers?.length ? { maintainers: def.maintainers } : {}),
+      ...displayFields(def),
       ui: def.ui ?? null,
       services: def.services,
       volumes: def.volumes,
@@ -526,6 +580,7 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
     const permissions = canonicalPermissions(def.permissions);
     return {
       ...structuredClone(def),
+      ...displayFields(def),
       permissions,
       qualified_name: qualifiedName(def.source, def.name),
       id: addonId(def.source, def.name),
@@ -560,6 +615,7 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
   ) => {
     const permissions = canonicalPermissions(def.permissions);
     return json(409, {
+      code: 'confirmation_required',
       message,
       definition: canonicalDefinition(def),
       definition_hash: hashDefinition(def),
@@ -574,8 +630,21 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
     });
   };
 
+  /** Catalog.eachItem: official, taps by name, local; addons by name within a source. */
+  function catalogItems(source: string | undefined) {
+    const items: ReturnType<typeof serializeDefinition>[] = [];
+    for (const src of sortedSources()) {
+      if (source && src.name !== source) continue;
+      const defs = state.catalog
+        .filter((def) => def.source.name === src.name)
+        .sort((a, b) => a.name.localeCompare(b.name));
+      items.push(...defs.map(serializeDefinition));
+    }
+    return items;
+  }
+
   // Like Store.Get: a non-ObjectId id is simply not found.
-  const addonNotFound = () => error(404, 'Addon not found');
+  const addonNotFound = () => error(404, 'not_found', 'Addon not found');
 
   function syncSource(source: MockSource): string | undefined {
     const at = now();
@@ -596,7 +665,7 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
       list(query) {
         const status = query?.status;
         if (status && !STATUSES.includes(status as MockAddonStatus)) {
-          return error(400, `Unknown status "${status}"`);
+          return error(400, 'validation_failed', `Unknown status "${status}"`);
         }
         return json(
           200,
@@ -607,13 +676,15 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
         const bad = badBody(body, ['name', 'accept_definition']);
         if (bad || !isRecord(body)) return bad!;
         const ref = parseQualified(typeof body.name === 'string' ? body.name : '');
-        if (!ref) return error(400, `invalid addon name: "${String(body.name)}"`);
+        if (!ref) {
+          return error(400, 'validation_failed', `invalid addon name: "${String(body.name)}"`);
+        }
         const def = findDefinition(ref.source, ref.name);
-        if (!def) return error(404, 'Marketplace addon not found');
+        if (!def) return error(404, 'not_found', 'Marketplace addon not found');
         const id = addonId(def.source, def.name);
         const qualified = qualifiedName(def.source, def.name);
         if (state.installed.some((a) => a.addon_id === id && a.status !== 'disabled')) {
-          return error(409, `Addon "${qualified}" is already installed.`);
+          return error(409, 'already_installed', `Addon "${qualified}" is already installed.`);
         }
         const permissions = canonicalPermissions(def.permissions);
         if (acceptOf(body) !== hashDefinition(def)) {
@@ -647,12 +718,16 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
         const addon = findInstalled(id);
         if (!addon) return addonNotFound();
         if (!SETTLED.includes(addon.status)) {
-          return error(409, `Addon is ${addon.status} and can't be updated right now.`);
+          return error(409, 'busy', `Addon is ${addon.status} and can't be updated right now.`);
         }
         const latest = findDefinition(addon.source.name, addon.definition.name);
-        if (!latest) return error(404, 'Marketplace addon not found');
+        if (!latest) return error(404, 'not_found', 'Marketplace addon not found');
         if (!newer(latest.version, addon.version)) {
-          return error(409, `No newer version than ${addon.version} is available.`);
+          return error(
+            409,
+            'no_update_available',
+            `No newer version than ${addon.version} is available.`,
+          );
         }
         const permissions = canonicalPermissions(latest.permissions);
         if (acceptOf(body) !== hashDefinition(latest)) {
@@ -679,13 +754,14 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
         const addon = findInstalled(id);
         if (!addon) return addonNotFound();
         if (!SETTLED.includes(addon.status)) {
-          return error(409, `Addon is ${addon.status} and can't be approved right now.`);
+          return error(409, 'busy', `Addon is ${addon.status} and can't be approved right now.`);
         }
         const latest = findDefinition(addon.source.name, addon.definition.name);
-        if (!latest) return error(404, 'Marketplace addon not found');
+        if (!latest) return error(404, 'not_found', 'Marketplace addon not found');
         if (latest.version !== addon.version) {
           return error(
             409,
+            'conflict',
             `The marketplace lists ${addon.qualified_name} ${latest.version}, not the installed ${addon.version}; update the addon instead.`,
           );
         }
@@ -722,24 +798,30 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
     },
     marketplace: {
       list(query) {
-        const source = query?.source || undefined;
         const name = query?.name || undefined;
-        const items: ReturnType<typeof serializeDefinition>[] = [];
-        for (const src of sortedSources()) {
-          if (source && src.name !== source) continue;
-          const defs = state.catalog
-            .filter((def) => def.source.name === src.name)
-            .sort((a, b) => a.name.localeCompare(b.name));
-          for (const def of defs) {
-            if (name && def.name !== name && qualifiedName(def.source, def.name) !== name) continue;
-            items.push(serializeDefinition(def));
-          }
-        }
+        const category = normalizeCategory(query?.category ?? '');
+        const tag = normalizeTag(query?.tag ?? '');
+        const items = catalogItems(query?.source || undefined).filter(
+          (item) =>
+            (!name || item.name === name || item.qualified_name === name) &&
+            (!category || item.category === category) &&
+            (!tag || (item.tags ?? []).includes(tag)),
+        );
         return json(200, items);
+      },
+      categories(query) {
+        const counts = new Map<string, number>();
+        for (const item of catalogItems(query?.source || undefined)) {
+          if (item.category) counts.set(item.category, (counts.get(item.category) ?? 0) + 1);
+        }
+        const items = [...counts]
+          .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+          .map(([name, count]) => ({ name, count }));
+        return json(200, { items });
       },
       get(source, name) {
         const def = findSource(source) ? findDefinition(source, name) : undefined;
-        return def ? json(200, serializeDefinition(def)) : error(404, 'not found');
+        return def ? json(200, serializeDefinition(def)) : error(404, 'not_found', 'not found');
       },
       register(body) {
         const decoded = decodeDefinition(body);
@@ -750,6 +832,7 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
           if (!newer(def.version, existing.version)) {
             return error(
               409,
+              'conflict',
               `local/${def.name} is already registered with version ${existing.version}; a new registration needs a higher version`,
             );
           }
@@ -764,7 +847,7 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
         state.catalog = state.catalog.filter(
           (def) => !(def.source.name === 'local' && def.name === name),
         );
-        return state.catalog.length === before ? error(404, 'not found') : empty();
+        return state.catalog.length === before ? error(404, 'not_found', 'not found') : empty();
       },
       sources: {
         list() {
@@ -787,7 +870,7 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
               `invalid url: ${url.startsWith('http:') ? 'plain http needs allow_insecure' : 'must be an absolute https URL'}`,
             );
           }
-          if (findSource(name)) return error(409, `source "${name}" already exists`);
+          if (findSource(name)) return error(409, 'conflict', `source "${name}" already exists`);
           const source: MockSource = {
             name,
             kind: 'tap',
@@ -808,24 +891,28 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
         },
         remove(name) {
           if (name === 'official' || name === 'local') {
-            return error(409, `the ${name} source can't be deleted`);
+            return error(409, 'conflict', `the ${name} source can't be deleted`);
           }
-          if (!findSource(name)) return error(404, 'not found');
+          if (!findSource(name)) return error(404, 'not_found', 'not found');
           state.sources = state.sources.filter((source) => source.name !== name);
           state.catalog = state.catalog.filter((def) => def.source.name !== name);
           return empty();
         },
         sync(name) {
           const source = findSource(name);
-          if (!source) return error(404, 'not found');
-          if (source.kind === 'local') return error(409, 'sync is disabled for this source');
+          if (!source) return error(404, 'not_found', 'not found');
+          if (source.kind === 'local') {
+            return error(409, 'conflict', 'sync is disabled for this source');
+          }
           const problem = syncSource(source);
-          return problem ? error(502, problem) : json(200, serializeSource(source));
+          return problem ? error(502, 'sync_failed', problem) : json(200, serializeSource(source));
         },
         importIndex(name, body) {
           const source = findSource(name);
-          if (!source) return error(404, 'not found');
-          if (source.kind === 'local') return error(409, 'sync is disabled for this source');
+          if (!source) return error(404, 'not_found', 'not found');
+          if (source.kind === 'local') {
+            return error(409, 'conflict', 'sync is disabled for this source');
+          }
           if (!isRecord(body) || body.schema !== 1 || !Array.isArray(body.addons)) {
             return invalid('rejected index: schema must be 1 and addons a list');
           }
@@ -850,10 +937,13 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
         if (addon.status !== 'active' || !ui) continue;
         const image = addon.definition.services.find((s) => s.service_name === ui.service)?.image;
         const tag = /:([^/@:]+)(@|$)/.exec(image ?? '')?.[1] ?? 'latest';
+        const { display_name, icon } = displayFields(addon.definition);
         entries.push({
           name: addon.addon_id,
           version: versions.get(addon.addon_id) ?? tag,
           sdk: ui.sdk,
+          ...(display_name ? { display_name } : {}),
+          ...(icon ? { icon } : {}),
         });
       }
       return entries;
