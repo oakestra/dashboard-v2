@@ -17,12 +17,12 @@
   },
   "dependencies": {
     "@oakestra/api": "workspace:*",
-    "msw": "^3.0.3"
+    "msw": "^3.0.7"
   },
   "devDependencies": {
     "@oakestra/tsconfig": "workspace:*",
     "@types/node": "^26.6.6",
     "typescript": "~6.0.3",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.1"
   }
 }
