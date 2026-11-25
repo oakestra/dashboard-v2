@@ -25,6 +25,8 @@ React shell that loads addon UIs at runtime through Module Federation.
   responses. Used by unit tests, `pnpm dev:mock` and `tools/mock-system-manager`.
 - `addons/example`: reference addon and e2e fixture, with its own vitest setup showing the testing
   entry.
+- `addons/demo-carbon` (`carbon`) and `addons/demo-flops` (`flops`): showcase addons with made-up
+  data, built only into the online demo (see "Online demo").
 - `modules/<name>` (`@oakestra/module-<name>`, private): features as addon packages written
   against the SDK only, linked into the shell (`linkedAddons` in `src/app/modules.ts`). `help` is
   the reference. See "Module packages". `modules/fleet` is a board of cluster cards, each listing its services by
@@ -58,6 +60,9 @@ loading, nginx, Docker or the SDK, also run the e2e suite:
 docker compose -f compose.dev.yml up --build -d
 pnpm e2e
 ```
+
+For changes to `src/demo`, the base path helpers, the mocks or the showcase addons, also run
+`pnpm build:demo` (CI does).
 
 When the public types of `@oakestra/dashboard-sdk`, `@oakestra/ui` or `@oakestra/api` change, run
 `pnpm api:update` and commit the reports: they make every public API change visible in review.
@@ -796,6 +801,28 @@ services for the Fleet view and the placement panel. It is not in `backend.json`
 tests count the seed. `pnpm dev:mock` (`apps/shell/src/mock-api.ts`) always uses it, the HTTP
 mock only with `PLACEMENT_DEMO=true` (`tools/mock-system-manager`). Ids are fixed and
 timestamps relative to when the store is built.
+
+## Online demo
+
+A static build for GitHub Pages (`docs/demo.md`, section 3): `pnpm build:demo` runs
+`vite build --mode demo` into `apps/shell/dist-demo/`, builds `example`, `carbon` and `flops` into
+`dist-demo/addon-assets/<name>/`, writes the demo `config.json` (`apps/shell/demo/`), `404.html`
+(Pages has no SPA fallback) and `.nojekyll`. `deploy-demo.yml` publishes it from `main`.
+
+- The site lives below `DEMO_BASE` (default `/dashboard-v2/`). Files the shell serves itself go
+  through `sitePath()` and the router gets `routerBasename()` (`core/base-path.ts`); both are no-ops
+  at `/`. Router links and API URLs need nothing; a new hard-coded `/something` file URL does.
+- MSW runs in a service worker below the base (`serviceWorkerUrl`). The addon mocks use
+  `uiBlockSupport` and `withShowcaseAddons` (`packages/mocks/src/showcase.ts`): `carbon` installed,
+  `flops` installable with a UI, the failure-test definitions dropped. The store resets on reload.
+- Demo-only UI is `apps/shell/src/demo/` (login banner, `DemoBar`, the driver.js tour in
+  `tour-steps.ts`). It is reached only through `import()` behind an inline
+  `import.meta.env.MODE === 'demo'` check: a constant imported from another module does not stop
+  Rolldown from emitting the chunk, and a static import of `demo/*` fails lint. `assert-prod-bundle`
+  fails `pnpm build` when `oakestra-demo` (in every demo chunk) reaches `dist/`.
+- Tour steps select existing test ids or `data-tour` attributes (`nav-group-<id>`,
+  `application-services`, `cluster-widget-<source>-<item>`); renaming one breaks a step, which then
+  is skipped after a timeout rather than failing.
 
 ## Mock addons manager
 

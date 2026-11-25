@@ -4,12 +4,14 @@ The demo runs the dashboard with mock backends, so you can see how addon UIs wor
 example addon, turn it off and on, break it, upgrade it and change its code. You do not need a
 real Oakestra cluster for any of this.
 
-There are two ways to run the demo:
+There are two ways to run the demo yourself, and a [static online demo](#3-the-online-demo) on
+GitHub Pages that needs nothing but a browser:
 
 | Setup                                   | Needs               | Good for                                                |
 | --------------------------------------- | ------------------- | ------------------------------------------------------- |
 | [Docker stack](#1-run-the-docker-stack) | Docker              | The real thing: addon loaded from its own container     |
 | [No Docker](#2-run-without-docker)      | Node.js 24, pnpm 12 | Changing the example addon's code and seeing the result |
+| [Online demo](#3-the-online-demo)       | A browser           | Showing the dashboard to people, with a guided tour     |
 
 ## What you will see
 
@@ -250,6 +252,32 @@ and change the banner text, then reload the dashboard. Some ideas to try:
   section for dashboard UIs without an installed addon (a dev override has no installed record).
 
 The [addon developer guide](addons/README.md) explains each of these in detail.
+
+## 3. The online demo
+
+<https://oakestra.github.io/dashboard-v2/> is a static build of the dashboard for people who want
+to look around without installing anything. Log in with the button on the login page (`Admin` /
+`Admin`); a short tour starts after the first login and can be restarted from the bar at the top.
+
+Everything runs in the browser: the system-manager, the addons manager and the marketplace are
+the same in-memory mocks as in `pnpm dev:mock` (MSW in a service worker), with the
+placement demo's clusters. Changes last until the page is reloaded. Three addons are real Module
+Federation remotes served next to the shell:
+
+| Addon                                    | State in the demo               | Shows                                                        |
+| ---------------------------------------- | ------------------------------- | ------------------------------------------------------------ |
+| [Example](../addons/example)             | Installed                       | Every extension point, including a widget that crashes       |
+| [Carbon & Energy](../addons/demo-carbon) | Installed                       | Pages, an overview card and a widget on cluster detail pages |
+| [FLOps](../addons/demo-flops)            | Install it from the marketplace | The UI of a newly installed addon appearing without a reload |
+
+Carbon & Energy and FLOps exist only for the demo; their numbers are made up.
+
+The build is `vite build --mode demo` plus the three addon builds, put together by
+`pnpm build:demo` into `apps/shell/dist-demo/`. The site lives below `/dashboard-v2/` (set
+`DEMO_BASE` for another path), so open it through a server that serves that folder at that path,
+not with `vite preview`. GitHub Pages has no fallback for client-side routes, so the build copies
+`index.html` to `404.html`. `.github/workflows/deploy-demo.yml` deploys it on every push to `main`;
+the repository needs Settings > Pages > Source set to "GitHub Actions" once.
 
 ## Troubleshooting the demo
 

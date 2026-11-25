@@ -14,7 +14,7 @@ import {
 } from '@oakestra/ui';
 import { useMutation } from '@tanstack/react-query';
 import { ChevronDownIcon, InfoIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import type { z } from 'zod';
@@ -22,6 +22,15 @@ import type { z } from 'zod';
 import { useAuthSession, useAuthState } from '../../../core/auth/auth-context';
 import { safeRedirectTarget } from '../../../core/auth/guards';
 import { AuthCard } from '../components/AuthCard';
+
+// Static demo only (`vite build --mode demo`). The mode check must stay inline, see
+// bootstrap.tsx: only then does the production build drop the chunk.
+const DemoLoginBanner =
+  import.meta.env.MODE === 'demo'
+    ? lazy(() =>
+        import('../../../demo/DemoLoginBanner').then((m) => ({ default: m.DemoLoginBanner })),
+      )
+    : null;
 
 type LoginForm = z.input<typeof loginRequestSchema>;
 
@@ -46,6 +55,7 @@ export function LoginPage() {
   const [searchParams] = useSearchParams();
   const logoutReason = useAuthState((state) => state.lastLogoutReason);
   const [withOrganization, setWithOrganization] = useState(false);
+  const submitRef = useRef<HTMLButtonElement>(null);
 
   const form = useForm<LoginForm, unknown, z.output<typeof loginRequestSchema>>({
     resolver: zodResolver(loginRequestSchema),
@@ -74,6 +84,11 @@ export function LoginPage() {
 
   return (
     <AuthCard title="Log in" description="Use your Oakestra account.">
+      {DemoLoginBanner ? (
+        <Suspense fallback={null}>
+          <DemoLoginBanner setValue={form.setValue} submitRef={submitRef} />
+        </Suspense>
+      ) : null}
       <form
         onSubmit={(event) => void form.handleSubmit((values) => login.mutate(values))(event)}
         noValidate
@@ -154,7 +169,7 @@ export function LoginPage() {
               </Field>
             ) : null}
           </div>
-          <Button type="submit" className="w-full" disabled={login.isPending}>
+          <Button ref={submitRef} type="submit" className="w-full" disabled={login.isPending}>
             {login.isPending ? 'Logging in...' : 'Log in'}
           </Button>
           {import.meta.env.DEV && import.meta.env.MODE === 'mock' ? (

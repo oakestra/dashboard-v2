@@ -11,6 +11,7 @@
     "dev:mock": "pnpm --filter @oakestra/shell dev:mock",
     "storybook": "pnpm --filter @oakestra/ui storybook",
     "build": "pnpm -r --filter=!@oakestra/e2e build",
+    "build:demo": "pnpm --filter @oakestra/shell build:demo",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "typecheck": "pnpm -r typecheck",

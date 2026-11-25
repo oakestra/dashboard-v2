@@ -1,6 +1,7 @@
 import semver from 'semver';
 import { z } from 'zod';
 
+import { sitePath } from '../base-path';
 import type { ContributionSource } from '../extensions/registry';
 
 /** Addon names double as container names (`addonui-<name>`) and nginx path segments. */
@@ -84,7 +85,7 @@ export function parseUiAddons(body: unknown): UiAddon[] {
 export function addonEntryUrl(name: string, origin = window.location.origin): string {
   // Absolute on purpose: remotes are built with publicPath "auto", which the federation runtime can
   // only resolve against an absolute manifest URL.
-  return new URL(`/addon-assets/${name}/mf-manifest.json`, origin).href;
+  return new URL(sitePath(`/addon-assets/${name}/mf-manifest.json`), origin).href;
 }
 
 export function addonBasePath(name: string): string {

@@ -1,0 +1,119 @@
+/*
+ * driver.js popover in the shell's look. Imported only by the lazy tour chunk, so neither this
+ * nor driver.css reaches a production build. The doubled class beats driver.css, which resets
+ * the popover with `all: unset` and then styles it with single class selectors.
+ */
+.driver-popover.oak-tour {
+  font-family: var(--font-ui);
+  color: var(--popover-foreground);
+  background-color: var(--popover);
+  border: 1px solid var(--border);
+  /* Overlays are rounded-xl. */
+  border-radius: calc(var(--radius) + 4px);
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+  padding: 1rem;
+  min-width: 16rem;
+  max-width: min(22rem, calc(100vw - 2rem));
+}
+
+.driver-popover.oak-tour .driver-popover-title {
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.4;
+  padding-right: 1.5rem;
+}
+
+.driver-popover.oak-tour .driver-popover-description {
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+
+.driver-popover.oak-tour .driver-popover-close-btn {
+  color: var(--muted-foreground);
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: calc(var(--radius) - 2px);
+}
+
+.driver-popover.oak-tour .driver-popover-close-btn:hover,
+.driver-popover.oak-tour .driver-popover-close-btn:focus-visible {
+  color: var(--foreground);
+  background-color: var(--accent);
+}
+
+.driver-popover.oak-tour .driver-popover-footer {
+  margin-top: 1rem;
+  gap: 0.75rem;
+}
+
+.driver-popover.oak-tour .driver-popover-progress-text {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.driver-popover.oak-tour .driver-popover-footer-btn {
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  text-shadow: none;
+  padding: 0.25rem 0.75rem;
+  border-radius: calc(var(--radius) - 2px);
+  color: var(--foreground);
+  background-color: var(--background);
+  border: 1px solid var(--border);
+}
+
+.driver-popover.oak-tour .driver-popover-footer-btn:hover {
+  background-color: var(--accent);
+}
+
+.driver-popover.oak-tour .driver-popover-next-btn {
+  color: var(--primary-fill-foreground);
+  background-color: var(--primary-fill);
+  border-color: var(--primary-fill);
+}
+
+.driver-popover.oak-tour .driver-popover-next-btn:hover {
+  background-color: var(--primary-fill);
+  opacity: 0.9;
+}
+
+.driver-popover.oak-tour .driver-popover-footer-btn:focus-visible,
+.driver-popover.oak-tour .driver-popover-close-btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* The arrow is a border triangle in the popover's color; its outer sides stay transparent. */
+.driver-popover.oak-tour .driver-popover-arrow {
+  border-color: var(--popover);
+}
+.driver-popover.oak-tour .driver-popover-arrow-side-left {
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  border-right-color: transparent;
+}
+.driver-popover.oak-tour .driver-popover-arrow-side-right {
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+}
+.driver-popover.oak-tour .driver-popover-arrow-side-top {
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+  border-right-color: transparent;
+}
+.driver-popover.oak-tour .driver-popover-arrow-side-bottom {
+  border-top-color: transparent;
+  border-left-color: transparent;
+  border-right-color: transparent;
+}

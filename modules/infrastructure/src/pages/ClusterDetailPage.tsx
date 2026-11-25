@@ -283,7 +283,7 @@ function ClusterDetail({ cluster }: { cluster: Cluster }) {
         point="cluster.widgets"
         context={widgetContext}
         render={(item, content, source) => (
-          <Card>
+          <Card data-tour={`cluster-widget-${source.id}-${item.id}`}>
             <CardHeader>
               <CardTitle>{item.title}</CardTitle>
               {source.remote ? (

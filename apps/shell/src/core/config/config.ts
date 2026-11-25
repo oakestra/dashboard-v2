@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { sitePath } from '../base-path';
+
 /**
  * The container template renders unset variables as `""`, which means "not configured" rather
  * than "invalid".
@@ -90,6 +92,6 @@ export async function fetchConfigFile<T extends z.ZodType>(
   return parseConfigFile(schema, raw, url);
 }
 
-export function loadConfig(url = '/config.json'): Promise<AppConfig> {
+export function loadConfig(url = sitePath('/config.json')): Promise<AppConfig> {
   return fetchConfigFile(appConfigSchema, url);
 }

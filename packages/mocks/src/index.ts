@@ -20,6 +20,7 @@ export {
 export { createAddonsFetchHandler, createMockFetchHandler } from './fetch-handler.ts';
 export { createHandlers, LEAKED_PASSWORD_PLACEHOLDER, type MockApiOptions } from './handlers.ts';
 export { withPlacementDemo } from './scenarios.ts';
+export { withShowcaseAddons } from './showcase.ts';
 export {
   createMockStore,
   createObjectId,

@@ -17,6 +17,8 @@ const elements = [
   // Presentational components and helpers shared by several features; no feature knowledge.
   { type: 'shell-shared', pattern: ['apps/shell/src/components', 'apps/shell/src/lib'] },
   { type: 'shell-test', pattern: 'apps/shell/src/test' },
+  // UI of the static demo build only, loaded through import() behind a mode check (see below).
+  { type: 'shell-demo', pattern: 'apps/shell/src/demo' },
   // Shell-level tests of the linked addon packages (real router, layout, MSW backend).
   { type: 'shell-linked-test', pattern: 'apps/shell/src/linked' },
   { type: 'sdk', pattern: 'packages/dashboard-sdk' },
@@ -40,7 +42,15 @@ const allow = (from, ...types) => ({
 
 const policies = [
   // `mocks` only for src/mock-api.ts (dev:mock); no-restricted-imports keeps it out of the rest.
-  allow('shell-entry', 'shell-entry', 'shell-app', 'shell-core', 'mocks', ...shellShared),
+  allow(
+    'shell-entry',
+    'shell-entry',
+    'shell-app',
+    'shell-core',
+    'shell-demo',
+    'mocks',
+    ...shellShared,
+  ),
   allow(
     'shell-app',
     'shell-app',
@@ -50,6 +60,7 @@ const policies = [
     'shell-test',
     // app/modules.ts links the addon packages into the shell.
     'module',
+    'shell-demo',
     ...shellShared,
   ),
   // Core is the platform features build on; it must not depend on any feature. `mocks` is for
@@ -71,7 +82,17 @@ const policies = [
   allow('shell-shared', 'shell-shared', 'shell-core', ...shellShared),
   // Features may use core, shared components and their own files. Other features only through
   // their index.ts.
-  allow('shell-feature', 'shell-core', 'shell-shared', 'shell-test', 'mocks', ...shellShared),
+  allow(
+    'shell-feature',
+    'shell-core',
+    'shell-shared',
+    'shell-test',
+    'shell-demo',
+    'mocks',
+    ...shellShared,
+  ),
+  // The demo builds on the platform like a feature, and knows no feature.
+  allow('shell-demo', 'shell-demo', 'shell-core', 'shell-shared', 'shell-test', ...shellShared),
   {
     from: { element: { type: 'shell-feature' } },
     allow: {
@@ -340,6 +361,14 @@ export function importBoundaries({ rootDir }) {
                 group: ['**/test/*'],
                 message: 'The test helpers in src/test are for tests only.',
               },
+              {
+                // A static import would put demo code into every build. It goes through
+                // import() behind an inline `import.meta.env.MODE === 'demo'` instead, which
+                // this rule does not check and the production build drops.
+                group: ['**/demo/*'],
+                message:
+                  "Load src/demo with import() behind import.meta.env.MODE === 'demo', so production builds do not contain it.",
+              },
             ],
           },
         ],
@@ -373,6 +402,7 @@ export function createConfig({ rootDir }) {
       ignores: [
         '**/node_modules/**',
         '**/dist/**',
+        '**/dist-demo/**',
         '**/storybook-static/**',
         '**/coverage/**',
         '**/.vite/**',

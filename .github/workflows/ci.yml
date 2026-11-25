@@ -33,6 +33,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      # The GitHub Pages demo (deploy-demo.yml), so a change that breaks it fails here and not on
+      # main. Also checks that the showcase addons build and pass the prefix check.
+      - run: pnpm build:demo
       # Public types of the published packages must match the reports in packages/*/api-report,
       # so every API change shows up in review. `pnpm api:update` refreshes them.
       - run: pnpm api:check

@@ -1,7 +1,8 @@
 // Fails the build if dev-only code made it into the production bundle. The addon override would
 // let a crafted link load arbitrary code into a logged-in session, and the mock API (MSW plus
 // fixtures, with a login that accepts the username as password) must never answer real users.
-// Both have to be compiled out, not just switched off at runtime.
+// Both have to be compiled out, not just switched off at runtime. The static demo's UI (login
+// hint with the demo password, tour) is marked by `oakestra-demo` in its attributes and keys.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -12,6 +13,7 @@ const forbidden = [
   'mockServiceWorker',
   'mock-signature',
   '[mock api]',
+  'oakestra-demo',
 ];
 
 function* files(dir) {
@@ -34,4 +36,4 @@ if (offenders.length > 0) {
   console.error('Production bundle contains dev-only code:\n' + offenders.join('\n'));
   process.exit(1);
 }
-console.log('assert-prod-bundle: no dev-only code (addon override, mock API) in dist/');
+console.log('assert-prod-bundle: no dev-only code (addon override, mock API, demo) in dist/');

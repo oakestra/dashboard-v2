@@ -62,6 +62,9 @@ entries, widgets and tabs without a new dashboard release.
 
 ## Quick start
 
+**No install:** the [online demo](https://oakestra.github.io/dashboard-v2/) runs the dashboard in
+your browser with simulated clusters, a few addons and a guided tour.
+
 The fastest way to see the dashboard, including a working addon, is the demo stack. It runs
 the dashboard with mock Oakestra backends, so you need nothing but Docker:
 
@@ -186,6 +189,7 @@ Start with the [addon developer guide](docs/addons/README.md). The reference add
 | `pnpm typecheck`                            | TypeScript in every package                                    |
 | `pnpm test`                                 | Unit tests (Vitest, with MSW mocks)                            |
 | `pnpm build`                                | Production build of every package                              |
+| `pnpm build:demo`                           | Static online demo in `apps/shell/dist-demo` ([docs](docs/demo.md#3-the-online-demo)) |
 | `pnpm e2e`                                  | Playwright suite against the demo stack (start it first)       |
 | `pnpm gen:api`                              | Refresh the API types from a running system-manager            |
 | `pnpm api:check`                            | Compare the public types of the npm packages with their API reports |
