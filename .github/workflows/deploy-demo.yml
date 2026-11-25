@@ -1,0 +1,59 @@
+name: Deploy demo
+
+# The static demo (shell + MSW mock backend + showcase addons) on GitHub Pages. Needs Settings >
+# Pages > Source "GitHub Actions" once.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Only the latest main matters; an older deployment still running is replaced.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      # The pnpm version comes from "packageManager" in package.json.
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - id: pages
+        uses: actions/configure-pages@v6
+
+      # base_path is "/<repo>" for a project site and empty for a custom domain; Vite wants the
+      # trailing slash.
+      - run: pnpm build:demo
+        env:
+          DEMO_BASE: ${{ steps.pages.outputs.base_path }}/
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: apps/shell/dist-demo
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

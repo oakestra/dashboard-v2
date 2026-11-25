@@ -142,7 +142,7 @@ export function ApplicationDetailPage() {
       : `${plural(undeployed.length, 'service')} ${undeployed.length === 1 ? 'is' : 'are'} not deployed yet.`;
 
   const servicesPanel = (
-    <div className="space-y-3">
+    <div className="space-y-3" data-tour="application-services">
       {undeployed.length > 0 ? (
         // A standing hint, not an event: role=status keeps screen readers from interrupting.
         <Alert

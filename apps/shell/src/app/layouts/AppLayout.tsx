@@ -11,7 +11,7 @@ import {
   cn,
 } from '@oakestra/ui';
 import { useCurrentUser } from '@oakestra/dashboard-sdk';
-import { Suspense } from 'react';
+import { lazy, Suspense } from 'react';
 import { Link, Outlet, useMatches } from 'react-router';
 
 import { isAddonPageMatch, useAddonFullWidth } from '../../core/addons/addon-crumbs';
@@ -25,6 +25,13 @@ import { CommandPalette } from './CommandPalette';
 import { OrganizationBadge } from './OrganizationBadge';
 import { usePageScroll } from './use-page-scroll';
 import { UserMenu } from './UserMenu';
+
+// Static demo only (`vite build --mode demo`). The mode check must stay inline, see
+// bootstrap.tsx: only then does the production build drop the chunk.
+const DemoBar =
+  import.meta.env.MODE === 'demo'
+    ? lazy(() => import('../../demo/DemoBar').then((m) => ({ default: m.DemoBar })))
+    : null;
 
 /** Whether the current page asked for the full width, with an addon page's own routes included. */
 function useFullWidth(): boolean {
@@ -87,6 +94,11 @@ export function AppLayout() {
       {/* Scrolls inside the panel: with the page scrolling, content would slide past its rounded
           corners and the gap above it. */}
       <SidebarInset ref={panel} className="md:h-[calc(100svh-1rem)] md:overflow-y-auto">
+        {DemoBar && signedIn ? (
+          <Suspense fallback={null}>
+            <DemoBar />
+          </Suspense>
+        ) : null}
         <header className="bg-background/85 sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur md:px-6">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />

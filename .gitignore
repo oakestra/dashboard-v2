@@ -11,3 +11,4 @@ coverage/
 e2e/test-results/
 e2e/playwright-report/
 .__mf__temp/
+dist-demo/

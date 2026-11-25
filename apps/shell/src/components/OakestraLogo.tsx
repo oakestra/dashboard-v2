@@ -1,5 +1,7 @@
 import { cn } from '@oakestra/ui';
 
+import { sitePath } from '../core/base-path';
+
 export interface OakestraLogoProps {
   /** `wordmark` is the full "Oakestra" lettering, `mark` the round tree on its own. */
   variant?: 'wordmark' | 'mark';
@@ -7,8 +9,14 @@ export interface OakestraLogoProps {
 }
 
 const SOURCES = {
-  wordmark: { light: '/brand/oakestra-wordmark.png', dark: '/brand/oakestra-wordmark-dark.png' },
-  mark: { light: '/brand/oakestra-mark.png', dark: '/brand/oakestra-mark-dark.png' },
+  wordmark: {
+    light: sitePath('/brand/oakestra-wordmark.png'),
+    dark: sitePath('/brand/oakestra-wordmark-dark.png'),
+  },
+  mark: {
+    light: sitePath('/brand/oakestra-mark.png'),
+    dark: sitePath('/brand/oakestra-mark-dark.png'),
+  },
 } as const;
 
 /**

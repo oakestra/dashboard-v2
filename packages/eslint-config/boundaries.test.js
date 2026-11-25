@@ -86,6 +86,13 @@ describe('import boundaries', () => {
     ['apps/shell/src/linked/help.test.tsx', "import { renderApp } from '../test/render';"],
     ['apps/shell/src/linked/help.test.tsx', "import { linkedAddons } from '../app/modules';"],
     ['apps/shell/src/linked/help.test.tsx', "import { http } from '@oakestra/mocks';"],
+    ['apps/shell/src/app/layouts/AppLayout.tsx', "const bar = import('../../demo/DemoBar');"],
+    [
+      'apps/shell/src/features/auth/pages/LoginPage.tsx',
+      "const banner = import('../../../demo/DemoLoginBanner');",
+    ],
+    ['apps/shell/src/demo/DemoBar.tsx', "import { notify } from '../core/notify/notify';"],
+    ['apps/shell/src/demo/DemoBar.test.tsx', "import { renderApp } from '../test/render';"],
   ])('allows %s: %s', async (file, code) => {
     expect(await violations(file, code)).toEqual([]);
   });
@@ -254,6 +261,21 @@ describe('import boundaries', () => {
     [
       'packages/api/src/x.ts',
       "import { createHandlers } from '../../mocks/src/handlers';",
+      'boundaries/dependencies',
+    ],
+    [
+      'apps/shell/src/app/layouts/AppLayout.tsx',
+      "import { DemoBar } from '../../demo/DemoBar';",
+      'no-restricted-imports',
+    ],
+    [
+      'apps/shell/src/demo/DemoBar.tsx',
+      "import { overviewModule } from '../features/overview';",
+      'boundaries/dependencies',
+    ],
+    [
+      'apps/shell/src/core/x.ts',
+      "const bar = import('../demo/DemoBar');",
       'boundaries/dependencies',
     ],
   ])('rejects %s: %s', async (file, code, rule) => {

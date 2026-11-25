@@ -4,6 +4,7 @@ import { ADDON_PAGE_ROUTE_ID, addonMountRoute } from '../core/addons/addon-crumb
 import { AddonRouteHost } from '../core/addons/AddonRouteHost';
 import type { LinkedAddon } from '../core/addons/linked-addons';
 import { FORBIDDEN_MESSAGE, requireAuth } from '../core/auth/guards';
+import { routerBasename } from '../core/base-path';
 import { DEFAULT_PRESET, type Preset } from '../core/config/preset';
 import type { CoreModule } from '../core/modules';
 import { createRouterContext, type AppRouterContext } from '../core/router/app-context';
@@ -103,6 +104,7 @@ export function createAppRouter(
   context: AppRouterContext,
 ) {
   return createBrowserRouter(createAppRoutes(modules, preset, linked), {
+    basename: routerBasename(),
     getContext: createRouterContext(context),
   });
 }

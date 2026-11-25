@@ -61,6 +61,11 @@ export interface AddonsBackendOptions {
    * backend that will support it.
    */
   uiBlockSupport?: boolean;
+  /**
+   * Adjusts the seed, e.g. `withShowcaseAddons`. Runs on every (re)seed, so `reset()` keeps it, and
+   * after the `ui` blocks were stripped, so a customization that adds one needs `uiBlockSupport`.
+   */
+  customize?: (state: AddonsBackendState) => void;
 }
 
 export interface AddonsBackendState {
@@ -96,7 +101,7 @@ export interface AddonsBackend {
   uiAddons(): UiAddonEntry[];
   /** Sets a status at once and drops pending transitions (no follow-up, unlike PATCH). */
   forceStatus(id: string, status: MockInstalledAddon['status']): void;
-  setDelays(delays: Omit<AddonsBackendOptions, 'uiBlockSupport'>): void;
+  setDelays(delays: Omit<AddonsBackendOptions, 'uiBlockSupport' | 'customize'>): void;
   /** Restores the seed and cancels pending transitions. Keeps the delays. */
   reset(): void;
 }
@@ -280,6 +285,7 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
     if (!uiBlockSupport) for (const definition of state.marketplace) delete definition.ui;
     state.installed = installedFixtures(state.marketplace);
     versions.clear();
+    options.customize?.(state);
   }
   seed();
 
@@ -340,7 +346,7 @@ export function createAddonsBackend(options: AddonsBackendOptions = {}): AddonsB
     }
   }
 
-  function setDelays(next: Omit<AddonsBackendOptions, 'uiBlockSupport'>): void {
+  function setDelays(next: Omit<AddonsBackendOptions, 'uiBlockSupport' | 'customize'>): void {
     delays.install = next.installDelayMs ?? delays.install;
     delays.disable = next.disableDelayMs ?? next.installDelayMs ?? delays.disable;
     delays.review = next.reviewDelayMs ?? next.installDelayMs ?? delays.review;

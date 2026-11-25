@@ -92,13 +92,16 @@ const proxy: Record<string, ProxyOptions> = {
 };
 
 export default defineConfig(({ mode }) => ({
-  // The federation runtime relies on top-level await.
-  build: { target: 'esnext' },
+  // The static demo (`pnpm build:demo`) runs on GitHub Pages below the repository name.
+  base: mode === 'demo' ? (process.env.DEMO_BASE ?? '/dashboard-v2/') : '/',
+  // The federation runtime relies on top-level await. The demo gets its own folder, so building
+  // it never leaves MSW in dist/, which the image is built from.
+  build: { target: 'esnext', outDir: mode === 'demo' ? 'dist-demo' : 'dist' },
   plugins: [
     addonAssetsNotFound(addonAssets.map((entry) => entry.name)),
-    // `pnpm dev:mock` (mode "mock") serves MSW's worker script. Only added in that mode: in a
-    // build the plugin would emit the worker into dist/.
-    mode === 'mock' ? msw({ mode: 'worker-only' }) : null,
+    // `pnpm dev:mock` (mode "mock") serves MSW's worker script and the demo build emits it. Never
+    // added otherwise: in a production build the plugin would emit the worker into dist/.
+    mode === 'mock' || mode === 'demo' ? msw({ mode: 'worker-only' }) : null,
     react(),
     tailwindcss(),
     federation({

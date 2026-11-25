@@ -31,9 +31,11 @@ try {
     linkedAddons,
     await loadPreset(config.presetUrl),
   );
-  // `pnpm dev:mock`: the system-manager is replaced by MSW in the browser. Both conditions are
-  // constants at build time, so production bundles contain neither MSW nor the fixtures.
-  if (import.meta.env.DEV && import.meta.env.MODE === 'mock') {
+  // `pnpm dev:mock` and the static demo: the system-manager is replaced by MSW in the browser.
+  // The conditions are constants at build time, so production bundles contain neither MSW nor
+  // the fixtures. They have to be written out here: Rolldown splits chunks before it inlines
+  // constants imported from another module, so a shared flag would leave the chunk in dist/.
+  if ((import.meta.env.DEV && import.meta.env.MODE === 'mock') || import.meta.env.MODE === 'demo') {
     const { startMockApi } = await import('./mock-api');
     await startMockApi(config);
   }

@@ -43,7 +43,7 @@ export function AppNav() {
     const { entries, links } = inGroup(group.id);
     if (entries.length === 0 && links.length === 0) return null;
     return (
-      <SidebarGroup key={group.id}>
+      <SidebarGroup key={group.id} data-tour={`nav-group-${group.id}`}>
         <SidebarGroupLabel>{nav.groupLabels[group.id] ?? group.label}</SidebarGroupLabel>
         <SidebarGroupContent>
           <NavMenu entries={entries} links={links} activeKey={activeKey} />
