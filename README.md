@@ -62,7 +62,7 @@ entries, widgets and tabs without a new dashboard release.
 
 ## Quick start
 
-**No install:** the [online demo](https://oakestra.github.io/dashboard-v2/) runs the dashboard in
+**No install:** the [online demo](https://oakestra.io/dashboard-v2/) runs the dashboard in
 your browser with simulated clusters, a few addons and a guided tour.
 
 The fastest way to see the dashboard, including a working addon, is the demo stack. It runs

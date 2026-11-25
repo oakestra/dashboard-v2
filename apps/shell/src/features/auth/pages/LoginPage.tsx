@@ -14,7 +14,7 @@ import {
 } from '@oakestra/ui';
 import { useMutation } from '@tanstack/react-query';
 import { ChevronDownIcon, InfoIcon } from 'lucide-react';
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import type { z } from 'zod';
@@ -55,7 +55,6 @@ export function LoginPage() {
   const [searchParams] = useSearchParams();
   const logoutReason = useAuthState((state) => state.lastLogoutReason);
   const [withOrganization, setWithOrganization] = useState(false);
-  const submitRef = useRef<HTMLButtonElement>(null);
 
   const form = useForm<LoginForm, unknown, z.output<typeof loginRequestSchema>>({
     resolver: zodResolver(loginRequestSchema),
@@ -86,7 +85,7 @@ export function LoginPage() {
     <AuthCard title="Log in" description="Use your Oakestra account.">
       {DemoLoginBanner ? (
         <Suspense fallback={null}>
-          <DemoLoginBanner setValue={form.setValue} submitRef={submitRef} />
+          <DemoLoginBanner setValue={form.setValue} />
         </Suspense>
       ) : null}
       <form
@@ -169,7 +168,7 @@ export function LoginPage() {
               </Field>
             ) : null}
           </div>
-          <Button ref={submitRef} type="submit" className="w-full" disabled={login.isPending}>
+          <Button type="submit" className="w-full" disabled={login.isPending}>
             {login.isPending ? 'Logging in...' : 'Log in'}
           </Button>
           {import.meta.env.DEV && import.meta.env.MODE === 'mock' ? (

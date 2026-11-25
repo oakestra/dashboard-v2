@@ -255,9 +255,10 @@ The [addon developer guide](addons/README.md) explains each of these in detail.
 
 ## 3. The online demo
 
-<https://oakestra.github.io/dashboard-v2/> is a static build of the dashboard for people who want
-to look around without installing anything. Log in with the button on the login page (`Admin` /
-`Admin`); a short tour starts after the first login and can be restarted from the bar at the top.
+<https://oakestra.io/dashboard-v2/> is a static build of the dashboard for people who want
+to look around without installing anything. The login form comes filled in with the demo account
+(`Admin` / `Admin`); a short tour starts after the first login and can be restarted from the bar
+at the top.
 
 Everything runs in the browser: the system-manager, the addons manager and the marketplace are
 the same in-memory mocks as in `pnpm dev:mock` (MSW in a service worker), with the

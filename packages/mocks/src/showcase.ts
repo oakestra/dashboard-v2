@@ -20,7 +20,7 @@ export function withShowcaseAddons(state: AddonsBackendState): void {
   const flops = state.marketplace.find((definition) => definition.name === 'flops');
   if (flops) {
     flops.description =
-      'Federated learning on Oakestra: train models across clusters without moving the data.';
+      'Federated learning on Oakestra: one model trained on data from several clusters.';
     flops.services.unshift(uiService('flops-ui', 'ghcr.io/oakestra/dashboard-addon-flops:0.1.0'));
     flops.ui = { service: 'flops-ui', sdk: '^0.1.0' };
   }
