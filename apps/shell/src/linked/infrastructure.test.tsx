@@ -1,10 +1,11 @@
 import { http, HttpResponse } from '@oakestra/mocks';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import infrastructure from '@oakestra/module-infrastructure';
 
 import { linkedAddons } from '../app/modules';
+import { FLOW_PRELOAD_TIMEOUT, preloadFlowGraph } from '../test/flow';
 import { mockServer, mockStore, TEST_API_URL } from '../test/msw';
 import { renderApp, type RenderAppOptions } from '../test/render';
 
@@ -17,6 +18,8 @@ function renderInfrastructure(options: Partial<RenderAppOptions> = {}) {
 }
 
 describe('infrastructure (linked addon)', () => {
+  beforeAll(preloadFlowGraph, FLOW_PRELOAD_TIMEOUT);
+
   it('is linked at /infrastructure', () => {
     expect(linkedAddons).toContainEqual({ definition: infrastructure, mount: '/infrastructure' });
   });

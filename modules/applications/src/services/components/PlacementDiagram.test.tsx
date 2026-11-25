@@ -59,9 +59,15 @@ describe('buildPlacementGraph', () => {
 });
 
 describe('PlacementDiagram', () => {
-  it('renders the service and its clusters', async () => {
+  // FlowGraph is lazy, and the first import in a worker has Vite transform React Flow and dagre.
+  // That can take over a second when all packages run their tests in parallel.
+  it('renders the service and its clusters', { timeout: 15_000 }, async () => {
     renderInHost(<PlacementDiagram service={service} rows={rows} />);
-    const graph = await screen.findByRole('group', { name: /could host bigmem/ });
+    const graph = await screen.findByRole(
+      'group',
+      { name: /could host bigmem/ },
+      { timeout: 10_000 },
+    );
     for (const label of ['bigmem', 'alpha', 'beta', 'gamma'])
       expect(graph).toHaveTextContent(label);
   });

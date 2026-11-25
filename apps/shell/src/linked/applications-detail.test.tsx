@@ -1,11 +1,12 @@
 import { http, HttpResponse } from '@oakestra/mocks';
 import type { Contributions } from '@oakestra/dashboard-sdk';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import { linkedAddons } from '../app/modules';
 import { addonSource } from '../core/addons/ui-addons';
 import type { CoreModule } from '../core/modules';
+import { FLOW_PRELOAD_TIMEOUT, preloadFlowGraph } from '../test/flow';
 import { mockServer, mockStore, TEST_API_URL } from '../test/msw';
 import { renderApp } from '../test/render';
 
@@ -21,6 +22,8 @@ function renderDetail(extra: CoreModule[] = []) {
 }
 
 describe('application detail page (linked addon)', () => {
+  beforeAll(preloadFlowGraph, FLOW_PRELOAD_TIMEOUT);
+
   it('shows the application and its services', async () => {
     renderDetail();
 
