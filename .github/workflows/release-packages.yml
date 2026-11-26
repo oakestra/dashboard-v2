@@ -73,7 +73,7 @@ jobs:
 
       - name: Open or update the version PR
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@v2
         with:
           version: pnpm version-packages
           commit: 'chore: version packages'
