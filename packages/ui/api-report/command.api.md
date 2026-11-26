@@ -5,14 +5,14 @@
 ```ts
 
 import { Command as Command_2 } from 'cmdk';
-import { Dialog } from 'radix-ui';
+import { Dialog as Dialog_2 } from 'radix-ui';
 import * as React_2 from 'react';
 
 // @public (undocumented)
 export function Command(input: React_2.ComponentProps<typeof Command_2>): React_2.JSX.Element;
 
 // @public (undocumented)
-export function CommandDialog(input: React_2.ComponentProps<typeof Dialog$1> & {
+export function CommandDialog(input: React_2.ComponentProps<typeof Dialog> & {
     title?: string;
     description?: string;
     className?: string;
@@ -42,7 +42,7 @@ export function CommandSeparator(input: React_2.ComponentProps<typeof Command_2.
 export function CommandShortcut(input: React_2.ComponentProps<'span'>): React_2.JSX.Element;
 
 // @public (undocumented)
-function Dialog$1(input: React_2.ComponentProps<typeof Dialog.Root>): React_2.JSX.Element;
+function Dialog(input: React_2.ComponentProps<typeof Dialog_2.Root>): React_2.JSX.Element;
 
 // (No @packageDocumentation comment for this package)
 
