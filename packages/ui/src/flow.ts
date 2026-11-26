@@ -9,6 +9,7 @@ export {
   type FlowEdge,
   type FlowGraphProps,
   type FlowLinkProps,
+  type FlowMeter,
   type FlowNode,
   type FlowNodeKind,
   type FlowTone,

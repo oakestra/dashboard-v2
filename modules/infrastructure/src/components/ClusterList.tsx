@@ -2,7 +2,10 @@ import type { Cluster } from '@oakestra/api';
 import { useAddonPath, useSearchParam } from '@oakestra/dashboard-sdk';
 import {
   Badge,
-  Card,
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemTitle,
   PointerGauge,
   cn,
   formatBytes,
@@ -78,9 +81,9 @@ function Meter({
   lastKnown: boolean;
 }) {
   return (
-    <>
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd>
+    <div className="flex items-center gap-2">
+      <dt className="text-muted-foreground w-12 shrink-0">{label}</dt>
+      <dd className="w-32">
         <PointerGauge
           size="sm"
           label={lastKnown ? `${label} (last known)` : label}
@@ -93,16 +96,19 @@ function Meter({
           {...(lastKnown ? { normalMax: 100 } : {})}
         />
       </dd>
-    </>
+    </div>
   );
 }
 
 /**
+ * One row per cluster. The graph above draws the same clusters; this list is for searching and
+ * sorting them.
+ *
  * A silent cluster keeps its last report, so a zero or an unlabelled value would read as an idle
  * cluster. `clusterUsage` drops the zeros; what is left sits on the stale hatch and is announced as
  * last known.
  */
-function ClusterCard({ cluster, href }: { cluster: Cluster; href: string }) {
+function ClusterRow({ cluster, href }: { cluster: Cluster; href: string }) {
   const { stale } = clusterPresentation(cluster);
   const { cpuPercent, memoryPercent, memoryAvailableBytes, activeNodes, lastKnown } =
     clusterUsage(cluster);
@@ -113,23 +119,24 @@ function ClusterCard({ cluster, href }: { cluster: Cluster; href: string }) {
   ];
   const lastSeen = cluster.last_modified_timestamp;
   return (
-    <Card className="hover:bg-accent/40 h-full gap-4 transition-colors">
-      <div className="flex items-start justify-between gap-3 px-5">
-        <div className="min-w-0">
-          <Link to={href} className={`block truncate font-semibold ${stretchedLinkClassName}`}>
+    <Item className="gap-x-6 gap-y-2 rounded-none px-4 py-3">
+      <ItemContent className="min-w-48">
+        <ItemTitle>
+          <Link to={href} className={`truncate ${stretchedLinkClassName}`}>
             {cluster.cluster_name}
           </Link>
-          <div className="text-muted-foreground truncate text-sm tabular-nums">
-            {capacity.join(', ') || 'No nodes reported'}
-            {lastKnown && capacity.length > 0 ? ' (last known)' : ''}
-          </div>
-        </div>
-        <ClusterStatusBadge cluster={cluster} />
-      </div>
-      {/* The percentage is mean usage over the workers, the bytes what is left: two facts. */}
+          <ClusterStatusBadge cluster={cluster} />
+        </ItemTitle>
+        <ItemDescription className="line-clamp-1 tabular-nums">
+          {capacity.join(', ') || 'No nodes reported'}
+          {lastKnown && capacity.length > 0 ? ' (last known)' : ''}
+        </ItemDescription>
+      </ItemContent>
+      {/* The percentage is mean usage over the workers, the bytes what is left: two facts.
+          Below `lg` the figures take a line of their own under the name. */}
       <dl
         className={cn(
-          'mx-3 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 rounded-md px-2 py-1.5 text-xs',
+          'flex flex-wrap items-center gap-x-5 gap-y-1.5 rounded-md px-2 py-1 text-xs max-lg:order-last max-lg:basis-full',
           stale && [
             'text-muted-foreground [&_[data-slot=pointer-gauge]]:opacity-60',
             staleSurfaceClassName,
@@ -138,28 +145,31 @@ function ClusterCard({ cluster, href }: { cluster: Cluster; href: string }) {
       >
         <Meter label="CPU" percent={cpuPercent} lastKnown={lastKnown} />
         <Meter label="Memory" percent={memoryPercent} lastKnown={lastKnown} />
-        <dt className="text-muted-foreground">Available</dt>
-        <dd className="tabular-nums">
-          {memoryAvailableBytes ? (
-            <LastKnown lastKnown={lastKnown}>{formatBytes(memoryAvailableBytes)}</LastKnown>
-          ) : (
-            <span className="text-muted-foreground">-</span>
-          )}
-        </dd>
+        <div className="flex w-36 items-center gap-2">
+          <dt className="text-muted-foreground">Available</dt>
+          <dd className="tabular-nums">
+            {memoryAvailableBytes ? (
+              <LastKnown lastKnown={lastKnown}>{formatBytes(memoryAvailableBytes)}</LastKnown>
+            ) : (
+              <span className="text-muted-foreground">-</span>
+            )}
+          </dd>
+        </div>
       </dl>
-      <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 px-5">
-        <div className="flex flex-wrap gap-1">
+      {/* On a phone this is a line of its own, runtimes left and the time right. */}
+      <div className="flex flex-col items-end gap-1 max-sm:basis-full max-sm:flex-row max-sm:items-center max-sm:justify-between">
+        <div className="flex flex-wrap gap-1 sm:justify-end">
           {cluster.virtualization.map((virtualization) => (
             <Badge key={virtualization} variant="secondary" className="font-mono">
               {virtualization}
             </Badge>
           ))}
         </div>
-        <span className="text-muted-foreground ml-auto text-xs">
+        <span className="text-muted-foreground text-xs">
           {lastSeen ? `Last seen ${formatRelativeTime(lastSeen)}` : 'Never seen'}
         </span>
       </div>
-    </Card>
+    </Item>
   );
 }
 
@@ -176,7 +186,6 @@ export function ClusterList({
     <DataList
       label="Clusters"
       noun="cluster"
-      layout="grid"
       data={clusters}
       isLoading={isLoading}
       getRowId={(cluster) => cluster._id}
@@ -186,7 +195,7 @@ export function ClusterList({
       globalFilter={search}
       onGlobalFilterChange={setSearch}
       renderItem={(cluster) => (
-        <ClusterCard cluster={cluster} href={addonPath('clusters', cluster._id)} />
+        <ClusterRow cluster={cluster} href={addonPath('clusters', cluster._id)} />
       )}
     />
   );

@@ -17,6 +17,15 @@ export const NODE_SIZE: Readonly<Record<Exclude<FlowNodeKind, 'group'>, Size>> =
 /** Inner padding of a group and the height of its title row. */
 const GROUP_PADDING = 16;
 export const GROUP_HEADER = 36;
+/** Height of one meter row below a group's title, and the room under the last one. */
+export const GROUP_METER_ROW = 18;
+const GROUP_METERS_GAP = 6;
+
+/** Title row of a group plus its meters; members start below it. */
+export function groupHeaderHeight(node: Pick<FlowNode, 'meters'> | undefined): number {
+  const meters = node?.meters?.length ?? 0;
+  return GROUP_HEADER + (meters ? meters * GROUP_METER_ROW + GROUP_METERS_GAP : 0);
+}
 // As wide as a group holding one item, so an empty group's title and description fit and a row of
 // groups lines up whether they hold something or not.
 const EMPTY_GROUP: Size = {
@@ -387,7 +396,10 @@ export function layoutGraph(
     if (node.kind !== 'group') continue;
     const members = children.get(node.id) ?? [];
     if (!members.length) {
-      groupSizes.set(node.id, EMPTY_GROUP);
+      groupSizes.set(node.id, {
+        width: EMPTY_GROUP.width,
+        height: EMPTY_GROUP.height - GROUP_HEADER + groupHeaderHeight(node),
+      });
       continue;
     }
     const memberIds = new Set(members.map((member) => member.id));
@@ -404,7 +416,7 @@ export function layoutGraph(
       GROUP_SPACING,
     );
     const width = Math.max(layout.size.width + 2 * GROUP_PADDING, EMPTY_GROUP.width);
-    const height = GROUP_HEADER + layout.size.height + GROUP_PADDING;
+    const height = groupHeaderHeight(node) + layout.size.height + GROUP_PADDING;
     groupSizes.set(node.id, { width, height });
     // A group wider than its content (a long title) centers the content.
     const inset = (width - layout.size.width) / 2;
@@ -413,7 +425,7 @@ export function layoutGraph(
       const { x, y } = layout.positions.get(member.id) ?? { x: 0, y: 0 };
       result.set(member.id, {
         x: x + inset,
-        y: y + GROUP_HEADER,
+        y: y + groupHeaderHeight(node),
         ...leafSize(member),
         parent: node.id,
       });
@@ -498,7 +510,10 @@ export function layoutGraph(
     if (!group || edge.source === sourceBox || edge.target === sourceBox) continue;
     const origin = absolute(sourceBox);
     const points = (group.result.points.get(linkKey(edge.source, edge.target)) ?? []).map(
-      (point) => ({ x: point.x + origin.x + group.inset, y: point.y + origin.y + GROUP_HEADER }),
+      (point) => ({
+        x: point.x + origin.x + group.inset,
+        y: point.y + origin.y + groupHeaderHeight(byId.get(sourceBox)),
+      }),
     );
     const list = innerRequests.get(sourceBox) ?? [];
     list.push({ ...request, sourceBox: edge.source, targetBox: edge.target, points });
@@ -601,7 +616,13 @@ export function layoutKey(
     direction,
     nodes
       .map((node) =>
-        [node.id, node.kind ?? 'item', node.group ?? '', node.column ?? ''].join('\u0000'),
+        [
+          node.id,
+          node.kind ?? 'item',
+          node.group ?? '',
+          node.column ?? '',
+          node.meters?.length ?? 0,
+        ].join('\u0000'),
       )
       .sort(),
     edges.map((edge) => [edge.id, edge.source, edge.target].join('\u0000')).sort(),

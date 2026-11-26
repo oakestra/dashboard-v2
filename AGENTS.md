@@ -375,7 +375,7 @@ package name (never `./map`), so the shared map module stays the only MapLibre c
 
 `@oakestra/ui/flow` has `FlowGraph` (and `LazyFlowGraph`): a graph of `FlowNode`s (`kind`
 `primary`, `item`, `group` around the nodes naming it as `group`, `compact`; `tone`, `stale`,
-`pulse`, `href`, `column`) and `FlowEdge`s (`tone`, `dashed`, `animated`, `label`), laid out with
+`pulse`, `href`, `column`, and on groups `meters`, gauge rows under the title) and `FlowEdge`s (`tone`, `dashed`, `animated`, `label`), laid out with
 dagre (`flow-layout.ts`, pure) and drawn with React Flow, both only in the lazy chunk; no React Flow
 primitive is exported. The layout reruns only when the ids, kinds, groups, columns or direction
 change, so status updates recolor in place; nodes keep their input order within a column.

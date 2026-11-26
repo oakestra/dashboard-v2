@@ -7,6 +7,7 @@ export type {
   FlowEdge,
   FlowGraphProps,
   FlowLinkProps,
+  FlowMeter,
   FlowNode,
   FlowNodeKind,
   FlowTone,

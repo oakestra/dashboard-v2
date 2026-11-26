@@ -47,6 +47,7 @@ import {
 } from './flow-layout';
 import { FlowHoverCard } from './flow-hover-card';
 import { fitViewport, type ViewportFit } from './flow-viewport';
+import { PointerGauge } from './pointer-gauge';
 import { StatusDot, staleSurfaceClassName } from './status-badge';
 
 interface NodeData extends Record<string, unknown> {
@@ -223,7 +224,7 @@ function ItemNodeView({ data }: NodeProps<ItemNode>) {
 }
 
 function GroupNodeView({ data }: NodeProps<GroupNode>) {
-  const { description } = data.node;
+  const { description, meters } = data.node;
   return (
     <div
       data-slot="flow-node"
@@ -242,6 +243,23 @@ function GroupNodeView({ data }: NodeProps<GroupNode>) {
           </span>
         ) : null}
       </div>
+      {meters?.map((meter) => (
+        // The row height is GROUP_METER_ROW in flow-layout.ts, which reserves the room.
+        <div key={meter.label} className="flex h-[18px] items-center gap-2 px-3 text-xs">
+          <span aria-hidden className="w-12 shrink-0 text-muted-foreground">
+            {meter.label}
+          </span>
+          <PointerGauge
+            size="sm"
+            className="min-w-0 flex-1"
+            label={meter.label}
+            value={meter.value}
+            valueLabel={meter.valueLabel}
+            max={meter.max}
+            normalMax={meter.normalMax}
+          />
+        </div>
+      ))}
     </div>
   );
 }
@@ -643,7 +661,15 @@ export default function FlowGraphImpl({
         height: box.height,
         data,
         ...(box.parent ? { parentId: box.parent } : {}),
-        ariaLabel: node.description ? `${node.label}, ${node.description}` : node.label,
+        ariaLabel: [
+          node.label,
+          node.description,
+          ...(kind === 'group' ? (node.meters ?? []) : []).map(
+            (meter) => `${meter.label} ${meter.valueLabel ?? meter.value ?? 'no data'}`,
+          ),
+        ]
+          .filter(Boolean)
+          .join(', '),
       };
       return [flowNode];
     });

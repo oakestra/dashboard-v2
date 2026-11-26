@@ -55,7 +55,17 @@ const topologyNodes: FlowNode[] = [
   },
   { id: 'api', label: 'api', tone: 'warning', description: '1/2 running', column: 1 },
   { id: 'cache', label: 'cache', tone: 'info', pulse: true, description: 'Scheduling', column: 1 },
-  { id: 'munich', label: 'edge-munich', kind: 'group', tone: 'success', column: 2 },
+  {
+    id: 'munich',
+    label: 'edge-munich',
+    kind: 'group',
+    tone: 'success',
+    column: 2,
+    meters: [
+      { label: 'CPU', value: 88, valueLabel: '88%' },
+      { label: 'Memory', value: 41, valueLabel: '41%' },
+    ],
+  },
   { id: 'munich-1', label: 'worker-1', kind: 'compact', tone: 'success', group: 'munich' },
   { id: 'munich-2', label: 'worker-2', kind: 'compact', tone: 'warning', group: 'munich' },
   { id: 'berlin', label: 'edge-berlin', kind: 'group', stale: true, column: 2 },

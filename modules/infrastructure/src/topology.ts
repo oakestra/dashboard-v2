@@ -6,8 +6,8 @@ import {
   type Instance,
   type Service,
 } from '@oakestra/api';
-import { plural, type StatusTone } from '@oakestra/ui';
-import type { FlowEdge, FlowNode } from '@oakestra/ui/flow';
+import { formatPercent, plural, type StatusTone } from '@oakestra/ui';
+import type { FlowEdge, FlowMeter, FlowNode } from '@oakestra/ui/flow';
 
 import { clusterPresentation, clusterUsage } from './lib';
 
@@ -116,6 +116,26 @@ export function workersByCluster(services: readonly Service[], known: ReadonlySe
   return result;
 }
 
+/** CPU and memory usage of a reporting cluster, for the gauges in its frame. */
+function clusterMeters(cluster: Cluster): FlowMeter[] {
+  const { cpuPercent, memoryPercent } = clusterUsage(cluster);
+  const meter = (label: string, value: number | undefined): FlowMeter => ({
+    label,
+    value: value ?? null,
+    valueLabel: value === undefined ? undefined : formatPercent(value, 0),
+  });
+  return [meter('CPU', cpuPercent), meter('Memory', memoryPercent)];
+}
+
+/**
+ * The services on a worker, led by the instance count when one service name per instance would
+ * hide how much runs there. The count comes first so truncation cuts names, not the number.
+ */
+export function workerDescription(entry: WorkerEntry): string {
+  const names = [...entry.services].sort().join(', ');
+  return entry.instances.length > 1 ? `${entry.instances.length} instances: ${names}` : names;
+}
+
 /**
  * How many of a reporting cluster's workers are not drawn. A silent or never-reported cluster
  * has no current count, so nothing is missing from the picture.
@@ -178,6 +198,9 @@ export function buildInfrastructureTopology(
       stale,
       description,
       column: 1,
+      // Only current figures: a silent cluster's last report would read as its load now. Every
+      // reporting cluster gets both rows, so the frames line up and load compares across them.
+      ...(reporting ? { meters: clusterMeters(cluster) } : {}),
     });
     edges.push({
       id: `${ROOT_NODE_ID}->${groupId}`,
@@ -198,15 +221,17 @@ export function buildInfrastructureTopology(
         pulse: entry.pulse,
         // A silent cluster's instances are last known too.
         stale: stale || undefined,
-        description: [...entry.services].sort().join(', '),
+        description: workerDescription(entry),
       });
     }
 
-    const hidden = workersKnown ? undrawnWorkers(cluster, onCluster?.size ?? 0) : 0;
+    const drawn = onCluster?.size ?? 0;
+    const hidden = workersKnown ? undrawnWorkers(cluster, drawn) : 0;
     if (hidden > 0) {
       nodes.push({
         id: restNodeId(cluster._id),
-        label: `+${hidden} more`,
+        // "+4 more" under no worker at all would ask "more than what?".
+        label: drawn === 0 ? 'Nothing of yours' : `+${hidden} more`,
         kind: 'compact',
         group: groupId,
       });

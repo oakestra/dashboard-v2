@@ -115,11 +115,18 @@ describe('failedOnCluster', () => {
 
 describe('restHoverLines', () => {
   it('explains why the workers are not listed', () => {
-    expect(restHoverLines(2)).toEqual({
+    expect(restHoverLines(2, 3)).toEqual({
       title: '2 more workers',
       lines: ['No instance you can see runs on them, so they are not listed.'],
     });
-    expect(restHoverLines(1).title).toBe('1 more worker');
+    expect(restHoverLines(1, 3)).toEqual({
+      title: '1 more worker',
+      lines: ['No instance you can see runs on it, so it is not listed.'],
+    });
+  });
+
+  it('does not say "more" when no worker of the cluster is drawn', () => {
+    expect(restHoverLines(4, 0).title).toBe('4 workers');
   });
 });
 

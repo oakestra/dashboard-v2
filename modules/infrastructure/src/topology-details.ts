@@ -121,10 +121,15 @@ export function describeFailures(failed: {
   return `${plural(failed.instances, 'instance')} on ${plural(failed.workers, 'worker')} failed.`;
 }
 
-export function restHoverLines(hidden: number): { title: string; lines: string[] } {
+export function restHoverLines(hidden: number, drawn: number): { title: string; lines: string[] } {
+  const workers = hidden === 1 ? 'worker' : 'workers';
   return {
-    title: `${hidden} more ${hidden === 1 ? 'worker' : 'workers'}`,
-    lines: ['No instance you can see runs on them, so they are not listed.'],
+    title: drawn === 0 ? `${hidden} ${workers}` : `${hidden} more ${workers}`,
+    lines: [
+      hidden === 1
+        ? 'No instance you can see runs on it, so it is not listed.'
+        : 'No instance you can see runs on them, so they are not listed.',
+    ],
   };
 }
 

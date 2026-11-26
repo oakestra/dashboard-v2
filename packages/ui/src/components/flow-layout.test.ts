@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { FlowEdge, FlowNode } from './flow-graph-types';
 import {
   GROUP_HEADER,
+  GROUP_METER_ROW,
+  groupHeaderHeight,
   labelPoint,
   layoutGraph,
   layoutKey,
@@ -309,6 +311,25 @@ describe('group members', () => {
       'TB',
     );
     expect(layout.nodes.get('small')?.y).toBe(layout.nodes.get('cluster')?.y);
+  });
+
+  it('moves members down by one row per meter, and only reshuffles when their number changes', () => {
+    const meter = { label: 'CPU', value: 40 };
+    const withMeters = (count: number, value = 40) =>
+      nodes.map((node) =>
+        node.id === 'cluster'
+          ? { ...node, meters: Array.from({ length: count }, () => ({ ...meter, value })) }
+          : node,
+      );
+    const plain = layoutGraph(nodes, edges, 'TB');
+    const metered = layoutGraph(withMeters(2), edges, 'TB');
+    const shift = at(metered, 'w1').y - at(plain, 'w1').y;
+    expect(shift).toBe(groupHeaderHeight(withMeters(2)[1]) - GROUP_HEADER);
+    expect(shift).toBeGreaterThanOrEqual(2 * GROUP_METER_ROW);
+    expect(at(metered, 'cluster').height - at(plain, 'cluster').height).toBe(shift);
+
+    expect(layoutKey(withMeters(2, 90), edges, 'TB')).toBe(layoutKey(withMeters(2), edges, 'TB'));
+    expect(layoutKey(withMeters(1), edges, 'TB')).not.toBe(layoutKey(withMeters(2), edges, 'TB'));
   });
 
   it('gives an empty group the width of a group with one item', () => {

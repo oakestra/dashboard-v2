@@ -100,7 +100,7 @@ describe('buildInfrastructureTopology', () => {
     expect(workers[0]).toMatchObject({
       group: 'cluster:a',
       label: '293a4b',
-      description: 'frontend, ingest',
+      description: '3 instances: frontend, ingest',
       tone: 'destructive',
     });
     expect(workers[1]).toMatchObject({ group: 'cluster:b', label: 'w1', tone: 'success' });
@@ -183,6 +183,42 @@ describe('workers', () => {
   });
 });
 
+describe('what a cluster frame shows', () => {
+  it('gives reporting clusters CPU and memory gauges, and no others', () => {
+    const { nodes } = buildInfrastructureTopology(
+      [
+        cluster({
+          _id: 'a',
+          cluster_name: 'edge-a',
+          aggregated_cpu_percent: 0,
+          memory_percent: 84,
+        }),
+        cluster({ _id: 's', cluster_name: 'silent', active: false, memory_percent: 40 }),
+      ],
+      [],
+    );
+    const meters = (id: string) => nodes.find((node) => node.id === id)?.meters;
+    expect(meters('cluster:a')?.map((meter) => meter.label)).toEqual(['CPU', 'Memory']);
+    expect(meters('cluster:a')?.[1]).toMatchObject({ value: 84, valueLabel: '84%' });
+    // Old figures would read as the load right now.
+    expect(meters('cluster:s')).toBeUndefined();
+  });
+
+  it('leads a worker with its instance count once it runs more than one', () => {
+    const { nodes } = buildInfrastructureTopology(clusters, [
+      service('web', [
+        { cluster_id: 'b', worker_id: 'w1', status: 'RUNNING', instance_number: 0 },
+        { cluster_id: 'b', worker_id: 'w1', status: 'RUNNING', instance_number: 1 },
+        { cluster_id: 'b', worker_id: 'w2', status: 'RUNNING', instance_number: 2 },
+      ]),
+      service('api', [{ cluster_id: 'b', worker_id: 'w1', status: 'RUNNING', instance_number: 0 }]),
+    ]);
+    const description = (id: string) => nodes.find((node) => node.id === id)?.description;
+    expect(description('worker:b:w1')).toBe('3 instances: api, web');
+    expect(description('worker:b:w2')).toBe('web');
+  });
+});
+
 describe('placeholder for workers that are not drawn', () => {
   const restOf = (nodes: { id: string }[]) => nodes.filter((node) => node.id.startsWith('rest:'));
 
@@ -197,8 +233,8 @@ describe('placeholder for workers that are not drawn', () => {
     expect(nodes.findIndex((node) => node.id === 'worker:b:w1')).toBeLessThan(
       nodes.findIndex((node) => node.id === 'rest:b'),
     );
-    // edge-a states one worker and none is drawn.
-    expect(nodes.find((node) => node.id === 'rest:a')?.label).toBe('+1 more');
+    // edge-a states one worker and none is drawn, so there is nothing to have "more" of.
+    expect(nodes.find((node) => node.id === 'rest:a')?.label).toBe('Nothing of yours');
     expect(restOf(nodes)).toHaveLength(2);
   });
 

@@ -13,6 +13,20 @@ export type FlowTone = StatusTone;
  */
 export type FlowNodeKind = 'primary' | 'item' | 'group' | 'compact';
 
+/** A small gauge in a group's header, e.g. the CPU usage of a cluster. */
+export interface FlowMeter {
+  /** Short name in front of the track, also its accessible name ("CPU"). */
+  label: string;
+  /** The measured value, or `null` when there is none. */
+  value: number | null;
+  /** Text behind the track instead of the plain value, e.g. "42%". */
+  valueLabel?: string;
+  /** End of the track. Defaults to 100. */
+  max?: number;
+  /** Upper end of the normal band; above it the pointer and the value turn `warning`. */
+  normalMax?: number;
+}
+
 export interface FlowNode {
   id: string;
   label: string;
@@ -26,6 +40,12 @@ export interface FlowNode {
   pulse?: boolean;
   /** One line under the label, e.g. "2/3 running". Ignored on `compact` nodes. */
   description?: string;
+  /**
+   * Gauges below the title of a `group` (ignored on other kinds), one row each, so load can be
+   * compared across groups without opening one. Keep it to two or three. Their number shapes the
+   * layout, their values do not: an update moves the pointers in place.
+   */
+  meters?: readonly FlowMeter[];
   /**
    * Makes the label a link, rendered with `renderLink`. A selectable graph (`onNodeClick`) should
    * usually leave it out: a click on the label then navigates, a click beside it selects, and the

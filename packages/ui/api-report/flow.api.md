@@ -60,6 +60,15 @@ export interface FlowLinkProps {
     href: string;
 }
 
+// @public
+export interface FlowMeter {
+    label: string;
+    max?: number;
+    normalMax?: number;
+    value: number | null;
+    valueLabel?: string;
+}
+
 // @public (undocumented)
 export interface FlowNode {
     column?: number;
@@ -71,6 +80,7 @@ export interface FlowNode {
     kind?: FlowNodeKind;
     // (undocumented)
     label: string;
+    meters?: readonly FlowMeter[];
     pulse?: boolean;
     stale?: boolean;
     tone?: FlowTone;

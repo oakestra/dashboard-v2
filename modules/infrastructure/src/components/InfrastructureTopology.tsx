@@ -88,9 +88,8 @@ export function InfrastructureTopology({ clusters }: { clusters: readonly Cluste
     const cluster = clusters.find((candidate) => candidate._id === ref.clusterId);
     if (!cluster) return null;
     if (ref.kind === 'rest') {
-      const { title, lines } = restHoverLines(
-        undrawnWorkers(cluster, workers.get(ref.clusterId)?.size ?? 0),
-      );
+      const drawn = workers.get(ref.clusterId)?.size ?? 0;
+      const { title, lines } = restHoverLines(undrawnWorkers(cluster, drawn), drawn);
       return <HoverLines title={title} lines={lines} />;
     }
     if (ref.kind === 'cluster') {
