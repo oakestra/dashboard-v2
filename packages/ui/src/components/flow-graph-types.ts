@@ -119,17 +119,18 @@ export interface FlowGraphProps {
    */
   renderHoverCard?: (node: FlowNode) => ReactNode;
   /**
-   * Details of the selection, usually a `Card`. On a frame at least 768px wide it floats over the
-   * frame's right edge, and the graph is fitted into the part the panel leaves free (down to the
-   * readable zoom; past that the selected node is panned into view). On a narrower frame it
-   * renders below the graph.
+   * Details of the selection, usually an `InspectorPanel`. On a frame at least 768px wide it
+   * floats over the frame's right edge, and the graph is fitted into the part the panel leaves free
+   * (down to the readable zoom; past that the selected node is panned into view). On a narrower
+   * frame it renders below the graph.
    *
    * Pass `null` when nothing is selected, not `undefined`: a graph that has a panel keeps the
    * frame tall enough for it (440px) from the start, so selecting a node does not move the page.
    *
-   * The floating panel gets at most the frame's height and is not scrolled from outside. Give its
-   * root `flex min-h-0 flex-col overflow-hidden` and let the body scroll (`min-h-0 flex-1
-   * overflow-y-auto`), so the header and a footer with the main action stay visible.
+   * The floating panel gets at most the frame's height and is not scrolled from outside.
+   * `InspectorPanel` is built for that; a panel of your own needs a root with `flex min-h-0
+   * flex-col overflow-hidden` and a body that scrolls (`min-h-0 flex-1 overflow-y-auto`), so the
+   * header and a footer with the main action stay visible.
    */
   inspector?: ReactNode;
   /**

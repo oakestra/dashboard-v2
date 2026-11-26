@@ -6,7 +6,7 @@ const labels = (items: readonly { label: string }[]) => items.map((item) => item
 
 describe('matchRank', () => {
   it('finds nothing without a match in any field', () => {
-    expect(matchRank('fleet', { label: 'Applications' })).toBeUndefined();
+    expect(matchRank('reports', { label: 'Applications' })).toBeUndefined();
   });
 
   it('needs every word, in any order and any field', () => {

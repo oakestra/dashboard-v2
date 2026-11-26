@@ -162,11 +162,11 @@ describe('commandContextFor', () => {
   it('builds paths below the mount of the addon', () => {
     const context = commandContextFor(host, {
       kind: 'addon',
-      id: 'fleet',
-      label: 'Fleet',
-      addon: { addonId: 'fleet', version: '1.0.0', basePath: '/fleet' },
+      id: 'reports',
+      label: 'Reports',
+      addon: { addonId: 'reports', version: '1.0.0', basePath: '/reports' },
     });
-    expect(context.addon?.path('a/b', 1)).toBe('/fleet/a%2Fb/1');
+    expect(context.addon?.path('a/b', 1)).toBe('/reports/a%2Fb/1');
   });
 
   it('refuses to navigate anywhere but to a page of the dashboard', () => {

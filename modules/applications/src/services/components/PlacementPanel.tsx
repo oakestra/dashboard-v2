@@ -67,6 +67,10 @@ export function PlacementPanel({ service, appId, onRetry, retrying }: PlacementP
 
   return (
     <SectionCard
+      // Target of the board's `#placement` links, see useScrollToPlacement. The margin keeps the
+      // title clear of the edge it is scrolled to.
+      id="placement"
+      className="scroll-mt-4"
       data-testid="placement-panel"
       title={
         <span className="flex items-center gap-2">

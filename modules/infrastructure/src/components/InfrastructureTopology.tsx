@@ -41,7 +41,7 @@ function HoverLines({ title, lines }: { title: string; lines: readonly string[] 
  * The hierarchy of the platform: root orchestrator, clusters, and the workers running the
  * viewer's instances. Hover previews a node, a click selects it and opens its details beside the
  * graph; going to the cluster page is a button there, so a click never navigates by surprise.
- * It reads the same cache entries as the fleet and the applications pages.
+ * It reads the same cache entries as the applications pages.
  */
 export function InfrastructureTopology({ clusters }: { clusters: readonly Cluster[] }) {
   const { services, applicationNames, pending, failed } = useTopologyServices();

@@ -66,7 +66,6 @@ replaces them, see [Replacing a linked module](#replacing-a-linked-module).
 | ---------------- | ----- | ------------------------------------------------------------------- | ------------------------------------- |
 | `auth`           | core  | Login, password reset. Always on.                                   | none                                  |
 | `overview`       | core  | The start page (`/`), showing the `home.widgets` of the others      | `core:overview:overview`              |
-| `fleet`          | addon | Applications by cluster, with an inspector, at `/fleet`             | `addon:fleet:fleet`                   |
 | `applications`   | addon | Applications, their services, instances and SLAs at `/applications` | `addon:applications:applications`     |
 | `infrastructure` | addon | Clusters, the cluster map and cluster pages at `/infrastructure`    | `addon:infrastructure:infrastructure` |
 | `users`          | addon | User management (Admin) at `/users`                                 | `addon:users:users`                   |
@@ -84,8 +83,7 @@ The overview only greets the user and lays out what the other modules contribute
 attention" and "Recent applications", `infrastructure` the clusters tile. Disabling a module
 therefore also removes its tiles; with neither of the two the overview says it has nothing to show
 yet. The same holds for the command palette (Ctrl or Cmd K): the actions and searches of a module
-come from the module, so leaving it out removes them along with its pages. `fleet` is on by
-default and goes away by leaving it out of `modules`, like any other. A replacement addon under a module's name brings its own widgets instead (or none). Single
+come from the module, so leaving it out removes them along with its pages. A replacement addon under a module's name brings its own widgets instead (or none). Single
 widgets cannot be hidden or moved by a preset; the [widget table](reference.md#widget-sizes-on-the-overview)
 lists their ids and orders, for addons that want to slot their own tiles in between.
 

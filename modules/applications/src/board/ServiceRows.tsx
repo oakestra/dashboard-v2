@@ -1,31 +1,27 @@
 import { isAbnormalTone } from '@oakestra/api';
+import { useAddonPath } from '@oakestra/dashboard-sdk';
 import { cn, Item, PointerGauge } from '@oakestra/ui';
+import { Link } from 'react-router';
 
 import {
   describeInstances,
   instanceReading,
-  isRowSelected,
-  placementSelection,
-  serviceSelection,
   sortInstances,
   sortUnplaced,
+  type BoardInstance,
   type ClusterLane,
-  type FleetInstance,
   type Lens,
   type ServiceRow,
-} from '../lib';
+} from './lib';
 import { Mark } from './Mark';
 
 /** Enough marks to count at a glance; beyond that a number reads faster than a row of dots. */
 const MAX_MARKS = 4;
 
-export const rowButtonClassName =
-  'hover:bg-accent/50 focus-visible:ring-ring flex w-full items-center outline-none focus-visible:ring-2 focus-visible:ring-inset';
-
 const boardRowClassName =
-  'hover:bg-accent/50 aria-pressed:bg-accent min-h-8 w-full flex-nowrap gap-3 px-3 py-1 text-left';
+  'hover:bg-accent/50 focus-visible:ring-ring min-h-8 w-full flex-nowrap gap-3 px-3 py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset';
 
-function HealthMarks({ instances }: { instances: readonly FleetInstance[] }) {
+function HealthMarks({ instances }: { instances: readonly BoardInstance[] }) {
   const sorted = sortInstances(instances);
   const extra = sorted.length - MAX_MARKS;
   return (
@@ -44,7 +40,7 @@ function Reading({
   instances,
   lens,
 }: {
-  instances: readonly FleetInstance[];
+  instances: readonly BoardInstance[];
   lens: 'cpu' | 'memory';
 }) {
   const reading = instanceReading(instances, lens);
@@ -74,7 +70,7 @@ function Reading({
   );
 }
 
-function readingLabel(instances: readonly FleetInstance[], lens: Lens): string {
+function readingLabel(instances: readonly BoardInstance[], lens: Lens): string {
   const status = describeInstances(instances);
   if (lens === 'health') return status;
   const reading = instanceReading(instances, lens);
@@ -83,35 +79,25 @@ function readingLabel(instances: readonly FleetInstance[], lens: Lens): string {
   return `${status}, ${prefix}${reading.detail}`;
 }
 
-interface RowProps {
-  row: ServiceRow;
-  selection: string;
-  onSelect: (selection: string) => void;
+function useServicePath({ application, service }: ServiceRow): string {
+  return useAddonPath()(application._id, 'services', service._id);
 }
 
-interface PlacedRowProps extends RowProps {
-  lane: ClusterLane;
-  lens: Lens;
-}
-
-/** One service on one cluster. */
-export function PlacedRow({ row, lane, lens, selection, onSelect }: PlacedRowProps) {
-  const { service, exception } = row;
+/** One service on one cluster, linking to the service. */
+export function PlacedRow({ row, lane, lens }: { row: ServiceRow; lane: ClusterLane; lens: Lens }) {
+  const href = useServicePath(row);
+  const { service, attention } = row;
   const name = service.microservice_name;
   const instances = row.placements.get(lane.id) ?? [];
-  const target = placementSelection(service._id, instances);
   // A failed service can still have running instances: no mark of theirs would show that it failed.
-  const failedInPlace = exception && row.unplaced.length === 0 ? exception : null;
+  const failedInPlace = attention && row.unplaced.length === 0 ? attention : null;
   const marked = instances.some((entry) => isAbnormalTone(entry.status.tone));
   const offline = lane.state !== 'reporting';
   return (
     <Item asChild size="sm" className={boardRowClassName}>
-      <button
-        type="button"
-        aria-pressed={isRowSelected(selection, service._id, instances)}
+      <Link
+        to={href}
         aria-label={`${name} on ${lane.name}: ${readingLabel(instances, lens)}${failedInPlace ? `, ${failedInPlace.summary}` : ''}`}
-        // Pressing the row the inspector is on closes it again, as a pressed toggle should.
-        onClick={() => onSelect(selection === target ? '' : target)}
       >
         <span className="truncate">{name}</span>
         {failedInPlace && !marked ? <Mark tone={failedInPlace.tone} /> : null}
@@ -129,27 +115,27 @@ export function PlacedRow({ row, lane, lens, selection, onSelect }: PlacedRowPro
             <Reading instances={instances} lens={lens} />
           )}
         </span>
-      </button>
+      </Link>
     </Item>
   );
 }
 
-/** One service without a place, with the worst reason for it. */
-export function UnplacedRow({ row, selection, onSelect }: RowProps) {
+/**
+ * One service without a place, with the worst reason for it. It links to the service too, whose
+ * page explains the placement.
+ */
+export function UnplacedRow({ row }: { row: ServiceRow }) {
+  const href = useServicePath(row);
   const { service, unplaced } = row;
   const name = service.microservice_name;
   const [worst] = sortUnplaced(unplaced);
   if (!worst) return null;
   const others = unplaced.length - 1;
-  const target = serviceSelection(service._id);
-  const waiting = row.instances.filter((entry) => entry.clusterId === undefined);
   return (
     <Item asChild size="sm" className={boardRowClassName}>
-      <button
-        type="button"
-        aria-pressed={isRowSelected(selection, service._id, waiting)}
+      <Link
+        to={`${href}#placement`}
         aria-label={`${name} unplaced: ${worst.label}${others > 0 ? `, and ${others} more` : ''}`}
-        onClick={() => onSelect(selection === target ? '' : target)}
       >
         <span className="min-w-0 flex-1 truncate">{name}</span>
         <span className="flex max-w-3/5 min-w-0 items-center gap-1.5">
@@ -168,7 +154,7 @@ export function UnplacedRow({ row, selection, onSelect }: RowProps) {
             <span className="text-muted-foreground text-xs tabular-nums">+{others}</span>
           ) : null}
         </span>
-      </button>
+      </Link>
     </Item>
   );
 }

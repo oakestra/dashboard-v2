@@ -40,7 +40,7 @@ import {
   Trash2Icon,
 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useLocation, useNavigate, useParams } from 'react-router';
 
 import { ContributedTabContent } from '../../components/ContributedTabContent';
 import { isNotFound, NotFound } from '../../components/NotFound';
@@ -57,6 +57,7 @@ import {
   isTransitionalStatus,
   usePollWhileTransitional,
 } from '../status';
+import { PLACEMENT_SECTION_ID, useScrollToPlacement } from './use-scroll-to-placement';
 
 const INSTANCE_SORT_OPTIONS: readonly DataListSortOption<Instance>[] = [
   { id: 'number', label: 'Instance number', value: (row) => row.instance_number },
@@ -94,6 +95,21 @@ export function ServiceDetailPage() {
   const leaveTab = useCallback((value: string) => {
     setTab((current) => (current === value ? 'overview' : current));
   }, []);
+
+  // The explanation lives on the Overview tab, so a link to it must not land on a tab the page
+  // remembered from before. Keyed on the navigation, so picking another tab afterwards sticks.
+  const { hash, key } = useLocation();
+  const [seenKey, setSeenKey] = useState(key);
+  if (seenKey !== key) {
+    setSeenKey(key);
+    if (hash === `#${PLACEMENT_SECTION_ID}`) setTab('overview');
+  }
+  // Inactive tab panels are unmounted, so the section only exists on Overview.
+  useScrollToPlacement(
+    tab === 'overview' &&
+      service.data !== undefined &&
+      placementFailureStatus(service.data) !== undefined,
+  );
 
   const clusterNames = clusters.data ?? NO_CLUSTER_NAMES;
   const slotContext = useMemo(() => ({ applicationId: appId, serviceId }), [appId, serviceId]);

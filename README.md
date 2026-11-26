@@ -32,10 +32,9 @@ entries, widgets and tabs without a new dashboard release.
 ## Features
 
 - **Applications and services**: create, edit and delete applications; create services from an
-  SLA form, duplicate and delete them, deploy instances, and follow their status and metrics.
-- **Fleet**: a board of cluster cards showing what runs where, with health, CPU and memory lenses, an
-  inspector per service and a list of what cannot run. Services that are not placed explain which
-  cluster checks they fail.
+  SLA form, duplicate and delete them, deploy instances, and follow their status and metrics. A
+  "By cluster" view shows what runs where, with health, CPU and memory lenses; services that are
+  not placed explain which cluster checks they fail.
 - **Infrastructure**: clusters on a map, with resources and usage history per cluster. Clusters
   that stopped reporting are marked silent and keep their last known values.
 - **Command palette**: Ctrl or Cmd K opens "Find or run anything" for pages, actions and search
@@ -91,8 +90,9 @@ pnpm dev:mock   # http://localhost:5173, all backends mocked in the browser
 ```
 
 `pnpm dev:mock` uses a demo scenario with more clusters (one silent), instances and unplaced
-services, so the Fleet view and the placement explanation have something to show. The mock system
-manager used by the Docker stack has the same data with `PLACEMENT_DEMO=true`.
+services, so the by-cluster view of Applications and the placement explanation have something to
+show. The mock system manager used by the Docker stack has the same data with
+`PLACEMENT_DEMO=true`.
 
 Log in as `Admin`, `alice`, `bob`, `carol` or `dave`. The password is the username. Each user has
 different roles, so you can see how the UI changes per role.

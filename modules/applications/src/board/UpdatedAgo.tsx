@@ -11,7 +11,7 @@ export function UpdatedAgo({ updatedAt }: { updatedAt: number }) {
 
   if (!Number.isFinite(updatedAt)) return null;
   return (
-    <span className="text-muted-foreground text-xs tabular-nums" data-testid="fleet-updated">
+    <span className="text-muted-foreground text-xs tabular-nums" data-testid="board-updated">
       Updated {formatRelativeTime(updatedAt, now)}
     </span>
   );

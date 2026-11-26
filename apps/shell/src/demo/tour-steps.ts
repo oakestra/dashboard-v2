@@ -31,18 +31,18 @@ export const DEMO_TOUR_STEPS: readonly TourStep[] = [
     description: 'Services that failed, cannot be scheduled or are not deployed yet.',
   },
   {
-    path: '/fleet',
-    selector: 'ul[aria-label="Fleet board"]',
-    title: 'Fleet',
+    path: '/applications?view=clusters',
+    selector: '[data-tour="cluster-board"]',
+    title: 'Applications by cluster',
     description:
-      'The fleet board shows every cluster with the services running on it, grouped by application. Select a service to inspect it.',
+      'The By cluster view shows the clusters your services run on, with the services of each grouped by application. Select a service to open its page.',
   },
   {
-    path: '/fleet',
+    path: '/applications?view=clusters',
     selector: '[role="group"][aria-label="Unplaced"]',
     title: 'Unplaced services',
     description:
-      'Services the scheduler could not place end up here. Select one to see which clusters were ruled out and why.',
+      'Services the scheduler could not place end up here. Open one to see which clusters were ruled out and why.',
   },
   {
     path: `/infrastructure/clusters/${TEST_CLUSTER_ID}`,

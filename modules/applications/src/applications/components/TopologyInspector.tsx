@@ -10,16 +10,18 @@ import {
 import { useAddonPath, useFeatureEnabled, usePermissions } from '@oakestra/dashboard-sdk';
 import {
   Button,
-  Card,
+  Fact,
+  FactList,
   formatBytes,
   formatPercent,
   formatRelativeTime,
+  InspectorPanel,
+  InspectorSection,
   plural,
   PointerGauge,
   StatusBadge,
   StatusDot,
 } from '@oakestra/ui';
-import { XIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 
@@ -44,28 +46,6 @@ import {
   notRunningTone,
   placementNodeId,
 } from '../topology';
-
-// The look of the fleet inspector (modules/fleet). Packages cannot import each other, so the few
-// pieces needed here are copies.
-function Facts({ children }: { children: ReactNode }) {
-  return (
-    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm">{children}</dl>
-  );
-}
-
-function Fact({ label, children }: { label: string; children: ReactNode }) {
-  if (children === undefined || children === null || children === '') return null;
-  return (
-    <>
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 wrap-break-word">{children}</dd>
-    </>
-  );
-}
-
-function Heading({ children }: { children: ReactNode }) {
-  return <h3 className="text-xs font-medium text-muted-foreground">{children}</h3>;
-}
 
 const linkButtonClassName = 'text-left text-primary hover:underline';
 
@@ -234,8 +214,7 @@ function Relations({
 }) {
   if (services.length === 0) return null;
   return (
-    <section className="space-y-1.5">
-      <Heading>{title}</Heading>
+    <InspectorSection title={title}>
       <ul className="space-y-1 text-sm">
         {services.map((target) => {
           const near = [...instancesByCluster(target).keys()];
@@ -252,7 +231,7 @@ function Relations({
           );
         })}
       </ul>
-    </section>
+    </InspectorSection>
   );
 }
 
@@ -313,7 +292,7 @@ function PlacementBody({
           }
         />
       ) : null}
-      <Facts>
+      <FactList>
         <Fact label="Cluster">
           <SelectButton id={clusterGroupId(clusterId)} onSelect={onSelect}>
             {clusterName}
@@ -324,19 +303,17 @@ function PlacementBody({
             </span>
           )}
         </Fact>
-      </Facts>
-      <section className="space-y-1.5">
-        <Heading>{plural(instances.length, 'instance')} here</Heading>
+      </FactList>
+      <InspectorSection title={`${plural(instances.length, 'instance')} here`}>
         <InstanceRows
           application={application}
           service={service}
           instances={instances}
           reporting={reporting}
         />
-      </section>
+      </InspectorSection>
       {otherClusters.length > 0 ? (
-        <section className="space-y-1.5">
-          <Heading>Also runs on</Heading>
+        <InspectorSection title="Also runs on">
           <ul className="space-y-1 text-sm">
             {otherClusters.map((id) => (
               <li key={id}>
@@ -346,7 +323,7 @@ function PlacementBody({
               </li>
             ))}
           </ul>
-        </section>
+        </InspectorSection>
       ) : null}
       <Relations
         title="Calls"
@@ -375,9 +352,9 @@ function UnplacedServiceBody({
   const detail = schedulerDetail(service.status_detail);
   return (
     <>
-      <Facts>
+      <FactList>
         <Fact label="Scheduler">{detail}</Fact>
-      </Facts>
+      </FactList>
       <p className="text-sm text-muted-foreground">
         Nothing runs yet. The service page explains what each cluster is missing.
       </p>
@@ -401,7 +378,7 @@ function ClusterBody({
           {lastReportLine(cluster)}. Its load is not shown, it is too old to trust.
         </p>
       ) : null}
-      <Facts>
+      <FactList>
         <Fact label="Location">{coordinates(cluster?.cluster_location)}</Fact>
         {cluster && reporting ? (
           <>
@@ -434,11 +411,10 @@ function ClusterBody({
             </Fact>
           </>
         ) : null}
-      </Facts>
-      <section className="space-y-1.5">
-        <Heading>Services of this application</Heading>
+      </FactList>
+      <InspectorSection title="Services of this application">
         <ServiceRows services={selection.services} clusterId={clusterId} onSelect={onSelect} />
-      </section>
+      </InspectorSection>
     </>
   );
 }
@@ -490,48 +466,32 @@ function usePrimaryAction(selection: TopologySelection, application: Application
 /**
  * Details of the selected node. FlowGraph floats it over the graph's right edge (below the graph on
  * narrow screens), so the graph keeps its size and walking from node to node is one click.
- *
- * The floating wrapper caps the height but does not scroll, so only the body scrolls here and the
- * action stays in view in a footer; below the graph the same markup just grows.
  */
 export function TopologyInspector({ selection, onClose, ...body }: TopologyInspectorProps) {
   const summary = summarizeSelection(selection);
   const action = usePrimaryAction(selection, body.application);
   return (
-    <Card
-      role="region"
-      aria-label={`Details of ${summary.title}`}
-      className="flex min-h-0 min-w-0 flex-col gap-0 overflow-hidden py-0 shadow-xs"
+    <InspectorPanel
+      kind={summary.kind}
+      title={summary.title}
+      status={
+        <StatusBadge tone={summary.tone} stale={summary.stale}>
+          {summary.statusLabel}
+        </StatusBadge>
+      }
+      footer={action ? <Button asChild>{action}</Button> : null}
+      onClose={onClose}
     >
-      <div className="flex shrink-0 items-start gap-2 border-b p-4">
-        <div className="min-w-0 flex-1 space-y-1">
-          <p className="text-xs text-muted-foreground">{summary.kind}</p>
-          <h2 className="text-lg leading-6 font-medium wrap-break-word">{summary.title}</h2>
-          <StatusBadge tone={summary.tone} stale={summary.stale}>
-            {summary.statusLabel}
-          </StatusBadge>
-        </div>
-        <Button variant="ghost" size="icon-sm" aria-label="Close details" onClick={onClose}>
-          <XIcon aria-hidden />
-        </Button>
-      </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-        {selection.kind === 'placement' ? (
-          <PlacementBody selection={selection} {...body} />
-        ) : selection.kind === 'unplaced-service' ? (
-          <UnplacedServiceBody selection={selection} />
-        ) : selection.kind === 'cluster' ? (
-          <ClusterBody selection={selection} {...body} />
-        ) : (
-          <UnplacedBody selection={selection} {...body} />
-        )}
-      </div>
-      {action ? (
-        <div className="flex shrink-0 border-t p-3">
-          <Button asChild>{action}</Button>
-        </div>
-      ) : null}
-    </Card>
+      {selection.kind === 'placement' ? (
+        <PlacementBody selection={selection} {...body} />
+      ) : selection.kind === 'unplaced-service' ? (
+        <UnplacedServiceBody selection={selection} />
+      ) : selection.kind === 'cluster' ? (
+        <ClusterBody selection={selection} {...body} />
+      ) : (
+        <UnplacedBody selection={selection} {...body} />
+      )}
+    </InspectorPanel>
   );
 }
 

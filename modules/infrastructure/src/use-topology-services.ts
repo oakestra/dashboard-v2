@@ -26,11 +26,11 @@ function combineServices(results: UseQueryResult<Service[]>[]) {
 }
 
 /**
- * The services the viewer may see, for the workers in the topology. Same split as the fleet
- * (modules/fleet/src/use-fleet-data.ts): an Admin reads the platform-wide list, everyone else only
- * has endpoints for their own applications (the profile gives the `_id`, then one list per
- * application). An Infrastructure_Provider may have none of these, so failures are silent and
- * `failed` only tells the page to say the workers are missing; the cluster tree never depends on it.
+ * The services the viewer may see, for the workers in the topology. An Admin reads the
+ * platform-wide list, everyone else only has endpoints for their own applications (the profile
+ * gives the `_id`, then one list per application). An Infrastructure_Provider may have none of
+ * these, so failures are silent and `failed` only tells the page to say the workers are missing;
+ * the cluster tree never depends on it.
  */
 export function useTopologyServices(): {
   services: readonly Service[];

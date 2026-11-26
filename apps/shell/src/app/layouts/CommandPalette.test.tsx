@@ -198,8 +198,8 @@ describe('<CommandPalette>', () => {
     await screen.findByRole('heading', { name: 'Applications' });
     const dialog = await openPalette();
     expect(await option('New application')).toBeVisible();
-    expect(within(dialog).queryByRole('option', { name: 'Show fleet exceptions' })).toBeNull();
-    expect(within(dialog).queryByRole('option', { name: 'Fleet' })).toBeNull();
+    expect(within(dialog).queryByRole('option', { name: 'Infrastructure' })).toBeNull();
+    expect(within(dialog).queryByRole('option', { name: 'Users' })).toBeNull();
   });
 
   it('narrows the list as the user types and says when there is nothing', async () => {

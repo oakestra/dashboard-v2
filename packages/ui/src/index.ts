@@ -153,6 +153,13 @@ export { Collapsible, CollapsibleContent, CollapsibleTrigger } from './component
 export { ConfirmDialog, type ConfirmDialogProps } from './components/confirm-dialog';
 export { CollectionSearch, useSearchText } from './components/collection-search';
 export { EmptyState, type EmptyStateProps } from './components/empty-state';
+export { Fact, FactList, type FactProps } from './components/fact-list';
+export {
+  InspectorPanel,
+  InspectorSection,
+  type InspectorPanelProps,
+  type InspectorSectionProps,
+} from './components/inspector-panel';
 export { RowMenu, type RowMenuProps } from './components/row-menu';
 export {
   Item,

@@ -16,10 +16,13 @@ export function DemoBar() {
   const navigate = useNavigate();
   const location = useLocation();
   // The runner asks for the current path long after this render, so it reads a ref.
-  const pathRef = useRef(location.pathname);
+  // Includes the query, because a step's path may carry one (`/applications?view=clusters`) and
+  // the runner compares the two as plain strings.
+  const currentPath = location.pathname + location.search;
+  const pathRef = useRef(currentPath);
   useEffect(() => {
-    pathRef.current = location.pathname;
-  }, [location.pathname]);
+    pathRef.current = currentPath;
+  }, [currentPath]);
   const runnerRef = useRef<TourRunner | null>(null);
   const mountedRef = useRef(false);
 

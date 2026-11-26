@@ -297,19 +297,19 @@ describe('resolveAddonContributions', () => {
   it('keeps a query on the index route directly behind the base path', () => {
     const contributions = resolveAddonContributions(
       {
-        id: 'fleet',
+        id: 'reports',
         contributions: {
           'command.actions': [
-            { id: 'index', label: 'Index', path: '?only=exceptions' },
+            { id: 'index', label: 'Index', path: '?only=failed' },
             { id: 'sub', label: 'Sub', path: 'jobs?state=failed' },
           ],
         },
       },
-      '/fleet',
+      '/reports',
     );
     expect(contributions['command.actions']?.map((action) => action.path)).toEqual([
-      '/fleet?only=exceptions',
-      '/fleet/jobs?state=failed',
+      '/reports?only=failed',
+      '/reports/jobs?state=failed',
     ]);
   });
 

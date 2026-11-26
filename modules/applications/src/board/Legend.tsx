@@ -1,6 +1,6 @@
 import { PointerGauge, staleSurfaceClassName, cn } from '@oakestra/ui';
 
-import type { Lens } from '../lib';
+import type { Lens } from './lib';
 import { Mark } from './Mark';
 
 function Entry({ children }: { children: React.ReactNode }) {

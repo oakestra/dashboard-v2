@@ -1,5 +1,5 @@
 import { defineAddon } from '@oakestra/dashboard-sdk';
-import { BoxesIcon, PlusIcon } from 'lucide-react';
+import { BoxesIcon, PlusIcon, WaypointsIcon } from 'lucide-react';
 import { lazy } from 'react';
 
 import { ApplicationCrumb, InstanceCrumb, ServiceCrumb } from './crumbs';
@@ -93,8 +93,17 @@ export default defineAddon({
         // The form is a dialog on the list page, it has no route of its own.
         path: '?new=1',
         icon: PlusIcon,
-        // Same as APPLICATION_ROLES of the fleet package.
+        // Someone who only runs infrastructure should not be pushed towards deploying things,
+        // although the backend accepts anyone with a token.
         roles: ['Admin', 'Application_Provider'],
+      },
+      {
+        id: 'by-cluster',
+        label: 'Applications by cluster',
+        description: 'Where each service runs, and what is unplaced',
+        keywords: ['fleet', 'placement', 'where'],
+        path: '?view=clusters',
+        icon: WaypointsIcon,
       },
     ],
     'command.sources': [

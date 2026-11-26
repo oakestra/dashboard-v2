@@ -37,4 +37,14 @@ describe('DemoBar', () => {
     await user.click(screen.getByRole('button', { name: 'Take the tour' }));
     await waitFor(() => expect(startDemoTour).toHaveBeenCalledTimes(1));
   });
+
+  it('reports the query as part of the current path', async () => {
+    window.localStorage.setItem(TOUR_SEEN_KEY, 'true');
+    const { user } = renderWithProviders(<DemoBar />, { route: '/applications?view=clusters' });
+    await user.click(await screen.findByRole('button', { name: 'Take the tour' }));
+    await waitFor(() => expect(startDemoTour).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(startDemoTour).mock.calls[0]![0].currentPath()).toBe(
+      '/applications?view=clusters',
+    );
+  });
 });

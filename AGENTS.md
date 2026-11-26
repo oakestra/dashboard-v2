@@ -29,9 +29,10 @@ React shell that loads addon UIs at runtime through Module Federation.
   data, built only into the online demo (see "Online demo").
 - `modules/<name>` (`@oakestra/module-<name>`, private): features as addon packages written
   against the SDK only, linked into the shell (`linkedAddons` in `src/app/modules.ts`). `help` is
-  the reference. See "Module packages". `modules/fleet` is a board of cluster cards, each listing its services by
-  application, behind an Unplaced card (`/fleet`, lenses, inspector, exceptions list); its state lives
-  in search params. The board's columns use container queries, because the inspector narrows the page.
+  the reference. See "Module packages". `modules/applications` also has a "By cluster" view
+  (`?view=clusters`, `src/board/`): a board of cluster cards, each listing the current user's services
+  by application, below a full-width Unplaced band; clusters without a service of the viewer are one line
+  below the board; lenses, text filter and "Needs attention only" live in search params.
   `modules/infrastructure` also draws a Topology section (`src/topology.ts`, a `FlowGraph` of the root
   orchestrator, every cluster as a group and the workers seen in the viewer's instance data; the
   system-manager has no worker list, so idle workers are not listed).
@@ -348,6 +349,12 @@ copy of small stateless pieces (`cn`, `Button`, `Table`), which is harmless.
 - `SectionCard` (`title`, `description`, `action`, `headingLevel`, `flush`, `footer`): a titled
   page section, action top right. With plain `Card`, put actions in `CardAction` inside
   `CardHeader` (a grid; `flex-row` on it does nothing).
+- `InspectorPanel` (`kind`, `title`, `name` when the title is markup, `status`, `onClose`,
+  `footer`, `headingLevel`): the details panel of a selection, built to the `FlowGraph` `inspector`
+  contract (only the body scrolls, the footer action stays pinned); region "Details of <name>",
+  close button "Close details". `InspectorSection` (`title`) groups its body, one heading level
+  below the panel's. `FactList` + `Fact` (`label`, value as children; no value, no row) is the
+  label/value `dl`. Both topology inspectors use them.
 
 Also in `@oakestra/ui` root (generic helpers that feature packages must be able to import):
 
@@ -838,8 +845,8 @@ plus `app/layouts/command-palette/`. Its contract (`command.actions`, `command.s
 
 `packages/mocks/src/scenarios.ts` has `withPlacementDemo`, a `customize` function for
 `createMockStore` that adds clusters (one silent, one never reported), instances, unplaced
-services and service `connectivity` (frontend -> api -> cache, ingest -> process) for the Fleet
-view, the topology graphs and the placement panel. It is not in `backend.json` because unit
+services and service `connectivity` (frontend -> api -> cache, ingest -> process) for the by-cluster
+board, the topology graphs and the placement panel. It is not in `backend.json` because unit
 tests count the seed. `pnpm dev:mock` (`apps/shell/src/mock-api.ts`) always uses it, the HTTP
 mock only with `PLACEMENT_DEMO=true` (`tools/mock-system-manager`). Ids are fixed and
 timestamps relative to when the store is built.

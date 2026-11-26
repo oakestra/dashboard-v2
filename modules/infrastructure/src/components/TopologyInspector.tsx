@@ -2,16 +2,18 @@ import { describeStatus, hasMetrics, isAbnormalTone, type Cluster } from '@oakes
 import { useAddonPath, useFeatureEnabled } from '@oakestra/dashboard-sdk';
 import {
   Button,
-  Card,
   CopyButton,
+  Fact,
+  FactList,
   formatBytes,
   formatPercent,
   formatRelativeTime,
+  InspectorPanel,
+  InspectorSection,
   plural,
   PointerGauge,
   StatusBadge,
 } from '@oakestra/ui';
-import { XIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 
@@ -35,28 +37,6 @@ import {
   workerTitle,
 } from '../topology-details';
 
-// Facts and Fact are copies of the ones in modules/fleet/src/components/Inspector.tsx (packages
-// cannot import each other); keep the two looking the same.
-function Facts({ children }: { children: ReactNode }) {
-  return (
-    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm">{children}</dl>
-  );
-}
-
-function Fact({ label, children }: { label: string; children: ReactNode }) {
-  if (children === undefined || children === null || children === '') return null;
-  return (
-    <>
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 wrap-break-word">{children}</dd>
-    </>
-  );
-}
-
-function Heading({ children }: { children: ReactNode }) {
-  return <h3 className="text-muted-foreground text-xs font-medium">{children}</h3>;
-}
-
 function LinkButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
   return (
     <button type="button" onClick={onClick} className="text-primary text-left hover:underline">
@@ -65,75 +45,22 @@ function LinkButton({ onClick, children }: { onClick: () => void; children: Reac
   );
 }
 
-/**
- * Same frame as the application topology's panel (`modules/applications`, TopologyInspector): a
- * small kind label, the title and the status in a divided header, so both graphs read alike.
- * Packages cannot import each other, hence the copy.
- */
-function Frame({
-  kind,
-  title,
-  label,
-  badge,
-  footer,
-  onClose,
-  children,
-}: {
-  kind: string;
-  title: ReactNode;
-  /** Plain text of the title, for the region's accessible name. */
-  label: string;
-  badge?: ReactNode;
-  /** The primary action, pinned below the scrolling body so a long panel never hides it. */
-  footer?: ReactNode;
-  onClose: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <Card
-      role="region"
-      aria-label={`Details of ${label}`}
-      className="flex min-h-0 min-w-0 flex-col gap-0 overflow-hidden py-0 shadow-xs"
-    >
-      <div className="flex shrink-0 items-start gap-2 border-b p-4">
-        <div className="min-w-0 flex-1 space-y-1">
-          <p className="text-muted-foreground text-xs">{kind}</p>
-          <h2 className="text-lg leading-6 font-medium wrap-break-word">{title}</h2>
-          {badge}
-        </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Close details"
-          onClick={onClose}
-        >
-          <XIcon aria-hidden />
-        </Button>
-      </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">{children}</div>
-      {footer ? <div className="shrink-0 border-t p-3">{footer}</div> : null}
-    </Card>
-  );
-}
-
 function RootBody({ clusters, onSelect }: { clusters: readonly Cluster[]; onSelect: Select }) {
   const summary = summarizeRoot(clusters);
   return (
     <>
-      <Facts>
+      <FactList>
         <Fact label="Clusters">{summary.total}</Fact>
         <Fact label="Reporting">{summary.reporting}</Fact>
         <Fact label="Not reporting">{summary.silent}</Fact>
         <Fact label="Never reported">{summary.neverReported}</Fact>
         <Fact label="Workers">{summary.workers}</Fact>
-      </Facts>
+      </FactList>
       <p className="text-muted-foreground text-xs">
         Workers are counted on reporting clusters only.
       </p>
       {summary.notReporting.length > 0 ? (
-        <section className="space-y-1.5">
-          <Heading>Not reporting</Heading>
+        <InspectorSection title="Not reporting">
           <ul className="space-y-1 text-sm">
             {summary.notReporting.map((cluster) => (
               <li key={cluster._id} className="flex items-baseline justify-between gap-3">
@@ -148,7 +75,7 @@ function RootBody({ clusters, onSelect }: { clusters: readonly Cluster[]; onSele
               </li>
             ))}
           </ul>
-        </section>
+        </InspectorSection>
       ) : null}
     </>
   );
@@ -197,7 +124,7 @@ function ClusterBody({
           report.
         </p>
       ) : null}
-      <Facts>
+      <FactList>
         <Fact label="Location">{location}</Fact>
         <Fact label="Workers">{activeNodes}</Fact>
         {state === 'never-reported' ? null : (
@@ -216,10 +143,9 @@ function ClusterBody({
         <Fact label="Runtimes">{cluster.virtualization.join(', ')}</Fact>
         <Fact label="CSI drivers">{cluster.csi_drivers?.join(', ')}</Fact>
         <Fact label="Last report">{lastReport ? formatRelativeTime(lastReport) : undefined}</Fact>
-      </Facts>
+      </FactList>
       {workers.size > 0 ? (
-        <section className="space-y-1.5">
-          <Heading>{lastKnown ? 'Workers last seen here' : 'Workers seen here'}</Heading>
+        <InspectorSection title={lastKnown ? 'Workers last seen here' : 'Workers seen here'}>
           <ul className="space-y-1 text-sm">
             {[...workers].map(([workerId, entry]) => (
               <li key={workerId} className="flex items-baseline justify-between gap-3">
@@ -234,7 +160,7 @@ function ClusterBody({
               </li>
             ))}
           </ul>
-        </section>
+        </InspectorSection>
       ) : null}
     </>
   );
@@ -258,7 +184,7 @@ function WorkerBody({
   const stale = clusterPresentation(cluster).stale;
   return (
     <>
-      <Facts>
+      <FactList>
         <Fact label="Cluster">
           <LinkButton onClick={() => onSelect(clusterNodeId(cluster._id))}>
             {cluster.cluster_name}
@@ -272,14 +198,13 @@ function WorkerBody({
             </span>
           </Fact>
         ) : null}
-      </Facts>
+      </FactList>
       {stale ? (
         <p className="text-muted-foreground text-sm">
           {cluster.cluster_name} stopped reporting, so this is the last known state.
         </p>
       ) : null}
-      <section className="space-y-1.5">
-        <Heading>{plural(entry.instances.length, 'instance')}</Heading>
+      <InspectorSection title={plural(entry.instances.length, 'instance')}>
         <ul className="divide-y rounded-lg border">
           {sortWorkerInstances(entry.instances).map(({ service, instance }) => {
             const status = describeStatus(instance.status);
@@ -318,7 +243,7 @@ function WorkerBody({
             );
           })}
         </ul>
-      </section>
+      </InspectorSection>
     </>
   );
 }
@@ -327,7 +252,7 @@ type Select = (nodeId: string) => void;
 
 /**
  * The inspector of the topology: what the selected node is, in more detail than its hover card and
- * with the way on to the cluster page. The look follows modules/fleet/src/components/Inspector.tsx.
+ * with the way on to the cluster page.
  */
 export function TopologyInspector({
   target,
@@ -347,14 +272,9 @@ export function TopologyInspector({
   const addonPath = useAddonPath();
   if (target.kind === 'root') {
     return (
-      <Frame
-        kind="Orchestrator"
-        title="Root orchestrator"
-        label="Root orchestrator"
-        onClose={onClose}
-      >
+      <InspectorPanel kind="Orchestrator" title="Root orchestrator" onClose={onClose}>
         <RootBody clusters={clusters} onSelect={onSelect} />
-      </Frame>
+      </InspectorPanel>
     );
   }
   const cluster = clusters.find((candidate) => candidate._id === target.clusterId);
@@ -363,20 +283,19 @@ export function TopologyInspector({
   // The placeholder stands for no worker, so its panel is the cluster's.
   if (target.kind === 'cluster' || target.kind === 'rest') {
     return (
-      <Frame
+      <InspectorPanel
         kind="Cluster"
         title={cluster.cluster_name}
-        label={cluster.cluster_name}
+        status={<ClusterStatusBadge cluster={cluster} />}
         footer={
           <Button asChild>
             <Link to={addonPath('clusters', cluster._id)}>Open cluster</Link>
           </Button>
         }
-        badge={<ClusterStatusBadge cluster={cluster} />}
         onClose={onClose}
       >
         <ClusterBody cluster={cluster} workers={onCluster} onSelect={onSelect} />
-      </Frame>
+      </InspectorPanel>
     );
   }
   const entry = onCluster.get(target.workerId);
@@ -384,15 +303,15 @@ export function TopologyInspector({
   const problem = worstProblem(entry);
   const worst = sortWorkerInstances(entry.instances)[0];
   return (
-    <Frame
+    <InspectorPanel
       kind="Worker"
-      label={workerTitle(target.workerId)}
+      name={workerTitle(target.workerId)}
       title={
         <span className={target.workerId === UNKNOWN_WORKER ? undefined : 'font-mono'}>
           {workerTitle(target.workerId)}
         </span>
       }
-      badge={
+      status={
         <StatusBadge
           tone={entry.tone}
           stale={clusterPresentation(cluster).stale}
@@ -415,6 +334,6 @@ export function TopologyInspector({
         applicationNames={applicationNames}
         onSelect={onSelect}
       />
-    </Frame>
+    </InspectorPanel>
   );
 }
