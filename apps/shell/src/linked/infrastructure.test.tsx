@@ -72,7 +72,9 @@ describe('infrastructure (linked addon)', () => {
 
       fireEvent.click(nodeOf(graph, `cluster:${cluster()._id}`));
 
-      const panel = await screen.findByRole('region', { name: 'Topology details' });
+      const panel = await screen.findByRole('region', {
+        name: `Details of ${cluster().cluster_name}`,
+      });
       expect(within(panel).getByText(cluster().cluster_name)).toBeVisible();
       expect(within(panel).getByRole('link', { name: 'Open cluster' })).toHaveAttribute(
         'href',
@@ -85,21 +87,23 @@ describe('infrastructure (linked addon)', () => {
 
       fireEvent.click(within(panel).getByRole('button', { name: 'Close details' }));
       await waitFor(() =>
-        expect(screen.queryByRole('region', { name: 'Topology details' })).not.toBeInTheDocument(),
+        expect(
+          screen.queryByRole('region', { name: `Details of ${cluster().cluster_name}` }),
+        ).not.toBeInTheDocument(),
       );
       expect(router.state.location.search).toBe('');
     });
 
     it('opens the panel from the URL and ignores unknown ids', async () => {
       renderInfrastructure({ route: '/infrastructure?node=root' });
-      const panel = await screen.findByRole('region', { name: 'Topology details' });
+      const panel = await screen.findByRole('region', { name: 'Details of Root orchestrator' });
       expect(within(panel).getByText('Root orchestrator')).toBeVisible();
     });
 
     it('shows no panel for an id that names nothing', async () => {
       renderInfrastructure({ route: '/infrastructure?node=cluster:nope' });
       await screen.findByLabelText('Infrastructure topology');
-      expect(screen.queryByRole('region', { name: 'Topology details' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: /^Details of/ })).not.toBeInTheDocument();
     });
 
     it('lets an infrastructure provider select clusters', async () => {
@@ -109,8 +113,78 @@ describe('infrastructure (linked addon)', () => {
 
       fireEvent.click(nodeOf(graph, `cluster:${cluster()._id}`));
 
-      const panel = await screen.findByRole('region', { name: 'Topology details' });
+      const panel = await screen.findByRole('region', {
+        name: `Details of ${cluster().cluster_name}`,
+      });
       expect(within(panel).getByText(cluster().cluster_name)).toBeVisible();
+    });
+  });
+
+  describe('topology problems and hidden workers', () => {
+    const nodeOf = (graph: HTMLElement, id: string) =>
+      graph.querySelector(`.react-flow__node[data-id="${id}"]`)!;
+    const testCluster = () =>
+      mockStore.data.clusters.find((cluster) => cluster.cluster_name === 'test-cluster')!;
+    const munich = () =>
+      mockStore.data.clusters.find((cluster) => cluster.cluster_name === 'edge-munich')!;
+
+    it('lists a silent cluster above the graph and selects it on click', async () => {
+      const { router } = renderInfrastructure();
+      const list = await screen.findByRole('list', { name: 'Needs attention' });
+
+      const item = within(list).getByRole('button', { name: /^edge-munich silent, last report / });
+      fireEvent.click(item);
+
+      expect(await screen.findByRole('region', { name: 'Details of edge-munich' })).toBeVisible();
+      expect(router.state.location.search).toBe(
+        `?node=${encodeURIComponent(`cluster:${munich()._id}`)}`,
+      );
+    });
+
+    it('names a failed instance and opens its worker', async () => {
+      const instance = mockStore.data.services
+        .flatMap((service) => service.instance_list)
+        .find((candidate) => candidate.cluster_id === testCluster()._id && candidate.worker_id)!;
+      instance.status = 'FAILED';
+      renderInfrastructure();
+
+      const list = await screen.findByRole('list', { name: 'Needs attention' });
+      const item = await within(list).findByRole('button', {
+        name: '1 failed instance on test-cluster',
+      });
+      fireEvent.click(item);
+
+      const panel = await screen.findByRole('region', { name: /^Details of / });
+      expect(within(panel).getByText('Worker')).toBeVisible();
+    });
+
+    it('draws nothing above the graph when nothing is abnormal', async () => {
+      mockStore.data.clusters.splice(mockStore.data.clusters.indexOf(munich()), 1);
+      renderInfrastructure();
+
+      const graph = await screen.findByLabelText('Infrastructure topology');
+      await within(graph).findByText('test-cluster');
+      expect(screen.queryByRole('list', { name: 'Needs attention' })).not.toBeInTheDocument();
+    });
+
+    it('adds a placeholder for workers no visible instance runs on and selects the cluster', async () => {
+      testCluster().active_nodes = 5;
+      const { router } = renderInfrastructure();
+      const graph = await screen.findByLabelText('Infrastructure topology');
+
+      const placeholder = await waitFor(() => {
+        const node = nodeOf(graph, `rest:${testCluster()._id}`);
+        expect(node).toBeTruthy();
+        return node;
+      });
+      expect(placeholder).toHaveTextContent('+2 more');
+
+      fireEvent.click(placeholder);
+
+      expect(await screen.findByRole('region', { name: 'Details of test-cluster' })).toBeVisible();
+      expect(router.state.location.search).toBe(
+        `?node=${encodeURIComponent(`cluster:${testCluster()._id}`)}`,
+      );
     });
   });
 

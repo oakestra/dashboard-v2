@@ -193,11 +193,14 @@ describe('buildApplicationTopology', () => {
         cluster('c2', 'never', { active: false, last_modified_timestamp: undefined }),
       ],
     );
-    for (const id of ['cluster:c1', 'cluster:c2']) {
+    for (const [id, description] of [
+      ['cluster:c1', 'Silent'],
+      ['cluster:c2', 'Never reported'],
+    ]) {
       expect(nodes.find((n) => n.id === id)).toMatchObject({
         stale: true,
         tone: 'neutral',
-        description: 'Not reporting',
+        description,
       });
     }
     const gone = nodes.find((n) => n.id === 'cluster:gone-cluster-id');

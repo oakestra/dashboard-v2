@@ -2,17 +2,50 @@ import type { Application } from '@oakestra/api';
 import {
   clustersQuery,
   servicesByApplicationQuery,
+  useAddonPath,
   useOakestraApi,
   useSearchParam,
 } from '@oakestra/dashboard-sdk';
-import { QueryErrorAlert, Skeleton } from '@oakestra/ui';
+import { Button, EmptyState, QueryErrorAlert, Skeleton, StatusDot } from '@oakestra/ui';
 import { FlowGraph } from '@oakestra/ui/flow';
 import { useQuery } from '@tanstack/react-query';
+import { NetworkIcon } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
+import { Link } from 'react-router';
 
 import { buildApplicationTopology } from '../topology';
-import { resolveTopologyNode } from '../topology-details';
+import { resolveTopologyNode, topologyProblems, type TopologyProblem } from '../topology-details';
 import { TopologyHoverCard, TopologyInspector } from './TopologyInspector';
+
+/**
+ * What needs the owner, above the graph. Each item selects the node that explains it. The glyph
+ * carries the tone and the text stays neutral, so the row does not compete with the graph.
+ */
+function ProblemSummary({
+  problems,
+  onSelect,
+}: {
+  problems: readonly TopologyProblem[];
+  onSelect: (id: string) => void;
+}) {
+  if (problems.length === 0) return null;
+  return (
+    <ul aria-label="Needs attention" className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+      {problems.map((problem) => (
+        <li key={problem.id}>
+          <button
+            type="button"
+            onClick={() => onSelect(problem.nodeId)}
+            className="inline-flex items-center gap-2 rounded-sm text-left outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          >
+            <StatusDot tone={problem.tone} stale={problem.id === 'silent'} />
+            {problem.text}
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /**
  * The application's services grouped by the cluster that runs them. It shares the cache entries of the
@@ -21,6 +54,7 @@ import { TopologyHoverCard, TopologyInspector } from './TopologyInspector';
  */
 export function ApplicationTopology({ application }: { application: Application }) {
   const api = useOakestraApi();
+  const addonPath = useAddonPath();
   const services = useQuery(servicesByApplicationQuery(api, application._id));
   const clusters = useQuery(clustersQuery(api));
   const [nodeId, setNodeId] = useSearchParam('node', '');
@@ -30,6 +64,11 @@ export function ApplicationTopology({ application }: { application: Application 
     if (!services.data || !clusters.data) return undefined;
     return buildApplicationTopology(services.data, clusters.data);
   }, [services.data, clusters.data]);
+
+  const problems = useMemo(
+    () => (services.data && clusters.data ? topologyProblems(services.data, clusters.data) : []),
+    [services.data, clusters.data],
+  );
 
   // Resolved against the data, not just the graph: a stale id in the URL gets no panel.
   const selection = useMemo(
@@ -55,9 +94,16 @@ export function ApplicationTopology({ application }: { application: Application 
   }
   if (services.data.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
-        This application has no services yet, so there is nothing to draw.
-      </p>
+      <EmptyState
+        icon={<NetworkIcon />}
+        title="No services yet"
+        description="Add a service to see which clusters run it and what it calls."
+        action={
+          <Button asChild>
+            <Link to={addonPath(application._id, 'services', 'new')}>New service</Link>
+          </Button>
+        }
+      />
     );
   }
   const { data: serviceList } = services;
@@ -65,6 +111,7 @@ export function ApplicationTopology({ application }: { application: Application 
 
   return (
     <div className="space-y-2">
+      <ProblemSummary problems={problems} onSelect={setNodeId} />
       <FlowGraph
         ariaLabel={`Topology of ${application.application_name}`}
         nodes={graph.nodes}
@@ -82,7 +129,6 @@ export function ApplicationTopology({ application }: { application: Application 
             <TopologyInspector
               selection={selection}
               application={application}
-              services={serviceList}
               clusters={clusterList}
               onSelect={setNodeId}
               onClose={clearSelection}

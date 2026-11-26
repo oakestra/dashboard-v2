@@ -26,7 +26,9 @@ import {
   type WorkerEntry,
 } from '../topology';
 import {
+  describeFailures,
   describeLocation,
+  failedOnCluster,
   sortWorkerInstances,
   summarizeRoot,
   worstProblem,
@@ -71,19 +73,29 @@ function LinkButton({ onClick, children }: { onClick: () => void; children: Reac
 function Frame({
   kind,
   title,
+  label,
   badge,
+  footer,
   onClose,
   children,
 }: {
   kind: string;
   title: ReactNode;
+  /** Plain text of the title, for the region's accessible name. */
+  label: string;
   badge?: ReactNode;
+  /** The primary action, pinned below the scrolling body so a long panel never hides it. */
+  footer?: ReactNode;
   onClose: () => void;
   children: ReactNode;
 }) {
   return (
-    <Card role="region" aria-label="Topology details" className="min-w-0 gap-0 py-0 shadow-xs">
-      <div className="flex items-start gap-2 border-b p-4">
+    <Card
+      role="region"
+      aria-label={`Details of ${label}`}
+      className="flex min-h-0 min-w-0 flex-col gap-0 overflow-hidden py-0 shadow-xs"
+    >
+      <div className="flex shrink-0 items-start gap-2 border-b p-4">
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-muted-foreground text-xs">{kind}</p>
           <h2 className="text-lg leading-6 font-medium wrap-break-word">{title}</h2>
@@ -99,7 +111,8 @@ function Frame({
           <XIcon aria-hidden />
         </Button>
       </div>
-      <div className="flex flex-col gap-4 p-4">{children}</div>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">{children}</div>
+      {footer ? <div className="shrink-0 border-t p-3">{footer}</div> : null}
     </Card>
   );
 }
@@ -151,8 +164,8 @@ function ClusterBody({
   workers: ReadonlyMap<string, WorkerEntry>;
   onSelect: Select;
 }) {
-  const addonPath = useAddonPath();
   const { state, label } = clusterPresentation(cluster);
+  const failures = describeFailures(failedOnCluster(workers));
   const { cpuPercent, memoryPercent, memoryAvailableBytes, activeNodes, lastKnown } =
     clusterUsage(cluster);
   const location = describeLocation(cluster);
@@ -172,6 +185,7 @@ function ClusterBody({
     );
   return (
     <>
+      {failures ? <p className="text-sm">{failures} Select a worker below to see why.</p> : null}
       {state === 'never-reported' ? (
         <p className="text-muted-foreground text-sm">
           This cluster registered but has not sent a report yet.
@@ -179,7 +193,8 @@ function ClusterBody({
       ) : null}
       {lastKnown && state === 'silent' ? (
         <p className="text-muted-foreground text-sm">
-          {label} since {formatRelativeTime(lastReport)}. The values below are from its last report.
+          {label}, last report {formatRelativeTime(lastReport)}. The values below are from that
+          report.
         </p>
       ) : null}
       <Facts>
@@ -221,9 +236,6 @@ function ClusterBody({
           </ul>
         </section>
       ) : null}
-      <Button asChild className="self-start">
-        <Link to={addonPath('clusters', cluster._id)}>Open cluster</Link>
-      </Button>
     </>
   );
 }
@@ -332,9 +344,15 @@ export function TopologyInspector({
   onSelect: Select;
   onClose: () => void;
 }) {
+  const addonPath = useAddonPath();
   if (target.kind === 'root') {
     return (
-      <Frame kind="Orchestrator" title="Root orchestrator" onClose={onClose}>
+      <Frame
+        kind="Orchestrator"
+        title="Root orchestrator"
+        label="Root orchestrator"
+        onClose={onClose}
+      >
         <RootBody clusters={clusters} onSelect={onSelect} />
       </Frame>
     );
@@ -342,11 +360,18 @@ export function TopologyInspector({
   const cluster = clusters.find((candidate) => candidate._id === target.clusterId);
   if (!cluster) return null;
   const onCluster = workers.get(cluster._id) ?? new Map<string, WorkerEntry>();
-  if (target.kind === 'cluster') {
+  // The placeholder stands for no worker, so its panel is the cluster's.
+  if (target.kind === 'cluster' || target.kind === 'rest') {
     return (
       <Frame
         kind="Cluster"
         title={cluster.cluster_name}
+        label={cluster.cluster_name}
+        footer={
+          <Button asChild>
+            <Link to={addonPath('clusters', cluster._id)}>Open cluster</Link>
+          </Button>
+        }
         badge={<ClusterStatusBadge cluster={cluster} />}
         onClose={onClose}
       >
@@ -361,6 +386,7 @@ export function TopologyInspector({
   return (
     <Frame
       kind="Worker"
+      label={workerTitle(target.workerId)}
       title={
         <span className={target.workerId === UNKNOWN_WORKER ? undefined : 'font-mono'}>
           {workerTitle(target.workerId)}

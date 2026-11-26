@@ -194,6 +194,13 @@
   .react-flow__controls-button:last-child {
     @apply border-b-0!;
   }
+  /* In a row (what FlowGraph uses) the separator belongs between the buttons, not below them. */
+  .react-flow__controls.horizontal .react-flow__controls-button {
+    @apply border-r! border-b-0!;
+  }
+  .react-flow__controls.horizontal .react-flow__controls-button:last-child {
+    @apply border-r-0!;
+  }
   .react-flow__controls-button:hover {
     @apply bg-accent!;
   }

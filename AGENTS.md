@@ -395,8 +395,14 @@ hovered and pans a selection outside the visible part into view. `renderHoverCar
 none) is a Radix popover on the node's screen rect (`flow-hover-card.tsx`): 350 ms hover delay,
 100 ms grace, at once on keyboard focus, closed by Escape, blur and pan. Hovering a node fades
 everything not connected to it. `inspector` (the selection's detail card) floats over the frame's
-right edge from 768px frame width, keeping the graph's size, and the selection pans into the free
-part; narrower, it renders below the graph. Both topologies (the application tab and
+right edge from 768px frame width, and the graph is fitted into the free part beside it (never
+below the readable zoom; then the selection pans into view), so the panel does not hide the
+selection's neighbours; narrower, it renders below the graph. A selection fades unconnected nodes
+less than a hover does, because it stays for as long as the panel is open. A graph with a panel passes `null` (not `undefined`)
+while nothing is selected: the frame is then already at least 440px tall, so the first selection
+does not move the page. The floating panel gets the frame's height and is not scrolled from
+outside: its root is `flex min-h-0 flex-col overflow-hidden`, the body scrolls and the main action
+sits in a pinned footer. Both topologies (the application tab and
 Infrastructure) keep the selection in `?node=` and navigate only from that panel. Selectable graphs
 leave `href` out (label link and select click
 compete); `renderLink` works as for `LocationMap`. A wheel scrolls the page

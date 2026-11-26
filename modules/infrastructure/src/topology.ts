@@ -16,6 +16,7 @@ const CLUSTER_NODE_PREFIX = 'cluster:';
 
 export const UNKNOWN_WORKER = 'unknown';
 const WORKER_NODE_PREFIX = 'worker:';
+const REST_NODE_PREFIX = 'rest:';
 
 // Worker ids are long hex strings whose tail tells them apart, while a hand-picked short id is
 // shown whole. The applications inspector repeats this rule.
@@ -28,10 +29,14 @@ export const clusterNodeId = (clusterId: string) => `${CLUSTER_NODE_PREFIX}${clu
 export const workerNodeId = (clusterId: string, workerId: string) =>
   `${WORKER_NODE_PREFIX}${clusterId}:${workerId}`;
 
+/** The placeholder for the workers of a cluster that no visible instance runs on. */
+export const restNodeId = (clusterId: string) => `${REST_NODE_PREFIX}${clusterId}`;
+
 export type InfraNodeRef =
   | { kind: 'root' }
   | { kind: 'cluster'; clusterId: string }
-  | { kind: 'worker'; clusterId: string; workerId: string };
+  | { kind: 'worker'; clusterId: string; workerId: string }
+  | { kind: 'rest'; clusterId: string };
 
 /**
  * Reads a node id back into what it names. The selection lives in the URL, so this also meets ids
@@ -43,6 +48,10 @@ export function parseInfraNodeId(id: string): InfraNodeRef | null {
   if (id.startsWith(CLUSTER_NODE_PREFIX)) {
     const clusterId = id.slice(CLUSTER_NODE_PREFIX.length);
     return clusterId ? { kind: 'cluster', clusterId } : null;
+  }
+  if (id.startsWith(REST_NODE_PREFIX)) {
+    const clusterId = id.slice(REST_NODE_PREFIX.length);
+    return clusterId ? { kind: 'rest', clusterId } : null;
   }
   if (id.startsWith(WORKER_NODE_PREFIX)) {
     const rest = id.slice(WORKER_NODE_PREFIX.length);
@@ -108,6 +117,15 @@ export function workersByCluster(services: readonly Service[], known: ReadonlySe
 }
 
 /**
+ * How many of a reporting cluster's workers are not drawn. A silent or never-reported cluster
+ * has no current count, so nothing is missing from the picture.
+ */
+export function undrawnWorkers(cluster: Cluster, drawn: number): number {
+  if (clusterPresentation(cluster).state !== 'reporting') return 0;
+  return Math.max(0, (clusterUsage(cluster).activeNodes ?? 0) - drawn);
+}
+
+/**
  * Root orchestrator, every cluster below it and the workers that run something. Clusters are
  * groups so their workers sit inside them. All clusters are drawn, idle, silent or never reported
  * ones too: where nothing runs is part of the picture.
@@ -115,6 +133,11 @@ export function workersByCluster(services: readonly Service[], known: ReadonlySe
 export function buildInfrastructureTopology(
   clusters: readonly Cluster[],
   services: readonly Service[],
+  /**
+   * False while the services are loading or failed: no worker is drawn then, so a "+N more"
+   * placeholder would claim every worker is hidden.
+   */
+  workersKnown = true,
 ): {
   nodes: FlowNode[];
   edges: FlowEdge[];
@@ -176,6 +199,16 @@ export function buildInfrastructureTopology(
         // A silent cluster's instances are last known too.
         stale: stale || undefined,
         description: [...entry.services].sort().join(', '),
+      });
+    }
+
+    const hidden = workersKnown ? undrawnWorkers(cluster, onCluster?.size ?? 0) : 0;
+    if (hidden > 0) {
+      nodes.push({
+        id: restNodeId(cluster._id),
+        label: `+${hidden} more`,
+        kind: 'compact',
+        group: groupId,
       });
     }
   }

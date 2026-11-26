@@ -80,6 +80,90 @@ describe('application detail page (linked addon)', () => {
       expect(new URLSearchParams(router.state.location.search).has('node')).toBe(false);
     });
 
+    it('links each instance of a placement by its name', async () => {
+      const warehouse = mockStore.data.services.find((s) => s.microservice_name === 'warehouse')!;
+      warehouse.instance_list = [
+        {
+          instance_number: 0,
+          status: 'RUNNING',
+          cluster_id: mockStore.data.clusters[0]!._id,
+          worker_id: 'worker-1',
+        },
+      ];
+      const { user } = renderDetail();
+      await screen.findByRole('link', { name: 'warehouse' });
+      await user.click(screen.getByRole('tab', { name: 'Topology' }));
+      const graph = await screen.findByRole('group', { name: 'Topology of analytics' });
+      const placed = () =>
+        graph.querySelector<HTMLElement>(
+          `.react-flow__node[data-id^="placement:${warehouse._id}:"]`,
+        );
+      await waitFor(() => expect(placed()).toBeTruthy());
+      fireEvent.click(placed()!);
+
+      const panel = await screen.findByRole('region', { name: /^Details of / });
+      const [instance] = within(panel).getAllByRole('link', { name: /^Open instance \d+$/ });
+      expect(instance).toHaveTextContent(/^Instance \d+$/);
+      expect(instance).toHaveAttribute('href', expect.stringContaining('/instances/'));
+      expect(within(panel).getByRole('link', { name: 'Open service' })).toBeVisible();
+    });
+
+    it('shows no problem row for an application with nothing abnormal', async () => {
+      renderApp({
+        linked: linkedAddons,
+        route: `/applications/${alicesApp()._id}?tab=topology`,
+        user: { username: 'alice' },
+      });
+
+      await screen.findByRole('group', { name: 'Topology of analytics' });
+      expect(screen.queryByRole('list', { name: 'Needs attention' })).not.toBeInTheDocument();
+    });
+
+    it('names the problems above the graph and jumps from one to the failed instance', async () => {
+      const warehouse = mockStore.data.services.find((s) => s.microservice_name === 'warehouse')!;
+      const reporting = mockStore.data.clusters.find((cluster) => cluster.active)!;
+      const silent = mockStore.data.clusters.find((cluster) => !cluster.active)!;
+      warehouse.instance_list = [
+        { instance_number: 0, status: 'RUNNING', cluster_id: reporting._id, worker_id: 'w-1' },
+        {
+          instance_number: 1,
+          status: 'FAILED',
+          status_detail: 'image pull failed',
+          cluster_id: reporting._id,
+          worker_id: 'w-2',
+        },
+      ];
+      const dashboard = mockStore.data.services.find((s) => s.microservice_name === 'dashboard')!;
+      dashboard.instance_list = [
+        { instance_number: 0, status: 'RUNNING', cluster_id: silent._id, worker_id: 'w-3' },
+      ];
+      const { user, router } = renderApp({
+        linked: linkedAddons,
+        route: `/applications/${alicesApp()._id}?tab=topology`,
+        user: { username: 'alice' },
+      });
+
+      const row = await screen.findByRole('list', { name: 'Needs attention' });
+      expect(
+        within(row)
+          .getAllByRole('button')
+          .map((item) => item.textContent),
+      ).toEqual(['1 failed instance', `dashboard on ${silent.cluster_name}: last known state`]);
+
+      await user.click(within(row).getByRole('button', { name: '1 failed instance' }));
+
+      const panel = await screen.findByRole('region', { name: 'Details of warehouse' });
+      expect(new URLSearchParams(router.state.location.search).get('node')).toBe(
+        `placement:${warehouse._id}:${reporting._id}`,
+      );
+      expect(within(panel).getByText('image pull failed')).toBeVisible();
+      const next = within(panel).getByText('Open instance 1');
+      expect(next).toHaveAttribute(
+        'href',
+        `/applications/${alicesApp()._id}/services/${warehouse._id}/instances/1`,
+      );
+    });
+
     it('opens the tab and the panel from a link', async () => {
       const first = renderDetail();
       await screen.findByRole('link', { name: 'warehouse' });
@@ -97,6 +181,20 @@ describe('application detail page (linked addon)', () => {
 
       expect(await screen.findByRole('region', { name: /^Details of / })).toBeVisible();
       expect(screen.getByRole('tab', { name: 'Topology' })).toHaveAttribute('data-state', 'active');
+    });
+
+    it('shows an empty state for an application without services', async () => {
+      mockServer.use(http.get(`${TEST_API_URL}/services/:appId`, () => HttpResponse.json([])));
+      renderApp({
+        linked: linkedAddons,
+        route: `/applications/${alicesApp()._id}?tab=topology`,
+        user: { username: 'alice' },
+      });
+
+      expect(await screen.findByRole('heading', { name: 'No services yet' })).toBeVisible();
+      expect(
+        screen.queryByRole('group', { name: 'Topology of analytics' }),
+      ).not.toBeInTheDocument();
     });
 
     it('ignores a node id that matches nothing', async () => {

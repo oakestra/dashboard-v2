@@ -1,4 +1,4 @@
-import { clusterReportState, type Cluster, type Service } from '@oakestra/api';
+import { clusterReportState, clusterStateLabel, type Cluster, type Service } from '@oakestra/api';
 import { plural, type StatusTone } from '@oakestra/ui';
 import type { FlowEdge, FlowNode } from '@oakestra/ui/flow';
 
@@ -206,12 +206,14 @@ export function buildApplicationTopology(
     .sort((a, b) => a.name.localeCompare(b.name));
 
   for (const { clusterId, members, cluster, name } of groups) {
-    const silent = cluster !== undefined && clusterReportState(cluster) !== 'reporting';
+    const state = cluster ? clusterReportState(cluster) : 'reporting';
+    const silent = state !== 'reporting';
     nodes.push({
       id: clusterGroupId(clusterId),
       label: name,
       kind: 'group',
-      description: silent ? 'Not reporting' : plural(members.length, 'service'),
+      // The cluster list and the infrastructure graph say the same word for this state.
+      description: silent ? clusterStateLabel(state) : plural(members.length, 'service'),
       tone: silent ? 'neutral' : undefined,
       stale: silent || undefined,
     });

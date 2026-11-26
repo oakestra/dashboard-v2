@@ -54,19 +54,34 @@ interface NodeData extends Record<string, unknown> {
   direction: FlowDirection;
   selected: boolean;
   clickable: boolean;
-  /** Another node is hovered and this one is not connected to it. */
-  dimmed: boolean;
+  /** Not connected to the traced node: faded strongly for a hover, lightly for a selection. */
+  dimmed: TraceKind | false;
   renderLink: (props: FlowLinkProps) => ReactNode;
 }
 
 interface EdgeData extends Record<string, unknown> {
   edge: FlowEdge;
   moving: boolean;
-  /** A node is hovered: `true` fades this edge, `false` (touching the node) draws it stronger. */
-  dimmed: boolean | null;
+  /**
+   * A node is traced: its kind fades this edge, `false` (touching the node) draws it stronger.
+   * `null` without a trace.
+   */
+  dimmed: TraceKind | false | null;
   /** The route from the layout; without one the edge is drawn as a direct step line. */
   route: EdgeRoute | undefined;
 }
+
+/**
+ * A hover is a passing question ("what does this touch?"), so everything else may nearly vanish. A
+ * selection stays for as long as its panel is open, and the rest of the graph has to stay readable
+ * next to it.
+ */
+type TraceKind = 'hover' | 'selection';
+const NODE_DIM_CLASSES: Record<TraceKind, string> = {
+  hover: 'opacity-40',
+  selection: 'opacity-70',
+};
+const EDGE_DIM_OPACITY: Record<TraceKind, number> = { hover: 0.15, selection: 0.45 };
 
 type ItemNode = Node<NodeData, 'flowItem'>;
 type GroupNode = Node<NodeData, 'flowGroup'>;
@@ -167,7 +182,7 @@ function nodeSurface(data: NodeData) {
     selected && 'outline-2 outline-offset-2 outline-primary',
     (clickable || node.href) && 'hover:border-foreground/30',
     clickable && 'cursor-pointer',
-    dimmed && 'opacity-40',
+    dimmed && NODE_DIM_CLASSES[dimmed],
   );
 }
 
@@ -296,8 +311,8 @@ function ToneEdgeView({
         });
   const edge = data?.edge;
   const tone = edge?.tone ?? 'neutral';
-  const dimmed = data?.dimmed === true;
-  const opacity = dimmed ? 0.15 : 1;
+  const dimmed = data?.dimmed || null;
+  const opacity = dimmed ? EDGE_DIM_OPACITY[dimmed] : 1;
   const head = edge?.arrow ? arrowHead(points, { x: targetX, y: targetY }, targetPosition) : null;
   return (
     <>
@@ -335,7 +350,7 @@ function ToneEdgeView({
             className={cn(
               'absolute max-w-40 truncate rounded-sm border bg-card px-1.5 py-0.5 text-[0.625rem] leading-3 text-muted-foreground',
               EDGE_LABEL_TONE_CLASSES[tone],
-              dimmed && 'opacity-30',
+              dimmed && (dimmed === 'hover' ? 'opacity-30' : 'opacity-60'),
             )}
           >
             {edge.label}
@@ -399,23 +414,26 @@ function absoluteBox(layout: GraphLayout, id: string) {
 }
 
 /**
- * Moves the camera whenever the fit changes, which happens on a structural change or when the
- * frame gets narrower or wider (a sheet opening next to the page, a phone turning). Never on a
- * status update, since the layout and thus the fit stay the same. Without animation: a resize
- * fires many times in a row, and a camera that glides after every one of them would lag behind.
+ * Moves the camera whenever the view changes: on a structural change, when the frame gets narrower
+ * or wider (a sheet opening next to the page, a phone turning), and when the floating panel opens
+ * or closes, because the graph is then fitted into the part the panel leaves free. Never on a
+ * status update, since the layout and thus the view stay the same.
+ *
+ * A resize fires many times in a row, and a camera that glides after every one of them would lag
+ * behind, so only a move at an unchanged frame width (the panel) is animated.
  *
  * A selected node outside the visible part (a selection restored from the URL on a phone, where
  * the frame shows only the first columns) is panned into view at the same zoom.
  */
 function CameraController({
-  fit,
+  view,
   layout,
   selectedId,
   frameWidth,
   coveredRight,
   animate,
 }: {
-  fit: ViewportFit;
+  view: ViewportFit;
   layout: GraphLayout;
   selectedId: string | null;
   frameWidth: number;
@@ -424,43 +442,48 @@ function CameraController({
   animate: boolean;
 }) {
   const { setViewport, getViewport } = useReactFlow();
-  const { x, y, zoom, height } = fit;
+  const { x, y, zoom, height } = view;
 
+  /** The viewport that shows the selection, or undefined when `from` already does. */
   const revealSelected = useCallback(
-    (duration: number) => {
+    (from: { x: number; y: number; zoom: number }) => {
       const box = selectedId ? absoluteBox(layout, selectedId) : undefined;
-      if (!box || frameWidth === 0) return;
-      const viewport = getViewport();
-      const left = box.x * viewport.zoom + viewport.x;
-      const top = box.y * viewport.zoom + viewport.y;
-      const right = left + box.width * viewport.zoom;
-      const bottom = top + box.height * viewport.zoom;
+      if (!box || frameWidth === 0) return undefined;
+      const left = box.x * from.zoom + from.x;
+      const top = box.y * from.zoom + from.y;
+      const right = left + box.width * from.zoom;
+      const bottom = top + box.height * from.zoom;
       const visibleWidth = Math.max(frameWidth - coveredRight, frameWidth / 2);
-      if (left >= 0 && top >= 0 && right <= visibleWidth && bottom <= height) return;
-      void setViewport(
-        {
-          x: visibleWidth / 2 - (box.x + box.width / 2) * viewport.zoom,
-          y: height / 2 - (box.y + box.height / 2) * viewport.zoom,
-          zoom: viewport.zoom,
-        },
-        { duration },
-      );
+      if (left >= 0 && top >= 0 && right <= visibleWidth && bottom <= height) return undefined;
+      return {
+        x: visibleWidth / 2 - (box.x + box.width / 2) * from.zoom,
+        y: height / 2 - (box.y + box.height / 2) * from.zoom,
+        zoom: from.zoom,
+      };
     },
-    [selectedId, layout, frameWidth, coveredRight, height, getViewport, setViewport],
+    [selectedId, layout, frameWidth, coveredRight, height],
   );
 
+  // Declared before the view effect: when a selection also opens the panel both run, and the
+  // view's move, which already accounts for the selection, has to be the one that sticks.
   useEffect(() => {
-    void setViewport({ x, y, zoom });
-    revealSelected(0);
-    // Only on a new fit; a new selection is handled below.
+    const target = revealSelected(getViewport());
+    if (target) void setViewport(target, { duration: animate ? FIT_DURATION_MS : 0 });
+    // Only for a new selection; a new view is handled below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
+  const lastWidth = useRef<number | null>(null);
+  useEffect(() => {
+    const sameWidth = lastWidth.current === frameWidth;
+    lastWidth.current = frameWidth;
+    const base = { x, y, zoom };
+    void setViewport(revealSelected(base) ?? base, {
+      duration: animate && sameWidth ? FIT_DURATION_MS : 0,
+    });
+    // Only on a new view; a new selection is handled above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [x, y, zoom, setViewport]);
-
-  useEffect(() => {
-    revealSelected(animate ? FIT_DURATION_MS : 0);
-    // Only when the selection or the panel changes, not on every new fit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, coveredRight]);
 
   return null;
 }
@@ -526,8 +549,11 @@ export default function FlowGraphImpl({
   const [frameRef, frameWidth, frameElement] = useFrameWidth();
   const hasInspector = inspector != null && inspector !== false;
   // Unmeasured (0) counts as wide, as in tests.
-  const inspectorOverlay =
-    hasInspector && (frameWidth === 0 || frameWidth >= INSPECTOR_OVERLAY_MIN_WIDTH);
+  const wideEnoughForOverlay = frameWidth === 0 || frameWidth >= INSPECTOR_OVERLAY_MIN_WIDTH;
+  const inspectorOverlay = hasInspector && wideEnoughForOverlay;
+  // A caller with a panel passes `null` while nothing is selected. The frame already takes the
+  // panel's height then, so the first selection does not push the page below it down.
+  const reservesPanelHeight = inspector !== undefined && wideEnoughForOverlay;
   // A phone-sized frame is only a few rows tall, and the buttons would cover the first nodes; pinch
   // and drag do the same there. Unmeasured (0) keeps them, as in tests.
   const showControls = frameWidth === 0 || frameWidth >= CONTROLS_MIN_WIDTH;
@@ -535,12 +561,29 @@ export default function FlowGraphImpl({
     () =>
       fitViewport(layout, frameWidth, {
         // A floating panel needs room for a few facts before it has to scroll.
-        minHeight: inspectorOverlay ? Math.max(minHeight, INSPECTOR_MIN_FRAME_HEIGHT) : minHeight,
-        maxHeight: Math.max(maxHeight, inspectorOverlay ? INSPECTOR_MIN_FRAME_HEIGHT : 0),
+        minHeight: reservesPanelHeight
+          ? Math.max(minHeight, INSPECTOR_MIN_FRAME_HEIGHT)
+          : minHeight,
+        maxHeight: Math.max(maxHeight, reservesPanelHeight ? INSPECTOR_MIN_FRAME_HEIGHT : 0),
         // The zoom buttons sit over the bottom left corner; keep the graph clear of them.
         bottomInset: showControls ? CONTROLS_INSET : 0,
       }),
-    [layout, frameWidth, minHeight, maxHeight, showControls, inspectorOverlay],
+    [layout, frameWidth, minHeight, maxHeight, showControls, reservesPanelHeight],
+  );
+  // While the panel floats over the right edge, the graph is fitted into what is left of the
+  // frame, so the panel never hides the selection's neighbours. The frame keeps its height.
+  const coveredRight = inspectorOverlay ? INSPECTOR_WIDTH + 2 * INSPECTOR_INSET : 0;
+  const bottomInset = showControls ? CONTROLS_INSET : 0;
+  const view = useMemo(
+    () =>
+      coveredRight === 0 || frameWidth === 0
+        ? fit
+        : fitViewport(layout, frameWidth - coveredRight, {
+            minHeight: fit.height,
+            maxHeight: fit.height,
+            bottomInset,
+          }),
+    [fit, layout, frameWidth, coveredRight, bottomInset],
   );
   const byId = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
 
@@ -549,6 +592,7 @@ export default function FlowGraphImpl({
   // selection is traced, so a selected node keeps its connections highlighted.
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const tracedId = [hoveredId, selectedId].find((id) => id != null && layout.nodes.has(id)) ?? null;
+  const traceKind: TraceKind = tracedId === hoveredId ? 'hover' : 'selection';
   const trace = useMemo(() => {
     if (!tracedId) return null;
     const parentOf = (id: string) => layout.nodes.get(id)?.parent;
@@ -588,7 +632,7 @@ export default function FlowGraphImpl({
         direction,
         selected: node.id === selectedId,
         clickable,
-        dimmed: trace !== null && !trace.nodeIds.has(node.id),
+        dimmed: trace !== null && !trace.nodeIds.has(node.id) && traceKind,
         renderLink,
       };
       const flowNode: ItemNode | GroupNode = {
@@ -608,7 +652,7 @@ export default function FlowGraphImpl({
       ...placed.filter((node) => node.type === 'flowGroup'),
       ...placed.filter((node) => node.type !== 'flowGroup'),
     ];
-  }, [nodes, layout, direction, selectedId, clickable, renderLink, trace]);
+  }, [nodes, layout, direction, selectedId, clickable, renderLink, trace, traceKind]);
 
   const flowEdges = useMemo(
     () =>
@@ -622,11 +666,11 @@ export default function FlowGraphImpl({
           data: {
             edge,
             moving: Boolean(edge.animated) && !reducedMotion,
-            dimmed: trace ? !trace.edgeIds.has(edge.id) : null,
+            dimmed: trace ? !trace.edgeIds.has(edge.id) && traceKind : null,
             route: layout.edges.get(edge.id),
           },
         })),
-    [edges, layout, reducedMotion, trace],
+    [edges, layout, reducedMotion, trace, traceKind],
   );
 
   const handleNodeClick: NodeMouseHandler = (event, flowNode) => {
@@ -704,7 +748,7 @@ export default function FlowGraphImpl({
           onMoveStart={(event) => {
             if (event) hoverCard.close();
           }}
-          defaultViewport={{ x: fit.x, y: fit.y, zoom: fit.zoom }}
+          defaultViewport={{ x: view.x, y: view.y, zoom: view.zoom }}
           minZoom={0.2}
           maxZoom={2}
           // The layout is computed, so nothing is dragged, connected or selected by hand; the
@@ -744,20 +788,22 @@ export default function FlowGraphImpl({
             />
           ) : null}
           <CameraController
-            fit={fit}
+            view={view}
             layout={layout}
             selectedId={selectedId}
             frameWidth={frameWidth}
-            coveredRight={inspectorOverlay ? INSPECTOR_WIDTH + 2 * INSPECTOR_INSET : 0}
+            coveredRight={coveredRight}
             animate={!reducedMotion}
           />
         </ReactFlow>
       </div>
       {inspectorOverlay ? (
-        // Sized to its content and scrolling past the frame's height; `z-10` lifts it over the
-        // panes and controls React Flow layers inside the frame's stacking context.
+        // Sized to its content up to the frame's height. It does not scroll itself: the panel
+        // inside shrinks (`min-h-0`) and scrolls its own body, so its header and actions stay in
+        // view. `z-10` lifts it over the panes and controls React Flow layers inside the frame's
+        // stacking context; `rounded-lg` is the radius of the Card inside, for the shadow.
         <div
-          className="absolute z-10 overflow-y-auto rounded-xl shadow-md"
+          className="absolute z-10 flex flex-col rounded-lg shadow-md *:min-h-0"
           style={{
             top: INSPECTOR_INSET,
             right: INSPECTOR_INSET,

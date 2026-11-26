@@ -4,7 +4,9 @@ import { describe, expect, it } from 'vitest';
 import {
   buildInfrastructureTopology,
   parseInfraNodeId,
+  restNodeId,
   shortWorker,
+  undrawnWorkers,
   workerNodeId,
 } from './topology';
 
@@ -93,7 +95,7 @@ describe('buildInfrastructureTopology', () => {
       ]),
     ]);
 
-    const workers = nodes.filter((node) => node.group);
+    const workers = nodes.filter((node) => node.kind === 'item');
     expect(workers).toHaveLength(2);
     expect(workers[0]).toMatchObject({
       group: 'cluster:a',
@@ -113,7 +115,7 @@ describe('buildInfrastructureTopology', () => {
       ]),
     ]);
 
-    const workers = nodes.filter((node) => node.group);
+    const workers = nodes.filter((node) => node.kind === 'item');
     expect(workers).toHaveLength(1);
     expect(workers[0]).toMatchObject({ label: 'Unknown worker', group: 'cluster:b', pulse: true });
   });
@@ -122,7 +124,7 @@ describe('buildInfrastructureTopology', () => {
     const { nodes } = buildInfrastructureTopology(clusters, [
       service('wideload', [{ instance_number: 0, cluster_id: 'b', status: 'NO_WORKER_CAPACITY' }]),
     ]);
-    expect(nodes.filter((node) => node.group)).toHaveLength(0);
+    expect(nodes.filter((node) => node.kind === 'item')).toHaveLength(0);
   });
 
   it('marks the workers of a silent cluster as last known', () => {
@@ -148,6 +150,7 @@ describe('parseInfraNodeId', () => {
   it('reads the ids the builder produces', () => {
     expect(parseInfraNodeId('root')).toEqual({ kind: 'root' });
     expect(parseInfraNodeId('cluster:abc')).toEqual({ kind: 'cluster', clusterId: 'abc' });
+    expect(parseInfraNodeId(restNodeId('abc'))).toEqual({ kind: 'rest', clusterId: 'abc' });
     expect(parseInfraNodeId(workerNodeId('abc', 'w1'))).toEqual({
       kind: 'worker',
       clusterId: 'abc',
@@ -164,7 +167,7 @@ describe('parseInfraNodeId', () => {
   });
 
   it('rejects anything else', () => {
-    for (const id of ['', 'cluster:', 'worker:abc', 'worker::w', 'worker:abc:', 'other']) {
+    for (const id of ['', 'cluster:', 'worker:abc', 'worker::w', 'worker:abc:', 'rest:', 'other']) {
       expect(parseInfraNodeId(id)).toBeNull();
     }
   });
@@ -177,5 +180,57 @@ describe('workers', () => {
     ]);
     expect(nodes.some((node) => node.href)).toBe(false);
     expect(nodes.some((node) => node.id === 'worker:a:w1')).toBe(true);
+  });
+});
+
+describe('placeholder for workers that are not drawn', () => {
+  const restOf = (nodes: { id: string }[]) => nodes.filter((node) => node.id.startsWith('rest:'));
+
+  it('adds "+N more" to a reporting cluster inside its group, after the workers', () => {
+    const { nodes } = buildInfrastructureTopology(clusters, [
+      service('web', [{ cluster_id: 'b', worker_id: 'w1', status: 'RUNNING', instance_number: 0 }]),
+    ]);
+
+    const rest = nodes.find((node) => node.id === 'rest:b');
+    expect(rest).toMatchObject({ kind: 'compact', group: 'cluster:b', label: '+2 more' });
+    expect(rest?.tone).toBeUndefined();
+    expect(nodes.findIndex((node) => node.id === 'worker:b:w1')).toBeLessThan(
+      nodes.findIndex((node) => node.id === 'rest:b'),
+    );
+    // edge-a states one worker and none is drawn.
+    expect(nodes.find((node) => node.id === 'rest:a')?.label).toBe('+1 more');
+    expect(restOf(nodes)).toHaveLength(2);
+  });
+
+  it('counts every drawn box, the unknown worker too', () => {
+    const { nodes } = buildInfrastructureTopology(clusters, [
+      service('web', [
+        { cluster_id: 'b', worker_id: 'w1', status: 'RUNNING', instance_number: 0 },
+        { cluster_id: 'b', status: 'RUNNING', instance_number: 1 },
+      ]),
+    ]);
+    expect(nodes.find((node) => node.id === 'rest:b')?.label).toBe('+1 more');
+  });
+
+  it('is left out for silent and never-reported clusters', () => {
+    const { nodes } = buildInfrastructureTopology(
+      [
+        cluster({ _id: 's', active: false, active_nodes: 5 }),
+        cluster({ _id: 'n', active: false, active_nodes: 5, last_modified_timestamp: undefined }),
+      ],
+      [],
+    );
+    expect(restOf(nodes)).toHaveLength(0);
+  });
+
+  it('is left out while the workers are unknown', () => {
+    const { nodes } = buildInfrastructureTopology(clusters, [], false);
+    expect(restOf(nodes)).toHaveLength(0);
+  });
+
+  it('is left out when everything is drawn', () => {
+    expect(undrawnWorkers(cluster({ active_nodes: 2 }), 2)).toBe(0);
+    expect(undrawnWorkers(cluster({ active_nodes: 2 }), 3)).toBe(0);
+    expect(undrawnWorkers(cluster({ active_nodes: 4 }), 1)).toBe(3);
   });
 });

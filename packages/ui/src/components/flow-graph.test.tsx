@@ -239,16 +239,49 @@ describe('FlowGraph interactions', () => {
     await screen.findByRole('group', { name: 'Topology' });
     const surface = (id: string) => nodeElement(id).querySelector('[data-slot="flow-node"]');
 
-    expect(surface('svc')).not.toHaveClass('opacity-40');
-    expect(surface('other')).toHaveClass('opacity-40');
-    expect(surface('cluster')).toHaveClass('opacity-40');
+    // A selection fades the rest less than a hover: it stays while the panel is open.
+    expect(surface('svc')).not.toHaveClass('opacity-70');
+    expect(surface('other')).toHaveClass('opacity-70');
+    expect(surface('cluster')).toHaveClass('opacity-70');
 
     // Hover wins while it lasts.
     fireEvent.mouseEnter(nodeElement('other'));
     expect(surface('other')).not.toHaveClass('opacity-40');
     expect(surface('app')).toHaveClass('opacity-40');
     fireEvent.mouseLeave(nodeElement('other'));
-    expect(surface('other')).toHaveClass('opacity-40');
+    expect(surface('other')).toHaveClass('opacity-70');
+  });
+});
+
+describe('FlowGraph inspector', () => {
+  const frameHeight = () =>
+    (screen.getByRole('group', { name: 'Test graph' }).firstElementChild as HTMLElement).style
+      .height;
+
+  it('keeps the frame height when a selection opens the panel', async () => {
+    const { rerender } = render(
+      <FlowGraph ariaLabel="Test graph" nodes={nodes} edges={edges} inspector={null} />,
+    );
+    await screen.findByRole('group', { name: 'Test graph' });
+    const idle = frameHeight();
+    rerender(
+      <FlowGraph
+        ariaLabel="Test graph"
+        nodes={nodes}
+        edges={edges}
+        selectedId="svc"
+        inspector={<div>Details</div>}
+      />,
+    );
+    expect(screen.getByText('Details')).toBeInTheDocument();
+    expect(frameHeight()).toBe(idle);
+    expect(idle).toBe('440px');
+  });
+
+  it('stays flat without a panel', async () => {
+    render(<FlowGraph ariaLabel="Test graph" nodes={nodes} edges={edges} />);
+    await screen.findByRole('group', { name: 'Test graph' });
+    expect(Number.parseInt(frameHeight())).toBeLessThan(440);
   });
 });
 

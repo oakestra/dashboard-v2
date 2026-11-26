@@ -24,17 +24,21 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 
 import { INFRASTRUCTURE_ROLES } from '../../services/infrastructure-roles';
-import { describeStatus, hasMetrics, isAbnormalTone } from '../../services/status';
+import { describeStatus, isAbnormalTone } from '../../services/status';
 import {
+  clusterAttention,
   clusterIsReporting,
+  isMeasured,
+  lastReportLine,
+  placementAttention,
   summarizeSelection,
   worstInstance,
+  type TopologyAttention,
   type TopologySelection,
 } from '../topology-details';
 import {
   clusterDisplayName,
   clusterGroupId,
-  connectivityLinks,
   instancesByCluster,
   notRunningReason,
   notRunningTone,
@@ -64,6 +68,32 @@ function Heading({ children }: { children: ReactNode }) {
 }
 
 const linkButtonClassName = 'text-left text-primary hover:underline';
+
+/**
+ * The reason to act, above everything else in the body. The glyph carries the tone, the text stays
+ * neutral, so the panel does not turn into a colored box.
+ */
+function Attention({ attention, href }: { attention: TopologyAttention; href?: string }) {
+  return (
+    <div className="flex gap-2.5 text-sm">
+      <StatusDot tone={attention.tone} className="mt-1.5" />
+      <div className="min-w-0 space-y-0.5">
+        <p className="font-medium">{attention.headline}</p>
+        {attention.reason ? (
+          <p className="wrap-break-word text-muted-foreground">{attention.reason}</p>
+        ) : null}
+        {/* The instance page has the logs, which is the next thing anyone reading the reason needs. */}
+        {href && attention.instanceNumber !== undefined ? (
+          <p>
+            <Link to={href} className="text-primary hover:underline">
+              Open instance {attention.instanceNumber}
+            </Link>
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 function SelectButton({
   id,
@@ -137,40 +167,45 @@ function InstanceRows({
     <ul className="divide-y rounded-lg border">
       {instances.map((instance) => {
         const status = describeStatus(instance.status);
-        const metrics = reporting && hasMetrics(instance);
+        const metrics = isMeasured(instance, reporting);
         return (
           <li key={instance.instance_number} className="space-y-0.5 px-3 py-2 text-sm">
             <div className="flex items-center gap-2.5">
               <StatusDot tone={status.tone} pulse={status.pulse} stale={!reporting} />
-              <span className="min-w-0 flex-1">Instance {instance.instance_number}</span>
-              <span className="text-xs text-muted-foreground">{status.label}</span>
+              <span className="min-w-0 flex-1 truncate">
+                <Link
+                  to={addonPath(
+                    application._id,
+                    'services',
+                    service._id,
+                    'instances',
+                    String(instance.instance_number),
+                  )}
+                  className="text-primary hover:underline"
+                  aria-label={`Open instance ${instance.instance_number}`}
+                >
+                  Instance {instance.instance_number}
+                </Link>
+              </span>
+              <span className="text-xs whitespace-nowrap text-muted-foreground">
+                {status.label}
+              </span>
             </div>
-            <div className="flex flex-wrap items-baseline gap-x-3 pl-[1.375rem] text-xs text-muted-foreground">
-              {instance.worker_id ? (
-                <span className="font-mono" title={instance.worker_id}>
-                  {shortWorker(instance.worker_id)}
-                </span>
-              ) : null}
-              {metrics ? (
-                <>
-                  <span>CPU {formatPercent(instance.cpu_percent)}</span>
-                  <span>Memory {formatBytes(instance.memory_percent)}</span>
-                </>
-              ) : null}
-              <Link
-                to={addonPath(
-                  application._id,
-                  'services',
-                  service._id,
-                  'instances',
-                  String(instance.instance_number),
-                )}
-                className="ml-auto text-primary hover:underline"
-                aria-label={`Open instance ${instance.instance_number}`}
-              >
-                Open instance
-              </Link>
-            </div>
+            {instance.worker_id || metrics ? (
+              <div className="flex flex-wrap items-baseline gap-x-3 pl-[1.125rem] text-xs text-muted-foreground">
+                {instance.worker_id ? (
+                  <span className="font-mono" title={instance.worker_id}>
+                    {shortWorker(instance.worker_id)}
+                  </span>
+                ) : null}
+                {metrics ? (
+                  <>
+                    <span>CPU {formatPercent(instance.cpu_percent)}</span>
+                    <span>Memory {formatBytes(instance.memory_percent)}</span>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
           </li>
         );
       })}
@@ -240,7 +275,6 @@ function coordinates(location: string | undefined): string | undefined {
 
 interface BodyProps {
   application: Application;
-  services: readonly Service[];
   clusters: readonly Cluster[];
   onSelect: (id: string) => void;
 }
@@ -248,24 +282,37 @@ interface BodyProps {
 function PlacementBody({
   selection,
   application,
-  services,
   clusters,
   onSelect,
 }: BodyProps & { selection: Extract<TopologySelection, { kind: 'placement' }> }) {
+  const { service, clusterId, clusterName, cluster, instances, calls, calledBy } = selection;
   const addonPath = useAddonPath();
-  const { service, clusterId, clusterName, cluster, instances } = selection;
   const reporting = clusterIsReporting(cluster);
+  const attention = placementAttention(instances);
   const nameOfCluster = (id: string) =>
     clusterDisplayName(
       id,
       clusters.find((c) => c._id === id),
     );
   const otherClusters = [...instancesByCluster(service).keys()].filter((id) => id !== clusterId);
-  const links = connectivityLinks(services);
-  const calls = links.filter(([from]) => from._id === service._id).map(([, to]) => to);
-  const calledBy = links.filter(([, to]) => to._id === service._id).map(([from]) => from);
   return (
     <>
+      {attention ? (
+        <Attention
+          attention={attention}
+          href={
+            attention.instanceNumber === undefined
+              ? undefined
+              : addonPath(
+                  application._id,
+                  'services',
+                  service._id,
+                  'instances',
+                  String(attention.instanceNumber),
+                )
+          }
+        />
+      ) : null}
       <Facts>
         <Fact label="Cluster">
           <SelectButton id={clusterGroupId(clusterId)} onSelect={onSelect}>
@@ -315,21 +362,15 @@ function PlacementBody({
         clusterName={nameOfCluster}
         onSelect={onSelect}
       />
-      <Button asChild className="self-start">
-        <Link to={addonPath(application._id, 'services', service._id)}>Open service</Link>
-      </Button>
     </>
   );
 }
 
 function UnplacedServiceBody({
   selection,
-  application,
 }: {
   selection: Extract<TopologySelection, { kind: 'unplaced-service' }>;
-  application: Application;
 }) {
-  const addonPath = useAddonPath();
   const { service } = selection;
   const detail = schedulerDetail(service.status_detail);
   return (
@@ -340,9 +381,6 @@ function UnplacedServiceBody({
       <p className="text-sm text-muted-foreground">
         Nothing runs yet. The service page explains what each cluster is missing.
       </p>
-      <Button asChild className="self-start">
-        <Link to={addonPath(application._id, 'services', service._id)}>Open service</Link>
-      </Button>
     </>
   );
 }
@@ -351,20 +389,16 @@ function ClusterBody({
   selection,
   onSelect,
 }: BodyProps & { selection: Extract<TopologySelection, { kind: 'cluster' }> }) {
-  const infrastructure = useFeatureEnabled('infrastructure');
-  const permissions = usePermissions();
-  const canOpen = infrastructure && permissions.hasAnyRole(INFRASTRUCTURE_ROLES);
   const { cluster, clusterId } = selection;
   const reporting = clusterIsReporting(cluster);
   const cpu = cluster ? clusterCpuPercent(cluster) : undefined;
+  const attention = clusterAttention(selection);
   return (
     <>
+      {attention ? <Attention attention={attention} /> : null}
       {cluster && !reporting ? (
         <p className="text-sm text-muted-foreground">
-          {cluster.last_modified_timestamp
-            ? `Last report ${formatRelativeTime(cluster.last_modified_timestamp)}. `
-            : 'It has not sent a report yet. '}
-          Its values are not shown, they are too old to trust.
+          {lastReportLine(cluster)}. Its load is not shown, it is too old to trust.
         </p>
       ) : null}
       <Facts>
@@ -405,11 +439,6 @@ function ClusterBody({
         <Heading>Services of this application</Heading>
         <ServiceRows services={selection.services} clusterId={clusterId} onSelect={onSelect} />
       </section>
-      {canOpen ? (
-        <Button asChild className="self-start">
-          <Link to={`/infrastructure/clusters/${encodeURIComponent(clusterId)}`}>Open cluster</Link>
-        </Button>
-      ) : null}
     </>
   );
 }
@@ -431,25 +460,50 @@ function UnplacedBody({
 interface TopologyInspectorProps {
   selection: TopologySelection;
   application: Application;
-  services: readonly Service[];
   clusters: readonly Cluster[];
   onSelect: (id: string) => void;
   onClose: () => void;
 }
 
+/** The way on from the selected node, or `null` when there is none for this kind or viewer. */
+function usePrimaryAction(selection: TopologySelection, application: Application): ReactNode {
+  const addonPath = useAddonPath();
+  const infrastructure = useFeatureEnabled('infrastructure');
+  const permissions = usePermissions();
+  switch (selection.kind) {
+    case 'placement':
+    case 'unplaced-service':
+      return (
+        <Link to={addonPath(application._id, 'services', selection.service._id)}>Open service</Link>
+      );
+    case 'cluster':
+      return infrastructure && permissions.hasAnyRole(INFRASTRUCTURE_ROLES) ? (
+        <Link to={`/infrastructure/clusters/${encodeURIComponent(selection.clusterId)}`}>
+          Open cluster
+        </Link>
+      ) : null;
+    case 'unplaced':
+      return null;
+  }
+}
+
 /**
  * Details of the selected node. FlowGraph floats it over the graph's right edge (below the graph on
  * narrow screens), so the graph keeps its size and walking from node to node is one click.
+ *
+ * The floating wrapper caps the height but does not scroll, so only the body scrolls here and the
+ * action stays in view in a footer; below the graph the same markup just grows.
  */
 export function TopologyInspector({ selection, onClose, ...body }: TopologyInspectorProps) {
   const summary = summarizeSelection(selection);
+  const action = usePrimaryAction(selection, body.application);
   return (
     <Card
       role="region"
       aria-label={`Details of ${summary.title}`}
-      className="min-w-0 gap-0 py-0 shadow-xs"
+      className="flex min-h-0 min-w-0 flex-col gap-0 overflow-hidden py-0 shadow-xs"
     >
-      <div className="flex items-start gap-2 border-b p-4">
+      <div className="flex shrink-0 items-start gap-2 border-b p-4">
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-xs text-muted-foreground">{summary.kind}</p>
           <h2 className="text-lg leading-6 font-medium wrap-break-word">{summary.title}</h2>
@@ -461,22 +515,27 @@ export function TopologyInspector({ selection, onClose, ...body }: TopologyInspe
           <XIcon aria-hidden />
         </Button>
       </div>
-      <div className="flex flex-col gap-4 p-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
         {selection.kind === 'placement' ? (
           <PlacementBody selection={selection} {...body} />
         ) : selection.kind === 'unplaced-service' ? (
-          <UnplacedServiceBody selection={selection} application={body.application} />
+          <UnplacedServiceBody selection={selection} />
         ) : selection.kind === 'cluster' ? (
           <ClusterBody selection={selection} {...body} />
         ) : (
           <UnplacedBody selection={selection} {...body} />
         )}
       </div>
+      {action ? (
+        <div className="flex shrink-0 border-t p-3">
+          <Button asChild>{action}</Button>
+        </div>
+      ) : null}
     </Card>
   );
 }
 
-/** Preview shown while hovering a node: the same facts as the top of the panel, no actions. */
+/** Preview shown while hovering a node: what the node itself does not say, no actions. */
 export function TopologyHoverCard({ selection }: { selection: TopologySelection }) {
   const summary = summarizeSelection(selection);
   return (
