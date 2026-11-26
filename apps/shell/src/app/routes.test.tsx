@@ -23,7 +23,6 @@ interface Case {
 // forms below `:appId`, so a wrong nesting shows up here as a blank or mismatched page.
 const cases: Case[] = [
   { url: () => '/', heading: 'Overview' },
-  { url: () => '/fleet', heading: 'Fleet', crumbs: 'Fleet' },
   { url: () => '/applications', heading: 'Applications', crumbs: 'Applications' },
   { url: () => appBase(), heading: 'webshop', crumbs: 'Applicationswebshop' },
   {

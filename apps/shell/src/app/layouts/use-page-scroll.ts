@@ -8,7 +8,7 @@ const RESTORE_FRAMES = 60;
  * Page scroll for the panel the pages scroll in. The browser and react-router only manage the
  * window, so without this a new page opens at the previous page's offset and Back loses its place.
  *
- * Keyed on the path: search params hold page state (filters, the fleet inspector), and changing
+ * Keyed on the path: search params hold page state (filters, the applications view), and changing
  * those must not move the page.
  */
 export function usePageScroll(): RefObject<HTMLElement | null> {

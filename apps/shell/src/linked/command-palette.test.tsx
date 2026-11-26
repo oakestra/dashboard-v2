@@ -64,18 +64,19 @@ describe('the packages in the command palette', () => {
   it('offers a new application only to those who get the button elsewhere', async () => {
     renderPalette({ user: { username: 'bob' } });
     const dialog = await openPalette();
-    await screen.findByRole('option', { name: 'Fleet' });
+    await screen.findByRole('option', { name: /Applications by cluster/ });
     expect(within(dialog).queryByRole('option', { name: 'New application' })).toBeNull();
   });
 
-  it('filters the fleet to its exceptions', async () => {
+  it('opens the applications by cluster', async () => {
     const { user, router } = renderPalette();
     await openPalette();
-    await user.click(await screen.findByRole('option', { name: /Show fleet exceptions/ }));
+    await user.click(await screen.findByRole('option', { name: /Applications by cluster/ }));
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/fleet'));
-    expect(router.state.location.search).toBe('?only=exceptions');
-    expect(await screen.findByRole('switch', { name: 'Only exceptions' })).toBeChecked();
+    await waitFor(() => expect(router.state.location.pathname).toBe('/applications'));
+    expect(router.state.location.search).toBe('?view=clusters');
+    expect(await screen.findByRole('radio', { name: 'By cluster' })).toBeChecked();
+    expect(await screen.findByRole('list', { name: 'Applications by cluster' })).toBeVisible();
   });
 
   it('goes to the pages of a package', async () => {

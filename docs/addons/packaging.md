@@ -94,15 +94,15 @@ first two are optional peer dependencies of the SDK, needed only for `@oakestra/
 libraries for the shell and every addon. All of them are **singletons**: exactly one copy exists
 on the page.
 
-| Package                                                                                                                  | `requiredVersion`              |
-| ------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
-| `react`                                                                                                                  | `^19.0.0`                      |
-| `react-dom`                                                                                                              | `^19.0.0`                      |
-| `react-router`                                                                                                           | `^8.0.0`                       |
-| `@tanstack/react-query`                                                                                                  | `^5.0.0`                       |
-| `@oakestra/dashboard-sdk`                                                                                                | `^0.1.0` (`^` + `SDK_VERSION`) |
-| `@oakestra/ui`                                                                                                           | `^0.1.0` (`^` + ui version)    |
-| `@oakestra/ui/chart`, `@oakestra/ui/data-table`, `@oakestra/ui/command`, `@oakestra/ui/map`, `@oakestra/ui/location-map` | `^0.1.0`                       |
+| Package                                                                                                                                       | `requiredVersion`              |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `react`                                                                                                                                       | `^19.0.0`                      |
+| `react-dom`                                                                                                                                   | `^19.0.0`                      |
+| `react-router`                                                                                                                                | `^8.0.0`                       |
+| `@tanstack/react-query`                                                                                                                       | `^5.0.0`                       |
+| `@oakestra/dashboard-sdk`                                                                                                                     | `^0.1.0` (`^` + `SDK_VERSION`) |
+| `@oakestra/ui`                                                                                                                                | `^0.1.0` (`^` + ui version)    |
+| `@oakestra/ui/chart`, `@oakestra/ui/data-table`, `@oakestra/ui/command`, `@oakestra/ui/map`, `@oakestra/ui/location-map`, `@oakestra/ui/flow` | `^0.1.0`                       |
 
 The `@oakestra/ui` range is `^` plus the version of the `@oakestra/ui` your addon resolves at
 build time (from the project that runs `vite`), so it follows the ui copy you compile against. If

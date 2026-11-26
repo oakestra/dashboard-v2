@@ -11,6 +11,7 @@ export default defineConfig({
     'src/command.ts',
     'src/map.ts',
     'src/location-map.ts',
+    'src/flow.ts',
   ],
   format: 'esm',
   platform: 'neutral',

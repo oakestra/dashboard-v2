@@ -22,6 +22,7 @@ import {
 import { ClusterList } from '../components/ClusterList';
 import { ClusterMap } from '../components/ClusterMap';
 import { ClustersEmptyState } from '../components/ClustersEmptyState';
+import { InfrastructureTopology } from '../components/InfrastructureTopology';
 import { clusterTotals } from '../lib';
 
 export function InfrastructurePage() {
@@ -96,7 +97,13 @@ function Loaded({ clusters }: { clusters: Parameters<typeof clusterTotals>[0] })
         </StatGroup>
         <p className="text-muted-foreground text-xs">Capacity counts active clusters only.</p>
       </div>
-      <ClusterList clusters={clusters} />
+      <InfrastructureTopology clusters={clusters} />
+      <section aria-labelledby="clusters-heading" className="space-y-3">
+        <h2 id="clusters-heading" className="text-sm font-semibold">
+          Clusters
+        </h2>
+        <ClusterList clusters={clusters} />
+      </section>
       <SectionCard
         title="Locations"
         description="Where the clusters sit. Circles show their radius."

@@ -1004,7 +1004,7 @@ them: `pnpm storybook` (port 6006).
 
 | Kind               | Components                                                                                                                                                                                                                                                 |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Composites         | `PageHeader`, `SectionCard`, `StatCard`, `StatGroup`, `StatusBadge`, `StatusDot`, `EmptyState`, `ConfirmDialog`                                                                                                                                            |
+| Composites         | `PageHeader`, `SectionCard`, `StatCard`, `StatGroup`, `StatusBadge`, `StatusDot`, `EmptyState`, `ConfirmDialog`, `InspectorPanel` (+ `InspectorSection`), `FactList` (+ `Fact`)                                                                            |
 | Layout and content | `Card` (+ `CardHeader`, `CardTitle`, `CardDescription`, `CardAction`, `CardContent`, `CardFooter`), `Tabs`, `Accordion`, `Collapsible`, `Separator`, `ScrollArea`, `Table`, `Skeleton`, `Badge`, `Avatar`, `Alert`, `Progress`, `Pagination`, `Breadcrumb` |
 | Forms              | `Button`, `Input`, `Textarea`, `Label`, `Field` (+ `FieldLabel`, `FieldError`, ...), `Checkbox`, `RadioGroup`, `Select`, `Switch`, `Toggle`, `ToggleGroup`                                                                                                 |
 | Overlays           | `Dialog`, `AlertDialog`, `Sheet`, `Popover`, `Tooltip`, `DropdownMenu`                                                                                                                                                                                     |
@@ -1021,6 +1021,11 @@ failure count) and leave it off otherwise. Do not wrap icons in tinted boxes, an
 sentence case ("Failed services", not "FAILED SERVICES"). Use `StatGroup` only on your own pages
 with several related `StatCard`s; a `stat` widget renders a single `StatCard`.
 
+`InspectorPanel` shows the details of a selected item, such as the `inspector` of a `FlowGraph`:
+`kind`, `title`, a `status` slot and a close button (`onClose`) in the header, a body that scrolls
+on its own and an optional `footer` for the main action. Group the body with `InspectorSection`
+and list label and value pairs with `FactList` and `Fact` (a `Fact` without a value is left out).
+
 **Subpath entries**, each a separate shared chunk that is only downloaded by pages that import it:
 
 | Import                      | Contents                                                                                                                                                                                                                                                               |
@@ -1030,6 +1035,7 @@ with several related `StatCard`s; a `stat` widget renders a single `StatCard`.
 | `@oakestra/ui/command`      | `Command`, `CommandDialog`, `CommandInput`, `CommandList`, `CommandItem`, ... (cmdk)                                                                                                                                                                                   |
 | `@oakestra/ui/map`          | `Map`, `MapMarker`, `MarkerTooltip`, `MapControls`, `MapGeoJSON`, `useMap`, ... (MapLibre GL)                                                                                                                                                                          |
 | `@oakestra/ui/location-map` | `LocationMap`, `toMapLocation` (markers and radius circles; MapLibre loads only when a map renders)                                                                                                                                                                    |
+| `@oakestra/ui/flow`         | `FlowGraph`, `LazyFlowGraph`, types `FlowNode`, `FlowEdge`, `FlowGraphProps` (nodes and edges laid out automatically; React Flow loads only when a graph renders)                                                                                                      |
 
 Import charts from `@oakestra/ui/chart`, never from `recharts` directly:
 
@@ -1148,19 +1154,19 @@ Addons are built and deployed separately from the shell, so they can only use wh
 runtime. The ESLint config (`packages/eslint-config/index.js`) enforces this for every file in
 `addons/**`:
 
-| Import                                                                                   | Allowed?                                     |
-| ---------------------------------------------------------------------------------------- | -------------------------------------------- |
-| Your own files (inside `addons/<your-addon>/`)                                           | Yes                                          |
-| `@oakestra/dashboard-sdk`, `@oakestra/dashboard-sdk/federation`                          | Yes (`/federation` in `vite.config.ts`)      |
-| `@oakestra/dashboard-sdk/vite`                                                           | `vite.config.ts` and `vitest.config.ts` only |
-| `virtual:oakestra-addon` (`ADDON_ID`, provided by `oakestraAddon()`)                     | Yes                                          |
-| `@oakestra/dashboard-sdk/testing`                                                        | Test files only (`*.test.ts(x)`)             |
-| `@oakestra/ui`, `@oakestra/ui/chart`, `/data-table`, `/command`, `/map`, `/location-map` | Yes                                          |
-| `@oakestra/ui/theme.css` (and other `@oakestra/ui/*.css`)                                | Yes                                          |
-| `@oakestra/api`                                                                          | **Types only** (`import type`)               |
-| Any other `@oakestra/*` package, any `@oakestra/*/src/...` path                          | No                                           |
-| Files of the shell or of another addon                                                   | No                                           |
-| Third-party npm packages                                                                 | Not restricted by lint. See below.           |
+| Import                                                                                            | Allowed?                                     |
+| ------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Your own files (inside `addons/<your-addon>/`)                                                    | Yes                                          |
+| `@oakestra/dashboard-sdk`, `@oakestra/dashboard-sdk/federation`                                   | Yes (`/federation` in `vite.config.ts`)      |
+| `@oakestra/dashboard-sdk/vite`                                                                    | `vite.config.ts` and `vitest.config.ts` only |
+| `virtual:oakestra-addon` (`ADDON_ID`, provided by `oakestraAddon()`)                              | Yes                                          |
+| `@oakestra/dashboard-sdk/testing`                                                                 | Test files only (`*.test.ts(x)`)             |
+| `@oakestra/ui`, `@oakestra/ui/chart`, `/data-table`, `/command`, `/map`, `/location-map`, `/flow` | Yes                                          |
+| `@oakestra/ui/theme.css` (and other `@oakestra/ui/*.css`)                                         | Yes                                          |
+| `@oakestra/api`                                                                                   | **Types only** (`import type`)               |
+| Any other `@oakestra/*` package, any `@oakestra/*/src/...` path                                   | No                                           |
+| Files of the shell or of another addon                                                            | No                                           |
+| Third-party npm packages                                                                          | Not restricted by lint. See below.           |
 
 Third-party packages:
 

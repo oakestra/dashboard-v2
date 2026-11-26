@@ -35,6 +35,7 @@ import {
   type PlacementRow,
 } from '../placement';
 import { describeStatus } from '../status';
+import { PlacementDiagram } from './PlacementDiagram';
 
 interface PlacementPanelProps {
   service: Service;
@@ -66,6 +67,10 @@ export function PlacementPanel({ service, appId, onRetry, retrying }: PlacementP
 
   return (
     <SectionCard
+      // Target of the board's `#placement` links, see useScrollToPlacement. The margin keeps the
+      // title clear of the edge it is scrolled to.
+      id="placement"
+      className="scroll-mt-4"
       data-testid="placement-panel"
       title={
         <span className="flex items-center gap-2">
@@ -137,7 +142,8 @@ function ClusterChecks({
 
   return (
     <>
-      <div className="border-t">
+      <div className="border-t pt-3">
+        <PlacementDiagram service={service} rows={rows} />
         <ClusterList service={service} rows={rows} limits={limits} />
       </div>
       {skipped ? (

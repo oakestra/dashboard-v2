@@ -49,7 +49,7 @@ describe('waitForElement', () => {
 describe('TourRunner', () => {
   const steps: TourStep[] = [
     { title: 'Welcome', description: 'Hello' },
-    { path: '/fleet', selector: '[data-tour="board"]', title: 'Board', description: '' },
+    { path: '/reports', selector: '[data-tour="board"]', title: 'Board', description: '' },
     { selector: '[data-tour="missing"]', title: 'Missing', description: '' },
     { selector: '[data-tour="palette"]', title: 'Palette', description: '' },
   ];
@@ -60,7 +60,7 @@ describe('TourRunner', () => {
     const navigate = vi.fn((to: string) => {
       path = to;
       // The page renders its content a moment after navigation, like a real route.
-      if (to === '/fleet') setTimeout(() => addElement('board'), 10);
+      if (to === '/reports') setTimeout(() => addElement('board'), 10);
     });
     const onEnd = vi.fn();
     const runner = new TourRunner({
@@ -84,7 +84,7 @@ describe('TourRunner', () => {
     const { runner, shown, waiting, navigate } = setup();
     await runner.start(1);
 
-    expect(navigate).toHaveBeenCalledWith('/fleet');
+    expect(navigate).toHaveBeenCalledWith('/reports');
     expect(waiting).toContain(1);
     expect(shown.at(-1)).toMatchObject({ index: 1, total: 4 });
     expect(shown.at(-1)?.element).toHaveAttribute('data-tour', 'board');

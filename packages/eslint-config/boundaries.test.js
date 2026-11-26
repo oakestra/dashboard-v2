@@ -72,6 +72,8 @@ describe('import boundaries', () => {
     ['modules/help/src/x.ts', "import { defineAddon } from '@oakestra/dashboard-sdk';"],
     ['modules/help/src/x.ts', "import { Button } from '@oakestra/ui';"],
     ['modules/help/src/x.ts', "import { DataTable } from '@oakestra/ui/data-table';"],
+    ['modules/help/src/x.ts', "import { FlowGraph } from '@oakestra/ui/flow';"],
+    ['addons/example/src/x.ts', "import { FlowGraph } from '@oakestra/ui/flow';"],
     ['modules/help/src/x.ts', "import type { Cluster } from '@oakestra/api';"],
     ['modules/help/src/x.ts', "import { parseClusterLocation } from '@oakestra/api';"],
     ['modules/help/src/x.ts', "import { HelpPage } from './pages/HelpPage';"],

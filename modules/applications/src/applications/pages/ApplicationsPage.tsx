@@ -19,11 +19,13 @@ import {
   plural,
   stretchedLinkClassName,
   RowMenu,
+  ToggleGroup,
+  ToggleGroupItem,
 } from '@oakestra/ui';
 import { DataList, type DataListSortOption } from '@oakestra/ui/data-table';
 import { useQuery } from '@tanstack/react-query';
 import { BoxesIcon, PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react';
-import { useMemo, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 import { newestFirst } from '../../queries';
@@ -31,6 +33,11 @@ import { useMyApplications } from '../../use-my-applications';
 import { ApplicationFormDialog } from '../components/ApplicationFormDialog';
 import { applicationHealth, describeServiceCounts } from '../health';
 import { DeleteApplicationDialog } from '../components/DeleteApplicationDialog';
+
+// The board brings its own queries, polling and lib; the list should not load any of it.
+const BoardView = lazy(() =>
+  import('../../board/BoardView').then((m) => ({ default: m.BoardView })),
+);
 
 const searchValue = (application: Application) =>
   [
@@ -104,10 +111,85 @@ function ApplicationCard({
   );
 }
 
+function ApplicationList({
+  onCreate,
+  onEdit,
+  onDelete,
+}: {
+  onCreate: () => void;
+  onEdit: (application: Application) => void;
+  onDelete: (application: Application) => void;
+}) {
+  const addonPath = useAddonPath();
+  const [search, setSearch] = useSearchParam('q');
+  const { applications, error, retry } = useMyApplications();
+
+  // A new application is on top.
+  const rows = useMemo(() => newestFirst(applications.data ?? []), [applications.data]);
+
+  if (error) {
+    return (
+      <QueryErrorAlert title="Could not load your applications" error={error} onRetry={retry} />
+    );
+  }
+  return (
+    <DataList
+      label="Applications"
+      noun="application"
+      layout="grid"
+      data={rows}
+      isLoading={applications.isPending}
+      getRowId={(row) => row._id}
+      searchValue={searchValue}
+      sortOptions={SORT_OPTIONS}
+      searchPlaceholder="Search applications"
+      globalFilter={search}
+      onGlobalFilterChange={setSearch}
+      renderItem={(application) => (
+        <ApplicationCard
+          application={application}
+          href={addonPath(application._id)}
+          menu={
+            <RowMenu label={`Actions for ${application.application_name}`}>
+              <DropdownMenuItem onSelect={() => onEdit(application)}>
+                <PencilIcon aria-hidden /> Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem variant="destructive" onSelect={() => onDelete(application)}>
+                <Trash2Icon aria-hidden /> Delete
+              </DropdownMenuItem>
+            </RowMenu>
+          }
+        />
+      )}
+      emptyState={
+        <EmptyState
+          icon={<BoxesIcon />}
+          title="No applications yet"
+          description="Create an application, then add services to deploy."
+          action={<Button onClick={onCreate}>New application</Button>}
+        />
+      }
+    />
+  );
+}
+
+function BoardLoading() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <Skeleton className="h-64" />
+      <Skeleton className="h-64" />
+      <Skeleton className="h-64" />
+    </div>
+  );
+}
+
 export function ApplicationsPage() {
   const navigate = useNavigate();
   const addonPath = useAddonPath();
-  const [search, setSearch] = useSearchParam('q');
+  // In the URL so the command palette can open the board.
+  const [view, setView] = useSearchParam('view');
+  const byCluster = view === 'clusters';
   // In the URL so the command palette can link to it.
   const [newParam, setNewParam] = useSearchParam('new');
   const creating = newParam !== '';
@@ -115,62 +197,43 @@ export function ApplicationsPage() {
   const [editing, setEditing] = useState<Application | null>(null);
   const [deleting, setDeleting] = useState<Application | null>(null);
 
-  const { applications, error, retry } = useMyApplications();
-
-  // A new application is on top.
-  const rows = useMemo(() => newestFirst(applications.data ?? []), [applications.data]);
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="Applications"
         actions={
-          <Button onClick={() => setCreating(true)}>
-            <PlusIcon aria-hidden /> New application
-          </Button>
+          <>
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              aria-label="View"
+              value={byCluster ? 'clusters' : 'list'}
+              // Radix reports '' when the active item is clicked again; one view always stays on.
+              onValueChange={(value) => value && setView(value === 'clusters' ? 'clusters' : '')}
+            >
+              <ToggleGroupItem value="list" className="flex-none px-3">
+                List
+              </ToggleGroupItem>
+              <ToggleGroupItem value="clusters" className="flex-none px-3">
+                By cluster
+              </ToggleGroupItem>
+            </ToggleGroup>
+            <Button onClick={() => setCreating(true)}>
+              <PlusIcon aria-hidden /> New application
+            </Button>
+          </>
         }
       />
 
-      {error ? (
-        <QueryErrorAlert title="Could not load your applications" error={error} onRetry={retry} />
+      {byCluster ? (
+        <Suspense fallback={<BoardLoading />}>
+          <BoardView onCreate={() => setCreating(true)} />
+        </Suspense>
       ) : (
-        <DataList
-          label="Applications"
-          noun="application"
-          layout="grid"
-          data={rows}
-          isLoading={applications.isPending}
-          getRowId={(row) => row._id}
-          searchValue={searchValue}
-          sortOptions={SORT_OPTIONS}
-          searchPlaceholder="Search applications"
-          globalFilter={search}
-          onGlobalFilterChange={setSearch}
-          renderItem={(application) => (
-            <ApplicationCard
-              application={application}
-              href={addonPath(application._id)}
-              menu={
-                <RowMenu label={`Actions for ${application.application_name}`}>
-                  <DropdownMenuItem onSelect={() => setEditing(application)}>
-                    <PencilIcon aria-hidden /> Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(application)}>
-                    <Trash2Icon aria-hidden /> Delete
-                  </DropdownMenuItem>
-                </RowMenu>
-              }
-            />
-          )}
-          emptyState={
-            <EmptyState
-              icon={<BoxesIcon />}
-              title="No applications yet"
-              description="Create an application, then add services to deploy."
-              action={<Button onClick={() => setCreating(true)}>New application</Button>}
-            />
-          }
+        <ApplicationList
+          onCreate={() => setCreating(true)}
+          onEdit={setEditing}
+          onDelete={setDeleting}
         />
       )}
 

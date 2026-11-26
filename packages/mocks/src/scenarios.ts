@@ -1,10 +1,11 @@
 import type { MockApplication, MockCluster, MockData, MockInstance, MockService } from './store.ts';
 
 /**
- * Extra data for demos of the fleet board and the placement explanation. It is a `customize`
- * function for `createMockStore` instead of a change to `backend.json`, because unit tests count
- * the seed's clusters and instances. All ids are fixed (the store resets on every page reload and
- * ids end up in URLs) and every timestamp is relative to the moment the store is (re)built.
+ * Extra data for demos of the applications by-cluster board, the topology graphs and the placement
+ * explanation. It is a `customize` function for `createMockStore` instead of a change to
+ * `backend.json`, because unit tests count the seed's clusters and instances. All ids are fixed
+ * (the store resets on every page reload and ids end up in URLs) and every timestamp is relative
+ * to the moment the store is (re)built.
  */
 
 const CLUSTER_IDS = {
@@ -194,12 +195,13 @@ function newService(
 
 /**
  * Four reporting clusters at different loads, the silent `edge-munich` with its last report, and
- * instances spread over all of them, so the fleet board has content. Three services fail to be
+ * instances spread over all of them, so the by-cluster board has content. Three services fail to be
  * placed, each for one cause the explanation can name (the seed's `trainer` fails memory and CPU
  * at once).
  *
- * Users: Admin owns webshop, iotpipe and mlbatch, alice owns analytics (Admin's all-applications
- * view therefore shows a foreign owner). Log in as `Admin` or `alice` to see the difference.
+ * Users: Admin owns webshop, iotpipe and mlbatch, alice owns analytics, so the board differs
+ * between the two, and the Infrastructure topology shows an Admin instances of someone else's
+ * application. Log in as `Admin` or `alice` to see the difference.
  */
 export function withPlacementDemo(data: MockData): void {
   const now = Date.now();
@@ -288,7 +290,8 @@ export function withPlacementDemo(data: MockData): void {
     ),
   );
 
-  // Memory stays near each service's limit: the Fleet memory lens reads it as a share of that limit.
+  // Memory stays near each service's limit: the by-cluster board's memory lens reads it as a
+  // share of that limit.
   place(
     data,
     SERVICE_IDS.frontend,
@@ -347,6 +350,19 @@ export function withPlacementDemo(data: MockData): void {
     now,
   );
   findService(data, SERVICE_IDS.warehouse).status = 'RUNNING';
+
+  // Gives the topology graphs dependency edges to draw. Targets are service `_id`s, which is what
+  // the SLA form's connectivity picker writes.
+  const links: [from: keyof typeof SERVICE_IDS, to: keyof typeof SERVICE_IDS][] = [
+    ['frontend', 'api'],
+    ['api', 'cache'],
+    ['ingest', 'process'],
+  ];
+  for (const [from, to] of links) {
+    findService(data, SERVICE_IDS[from]).connectivity = [
+      { target_microservice_id: SERVICE_IDS[to] },
+    ];
+  }
 
   const mlbatch = data.applications.find((app) => app.applicationID === MLBATCH_APP_ID);
   if (!mlbatch) throw new Error('withPlacementDemo: mlbatch is missing from the seed');

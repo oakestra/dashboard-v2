@@ -380,6 +380,19 @@ export interface EmptyStateProps extends Omit<React_2.ComponentProps<'div'>, 'ti
     title: React_2.ReactNode;
 }
 
+// @public
+export function Fact(input: FactProps): React_2.JSX.Element | null;
+
+// @public
+export function FactList(input: React_2.ComponentProps<'dl'>): React_2.JSX.Element;
+
+// @public (undocumented)
+export interface FactProps {
+    children?: React_2.ReactNode;
+    // (undocumented)
+    label: React_2.ReactNode;
+}
+
 // @public (undocumented)
 export function Field(input: React.ComponentProps<'div'> & VariantProps<typeof fieldVariants>): JSX.Element;
 
@@ -449,6 +462,31 @@ export function initials(name: string): string;
 
 // @public (undocumented)
 export function Input(input: React_2.ComponentProps<'input'>): React_2.JSX.Element;
+
+// @public
+export function InspectorPanel(input: InspectorPanelProps): React_2.JSX.Element;
+
+// @public (undocumented)
+export interface InspectorPanelProps extends Omit<React_2.ComponentProps<'div'>, 'title' | 'role'> {
+    footer?: React_2.ReactNode;
+    headingLevel?: 2 | 3 | 4;
+    kind?: React_2.ReactNode;
+    name?: string;
+    // (undocumented)
+    onClose: () => void;
+    status?: React_2.ReactNode;
+    // (undocumented)
+    title: React_2.ReactNode;
+}
+
+// @public
+export function InspectorSection(input: InspectorSectionProps): React_2.JSX.Element;
+
+// @public (undocumented)
+export interface InspectorSectionProps extends Omit<React_2.ComponentProps<'section'>, 'title'> {
+    // (undocumented)
+    title: React_2.ReactNode;
+}
 
 // @public (undocumented)
 export function Item(input: React_2.ComponentProps<'div'> & VariantProps<typeof itemVariants> & {

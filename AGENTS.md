@@ -29,9 +29,14 @@ React shell that loads addon UIs at runtime through Module Federation.
   data, built only into the online demo (see "Online demo").
 - `modules/<name>` (`@oakestra/module-<name>`, private): features as addon packages written
   against the SDK only, linked into the shell (`linkedAddons` in `src/app/modules.ts`). `help` is
-  the reference. See "Module packages". `modules/fleet` is a board of cluster cards, each listing its services by
-  application, behind an Unplaced card (`/fleet`, lenses, inspector, exceptions list); its state lives
-  in search params. The board's columns use container queries, because the inspector narrows the page.
+  the reference. See "Module packages". `modules/applications` also has a "By cluster" view
+  (`?view=clusters`, `src/board/`): a board of cluster cards, each listing the current user's services
+  by application, below a full-width Unplaced band; clusters without a service of the viewer are one line
+  below the board; lenses, text filter and "Needs attention only" live in search params.
+  `modules/infrastructure` also draws a Topology section (`src/topology.ts`, a `FlowGraph` tree of three
+  rows: the root orchestrator, every cluster, and below each cluster the workers seen in the
+  viewer's instance data; the system-manager has no worker list, so the rest of a cluster's workers
+  is one placeholder leaf).
 - `tools/mock-addons-manager`: one server mocking the addons-manager, the marketplace-manager and
   `GET /api/v1/ui-addons` (see "Mock addons manager"), with a `/__test` control API.
 - `tools/mock-system-manager`: the `@oakestra/mocks` backend served over HTTP for the e2e stack.
@@ -345,6 +350,12 @@ copy of small stateless pieces (`cn`, `Button`, `Table`), which is harmless.
 - `SectionCard` (`title`, `description`, `action`, `headingLevel`, `flush`, `footer`): a titled
   page section, action top right. With plain `Card`, put actions in `CardAction` inside
   `CardHeader` (a grid; `flex-row` on it does nothing).
+- `InspectorPanel` (`kind`, `title`, `name` when the title is markup, `status`, `onClose`,
+  `footer`, `headingLevel`): the details panel of a selection, built to the `FlowGraph` `inspector`
+  contract (only the body scrolls, the footer action stays pinned); region "Details of <name>",
+  close button "Close details". `InspectorSection` (`title`) groups its body, one heading level
+  below the panel's. `FactList` + `Fact` (`label`, value as children; no value, no row) is the
+  label/value `dl`. Both topology inspectors use them.
 
 Also in `@oakestra/ui` root (generic helpers that feature packages must be able to import):
 
@@ -369,6 +380,45 @@ passes a router `Link`, since `@oakestra/ui` has no router). Without WebGL2 it s
 instead of the map. It is its own subpath, not part of `./map`, so a page that only imports it
 does not load MapLibre until a map renders; its implementation imports `@oakestra/ui/map` by
 package name (never `./map`), so the shared map module stays the only MapLibre copy.
+
+`@oakestra/ui/flow` has `FlowGraph` (and `LazyFlowGraph`): a graph of `FlowNode`s (`kind`
+`primary`, `item`, `group` around the nodes naming it as `group`, `compact`; `tone`, `stale`,
+`pulse`, `href`, `column`, `width: 'narrow'` for an `item` with a short label, and `meters`, gauge rows
+under the title of every kind but `compact`) and `FlowEdge`s (`tone`, `dashed`, `animated`, `label`), laid out with
+dagre (`flow-layout.ts`, pure) and drawn with React Flow, both only in the lazy chunk; no React Flow
+primitive is exported. The layout reruns only when the ids, kinds, groups, columns or direction
+change, so status updates recolor in place; nodes keep their input order within a column.
+`column` is handed to dagre as fixed ranks (a custom ranker), so an edge that skips columns gets
+dummy nodes there, and `layoutGraph` returns an orthogonal route per edge that turns only in the
+gaps between columns and runs along dagre's lanes, never through a node. Edges from one node share
+a trunk per gap; labels sit near the target, or on the edge's own lane when several edges merge
+into one target. Edges within a column or against the columns get no route and fall back to a
+step line. The frame's height follows the graph (`fitViewport` in `flow-viewport.ts`): the zoom that fits
+the frame's width, never below 0.6 so text stays readable (the rest is a pan away, starting at the
+first column), bounded by `minHeight`/`maxHeight` (160/600). Callers set width and frame look in
+`className`, never a height. A ResizeObserver refits when the frame changes width; status
+updates never move the camera.
+`onNodeClick` fires on click and Enter (select), `onBackgroundClick` on a pane click and on Escape
+without an open card (clear). `selectedId` draws the ring, traces the selection while nothing is
+hovered and pans a selection outside the visible part into view. `renderHoverCard(node)` (null for
+none) is a Radix popover on the node's screen rect (`flow-hover-card.tsx`): 350 ms hover delay,
+100 ms grace, at once on keyboard focus, closed by Escape, blur and pan. Hovering a node fades
+everything not connected to it. `inspector` (the selection's detail card) floats over the frame's
+right edge from 768px frame width, and the graph is fitted into the free part beside it (never
+below the readable zoom; then the selection pans into view), so the panel does not hide the
+selection's neighbours; narrower, it renders below the graph. A selection fades unconnected nodes
+less than a hover does, because it stays for as long as the panel is open. A graph with a panel passes `null` (not `undefined`)
+while nothing is selected: the frame is then already at least 440px tall, so the first selection
+does not move the page. The floating panel gets the frame's height and is not scrolled from
+outside: its root is `flex min-h-0 flex-col overflow-hidden`, the body scrolls and the main action
+sits in a pinned footer. Both topologies (the application tab and
+Infrastructure) keep the selection in `?node=` and navigate only from that panel. Selectable graphs
+leave `href` out (label link and select click
+compete); `renderLink` works as for `LocationMap`. A wheel scrolls the page
+(zoom on the controls, hidden below 480px, and pinch). `animated` edges carry a travelling dot,
+never React Flow's marching dashes, which would look like `dashed`; reduced motion stops it, the
+pulse and animated fits. The `.react-flow__*` theming sits next to the mapcn block in
+`styles.css`.
 
 `@oakestra/dashboard-sdk` root also exports `seedFromLists`, `useSearchParam(key, fallback)` (one
 search param as state, replacing the history entry) and, for `command.sources`, `readCached`,
@@ -796,8 +846,9 @@ plus `app/layouts/command-palette/`. Its contract (`command.actions`, `command.s
 ## Demo data
 
 `packages/mocks/src/scenarios.ts` has `withPlacementDemo`, a `customize` function for
-`createMockStore` that adds clusters (one silent, one never reported), instances and unplaced
-services for the Fleet view and the placement panel. It is not in `backend.json` because unit
+`createMockStore` that adds clusters (one silent, one never reported), instances, unplaced
+services and service `connectivity` (frontend -> api -> cache, ingest -> process) for the by-cluster
+board, the topology graphs and the placement panel. It is not in `backend.json` because unit
 tests count the seed. `pnpm dev:mock` (`apps/shell/src/mock-api.ts`) always uses it, the HTTP
 mock only with `PLACEMENT_DEMO=true` (`tools/mock-system-manager`). Ids are fixed and
 timestamps relative to when the store is built.

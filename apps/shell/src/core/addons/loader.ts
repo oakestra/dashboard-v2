@@ -194,7 +194,7 @@ export function resolveAddonContributions(
 function joinPath(base: string, relative: string): string {
   const trimmed = relativeAddonPath(relative);
   if (!trimmed) return base;
-  // A query on the addon's index route: `/fleet?only=exceptions`, not `/fleet/?only=exceptions`.
+  // A query on the addon's index route: `/applications?new=1`, not `/applications/?new=1`.
   return /^[?#]/.test(trimmed) ? `${base}${trimmed}` : `${base}/${trimmed}`;
 }
 

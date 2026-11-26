@@ -1,0 +1,163 @@
+import type { ReactNode } from 'react';
+
+import type { StatusTone } from './status-badge';
+
+/** The tones of `StatusBadge`, with the same meanings. */
+export type FlowTone = StatusTone;
+
+/**
+ * - `primary`: the subject of the graph (the application, the service being placed).
+ * - `item`: an ordinary node with an optional one-line description.
+ * - `group`: a labelled container drawn around the nodes that name it as their `group`.
+ * - `compact`: a small pill, for many similar nodes (workers, instances).
+ */
+export type FlowNodeKind = 'primary' | 'item' | 'group' | 'compact';
+
+/**
+ * A small gauge on a node, e.g. the CPU usage of a cluster: below the title of a group, below the
+ * label and description of an item or primary.
+ */
+export interface FlowMeter {
+  /** Short name in front of the track, also its accessible name ("CPU"). */
+  label: string;
+  /** The measured value, or `null` when there is none. */
+  value: number | null;
+  /** Text behind the track instead of the plain value, e.g. "42%". */
+  valueLabel?: string;
+  /** End of the track. Defaults to 100. */
+  max?: number;
+  /** Upper end of the normal band; above it the pointer and the value turn `warning`. */
+  normalMax?: number;
+}
+
+export interface FlowNode {
+  id: string;
+  label: string;
+  /** Defaults to `item`. */
+  kind?: FlowNodeKind;
+  /** Status glyph. Only `warning` and `destructive` also color the node's border. */
+  tone?: FlowTone;
+  /** Last known state without a recent report: hatched surface and a dashed glyph. */
+  stale?: boolean;
+  /** Pulses the glyph while the state is changing (off under reduced motion). */
+  pulse?: boolean;
+  /** One line under the label, e.g. "2/3 running". Ignored on `compact` nodes. */
+  description?: string;
+  /**
+   * Gauges on a `group`, `item` or `primary` node (ignored on `compact`), one row each below the
+   * title or description, so load can be compared across nodes without opening one. Keep it to two
+   * or three. Their number shapes the layout (each row makes the node taller), their values do
+   * not: an update moves the pointers in place.
+   */
+  meters?: readonly FlowMeter[];
+  /**
+   * `narrow` draws an `item` three quarters as wide, for leaves with a short label (worker ids)
+   * that would otherwise be mostly empty and stretch a row of them. Ignored on other kinds. Like
+   * every size it is fixed: longer text truncates.
+   */
+  width?: 'narrow';
+  /**
+   * Makes the label a link, rendered with `renderLink`. A selectable graph (`onNodeClick`) should
+   * usually leave it out: a click on the label then navigates, a click beside it selects, and the
+   * two compete. Link from the caller's detail panel instead.
+   */
+  href?: string;
+  /**
+   * Id of the enclosing node, which must have kind `group`. One level only: a group cannot sit in
+   * another group, and a node naming anything else is drawn at the top level.
+   */
+  group?: string;
+  /**
+   * Forces the node into a column (a row with `direction: 'TB'`), counted from 0. Without it the
+   * layout derives the column from the edges, so a node without edges lands in the first one. Only
+   * read on top-level nodes. Edges that skip columns are routed around the nodes in between; edges
+   * within a column or pointing back against the columns do not shape the layout and are drawn as
+   * a direct step line.
+   */
+  column?: number;
+}
+
+export interface FlowEdge {
+  id: string;
+  source: string;
+  target: string;
+  /** Short tag at the middle of the edge. */
+  label?: string;
+  /** Stroke color; defaults to `neutral`. */
+  tone?: FlowTone;
+  /** `dashed` for a weaker or indirect relation. Defaults to `solid`. */
+  variant?: 'solid' | 'dashed';
+  /** A dot travelling along the edge, for live traffic or work (off under reduced motion). */
+  animated?: boolean;
+  /** An arrowhead at the target, for a relation with a direction (who calls whom). */
+  arrow?: boolean;
+}
+
+export interface FlowLinkProps {
+  href: string;
+  className?: string;
+  children: ReactNode;
+  'aria-label'?: string;
+}
+
+export interface FlowGraphProps {
+  nodes: readonly FlowNode[];
+  edges: readonly FlowEdge[];
+  /** Left to right (default) or top to bottom. */
+  direction?: 'LR' | 'TB';
+  /**
+   * Called on click and on Enter while the node has focus; this is how callers select a node. Not
+   * called for clicks on the node's link.
+   */
+  onNodeClick?: (node: FlowNode) => void;
+  /**
+   * Gets a visible ring, and while nothing is hovered its connections stay highlighted and the
+   * rest fades. When it changes to a node outside the visible part of the frame, the graph pans
+   * to it (same zoom).
+   */
+  selectedId?: string | null;
+  /**
+   * Called on a click on the empty background, and on Escape inside the graph when no hover card
+   * is open. Callers clear their selection here.
+   */
+  onBackgroundClick?: () => void;
+  /**
+   * Content of a floating card for a node: shown after the pointer rests on the node for a moment
+   * (350 ms), or at once when the node gets keyboard focus. It closes on pointer leave (after a
+   * 100 ms grace, so moving to a neighbour does not flicker), blur, Escape, pan and zoom. The card
+   * is informational: it takes no pointer events and no focus. Return `null` for no card.
+   */
+  renderHoverCard?: (node: FlowNode) => ReactNode;
+  /**
+   * Details of the selection, usually an `InspectorPanel`. On a frame at least 768px wide it
+   * floats over the frame's right edge, and the graph is fitted into the part the panel leaves free
+   * (down to the readable zoom; past that the selected node is panned into view). On a narrower
+   * frame it renders below the graph.
+   *
+   * Pass `null` when nothing is selected, not `undefined`: a graph that has a panel keeps the
+   * frame tall enough for it (440px) from the start, so selecting a node does not move the page.
+   *
+   * The floating panel gets at most the frame's height and is not scrolled from outside.
+   * `InspectorPanel` is built for that; a panel of your own needs a root with `flex min-h-0
+   * flex-col overflow-hidden` and a body that scrolls (`min-h-0 flex-1 overflow-y-auto`), so the
+   * header and a footer with the main action stay visible.
+   */
+  inspector?: ReactNode;
+  /**
+   * Renders the link of a node with an `href`. Defaults to a plain anchor; pass the host's router
+   * link (`<Link to={href} ...>`) to navigate without a page load.
+   */
+  renderLink?: (props: FlowLinkProps) => ReactNode;
+  /**
+   * Width and frame of the graph. Defaults to `w-full overflow-hidden rounded-lg border`. Leave the
+   * height out: it follows the graph (its height at the zoom that fits the frame's width, but never
+   * below a readable zoom), bounded by `minHeight` and `maxHeight`.
+   */
+  className?: string;
+  /** Lowest frame height in px. Defaults to 160. */
+  minHeight?: number;
+  /** Highest frame height in px; a taller graph is panned. Defaults to 600. */
+  maxHeight?: number;
+  /** Names the graph for screen readers. */
+  ariaLabel: string;
+}
