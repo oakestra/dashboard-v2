@@ -41,23 +41,26 @@ describe('buildInfrastructureTopology', () => {
       description: '4 clusters',
       column: 0,
     });
-    const groups = nodes.filter((node) => node.kind === 'group');
-    expect(groups.map((node) => node.label)).toEqual(['edge-a', 'edge-b', 'never', 'silent']);
-    expect(groups.every((node) => node.column === 1)).toBe(true);
-    expect(groups[0]).toMatchObject({
+    const rows = nodes.filter((node) => node.column === 1);
+    expect(rows.map((node) => node.label)).toEqual(['edge-a', 'edge-b', 'never', 'silent']);
+    expect(rows.every((node) => node.kind === 'item' && node.group === undefined)).toBe(true);
+    expect(rows[0]).toMatchObject({
       description: '1 worker',
       tone: 'success',
     });
-    expect(groups[0]?.stale).toBe(false);
-    expect(groups[2]).toMatchObject({ tone: 'neutral', stale: true });
-    expect(groups[3]).toMatchObject({ tone: 'neutral', stale: true });
+    expect(rows[0]?.stale).toBe(false);
+    expect(rows[0]?.meters?.map((meter) => meter.label)).toEqual(['CPU', 'Memory']);
+    expect(rows[2]).toMatchObject({ tone: 'neutral', stale: true });
+    expect(rows[2]?.meters).toBeUndefined();
+    expect(rows[3]).toMatchObject({ tone: 'neutral', stale: true });
   });
 
   it('links the root to each cluster, dashed unless the cluster reports', () => {
     const { edges } = buildInfrastructureTopology(clusters, []);
 
-    const byTarget = Object.fromEntries(edges.map((edge) => [edge.target, edge]));
-    expect(edges).toHaveLength(4);
+    const fromRoot = edges.filter((edge) => edge.source === 'root');
+    const byTarget = Object.fromEntries(fromRoot.map((edge) => [edge.target, edge]));
+    expect(fromRoot).toHaveLength(4);
     expect(byTarget['cluster:a']).toMatchObject({
       source: 'root',
       variant: 'solid',
@@ -69,7 +72,7 @@ describe('buildInfrastructureTopology', () => {
   });
 
   it('groups instances into workers with the services running there', () => {
-    const { nodes } = buildInfrastructureTopology(clusters, [
+    const { nodes, edges } = buildInfrastructureTopology(clusters, [
       service('frontend', [
         {
           instance_number: 0,
@@ -95,15 +98,23 @@ describe('buildInfrastructureTopology', () => {
       ]),
     ]);
 
-    const workers = nodes.filter((node) => node.kind === 'item');
+    const workers = nodes.filter((node) => node.id.startsWith('worker:'));
     expect(workers).toHaveLength(2);
     expect(workers[0]).toMatchObject({
-      group: 'cluster:a',
+      column: 2,
       label: '293a4b',
       description: '3 instances: frontend, ingest',
       tone: 'destructive',
     });
-    expect(workers[1]).toMatchObject({ group: 'cluster:b', label: 'w1', tone: 'success' });
+    expect(workers[1]).toMatchObject({ column: 2, label: 'w1', tone: 'success' });
+    expect(workers.every((node) => node.group === undefined)).toBe(true);
+    expect(edges.find((edge) => edge.target === 'worker:a:65a1b2c3d4e5f60718293a4b')).toMatchObject(
+      {
+        id: 'cluster:a->worker:a:65a1b2c3d4e5f60718293a4b',
+        source: 'cluster:a',
+        variant: 'solid',
+      },
+    );
     expect(nodes.find((node) => node.id === 'cluster:a')?.description).toBe('1 worker');
   });
 
@@ -115,26 +126,30 @@ describe('buildInfrastructureTopology', () => {
       ]),
     ]);
 
-    const workers = nodes.filter((node) => node.kind === 'item');
+    const workers = nodes.filter((node) => node.id.startsWith('worker:'));
     expect(workers).toHaveLength(1);
-    expect(workers[0]).toMatchObject({ label: 'Unknown worker', group: 'cluster:b', pulse: true });
+    expect(workers[0]).toMatchObject({ label: 'Unknown worker', column: 2, pulse: true });
   });
 
   it('leaves out instances a cluster could not give a worker', () => {
     const { nodes } = buildInfrastructureTopology(clusters, [
       service('wideload', [{ instance_number: 0, cluster_id: 'b', status: 'NO_WORKER_CAPACITY' }]),
     ]);
-    expect(nodes.filter((node) => node.kind === 'item')).toHaveLength(0);
+    expect(nodes.filter((node) => node.id.startsWith('worker:'))).toHaveLength(0);
   });
 
   it('marks the workers of a silent cluster as last known', () => {
-    const { nodes } = buildInfrastructureTopology(clusters, [
+    const { nodes, edges } = buildInfrastructureTopology(clusters, [
       service('cache', [
         { instance_number: 0, cluster_id: 's', worker_id: 'w1', status: 'RUNNING' },
       ]),
     ]);
 
-    expect(nodes.find((node) => node.group === 'cluster:s')?.stale).toBe(true);
+    expect(nodes.find((node) => node.id === 'worker:s:w1')?.stale).toBe(true);
+    expect(edges.find((edge) => edge.target === 'worker:s:w1')).toMatchObject({
+      source: 'cluster:s',
+      variant: 'dashed',
+    });
     expect(nodes.find((node) => node.id === 'cluster:s')?.description).toBe('Silent');
   });
 });
@@ -222,19 +237,25 @@ describe('what a cluster frame shows', () => {
 describe('placeholder for workers that are not drawn', () => {
   const restOf = (nodes: { id: string }[]) => nodes.filter((node) => node.id.startsWith('rest:'));
 
-  it('adds "+N more" to a reporting cluster inside its group, after the workers', () => {
-    const { nodes } = buildInfrastructureTopology(clusters, [
+  it('adds "+N more" to a reporting cluster below its cluster, after the workers', () => {
+    const { nodes, edges } = buildInfrastructureTopology(clusters, [
       service('web', [{ cluster_id: 'b', worker_id: 'w1', status: 'RUNNING', instance_number: 0 }]),
     ]);
 
     const rest = nodes.find((node) => node.id === 'rest:b');
-    expect(rest).toMatchObject({ kind: 'compact', group: 'cluster:b', label: '+2 more' });
+    expect(rest).toMatchObject({ kind: 'compact', column: 2, label: '+2 more' });
+    expect(rest?.group).toBeUndefined();
+    expect(edges.find((edge) => edge.target === 'rest:b')).toMatchObject({
+      id: 'cluster:b->rest:b',
+      source: 'cluster:b',
+      variant: 'dashed',
+    });
     expect(rest?.tone).toBeUndefined();
     expect(nodes.findIndex((node) => node.id === 'worker:b:w1')).toBeLessThan(
       nodes.findIndex((node) => node.id === 'rest:b'),
     );
     // edge-a states one worker and none is drawn, so there is nothing to have "more" of.
-    expect(nodes.find((node) => node.id === 'rest:a')?.label).toBe('Nothing of yours');
+    expect(nodes.find((node) => node.id === 'rest:a')?.label).toBe('1 worker');
     expect(restOf(nodes)).toHaveLength(2);
   });
 

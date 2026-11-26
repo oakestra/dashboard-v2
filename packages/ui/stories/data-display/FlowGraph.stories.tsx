@@ -177,6 +177,51 @@ export const Placement: Story = {
   },
 };
 
+/**
+ * `meters` on `item` and `primary` nodes: each gauge row makes the node taller, and nodes without
+ * meters in the same column keep their usual height. `compact` nodes ignore meters.
+ */
+export const ItemMeters: Story = {
+  args: {
+    ariaLabel: 'Cluster load',
+    nodes: [
+      {
+        id: 'root',
+        label: 'root-orchestrator',
+        kind: 'primary',
+        description: '3 clusters',
+        meters: [{ label: 'CPU', value: 23, valueLabel: '23%' }],
+      },
+      {
+        id: 'munich',
+        label: 'edge-munich',
+        tone: 'success',
+        description: '4 workers',
+        meters: [
+          { label: 'CPU', value: 88, valueLabel: '88%', normalMax: 80 },
+          { label: 'Memory', value: 41, valueLabel: '41%', normalMax: 80 },
+        ],
+      },
+      {
+        id: 'berlin',
+        label: 'edge-berlin',
+        stale: true,
+        description: 'Not reporting',
+        meters: [
+          { label: 'CPU', value: null },
+          { label: 'Memory', value: null },
+        ],
+      },
+      { id: 'zurich', label: 'edge-zurich', tone: 'neutral', description: 'Never reported' },
+    ],
+    edges: [
+      { id: 'root-munich', source: 'root', target: 'munich', tone: 'success' },
+      { id: 'root-berlin', source: 'root', target: 'berlin', variant: 'dashed' },
+      { id: 'root-zurich', source: 'root', target: 'zurich', variant: 'dashed' },
+    ],
+  },
+};
+
 /** Top to bottom, as for a fleet of clusters and their workers. */
 export const TopToBottom: Story = {
   args: { ...Topology.args, direction: 'TB', ariaLabel: 'Fleet' },

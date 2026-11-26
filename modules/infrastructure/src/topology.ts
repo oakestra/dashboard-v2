@@ -116,7 +116,7 @@ export function workersByCluster(services: readonly Service[], known: ReadonlySe
   return result;
 }
 
-/** CPU and memory usage of a reporting cluster, for the gauges in its frame. */
+/** CPU and memory usage of a reporting cluster, for the gauges on its node. */
 function clusterMeters(cluster: Cluster): FlowMeter[] {
   const { cpuPercent, memoryPercent } = clusterUsage(cluster);
   const meter = (label: string, value: number | undefined): FlowMeter => ({
@@ -146,9 +146,9 @@ export function undrawnWorkers(cluster: Cluster, drawn: number): number {
 }
 
 /**
- * Root orchestrator, every cluster below it and the workers that run something. Clusters are
- * groups so their workers sit inside them. All clusters are drawn, idle, silent or never reported
- * ones too: where nothing runs is part of the picture.
+ * A tree of three rows: the root orchestrator, every cluster, and below each cluster the workers
+ * that run something. All clusters are drawn, idle, silent or never reported ones too: where
+ * nothing runs is part of the picture.
  */
 export function buildInfrastructureTopology(
   clusters: readonly Cluster[],
@@ -181,47 +181,56 @@ export function buildInfrastructureTopology(
   for (const cluster of sorted) {
     const { state, label, tone, stale } = clusterPresentation(cluster);
     const reporting = state === 'reporting';
-    const groupId = clusterNodeId(cluster._id);
+    const clusterId = clusterNodeId(cluster._id);
     const onCluster = workers.get(cluster._id);
 
-    // An empty group is only as wide as its header, so the text stays short; the section's note
+    // The node has a fixed width and truncates, so the text stays short; the section's note
     // explains why a cluster may show no workers.
     const description = reporting
       ? plural(clusterUsage(cluster).activeNodes ?? 0, 'worker')
       : label;
 
     nodes.push({
-      id: groupId,
+      id: clusterId,
       label: cluster.cluster_name,
-      kind: 'group',
+      kind: 'item',
       tone,
       stale,
       description,
       column: 1,
       // Only current figures: a silent cluster's last report would read as its load now. Every
-      // reporting cluster gets both rows, so the frames line up and load compares across them.
+      // reporting cluster gets both rows, so the nodes line up and load compares across them.
       ...(reporting ? { meters: clusterMeters(cluster) } : {}),
     });
     edges.push({
-      id: `${ROOT_NODE_ID}->${groupId}`,
+      id: `${ROOT_NODE_ID}->${clusterId}`,
       source: ROOT_NODE_ID,
-      target: groupId,
+      target: clusterId,
       variant: reporting ? 'solid' : 'dashed',
       animated: reporting,
     });
 
     for (const [workerId, entry] of onCluster ?? []) {
       const known = workerId !== UNKNOWN_WORKER;
+      const id = workerNodeId(cluster._id, workerId);
       nodes.push({
-        id: workerNodeId(cluster._id, workerId),
+        id,
         label: known ? shortWorker(workerId) : 'Unknown worker',
         kind: 'item',
-        group: groupId,
+        // The label is a six-character id, and a row of full-width boxes is mostly whitespace.
+        width: 'narrow',
+        column: 2,
         tone: entry.tone,
         pulse: entry.pulse,
         // A silent cluster's instances are last known too.
         stale: stale || undefined,
         description: workerDescription(entry),
+      });
+      edges.push({
+        id: `${clusterId}->${id}`,
+        source: clusterId,
+        target: id,
+        variant: stale ? 'dashed' : 'solid',
       });
     }
 
@@ -231,9 +240,15 @@ export function buildInfrastructureTopology(
       nodes.push({
         id: restNodeId(cluster._id),
         // "+4 more" under no worker at all would ask "more than what?".
-        label: drawn === 0 ? 'Nothing of yours' : `+${hidden} more`,
+        label: drawn === 0 ? plural(hidden, 'worker') : `+${hidden} more`,
         kind: 'compact',
-        group: groupId,
+        column: 2,
+      });
+      edges.push({
+        id: `${clusterId}->${restNodeId(cluster._id)}`,
+        source: clusterId,
+        target: restNodeId(cluster._id),
+        variant: 'dashed',
       });
     }
   }

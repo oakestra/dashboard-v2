@@ -57,6 +57,28 @@ describe('FlowGraph', () => {
     );
   });
 
+  it('renders meters on an item node and names them in its accessible label', async () => {
+    const metered: FlowNode[] = [
+      ...nodes.filter((node) => node.id !== 'svc'),
+      {
+        id: 'svc',
+        label: 'frontend',
+        description: '2/2 running',
+        meters: [
+          { label: 'CPU', value: 42, valueLabel: '42%' },
+          { label: 'Mem', value: null },
+        ],
+      },
+    ];
+    render(<FlowGraph ariaLabel="Topology" nodes={metered} edges={edges} />);
+    await screen.findByText('frontend');
+
+    const svc = nodeElement('svc');
+    expect(svc.querySelector('[role="img"][aria-label="CPU: 42%"]')).not.toBeNull();
+    expect(svc.querySelector('[role="img"][aria-label="Mem: no data"]')).not.toBeNull();
+    expect(svc).toHaveAttribute('aria-label', 'frontend, 2/2 running, CPU 42%, Mem no data');
+  });
+
   it('calls onNodeClick on click and on Enter, but not for a click on the link', async () => {
     const onNodeClick = vi.fn();
     render(

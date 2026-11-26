@@ -17,14 +17,21 @@ export const NODE_SIZE: Readonly<Record<Exclude<FlowNodeKind, 'group'>, Size>> =
 /** Inner padding of a group and the height of its title row. */
 const GROUP_PADDING = 16;
 export const GROUP_HEADER = 36;
-/** Height of one meter row below a group's title, and the room under the last one. */
-export const GROUP_METER_ROW = 18;
-const GROUP_METERS_GAP = 6;
+/**
+ * Height of one meter row (below a group's title, or below the label of an item or primary), and
+ * the room under the last one.
+ */
+export const METER_ROW = 18;
+const METERS_GAP = 6;
+
+const metersHeight = (node: Pick<FlowNode, 'meters'> | undefined): number => {
+  const meters = node?.meters?.length ?? 0;
+  return meters ? meters * METER_ROW + METERS_GAP : 0;
+};
 
 /** Title row of a group plus its meters; members start below it. */
 export function groupHeaderHeight(node: Pick<FlowNode, 'meters'> | undefined): number {
-  const meters = node?.meters?.length ?? 0;
-  return GROUP_HEADER + (meters ? meters * GROUP_METER_ROW + GROUP_METERS_GAP : 0);
+  return GROUP_HEADER + metersHeight(node);
 }
 // As wide as a group holding one item, so an empty group's title and description fit and a row of
 // groups lines up whether they hold something or not.
@@ -39,10 +46,22 @@ const SPACING: Readonly<Record<FlowDirection, { nodesep: number; ranksep: number
   TB: { nodesep: 24, ranksep: 72 },
 };
 const GROUP_SPACING = { nodesep: 12, ranksep: 48 };
+/** Width of an `item` with `width: 'narrow'`. */
+export const NARROW_ITEM_WIDTH = 144;
 
-/** Size of a node that is not a group (groups are sized by their children). */
-const leafSize = (node: FlowNode): Size =>
-  NODE_SIZE[node.kind === undefined || node.kind === 'group' ? 'item' : node.kind];
+/**
+ * Size of a node that is not a group (groups are sized by their children): the fixed size of its
+ * kind, plus room for its meters. A pill has no room for gauges, so `compact` ignores them.
+ */
+const leafSize = (node: FlowNode): Size => {
+  const kind = node.kind === undefined || node.kind === 'group' ? 'item' : node.kind;
+  const base = NODE_SIZE[kind];
+  if (kind === 'compact') return base;
+  return {
+    width: kind === 'item' && node.width === 'narrow' ? NARROW_ITEM_WIDTH : base.width,
+    height: base.height + metersHeight(node),
+  };
+};
 
 interface Size {
   width: number;
@@ -622,6 +641,7 @@ export function layoutKey(
           node.group ?? '',
           node.column ?? '',
           node.meters?.length ?? 0,
+          node.width ?? '',
         ].join('\u0000'),
       )
       .sort(),

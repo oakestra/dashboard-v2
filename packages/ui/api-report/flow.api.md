@@ -84,6 +84,7 @@ export interface FlowNode {
     pulse?: boolean;
     stale?: boolean;
     tone?: FlowTone;
+    width?: 'narrow';
 }
 
 // @public

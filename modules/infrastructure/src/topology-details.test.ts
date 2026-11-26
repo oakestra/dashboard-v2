@@ -10,6 +10,7 @@ import {
   summarizeProblems,
   summarizeRoot,
   workerHoverLines,
+  workerUsage,
 } from './topology-details';
 import type { WorkerEntry } from './topology';
 
@@ -96,6 +97,38 @@ describe('workerHoverLines', () => {
   it('hides sums and says last known when the cluster is silent', () => {
     const lines = workerHoverLines(entry(instance('api', 'success', { cpu_percent: 10 })), true);
     expect(lines).toEqual(['1 api instance', 'Cluster stopped reporting, last known state']);
+  });
+});
+
+describe('workerUsage', () => {
+  it('sums the measured instances', () => {
+    expect(
+      workerUsage(
+        entry(
+          instance('api', 'success', { cpu_percent: 10, memory_percent: 1024 }),
+          instance('api', 'success', { cpu_percent: 5, memory_percent: 1024 }),
+        ),
+        false,
+      ),
+    ).toEqual({ cpuPercent: 15, memoryBytes: 2048 });
+  });
+
+  it('skips failed and unmeasured instances', () => {
+    expect(
+      workerUsage(
+        entry(
+          instance('api', 'destructive', { cpu_percent: 50, memory_percent: 99 }),
+          instance('cache', 'success'),
+        ),
+        false,
+      ),
+    ).toBeUndefined();
+  });
+
+  it('is undefined for a stale worker', () => {
+    expect(
+      workerUsage(entry(instance('api', 'success', { cpu_percent: 10 })), true),
+    ).toBeUndefined();
   });
 });
 

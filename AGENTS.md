@@ -33,9 +33,10 @@ React shell that loads addon UIs at runtime through Module Federation.
   (`?view=clusters`, `src/board/`): a board of cluster cards, each listing the current user's services
   by application, below a full-width Unplaced band; clusters without a service of the viewer are one line
   below the board; lenses, text filter and "Needs attention only" live in search params.
-  `modules/infrastructure` also draws a Topology section (`src/topology.ts`, a `FlowGraph` of the root
-  orchestrator, every cluster as a group and the workers seen in the viewer's instance data; the
-  system-manager has no worker list, so idle workers are not listed).
+  `modules/infrastructure` also draws a Topology section (`src/topology.ts`, a `FlowGraph` tree of three
+  rows: the root orchestrator, every cluster, and below each cluster the workers seen in the
+  viewer's instance data; the system-manager has no worker list, so the rest of a cluster's workers
+  is one placeholder leaf).
 - `tools/mock-addons-manager`: one server mocking the addons-manager, the marketplace-manager and
   `GET /api/v1/ui-addons` (see "Mock addons manager"), with a `/__test` control API.
 - `tools/mock-system-manager`: the `@oakestra/mocks` backend served over HTTP for the e2e stack.
@@ -382,7 +383,8 @@ package name (never `./map`), so the shared map module stays the only MapLibre c
 
 `@oakestra/ui/flow` has `FlowGraph` (and `LazyFlowGraph`): a graph of `FlowNode`s (`kind`
 `primary`, `item`, `group` around the nodes naming it as `group`, `compact`; `tone`, `stale`,
-`pulse`, `href`, `column`, and on groups `meters`, gauge rows under the title) and `FlowEdge`s (`tone`, `dashed`, `animated`, `label`), laid out with
+`pulse`, `href`, `column`, `width: 'narrow'` for an `item` with a short label, and `meters`, gauge rows
+under the title of every kind but `compact`) and `FlowEdge`s (`tone`, `dashed`, `animated`, `label`), laid out with
 dagre (`flow-layout.ts`, pure) and drawn with React Flow, both only in the lazy chunk; no React Flow
 primitive is exported. The layout reruns only when the ids, kinds, groups, columns or direction
 change, so status updates recolor in place; nodes keep their input order within a column.

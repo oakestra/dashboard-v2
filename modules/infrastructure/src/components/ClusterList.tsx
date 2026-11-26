@@ -156,8 +156,10 @@ function ClusterRow({ cluster, href }: { cluster: Cluster; href: string }) {
           </dd>
         </div>
       </dl>
-      {/* On a phone this is a line of its own, runtimes left and the time right. */}
-      <div className="flex flex-col items-end gap-1 max-sm:basis-full max-sm:flex-row max-sm:items-center max-sm:justify-between">
+      {/* On a phone this is a line of its own, runtimes left and the time right. The fixed width
+          from `sm` keeps the figures in one column across rows: sized by its text, "4 days ago"
+          and "15 seconds ago" would push them to different places. */}
+      <div className="flex flex-col items-end gap-1 max-sm:basis-full max-sm:flex-row max-sm:items-center max-sm:justify-between sm:w-44 sm:shrink-0">
         <div className="flex flex-wrap gap-1 sm:justify-end">
           {cluster.virtualization.map((virtualization) => (
             <Badge key={virtualization} variant="secondary" className="font-mono">

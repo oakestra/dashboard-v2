@@ -248,6 +248,20 @@ function measuredInstances(entry: WorkerEntry): WorkerInstance[] {
   );
 }
 
+/** Summed CPU and memory of the measured instances; none for a stale or unmeasured worker. */
+export function workerUsage(
+  entry: WorkerEntry,
+  stale: boolean,
+): { cpuPercent: number; memoryBytes: number } | undefined {
+  const measured = stale ? [] : measuredInstances(entry);
+  if (measured.length === 0) return undefined;
+  return {
+    cpuPercent: measured.reduce((sum, { instance }) => sum + (instance.cpu_percent ?? 0), 0),
+    // memory_percent of an instance holds bytes.
+    memoryBytes: measured.reduce((sum, { instance }) => sum + (instance.memory_percent ?? 0), 0),
+  };
+}
+
 /**
  * The node already names the services, so the card leads with why something failed, then counts
  * instances per service and sums what they use. `memory_percent` of an instance holds bytes.
@@ -267,11 +281,11 @@ export function workerHoverLines(entry: WorkerEntry, stale: boolean): string[] {
       .map(([name, count]) => `${count} ${name}`)
       .join(', ') + (entry.instances.length === 1 ? ' instance' : ' instances'),
   );
-  const measured = stale ? [] : measuredInstances(entry);
-  if (measured.length > 0) {
-    const cpu = measured.reduce((sum, { instance }) => sum + (instance.cpu_percent ?? 0), 0);
-    const memory = measured.reduce((sum, { instance }) => sum + (instance.memory_percent ?? 0), 0);
-    lines.push(`Using CPU ${formatPercent(cpu, 0)}, memory ${formatBytes(memory)}`);
+  const usage = workerUsage(entry, stale);
+  if (usage) {
+    lines.push(
+      `Using CPU ${formatPercent(usage.cpuPercent, 0)}, memory ${formatBytes(usage.memoryBytes)}`,
+    );
   }
   if (stale) lines.push('Cluster stopped reporting, last known state');
   return lines;

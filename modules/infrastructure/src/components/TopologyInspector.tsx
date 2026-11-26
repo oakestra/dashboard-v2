@@ -35,6 +35,7 @@ import {
   summarizeRoot,
   worstProblem,
   workerTitle,
+  workerUsage,
 } from '../topology-details';
 
 function LinkButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
@@ -182,6 +183,7 @@ function WorkerBody({
   const applicationsEnabled = useFeatureEnabled('applications');
   const known = workerId !== UNKNOWN_WORKER;
   const stale = clusterPresentation(cluster).stale;
+  const usage = workerUsage(entry, stale);
   return (
     <>
       <FactList>
@@ -198,6 +200,10 @@ function WorkerBody({
             </span>
           </Fact>
         ) : null}
+        <Fact label="Instances">{entry.instances.length}</Fact>
+        <Fact label="Services">{[...entry.services].sort().join(', ')}</Fact>
+        <Fact label="CPU in use">{usage ? formatPercent(usage.cpuPercent, 0) : undefined}</Fact>
+        <Fact label="Memory in use">{usage ? formatBytes(usage.memoryBytes) : undefined}</Fact>
       </FactList>
       {stale ? (
         <p className="text-muted-foreground text-sm">

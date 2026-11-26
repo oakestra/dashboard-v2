@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { FlowEdge, FlowNode } from './flow-graph-types';
 import {
   GROUP_HEADER,
-  GROUP_METER_ROW,
+  METER_ROW,
+  NARROW_ITEM_WIDTH,
   groupHeaderHeight,
   labelPoint,
   layoutGraph,
@@ -59,6 +60,46 @@ describe('layoutGraph', () => {
     expect(Math.min(...boxes.map((box) => box.y))).toBe(0);
     expect(at(layout, 'app')).toMatchObject(NODE_SIZE.primary);
     expect(at(layout, 'a')).toMatchObject(NODE_SIZE.item);
+  });
+
+  it('makes items and primaries taller by one row per meter, but not compact nodes', () => {
+    const meters = [
+      { label: 'CPU', value: 40 },
+      { label: 'Mem', value: 70 },
+    ];
+    const layout = layoutGraph(
+      [
+        { id: 'app', label: 'App', kind: 'primary', meters },
+        { id: 'a', label: 'A', meters },
+        { id: 'b', label: 'B' },
+        { id: 'c', label: 'C', kind: 'compact', meters },
+      ],
+      fanEdges,
+      'LR',
+    );
+    const room = at(layout, 'a').height - NODE_SIZE.item.height;
+    expect(room).toBeGreaterThanOrEqual(2 * METER_ROW);
+    expect(at(layout, 'app').height).toBe(NODE_SIZE.primary.height + room);
+    expect(at(layout, 'a').width).toBe(NODE_SIZE.item.width);
+    expect(at(layout, 'b')).toMatchObject({ width: 192, height: 56 });
+    expect(at(layout, 'c')).toMatchObject(NODE_SIZE.compact);
+  });
+
+  it('draws a narrow item narrower, and only an item', () => {
+    const layout = layoutGraph(
+      [
+        { id: 'app', label: 'App', kind: 'primary', width: 'narrow' },
+        { id: 'a', label: 'A', width: 'narrow' },
+        { id: 'b', label: 'B' },
+        { id: 'c', label: 'C', kind: 'compact', width: 'narrow' },
+      ],
+      fanEdges,
+      'LR',
+    );
+    expect(at(layout, 'a')).toMatchObject({ width: NARROW_ITEM_WIDTH, height: 56 });
+    expect(at(layout, 'b').width).toBe(NODE_SIZE.item.width);
+    expect(at(layout, 'app')).toMatchObject(NODE_SIZE.primary);
+    expect(at(layout, 'c')).toMatchObject(NODE_SIZE.compact);
   });
 
   it('honors columns, also for nodes without edges', () => {
@@ -325,7 +366,7 @@ describe('group members', () => {
     const metered = layoutGraph(withMeters(2), edges, 'TB');
     const shift = at(metered, 'w1').y - at(plain, 'w1').y;
     expect(shift).toBe(groupHeaderHeight(withMeters(2)[1]) - GROUP_HEADER);
-    expect(shift).toBeGreaterThanOrEqual(2 * GROUP_METER_ROW);
+    expect(shift).toBeGreaterThanOrEqual(2 * METER_ROW);
     expect(at(metered, 'cluster').height - at(plain, 'cluster').height).toBe(shift);
 
     expect(layoutKey(withMeters(2, 90), edges, 'TB')).toBe(layoutKey(withMeters(2), edges, 'TB'));

@@ -34,6 +34,7 @@ import type {
   FlowEdge,
   FlowGraphProps,
   FlowLinkProps,
+  FlowMeter,
   FlowNode,
   FlowTone,
 } from './flow-graph-types';
@@ -194,31 +195,68 @@ function Glyph({ data }: { data: NodeData }) {
   return <StatusDot tone={node.tone ?? 'neutral'} stale={node.stale ?? false} pulse={node.pulse} />;
 }
 
+function MeterRows({ meters, className }: { meters: readonly FlowMeter[]; className?: string }) {
+  return meters.map((meter) => (
+    // The row height is METER_ROW in flow-layout.ts, which reserves the room.
+    <div key={meter.label} className={cn('flex h-[18px] items-center gap-2 text-xs', className)}>
+      <span aria-hidden className="w-12 shrink-0 text-muted-foreground">
+        {meter.label}
+      </span>
+      <PointerGauge
+        size="sm"
+        className="min-w-0 flex-1"
+        label={meter.label}
+        value={meter.value}
+        valueLabel={meter.valueLabel}
+        max={meter.max}
+        normalMax={meter.normalMax}
+      />
+    </div>
+  ));
+}
+
 function ItemNodeView({ data }: NodeProps<ItemNode>) {
   const kind = data.node.kind ?? 'item';
   const description = kind === 'compact' ? undefined : data.node.description;
+  const meters = kind === 'compact' ? undefined : data.node.meters;
   return (
     <div
       data-slot="flow-node"
       data-kind={kind}
       data-tone={data.node.tone}
+      // A centered column: without meters the header row sits where it always did, and with them
+      // the room the layout adds (rows plus a gap) is split evenly above and below the content.
       className={cn(
         nodeSurface(data),
-        'flex items-center',
-        kind === 'compact' ? 'gap-1.5 rounded-full px-3 text-xs' : 'gap-2 rounded-lg px-3 text-sm',
-        kind === 'primary' && 'gap-2.5 px-4',
+        'flex flex-col justify-center',
+        kind === 'compact' ? 'rounded-full px-3 text-xs' : 'rounded-lg px-3 text-sm',
+        kind === 'primary' && 'px-4',
       )}
     >
       <NodeHandles direction={data.direction} />
-      <Glyph data={data} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <NodeLabel data={data} className={kind === 'primary' ? 'font-semibold' : 'font-medium'} />
-        {description ? (
-          <span className="truncate text-xs text-muted-foreground" title={description}>
-            {description}
-          </span>
-        ) : null}
+      <div
+        className={cn(
+          'flex min-w-0 items-center',
+          kind === 'compact' ? 'gap-1.5' : 'gap-2',
+          kind === 'primary' && 'gap-2.5',
+        )}
+      >
+        <Glyph data={data} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <NodeLabel data={data} className={kind === 'primary' ? 'font-semibold' : 'font-medium'} />
+          {description ? (
+            <span className="truncate text-xs text-muted-foreground" title={description}>
+              {description}
+            </span>
+          ) : null}
+        </div>
       </div>
+      {meters?.length ? (
+        // Part of METERS_GAP, so the gauges do not touch the description.
+        <div className="mt-1">
+          <MeterRows meters={meters} />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -243,23 +281,7 @@ function GroupNodeView({ data }: NodeProps<GroupNode>) {
           </span>
         ) : null}
       </div>
-      {meters?.map((meter) => (
-        // The row height is GROUP_METER_ROW in flow-layout.ts, which reserves the room.
-        <div key={meter.label} className="flex h-[18px] items-center gap-2 px-3 text-xs">
-          <span aria-hidden className="w-12 shrink-0 text-muted-foreground">
-            {meter.label}
-          </span>
-          <PointerGauge
-            size="sm"
-            className="min-w-0 flex-1"
-            label={meter.label}
-            value={meter.value}
-            valueLabel={meter.valueLabel}
-            max={meter.max}
-            normalMax={meter.normalMax}
-          />
-        </div>
-      ))}
+      {meters ? <MeterRows meters={meters} className="px-3" /> : null}
     </div>
   );
 }
@@ -664,7 +686,7 @@ export default function FlowGraphImpl({
         ariaLabel: [
           node.label,
           node.description,
-          ...(kind === 'group' ? (node.meters ?? []) : []).map(
+          ...(kind === 'compact' ? [] : (node.meters ?? [])).map(
             (meter) => `${meter.label} ${meter.valueLabel ?? meter.value ?? 'no data'}`,
           ),
         ]

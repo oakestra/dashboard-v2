@@ -108,7 +108,7 @@ export function InfrastructureTopology({ clusters }: { clusters: readonly Cluste
   return (
     <SectionCard
       title="Topology"
-      description="Clusters registered with the root orchestrator and the workers running your instances. Hatched clusters have stopped reporting. Hover for a preview, click for details."
+      description="Clusters registered with the root orchestrator and, below each cluster, the workers running your instances. Hatched clusters have stopped reporting. Hover for a preview, click for details."
     >
       <div className="space-y-2">
         {problems.length > 0 ? (

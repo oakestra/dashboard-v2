@@ -13,7 +13,10 @@ export type FlowTone = StatusTone;
  */
 export type FlowNodeKind = 'primary' | 'item' | 'group' | 'compact';
 
-/** A small gauge in a group's header, e.g. the CPU usage of a cluster. */
+/**
+ * A small gauge on a node, e.g. the CPU usage of a cluster: below the title of a group, below the
+ * label and description of an item or primary.
+ */
 export interface FlowMeter {
   /** Short name in front of the track, also its accessible name ("CPU"). */
   label: string;
@@ -41,11 +44,18 @@ export interface FlowNode {
   /** One line under the label, e.g. "2/3 running". Ignored on `compact` nodes. */
   description?: string;
   /**
-   * Gauges below the title of a `group` (ignored on other kinds), one row each, so load can be
-   * compared across groups without opening one. Keep it to two or three. Their number shapes the
-   * layout, their values do not: an update moves the pointers in place.
+   * Gauges on a `group`, `item` or `primary` node (ignored on `compact`), one row each below the
+   * title or description, so load can be compared across nodes without opening one. Keep it to two
+   * or three. Their number shapes the layout (each row makes the node taller), their values do
+   * not: an update moves the pointers in place.
    */
   meters?: readonly FlowMeter[];
+  /**
+   * `narrow` draws an `item` three quarters as wide, for leaves with a short label (worker ids)
+   * that would otherwise be mostly empty and stretch a row of them. Ignored on other kinds. Like
+   * every size it is fixed: longer text truncates.
+   */
+  width?: 'narrow';
   /**
    * Makes the label a link, rendered with `renderLink`. A selectable graph (`onNodeClick`) should
    * usually leave it out: a click on the label then navigates, a click beside it selects, and the
