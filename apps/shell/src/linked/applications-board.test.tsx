@@ -59,8 +59,13 @@ describe('applications board, the "By cluster" view (linked addon)', () => {
 
     await user.click(screen.getByRole('radio', { name: 'List' }));
     await waitFor(() => expect(searchOf(router)).toEqual({ q: 'web' }));
-    expect(await screen.findByRole('link', { name: 'webshop' })).toBeVisible();
-    expect(screen.queryByRole('list', { name: 'Applications by cluster' })).not.toBeInTheDocument();
+    // The board links to webshop too, so wait for the board to go away first.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('list', { name: 'Applications by cluster' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('link', { name: 'webshop' })).toBeVisible();
   });
 
   it('has no Fleet entry in the sidebar', async () => {
@@ -282,7 +287,10 @@ describe('applications board, the "By cluster" view (linked addon)', () => {
 
     await user.clear(screen.getByRole('searchbox'));
     await user.click(screen.getByRole('switch', { name: 'Needs attention only' }));
-    expect(screen.queryByTestId('board-idle-clusters')).not.toBeInTheDocument();
+    // Clearing the search shows the idle line again for a moment.
+    await waitFor(() =>
+      expect(screen.queryByTestId('board-idle-clusters')).not.toBeInTheDocument(),
+    );
     await waitFor(() =>
       expect(within(cards).queryByRole('heading', { name: 'iotpipe' })).not.toBeInTheDocument(),
     );
