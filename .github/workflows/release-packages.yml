@@ -75,16 +75,14 @@ jobs:
         id: changesets
         uses: changesets/action@v2
         with:
-          version: pnpm version-packages
-          commit: 'chore: version packages'
-          title: 'chore: version packages'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          version-script: pnpm version-packages
+          commit-message: 'chore: version packages'
+          pr-title: 'chore: version packages'
 
       # With no changesets pending, package.json holds the versions to release. Those already
       # published are skipped, so this is a no-op on most pushes.
       - name: Publish releases
-        if: steps.changesets.outputs.hasChangesets == 'false'
+        if: steps.changesets.outputs.has-changesets == 'false'
         run: |
           node tools/package-checks/src/publish.ts
           git push origin --tags
