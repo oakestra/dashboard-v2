@@ -1,5 +1,7 @@
 # Build context: repository root (docker build -f apps/shell/Dockerfile .)
-FROM node:24-alpine AS build
+# The bundle is the same for every platform, so build it once on the build host. Under QEMU,
+# rolldown's arm64 binding crashed with "Illegal instruction".
+FROM --platform=$BUILDPLATFORM node:24-alpine AS build
 RUN npm install --global pnpm@12.16.1
 WORKDIR /repo
 

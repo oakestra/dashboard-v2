@@ -1,5 +1,7 @@
 # Build context: repository root (docker build -f addons/__NAME__/Dockerfile .)
-FROM node:24-alpine AS build
+# The bundle is the same for every platform, so build it once on the build host instead of under
+# QEMU, where native bundler bindings can crash.
+FROM --platform=$BUILDPLATFORM node:24-alpine AS build
 RUN npm install --global pnpm@__PNPM_VERSION__
 WORKDIR /repo
 
